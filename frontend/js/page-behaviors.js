@@ -10,6 +10,22 @@
   const features = String(scriptData && (scriptData.sonaaFeatures || scriptData.sonaaFeature) || '').split(/[\s,]+/).filter(Boolean);
   features.forEach(function (feature) {
   switch (feature) {
+    case 'browser-back': {
+      if (window.__sonaaBrowserBackInstalled) break;
+      window.__sonaaBrowserBackInstalled = true;
+      if (window.history && window.history.pushState) window.history.pushState({ sonaaBackRoot: true }, '', location.href);
+      window.addEventListener('popstate', function () {
+        let handled = false;
+        if (typeof window.goBack === 'function') {
+          try { handled = window.goBack(true) === true; } catch (_) {}
+        }
+        if (!handled && window.history && window.history.pushState) {
+          window.history.pushState({ sonaaBackRoot: true }, '', location.href);
+        }
+      });
+      break;
+    }
+
     case 'admin-recovery-count': {
       let busy = false;
       let lastToken = '';
