@@ -212,11 +212,11 @@ function getAcceptedOffer(order, offerId) {
 router.use(createOrderLifecycleRouter({
   mongoose, Order, WalletTransaction, Fanni, auth, validSN, verifyClientToken,
   ACTIVE_STATUSES, currentPricing, DEFAULT_COMMISSION_RATE, money, getAcceptedOffer,
-  publicOrder, createNotification, hasAcceptedGuidelines, autoPromoteFanni, sanitizeText
+  publicOrder, createNotification, notifyAdmins, hasAcceptedGuidelines, autoPromoteFanni, sanitizeText
 }));
 router.use(createOrderRatingRouter({
   Joi, Order, validSN, verifyClientToken, jwt, Fanni, Rating, normalizePhone,
-  sanitizeText, autoPromoteFanni, createNotification
+  sanitizeText, autoPromoteFanni, createNotification, notifyAdmins
 }));
 router.use(createOrderAvailableRouter({
   auth, Order, ACTIVE_STATUSES, Fanni, Rating, normalizePhone, ALL_SERVICES, Service,
@@ -293,6 +293,7 @@ router.use(createOrderOfferRouter({
   fanniCanHandleService,
   fanniWorksInArea,
   createNotification,
+  notifyAdmins,
   Joi
 }));
 
@@ -304,6 +305,7 @@ router.use(createOrderChatRouter({
   WalletTransaction,
   mongoose,
   createNotification,
+  notifyAdmins,
   auth,
   ACTIVE_STATUSES,
   validSN,

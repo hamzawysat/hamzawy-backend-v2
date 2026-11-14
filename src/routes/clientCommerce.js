@@ -44,7 +44,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         idempotencyKey: 'client-service-hold:' + String(order._id)
       }).save({ session });
       await session.commitTransaction();
-      notice = { fanniId: order.assignedFanni, sn: order.sn };
+      notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount };
       return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount });
     } catch (error) {
       if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
@@ -53,7 +53,15 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
     } finally {
       if (session) await session.endSession();
       if (notice) {
-        try { await createNotification({ recipientRole: 'fanni', recipientId: notice.fanniId, type: 'client_service_payment_held', title: 'تم تأمين قيمة الخدمة', message: 'قام العميل بحجز قيمة الخدمة للطلب ' + notice.sn + ' من محفظته. تُضاف مستحقاتك بعد إتمام المهمة.', link: '/fanni', dedupeKey: 'client-service-payment-held:' + notice.sn }); } catch (_) {}
+        try {
+          await createNotification({ recipientRole: 'fanni', recipientId: notice.fanniId, type: 'client_service_payment_held', title: 'تم تأمين قيمة الخدمة', message: 'قام العميل بحجز قيمة الخدمة للطلب ' + notice.sn + ' من محفظته. تُضاف مستحقاتك بعد إتمام المهمة.', link: '/fanni', dedupeKey: 'client-service-payment-held:' + notice.sn });
+          await notifyAdmins({
+            type: 'admin_service_payment_held', title: 'العميل حجز قيمة الخدمة',
+            message: 'حجز العميل قيمة الخدمة للطلب ' + notice.sn + ' بمبلغ ' + notice.amount + ' جنيه من محفظته.',
+            link: '/admin?tab=orders',
+            dedupeKey: 'admin-service-payment-held:' + String(notice.orderId)
+          });
+        } catch (_) {}
       }
     }
   });
@@ -192,7 +200,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         idempotencyKey
       }).save({ session });
       await session.commitTransaction();
-      notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName };
+      notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName, mode, endsAt: subscription.endsAt };
       return res.status(mode === 'purchase' ? 201 : 200).json({
         message: mode === 'purchase' ? 'تم شراء الاشتراك وتفعيله بنجاح.' : 'تم تجديد الاشتراك بنجاح.',
         balance: Number(updatedClient.walletBalance), subscription
@@ -213,6 +221,14 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
               dedupeKey: 'admin-subscription-request:' + String(notification.subscriptionId)
             });
           } else {
+            if (notification.mode === 'renew') {
+              await notifyAdmins({
+                type: 'admin_subscription_renewed', title: 'العميل جدد اشتراكه',
+                message: 'جدّد العميل اشتراك ' + notification.itemName + ' بنجاح من محفظته.',
+                link: '/admin?tab=commerceSubscriptions',
+                dedupeKey: 'admin-subscription-renewed:' + String(notification.subscriptionId) + ':' + String(notification.endsAt || notification.subscriptionId)
+              });
+            }
             await createNotification({
               recipientRole: 'client', recipientId: notification.clientId,
               type: 'subscription_activated', title: 'تم تفعيل اشتراكك',

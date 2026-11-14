@@ -17,6 +17,7 @@ function createOrderLifecycleRouter({
   getAcceptedOffer,
   publicOrder,
   createNotification,
+  notifyAdmins,
   hasAcceptedGuidelines,
   autoPromoteFanni,
   sanitizeText
@@ -293,6 +294,12 @@ router.post('/:sn/accept', async (req, res, next) => {
         link: '/?tab=orders', dedupeKey: 'client-offer-accepted:' + String(notificationOrderId || acceptedOrder.sn)
       });
     }
+      await notifyAdmins({
+      type: 'admin_order_offer_accepted', title: 'العميل قبل عرض فني',
+      message: 'اختار العميل الفني ' + (acceptedOrder.assignedFanniName || 'فني') + ' لتنفيذ الطلب ' + acceptedOrder.sn + ' لخدمة ' + (acceptedOrder.service || '') + '.',
+      link: '/admin?tab=orders',
+      dedupeKey: 'admin-order-accepted:' + String(notificationOrderId || acceptedOrder.sn)
+    });
   }
 
   if (responsePayload) {
@@ -345,6 +352,13 @@ router.post('/:sn/cancel', async (req, res, next) => {
         dedupeKey: 'client-order-cancelled:' + String(cancelledOrder._id)
       });
     }
+
+        await notifyAdmins({
+      type: 'admin_order_cancelled', title: 'العميل ألغى طلبًا',
+      message: 'ألغى العميل الطلب ' + cancelledOrder.sn + ' لخدمة ' + (cancelledOrder.service || '') + '.',
+      link: '/admin?tab=orders',
+      dedupeKey: 'admin-order-cancelled:' + String(cancelledOrder._id)
+    });
 
     return res.json({ message: 'تم إلغاء الطلب بنجاح.', order: publicOrder(cancelledOrder) });
   } catch (err) {
@@ -412,6 +426,13 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
         link: '/client.html?tab=orders', dedupeKey: 'order-completed:' + String(order._id)
       });
     }
+        await notifyAdmins({
+      type: 'admin_order_completed', title: 'الفني أكمل المهمة',
+      message: 'أكمل الفني ' + (req.user.name || 'فني') + ' الطلب ' + order.sn + ' لخدمة ' + (order.service || '') + (settlement ? ' وتم تحويل ' + settlement.amount + ' جنيه من المستحقات.' : '.'),
+      link: '/admin?tab=orders',
+      dedupeKey: 'admin-order-completed:' + String(order._id)
+    });
+
     return res.json({
       message: settlement ? 'تم إكمال المهمة وتحويل مستحقاتك إلى محفظتك بنجاح.' : 'تم إكمال المهمة بنجاح',
       order: { sn: order.sn, status: order.status, clientPaymentStatus: order.clientPaymentStatus },

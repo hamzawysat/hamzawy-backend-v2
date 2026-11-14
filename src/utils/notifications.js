@@ -15,18 +15,44 @@ function notificationFetch(url, options = {}) {
 }
 
 function channelFor(type) {
-  if (['order_new', 'new_order', 'admin_new_order', 'admin_store_order'].includes(type)) return 'order_new';
-  if (['fanni_register', 'new_fanni', 'admin_new_technician'].includes(type)) return 'fanni_register';
-  if (['client_register', 'new_client', 'admin_new_client'].includes(type)) return 'client_register';
-  if (['password_reset', 'admin_password_recovery'].includes(type)) return 'password_reset';
-  if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint'].includes(type)) return 'support';
-  if (['wallet_charge', 'topup_request', 'admin_new_topup'].includes(type)) return 'wallet_charge';
+  if ([
+    'order_new', 'new_order', 'admin_new_order', 'admin_store_order',
+    'admin_order_offer_accepted', 'admin_order_cancelled', 'admin_order_completed',
+    'admin_fanni_offer', 'admin_price_change_requested', 'admin_client_rating'
+  ].includes(type)) return 'order_new';
+  if ([
+    'fanni_register', 'new_fanni', 'admin_new_technician', 'admin_fanni_profile_edit',
+    'admin_fanni_login', 'admin_fanni_logout'
+  ].includes(type)) return 'fanni_register';
+  if ([
+    'client_register', 'new_client', 'admin_new_client', 'admin_client_login', 'admin_client_logout'
+  ].includes(type)) return 'client_register';
+  if (['password_reset', 'admin_password_recovery', 'admin_password_recovery_message'].includes(type)) return 'password_reset';
+  if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint', 'admin_support_followup'].includes(type)) return 'support';
+  if ([
+    'wallet_charge', 'topup_request', 'admin_new_topup', 'admin_client_topup',
+    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed'
+  ].includes(type)) return 'wallet_charge';
   return 'support';
 }
 function destinationFor(type) {
-  if (type === 'admin_store_order') return 'storeOrders';
-  return ({ order_new: 'orders', fanni_register: 'technicians', client_register: 'clients',
-    password_reset: 'clients', support: 'complaints', wallet_charge: 'technicians' })[channelFor(type)];
+  const destinations = {
+    admin_store_order: 'storeOrders', admin_subscription_request: 'commerceSubscriptions',
+    admin_subscription_renewed: 'commerceSubscriptions', admin_client_topup: 'clientWallet',
+    admin_new_topup: 'technicians', admin_new_technician: 'technicians',
+    admin_fanni_profile_edit: 'technicians', admin_fanni_login: 'technicians',
+    admin_fanni_logout: 'technicians', admin_new_client: 'clients',
+    admin_client_login: 'clients', admin_client_logout: 'clients',
+    admin_service_payment_held: 'orders', admin_order_offer_accepted: 'orders',
+    admin_order_cancelled: 'orders', admin_order_completed: 'orders',
+    admin_fanni_offer: 'orders', admin_price_change_requested: 'orders',
+    admin_client_rating: 'orders'
+  };
+  if (destinations[type]) return destinations[type];
+  return ({
+    order_new: 'orders', fanni_register: 'technicians', client_register: 'clients',
+    password_reset: 'clients', support: 'complaints', wallet_charge: 'technicians'
+  })[channelFor(type)];
 }
 async function firebaseAccessToken(serviceAccount) {
   const now = Math.floor(Date.now() / 1000);

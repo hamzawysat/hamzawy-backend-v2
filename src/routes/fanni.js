@@ -234,6 +234,11 @@ router.post(
       const safeUser = fanni.toSafeJSON();
       const activeServiceKeys = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
       safeUser.specialties = (Array.isArray(safeUser.specialties) ? safeUser.specialties : []).filter(value => activeServiceKeys.has(normalizeServiceKey(value)));
+      await notifyAdmins({
+        type: 'admin_fanni_login', title: 'تسجيل دخول فني',
+        message: 'سجّل الفني ' + fanni.name + ' (' + fanni.phone + ') الدخول إلى حسابه.',
+        link: '/admin?tab=fannis'
+      });
       return res.json({
         token,
         mustChangePassword: supportLogin,
@@ -250,6 +255,17 @@ router.post(
  * GET /api/fanni/me
  */
 const TECHNICIAN_GUIDELINES_VERSION = '2026-10-20-v1';
+router.post('/logout', auth('fanni'), async (req, res, next) => {
+  try {
+    await notifyAdmins({
+      type: 'admin_fanni_logout', title: 'تسجيل خروج فني',
+      message: 'سجّل الفني ' + (req.user.name || 'فني') + ' (' + (req.user.phone || '') + ') الخروج من حسابه.',
+      link: '/admin?tab=fannis'
+    });
+    return res.json({ message: 'تم تسجيل الخروج بنجاح.' });
+  } catch (error) { return next(error); }
+});
+
 router.post('/guidelines/accept', auth(), requireFanni, requireApprovedFanni, async (req, res, next) => {
   try {
     if (req.body?.accepted !== true || req.body?.version !== TECHNICIAN_GUIDELINES_VERSION) return res.status(400).json({ message: 'اقرأ التعليمات وحدد الموافقة لتأكيد الالتزام بها.' });

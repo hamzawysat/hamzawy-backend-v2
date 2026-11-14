@@ -7,7 +7,7 @@ function createOrderOfferRouter({
   Order, Rating, Fanni, auth, hasAcceptedGuidelines, sanitizeOffer,
   publicRatings, normalizePhone, sanitizeText, hasRatingBlock, validSN,
   ACTIVE_STATUSES, ALL_SERVICES, Service, currentPricing, DEFAULT_COMMISSION_RATE, money,
-  findPhoneContainingField, fanniCanHandleService, fanniWorksInArea, createNotification, Joi
+  findPhoneContainingField, fanniCanHandleService, fanniWorksInArea, createNotification, notifyAdmins, Joi
 }) {
   const router = express.Router();
 
@@ -360,6 +360,13 @@ function createOrderOfferRouter({
         link: '/?tab=orders', dedupeKey: 'new-offer:' + String(order._id) + ':' + String(req.userId)
       });
   
+            await notifyAdmins({
+        type: 'admin_fanni_offer', title: 'عرض فني جديد',
+        message: 'قدّم الفني ' + (fanni.name || 'فني') + ' عرضًا على الطلب ' + order.sn + ' لخدمة ' + order.service + ' بقيمة ' + price + ' جنيه.',
+        link: '/admin?tab=orders',
+        dedupeKey: 'admin-fanni-offer:' + String(order._id) + ':' + String(req.userId)
+      });
+
       return res.status(201).json({
         message: 'تم إرسال العرض بنجاح. لم يتم خصم أي مبلغ من محفظتك.',
         orderSn: order.sn,

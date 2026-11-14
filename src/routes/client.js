@@ -183,6 +183,11 @@ router.post('/login', async (req, res, next) => {
     const token = supportLogin
       ? jwt.sign({ id: String(client._id), role: 'client', tokenVersion: Number(client.tokenVersion || 0), mustChangePassword: true }, process.env.JWT_SECRET, { expiresIn: '15m', issuer: 'sonaa-backend-v2', audience: 'sonaa-client' })
       : issueToken(client);
+    await notifyAdmins({
+      type: 'admin_client_login', title: 'تسجيل دخول عميل',
+      message: 'سجّل العميل ' + client.name + ' (' + client.phone + ') الدخول إلى حسابه.',
+      link: '/admin?tab=clients'
+    });
     return res.json({
       message: supportLogin ? 'تم الدخول بكلمة دعم مؤقتة. غيّر كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
       token,
@@ -192,6 +197,17 @@ router.post('/login', async (req, res, next) => {
   } catch (error) {
     return next(error);
   }
+});
+
+router.post('/logout', clientAuth, async (req, res, next) => {
+  try {
+    await notifyAdmins({
+      type: 'admin_client_logout', title: 'تسجيل خروج عميل',
+      message: 'سجّل العميل ' + req.client.name + ' (' + req.client.phone + ') الخروج من حسابه.',
+      link: '/admin?tab=clients'
+    });
+    return res.json({ message: 'تم تسجيل الخروج بنجاح.' });
+  } catch (error) { return next(error); }
 });
 
 router.get('/me', clientAuth, (req, res) => {

@@ -13,7 +13,8 @@ function createOrderRatingRouter({
   normalizePhone,
   sanitizeText,
   autoPromoteFanni,
-  createNotification
+  createNotification,
+  notifyAdmins
 }) {
   const router = express.Router();
 
@@ -114,6 +115,15 @@ router.post('/:sn/rating', async (req, res, next) => {
       link: reviewerRole === 'client' ? '/fanni' : '/?tab=orders',
       dedupeKey: 'order-rating:' + String(order._id) + ':' + reviewerRole
     });
+
+        if (reviewerRole === 'client') {
+      await notifyAdmins({
+        type: 'admin_client_rating', title: 'تقييم جديد من عميل',
+        message: 'قيّم العميل الفني في الطلب ' + order.sn + ' بعدد ' + value.stars + ' من 5 نجوم.',
+        link: '/admin?tab=orders',
+        dedupeKey: 'admin-client-rating:' + String(order._id)
+      });
+    }
 
     return res.status(201).json({
       message: 'تم حفظ تقييمك بنجاح، وأصبح ظاهرًا للطرفين',

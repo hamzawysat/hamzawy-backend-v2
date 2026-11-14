@@ -11,6 +11,7 @@ function createOrderChatRouter({
   WalletTransaction,
   mongoose,
   createNotification,
+  notifyAdmins,
   auth,
   ACTIVE_STATUSES,
   validSN,
@@ -145,6 +146,14 @@ function createOrderChatRouter({
         link: '/?tab=orders',
         dedupeKey: 'price-change-request:' + String(order._id) + ':' + String(order.priceChangeRequests[order.priceChangeRequests.length - 1]._id)
       });
+            const priceRequest = order.priceChangeRequests[order.priceChangeRequests.length - 1];
+      await notifyAdmins({
+        type: 'admin_price_change_requested', title: 'الفني طلب زيادة سعر خدمة',
+        message: 'طلب الفني ' + (req.user.name || 'فني') + ' رفع سعر الطلب ' + order.sn + ' من ' + currentPrice + ' إلى ' + newPrice + ' جنيه. السبب: ' + reason,
+        link: '/admin?tab=orders',
+        dedupeKey: 'admin-price-change:' + String(order._id) + ':' + String(priceRequest._id)
+      });
+
       return res.status(201).json({ message: 'تم إرسال طلب تعديل السعر للعميل؛ لا تنفذ الزيادة قبل موافقته.', request: order.priceChangeRequests[order.priceChangeRequests.length - 1] });
     } catch (err) { next(err); }
   });

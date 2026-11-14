@@ -371,6 +371,8 @@ function showLogoutConfirmation(action='logout'){
 }
 function logout(){showLogoutConfirmation();}
 function performFanniLogout(){
+ const token=getToken();
+ if(token){try{fetch('/api/fanni/logout',{method:'POST',headers:{Authorization:'Bearer '+token},keepalive:true}).catch(()=>{});}catch(e){}}
  stopFanniPolling();
  clearAuth();
  currentUser=null;
