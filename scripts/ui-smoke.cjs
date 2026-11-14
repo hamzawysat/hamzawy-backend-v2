@@ -132,7 +132,7 @@ function apiResponse(pathname) {
               if (/<style\b/i.test(clientAccountSource) || /<style\b/i.test(clientRenderSource) ||
                   !clientLayoutSource.includes('.account-top-nav{') ||
                   !clientComponentsSource.includes('body .support-float{position:fixed!important;left:16px!important;right:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}') ||
-                  !clientComponentsSource.includes('body .global-refresh-float{position:fixed!important;right:16px!important;left:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}') ||
+                  !clientComponentsSource.includes('body .global-refresh-float{position:fixed!important;left:16px!important;right:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}') ||
                   !clientLayoutSource.includes('.global-refresh.is-refreshing svg{animation:global-refresh-spin 1s linear infinite}')) {
                 failures.push('client/desktop: dynamic CSS remains in JavaScript or extracted component rules are missing');
               }
