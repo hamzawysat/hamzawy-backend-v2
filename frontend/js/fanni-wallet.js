@@ -99,3 +99,5 @@ async function submitWallet(){
  }
 }
 
+
+function setFanniWalletTab(tab){if(!['topup','requests','transactions'].includes(tab))return;state.walletTab=tab;render();}
