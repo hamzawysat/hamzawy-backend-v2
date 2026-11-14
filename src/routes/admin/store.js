@@ -15,6 +15,10 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, notifyAdm
     subscriptionDuration: Joi.string().trim().max(60).allow('').default(''),
     imageUrl: Joi.string().uri({ scheme: ['http', 'https'] }).max(1000).allow('').default(''),
     isActive: Joi.boolean().default(true),
+    isAdvertised: Joi.boolean().default(false),
+    adAudience: Joi.string().valid('both', 'client', 'fanni').default('both'),
+    adPriority: Joi.number().integer().min(0).max(100).default(0),
+    adExpiresAt: Joi.date().iso().allow(null).default(null),
     stock: Joi.number().integer().min(0).allow(null).default(null)
   }).unknown(false);
   const statusSchema = Joi.object({
