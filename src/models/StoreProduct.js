@@ -13,6 +13,10 @@ const storeProductSchema = new mongoose.Schema({
   subscriptionDuration: { type: String, trim: true, maxlength: 60, default: '' },
   imageUrl: { type: String, trim: true, maxlength: 1000, default: '' },
   isActive: { type: Boolean, default: true, index: true },
+  isAdvertised: { type: Boolean, default: false, index: true },
+  adAudience: { type: String, enum: ['both', 'client', 'fanni'], default: 'both' },
+  adPriority: { type: Number, min: 0, max: 100, default: 0 },
+  adExpiresAt: { type: Date, default: null },
   stock: { type: Number, min: 0, default: null }
 }, { timestamps: true });
 
