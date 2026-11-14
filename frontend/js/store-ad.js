@@ -1,7 +1,7 @@
 'use strict';
 
 (function(){
-  const role=document.documentElement.dataset.son aaTheme || document.documentElement.getAttribute('data-sonaa-theme') || '';
+  const role=document.documentElement.getAttribute('data-sonaa-theme') || '';
   if(!['client','fanni'].includes(role))return;
   const sessionKey='hamzawy_store_ad_seen_'+role;
   let initialized=false;
@@ -74,7 +74,7 @@
   }
 
   async function loadAdvertisement(){
-    if(!isLoggedIn()||wasSeen()||storeIsOpen()||document.hidden)return;
+    if(!isLoggedIn()||wasSeen()||storeIsOpen()||document.hidden||pendingTimer)return;
     try{
       const response=await fetch('/api/store/products',{cache:'no-store',headers:{'Accept':'application/json'}});
       if(!response.ok)return;
@@ -84,7 +84,7 @@
         if(product.isAdvertised!==true)return false;
         if(product.adAudience&&product.adAudience!=='both'&&product.adAudience!==role)return false;
         if(product.adExpiresAt&&new Date(product.adExpiresAt).getTime()<=now)return false;
-        return Boolean(String(product.name||'').trim());
+        return Boolean(String(product.name||'').trim()&&/^https?:\\/\\//i.test(String(product.imageUrl||'')));
       }).sort((a,b)=>(Number(b.adPriority)||0)-(Number(a.adPriority)||0)||new Date(b.createdAt||0)-new Date(a.createdAt||0));
       if(!products.length)return;
       const product=products[0];
