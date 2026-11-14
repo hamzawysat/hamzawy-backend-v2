@@ -4,15 +4,16 @@ const ADMIN_TAB_HISTORY=[];
 function setTab(t,scrollTarget='content',fromBack=false){
  if(!canReadTab(t)){showToast('هذا القسم غير متاح ضمن صلاحيات حسابك','error');return;}
  if(state.tab!==t){
-  if(!fromBack&&state.tab){ADMIN_TAB_HISTORY.push(state.tab);if(ADMIN_TAB_HISTORY.length>40)ADMIN_TAB_HISTORY.shift();}
+  if(!fromBack&&state.tab){ADMIN_TAB_HISTORY.push(state.tab);if(ADMIN_TAB_HISTORY.length>40)ADMIN_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaAdminTab:t},'','#'+encodeURIComponent(t));}
   state.filter='الكل';
  }
  state.tab=t;state.pageMode='section';state.dropdowns={};state.pendingActions={};render();
  if(t==='profileEdits')loadFanniProfileEdits();else if(t==='orders')loadOrders();else if(t==='roles')loadAdminUsers();else if(t==='complaints')loadComplaints();else if(t==='services')loadServices();else if(t==='regions')loadRegions();else if(t==='pricing')loadPricing();else if(t==='settings')loadSettings();else if(t==='security')loadAuditLogs();else if(t==='pageVisits')loadPageVisits();else if(t==='notifications')loadNotificationHistory();else if(t==='support')loadSupportViolations();else if(t==='content')loadContent();else if(t==='topups'){applyTopupFilter();if(canReadTab('clientWallet'))loadClientTopups();}else if(t==='clients')loadClients();else if(t==='clientWallet')loadClientTopups();else if(t==='commercePlans')loadCommerceCatalog();else if(t==='commerceSubscriptions')loadClientSubscriptions();else if(t==='store')loadStoreProducts();else if(t==='storeOrders')loadStoreOrders();else if(t==='wallets')render();else applyFilter();
 }
-function goBack(){
- if(ADMIN_TAB_HISTORY.length){const previous=ADMIN_TAB_HISTORY.pop();setTab(previous,'back',true);return;}
- if(window.ReactNativeWebView){window.ReactNativeWebView.postMessage('sonaa-admin-back-at-root');}
+function goBack(fromPopState=false){
+ if(!fromPopState&&ADMIN_TAB_HISTORY.length){window.history.back();return true;}
+ if(fromPopState&&ADMIN_TAB_HISTORY.length){const previous=ADMIN_TAB_HISTORY.pop();setTab(previous,'back',true);return true;}
+ return false;
 }
 function onSearch(v){state.search=v; if(state.tab==='orders')applyOrderFilter(); else if(state.tab==='complaints')applyComplaintFilter(); else if(state.tab==='services')applyServicesFilter(); else if(state.tab==='topups'){if(state.topupOwnerTab==='clients'&&canReadTab('clientWallet'))applyClientTopupFilter();else applyTopupFilter();} else if(state.tab==='clients')applyClientFilter();else if(state.tab==='clientWallet')applyClientTopupFilter();else applyFilter();}
 function onFilter(v){state.filter=v;applyFilter()} function onFilterTopup(v){state.filterTopup=v;applyTopupFilter()} function onFilterOrder(v){state.filterOrder=v;applyOrderFilter()} function onFilterComplaint(v){state.filterComplaint=v;applyComplaintFilter()}
