@@ -26,7 +26,7 @@ function renderClientNewRequestChooser(){
           <span class="flex items-center gap-3">
             <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-3xl" aria-hidden="true">🛍️</span>
             <span class="min-w-0 flex-1">
-              <span class="block text-[15px] font-black text-slate-900">عايز أشتري من متجر</span>
+              <span class="block text-[15px] font-black text-slate-900">عايز أشتري من المتجر</span>
               <span class="mt-1 block text-[11px] font-semibold text-slate-500">تصفح المنتجات واطلب اللي محتاجه</span>
             </span>
             <span class="text-xl text-slate-400" aria-hidden="true">‹</span>
