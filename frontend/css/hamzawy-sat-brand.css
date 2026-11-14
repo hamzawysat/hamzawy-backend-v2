@@ -349,6 +349,7 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button:active {
 /* Keep the existing sticky header below the fixed brand line without changing its markup or contents. */
 #app .dashboard-brand-marquee + .app-header {
   top: 32px;
+  margin-top: 32px;
 }
 #app .dashboard-brand-marquee span {
   display: inline-block;
