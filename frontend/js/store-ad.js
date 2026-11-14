@@ -14,6 +14,7 @@
   let loading=false;
   let loaded=false;
   let displayStarted=false;
+  let rotationSeconds=5;
 
   function isLoggedIn(){
     try{
@@ -80,6 +81,8 @@
       const response=await fetch('/api/store/products',{cache:'no-store',headers:{'Accept':'application/json'}});
       if(!response.ok)return;
       const data=await response.json();
+      const configuredSeconds=Number(data.adRotationSeconds);
+      rotationSeconds=Number.isInteger(configuredSeconds)&&configuredSeconds>=5&&configuredSeconds<=60?configuredSeconds:5;
       const now=Date.now();
       products=(Array.isArray(data.products)?data.products:[]).filter(product=>{
         if(product.isAdvertised!==true)return false;
@@ -100,7 +103,7 @@
           if(!isLoggedIn()||storeIsOpen()){removeWidget();return;}
           if(products.length>1){currentIndex=(currentIndex+1)%products.length;renderAdvertisement();}
           else if(!currentWidget)renderAdvertisement();
-        },5000);
+        },rotationSeconds*1000);
       }
     }catch(_){}finally{loading=false;}
   }

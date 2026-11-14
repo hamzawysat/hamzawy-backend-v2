@@ -14,6 +14,7 @@ const historySchema = new mongoose.Schema({
 
 const adminConfigSchema = new mongoose.Schema({
   key: { type: String, unique: true, default: 'main', required: true },
+  storeAdRotationSeconds: { type: Number, min: 5, max: 60, default: 5 },
   pricing: {
     check: { type: Number, min: 0, max: 100000, default: 0 },
     commission: { type: Number, min: 0, max: 100, default: 10 },

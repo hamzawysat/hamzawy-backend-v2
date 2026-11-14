@@ -2,7 +2,7 @@
 
 const express = require('express');
 
-function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, notifyAdmins, createNotification, writeAdminAudit }) {
+function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
   const productSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
@@ -27,6 +27,23 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, notifyAdm
     paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'عند الاستلام', 'تحويل').default('غير محدد')
   }).unknown(false);
 
+  router.get('/store/ad-settings', auth('admin'), async (req, res, next) => {
+    try {
+      const config = await AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean();
+      const configuredSeconds = Number(config?.storeAdRotationSeconds);
+      const rotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
+      return res.set('Cache-Control', 'no-store').json({ rotationSeconds });
+    } catch (error) { return next(error); }
+  });
+  router.put('/store/ad-settings', auth('admin'), async (req, res, next) => {
+    try {
+      const checked = Joi.object({ rotationSeconds: Joi.number().integer().valid(5, 10, 15, 20, 30, 45, 60).required() }).required().validate(req.body || {}, { abortEarly: false, stripUnknown: true });
+      if (checked.error) return res.status(400).json({ message: 'اختار مدة عرض من 5 إلى 60 ثانية.' });
+      const config = await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { storeAdRotationSeconds: checked.value.rotationSeconds } }, { new: true, upsert: true, setDefaultsOnInsert: true });
+      await writeAdminAudit(req, 'تعديل مدة عرض إعلان المتجر', 'store', 'ad-rotation', String(checked.value.rotationSeconds) + ' ثانية');
+      return res.set('Cache-Control', 'no-store').json({ message: 'تم حفظ مدة عرض الإعلان.', rotationSeconds: Number(config.storeAdRotationSeconds) || checked.value.rotationSeconds });
+    } catch (error) { return next(error); }
+  });
   router.get('/store/products', auth('admin'), async (req, res, next) => {
     try {
       const products = await StoreProduct.find({}).sort({ createdAt: -1 }).limit(500).lean();

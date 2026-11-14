@@ -5,6 +5,7 @@ const Joi = require('joi');
 const mongoose = require('mongoose');
 const StoreProduct = require('../models/StoreProduct');
 const StoreOrder = require('../models/StoreOrder');
+const AdminConfig = require('../models/AdminConfig');
 const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -23,8 +24,13 @@ const orderSchema = Joi.object({
 
 router.get('/products', async (req, res, next) => {
   try {
-    const products = await StoreProduct.find({ isActive: true }).sort({ createdAt: -1 }).select('name description details price originalPrice offerText type subscriptionDuration imageUrl stock createdAt isAdvertised adAudience adPriority adExpiresAt').lean();
-    return res.set('Cache-Control', 'no-store').json({ products });
+    const [products, config] = await Promise.all([
+      StoreProduct.find({ isActive: true }).sort({ createdAt: -1 }).select('name description details price originalPrice offerText type subscriptionDuration imageUrl stock createdAt isAdvertised adAudience adPriority adExpiresAt').lean(),
+      AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean()
+    ]);
+    const configuredSeconds = Number(config?.storeAdRotationSeconds);
+    const adRotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
+    return res.set('Cache-Control', 'no-store').json({ products, adRotationSeconds });
   } catch (error) { return next(error); }
 });
 
