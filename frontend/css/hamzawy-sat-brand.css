@@ -327,3 +327,33 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button:active {
   transform: translateY(2px);
 }
 
+
+
+/* Moving Hamzawy Sat brand line above client and technician dashboard headers. */
+#app .dashboard-brand-marquee {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  padding: 7px 0;
+  text-align: left;
+  direction: ltr;
+  border-bottom: 1px solid rgba(255,255,255,.16);
+}
+#app .dashboard-brand-marquee span {
+  display: inline-block;
+  width: max-content;
+  padding-inline-start: 100%;
+  color: #F8F6F0;
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.5;
+  direction: rtl;
+  animation: hamzawy-brand-marquee 20s linear infinite;
+}
+@keyframes hamzawy-brand-marquee {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100vw); }
+}
+@media (prefers-reduced-motion: reduce) {
+  #app .dashboard-brand-marquee span { animation: none; padding-inline-start: 0; }
+}
