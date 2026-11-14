@@ -60,3 +60,16 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 .danger-pill{background:linear-gradient(135deg,var(--sonaa-color-ef4444),var(--sonaa-color-dc2626));color:var(--sonaa-color-fff)}
 .soft-btn{background:var(--sonaa-color-f8fafc);border:1px solid var(--sonaa-color-e2e8f0);color:var(--sonaa-color-334155)}
 .glass-header{background:linear-gradient(135deg,rgba(11,27,58,.97) 0%,rgba(19,42,90,.95) 100%);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.08)}
+
+/* Improve readability of pending-count badges in the admin section navigation. */
+.section-nav-count.has-pending{
+  min-width:25px;
+  height:25px;
+  padding:0 6px;
+  color:#fff!important;
+  -webkit-text-fill-color:#fff!important;
+  font-size:12px;
+  font-weight:900;
+  line-height:1;
+  text-align:center;
+}
