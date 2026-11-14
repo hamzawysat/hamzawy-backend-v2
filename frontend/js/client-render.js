@@ -28,7 +28,7 @@ function render(){
     :null;
   document.getElementById('app').innerHTML=`
   
-  <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات — كل خدمة تبدأ بخطوة</span></div>
+  <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات كل خدمة تبدأ بخطوة</span></div>
   <header class="app-header fanni-app-header sticky top-0 z-40 backdrop-blur-xl">
    <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
     <div class="flex items-center gap-2 min-w-0 flex-1">
