@@ -1,6 +1,7 @@
 'use strict';
 
 function renderContent(){
+  const isBrowserDashboard=!window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\s*wv\)/i.test(navigator.userAgent||'');
   if(window.IS_EDITOR_PREVIEW&&window.PREVIEW_REQUESTED_TAB){state.tab=window.PREVIEW_REQUESTED_TAB;}
   const user=currentUser||getUser()||(window.IS_EDITOR_PREVIEW&&window.PREVIEW_REQUESTED_TAB&&!['login','register'].includes(window.PREVIEW_REQUESTED_TAB)?{name:'معاينة المحرر',status:'approved',technicianGuidelinesAcceptedAt:'preview',technicianGuidelinesVersion:'2026-10-20-v1',specialties:[],areas:[],walletBalance:0}:null);
   const previewTab=window.IS_EDITOR_PREVIEW?window.PREVIEW_REQUESTED_TAB:'';
@@ -33,8 +34,14 @@ function renderContent(){
   </div>
   ${notificationPanel()}
  </header>
+<nav class="${isBrowserDashboard?'fanni-dashboard-tabs sticky top-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
+   <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
+    ${authenticated?TECHNICIAN_TAB_DEFINITIONS.map(t=>{const info={home:['⌂','الرئيسية'],available:['📋','الطلبات المتاحة'],myOrders:['💼','عروضي'],wallet:['💳','المحفظة'],store:['🛍️','المتجر'],profile:['👤','حسابي'],support:['🎧','الدعم الفني']}[t.id];return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="min-w-0 rounded-xl border flex flex-col items-center justify-center gap-1 transition ${state.tab===t.id?'bg-gradient-to-br from-[#C9A34F] to-[#A9822E] border-[#8D6C25] text-[#171A22] shadow-[0_3px_0_#8D6C25]':'bg-gradient-to-br from-[#FFFFFF] to-[#EAF0F8] border-[#D5DFED] text-[#344965] shadow-[0_3px_0_#CBD7E7]'}"><span class="text-base leading-none">${info[0]}</span><span class="text-[9px] font-extrabold text-center">${info[1]}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
+       
+   </div>
+  </nav>
 
- <main class="mx-auto max-w-[680px] px-3 pb-[160px]">
+ <main class="mx-auto max-w-[680px] px-3 ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
  ${!authenticated?`
   <section class="account-gate fanni-login-gate mt-5 px-4 py-6 flex flex-col items-center">
    <div class="w-full max-w-[440px]">
@@ -389,12 +396,7 @@ function renderContent(){
  </div>`:''}
  </main>
 
- <nav class="fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom">
-   <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
-    ${authenticated?TECHNICIAN_TAB_DEFINITIONS.map(t=>{const info={home:['⌂','الرئيسية'],available:['📋','الطلبات المتاحة'],myOrders:['💼','عروضي'],wallet:['💳','المحفظة'],store:['🛍️','المتجر'],profile:['👤','حسابي'],support:['🎧','الدعم الفني']}[t.id];return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="min-w-0 rounded-xl border flex flex-col items-center justify-center gap-1 transition ${state.tab===t.id?'bg-gradient-to-br from-[#C9A34F] to-[#A9822E] border-[#8D6C25] text-[#171A22] shadow-[0_3px_0_#8D6C25]':'bg-gradient-to-br from-[#FFFFFF] to-[#EAF0F8] border-[#D5DFED] text-[#344965] shadow-[0_3px_0_#CBD7E7]'}"><span class="text-base leading-none">${info[0]}</span><span class="text-[9px] font-extrabold text-center">${info[1]}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
-       
-   </div>
-  </nav>
+ 
   ${`<style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>`:''}
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float ${authenticated?'':'prelogin-floating'} ${globalRefreshInProgress?'is-refreshing':''}" ${authenticated?'':'style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#A9822E;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(169,130,46,.25);"' }><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
  
