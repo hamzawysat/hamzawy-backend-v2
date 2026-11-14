@@ -178,7 +178,7 @@ body .global-refresh-float{right:12px!important;bottom:18px!important;width:48px
 
 /* Keep floating actions clear of the fixed bottom client navigation. */
 body .support-float{position:fixed!important;left:16px!important;right:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}
-body .global-refresh-float{position:fixed!important;right:16px!important;left:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}
+body .global-refresh-float{position:fixed!important;left:16px!important;right:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}
 
 
 /* Match the admin refresh feedback: fade the floating button while data refreshes. */
