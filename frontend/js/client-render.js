@@ -132,6 +132,7 @@ function render(){
     ${state.tab==='new'&&!state.clientNewRequestChoice?renderClientNewRequestChooser():''}
     ${state.tab==='new'&&state.clientNewRequestChoice==='technician'?`
       ${!state.sn?`
+      <button type="button" onclick="backToClientNewRequestChooser()" class="mt-4 inline-flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-[12px] font-extrabold text-slate-700">→ رجوع لاختيار نوع الطلب</button>
       <div class="mt-4 space-y-3 animate-fade client-new-order">
         <div class="panel p-4 sm:p-5">
           <div class="flex items-center gap-3">
