@@ -29,6 +29,7 @@ function render(){
   document.getElementById('app').innerHTML=`
   
   <header class="app-header fanni-app-header sticky top-0 z-40 backdrop-blur-xl">
+    <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات — كل خدمة تبدأ بخطوة</span></div>
    <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
     <div class="flex items-center gap-2 min-w-0 flex-1">
      <div class="brand-mark h-16 w-16 sm:h-[84px] sm:w-[84px] rounded-xl flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="120" height="120" decoding="async" style="width:100%;height:100%;padding:4px;box-sizing:border-box;object-fit:contain"></div>
