@@ -44,3 +44,8 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 
 
  .fanni-profile-logout{background:linear-gradient(145deg,var(--sonaa-color-fff1f2),var(--sonaa-color-fecaca))!important;border:1px solid var(--sonaa-color-fecaca)!important;color:var(--sonaa-color-991b1b)!important;box-shadow:0 4px 0 var(--sonaa-color-b91c1c),0 7px 13px var(--sonaa-color-991b1b22),inset 0 1px 0 var(--sonaa-color-fff)!important}.fanni-profile-logout:active{transform:translateY(2px);box-shadow:0 1px 0 var(--sonaa-color-b91c1c)!important}
+/* Technician wallet tabs */
+#app .fanni-wallet-tabs{direction:rtl;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;padding:8px;border:1px solid #dce8e8;border-radius:16px;background:#fff}
+#app .fanni-wallet-tabs button{min-width:0;min-height:54px;padding:8px 5px;border:1px solid #d8e5e5;border-radius:12px;background:#f7fbfb;color:#31515a;font-size:11px;font-weight:800;line-height:1.35;transition:background .18s,border-color .18s,color .18s}
+#app .fanni-wallet-tabs button.fanni-wallet-tab-active{border-color:#167c80;background:#167c80;color:#fff;box-shadow:0 3px 8px #167c8026}
+@media(max-width:360px){#app .fanni-wallet-tabs{gap:5px;padding:6px}#app .fanni-wallet-tabs button{font-size:9px;padding:6px 2px}}
