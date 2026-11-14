@@ -274,3 +274,40 @@ body .fanni-login-gate .account-switch-link:focus-visible{
   body .fanni-login-gate .account-switch-link{transition:none!important}
 }
 
+
+
+/* Client notifications: explicit read states and comfortable contrast. */
+html[data-sonaa-theme="client"] body #app .client-notifications-panel{
+  background:#FFFFFF!important;color:#173344!important;border:1px solid #D8E8E8!important;
+}
+html[data-sonaa-theme="client"] body #app .client-notifications-header{
+  background:#FFFFFF!important;color:#172B3A!important;border-color:#E2ECEC!important;
+}
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notification-item{
+  display:block!important;width:100%!important;text-align:right!important;
+  border:0!important;border-bottom:1px solid #E5EEEE!important;border-radius:0!important;
+  color:#173344!important;-webkit-text-fill-color:#173344!important;
+  box-shadow:none!important;text-shadow:none!important;
+}
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notification-item.is-read{
+  background:#FFFFFF!important;
+}
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notification-item.is-unread{
+  background:#EAF5F4!important;
+}
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notification-item b,
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notification-item span,
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notification-item small{
+  color:#173344!important;-webkit-text-fill-color:#173344!important;text-shadow:none!important;
+}
+html[data-sonaa-theme="client"] body #app .client-notifications-panel button.client-notifications-mark-all{
+  color:#087E78!important;-webkit-text-fill-color:#087E78!important;
+  background:#EAF5F4!important;background-image:none!important;
+  border:1px solid #C6E2DF!important;border-radius:999px!important;padding:7px 11px!important;
+  box-shadow:none!important;
+}
+html[data-sonaa-theme="client"] body #app .app-header button[onclick="toggleNotifications()"]{
+  background:#EAF5F4!important;background-image:none!important;
+  background-color:#EAF5F4!important;color:#087E78!important;
+  -webkit-text-fill-color:#087E78!important;border-color:#C6E2DF!important;
+}
