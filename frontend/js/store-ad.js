@@ -84,6 +84,7 @@
         if(product.isAdvertised!==true)return false;
         if(product.adAudience&&product.adAudience!=='both'&&product.adAudience!==role)return false;
         if(product.adExpiresAt&&new Date(product.adExpiresAt).getTime()<=now)return false;
+        if(product.stock!==null&&product.stock!==undefined&&Number(product.stock)<=0)return false;
         return Boolean(String(product.name||'').trim()&&/^https?:\/\//i.test(String(product.imageUrl||'')));
       }).sort((a,b)=>(Number(b.adPriority)||0)-(Number(a.adPriority)||0)||new Date(b.createdAt||0)-new Date(a.createdAt||0));
       if(!products.length)return;
@@ -93,7 +94,7 @@
   }
 
   function init(){
-    if(!isLoggedIn()){removeWidget();return;}
+    if(!isLoggedIn()||storeIsOpen()){removeWidget();return;}
     if(!initialized){initialized=true;loadAdvertisement();}
   }
   const app=document.getElementById('app');
