@@ -1,6 +1,40 @@
 'use strict';
 
+function captureAdminInputFocus(){
+  const app=document.getElementById('app');
+  const active=document.activeElement;
+  if(!app||!active||!app.contains(active)||!['INPUT','TEXTAREA'].includes(active.tagName))return null;
+  const fields=Array.from(app.querySelectorAll('input,textarea'));
+  return {
+    id:active.id||'',
+    name:active.name||'',
+    placeholder:active.getAttribute('placeholder')||'',
+    type:active.type||'',
+    index:fields.indexOf(active),
+    start:typeof active.selectionStart==='number'?active.selectionStart:null,
+    end:typeof active.selectionEnd==='number'?active.selectionEnd:null,
+    direction:active.selectionDirection||'none'
+  };
+}
+
+function restoreAdminInputFocus(snapshot){
+  if(!snapshot)return;
+  const app=document.getElementById('app');
+  if(!app)return;
+  const fields=Array.from(app.querySelectorAll('input,textarea'));
+  let target=snapshot.id?fields.find(el=>el.id===snapshot.id):null;
+  if(!target&&snapshot.name)target=fields.find(el=>el.name===snapshot.name&&el.type===snapshot.type);
+  if(!target&&snapshot.placeholder)target=fields.find(el=>el.getAttribute('placeholder')===snapshot.placeholder&&el.type===snapshot.type);
+  if(!target&&snapshot.index>=0)target=fields[snapshot.index];
+  if(!target)return;
+  target.focus({preventScroll:true});
+  if(snapshot.start!==null&&snapshot.end!==null&&typeof target.setSelectionRange==='function'){
+    try{target.setSelectionRange(snapshot.start,snapshot.end,snapshot.direction);}catch(_){}
+  }
+}
+
 function render(){
+  const inputFocusSnapshot=captureAdminInputFocus();
   if(!getToken()){renderLogin();return;}
   if(!canReadTab(state.tab)){const first=ADMIN_SECTIONS.flatMap(section=>section.tabs).find(item=>canReadTab(item.id));state.tab=first?.id||'dashboard';}
   const visibleSections=ADMIN_SECTIONS.filter(section=>section.tabs.some(item=>canReadTab(item.id)));
@@ -95,6 +129,7 @@ function render(){
   </main>
   <div onclick="closeAllMenus()" id="menu-backdrop" class="${Object.keys(state.dropdowns).length?'fixed inset-0 z-30 bg-black/5':''}"></div>
   `;
+  restoreAdminInputFocus(inputFocusSnapshot);
 }
 
 function renderCurrentTab(){
