@@ -30,7 +30,8 @@ function render(){
   document.getElementById('app').innerHTML=`
   
   <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات كل خدمة تبدأ بخطوة</span></div>
-  <header class="app-header fanni-app-header sticky top-0 z-40 backdrop-blur-xl">
+  <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
+  <header class="app-header fanni-app-header ${isBrowserDashboard?'':'sticky top-0 z-40'} backdrop-blur-xl">
    <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
     <div class="flex items-center gap-2 min-w-0 flex-1">
      <div class="brand-mark h-16 w-16 sm:h-[84px] sm:w-[84px] rounded-xl flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="120" height="120" decoding="async" style="width:100%;height:100%;padding:4px;box-sizing:border-box;object-fit:contain"></div>
@@ -48,7 +49,7 @@ function render(){
    </div>
   ${notificationPanel()}
   </header>
-<nav class="${isBrowserDashboard?'client-section-tabs sticky top-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
+<nav class="${isBrowserDashboard?'client-section-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
     <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
       ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'new',icon:'＋',label:'طلب جديد'},{id:'orders',icon:'📋',label:'طلباتي'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'subscriptions',icon:'📄',label:'الاشتراكات'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'complaint',icon:'🎧',label:'الشكاوى'}].map(t=>`
         <button type="button" onclick="setTab('${t.id}')" class="min-w-0 rounded-xl border flex flex-col items-center justify-center gap-1 transition ${state.tab===t.id?'bg-gradient-to-br from-[#C9A34F] to-[#A9822E] border-[#8D6C25] text-[#171A22] shadow-[0_3px_0_#8D6C25]':'bg-gradient-to-br from-[#FFFFFF] to-[#EAF0F8] border-[#D5DFED] text-[#344965] shadow-[0_3px_0_#CBD7E7]'}">
@@ -56,6 +57,7 @@ function render(){
         </button>`).join('')}
     </div>
   </nav>
+  </div>
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" class="global-refresh global-refresh-float ${globalRefreshInProgress?'is-refreshing':''}"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>
   ${renderPublicContent()}
   <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
