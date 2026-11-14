@@ -61,7 +61,8 @@ function openStoreAdvertisementSettings(productId){
   audience.value=['both','client','fanni'].includes(product.adAudience)?product.adAudience:'both';
   const remaining=product.adExpiresAt?Math.ceil((new Date(product.adExpiresAt).getTime()-Date.now())/86400000):7;
   days.value=String([1,3,7,14,30,60,90,180,365].includes(remaining)?remaining:7);
-  priority.value=String(Math.max(0,Math.min(100,Number(product.adPriority)||0)));
+  const savedPriority=Math.max(0,Math.min(100,Number(product.adPriority)||0));
+  priority.value=String(Math.round(savedPriority/10)*10);
   modal.querySelectorAll('[data-ad-cancel]').forEach(button=>button.addEventListener('click',()=>modal.remove()));
   modal.addEventListener('click',event=>{if(event.target===modal)modal.remove();});
   modal.querySelector('[data-ad-publish]').addEventListener('click',async()=>{
