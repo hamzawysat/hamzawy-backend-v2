@@ -5,6 +5,38 @@ function normalizeAreaSearchText(value){
   return String(value||'').normalize('NFC').replace(/[أإآٱ]/g,'ا').toLocaleLowerCase('ar');
 }
 
+
+function renderClientNewRequestChooser(){
+  return `<section class="mt-4 space-y-3 animate-fade client-new-request-chooser" aria-label="اختيار نوع الطلب">
+    <div class="panel p-4 sm:p-5">
+      <h2 class="text-[16px] font-black">طلب جديد</h2>
+      <p class="mt-1 text-[11px] text-slate-500">تحب تطلب خدمة ولا تشتري منتج من المتجر؟</p>
+      <div class="mt-4 grid grid-cols-1 gap-3">
+        <button type="button" onclick="chooseClientNewRequest('technician')" class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm transition active:scale-[.99]">
+          <span class="flex items-center gap-3">
+            <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-3xl" aria-hidden="true">🛠️</span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-[15px] font-black text-slate-900">عايز صنايعي</span>
+              <span class="mt-1 block text-[11px] font-semibold text-slate-500">اطلب تركيب أو صيانة من خدمات حمزاوي سات</span>
+            </span>
+            <span class="text-xl text-slate-400" aria-hidden="true">‹</span>
+          </span>
+        </button>
+        <button type="button" onclick="chooseClientNewRequest('store')" class="w-full rounded-2xl border border-slate-200 bg-white p-4 text-right shadow-sm transition active:scale-[.99]">
+          <span class="flex items-center gap-3">
+            <span class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-cyan-50 text-3xl" aria-hidden="true">🛍️</span>
+            <span class="min-w-0 flex-1">
+              <span class="block text-[15px] font-black text-slate-900">عايز أشتري من متجر</span>
+              <span class="mt-1 block text-[11px] font-semibold text-slate-500">تصفح المنتجات واطلب اللي محتاجه</span>
+            </span>
+            <span class="text-xl text-slate-400" aria-hidden="true">‹</span>
+          </span>
+        </button>
+      </div>
+    </div>
+  </section>`;
+}
+
 function render(){
   const isBrowserDashboard=!window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\s*wv\)/i.test(navigator.userAgent||'');
   if(!window.IS_EDITOR_PREVIEW&&forceClientRegistration&&!state.account){renderAccountGate();return;}
@@ -97,7 +129,8 @@ function render(){
         </div>
       </section>`;
     })():''}
-    ${state.tab==='new'?`
+    ${state.tab==='new'&&!state.clientNewRequestChoice?renderClientNewRequestChooser():''}
+    ${state.tab==='new'&&state.clientNewRequestChoice==='technician'?`
       ${!state.sn?`
       <div class="mt-4 space-y-3 animate-fade client-new-order">
         <div class="panel p-4 sm:p-5">
