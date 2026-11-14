@@ -98,8 +98,8 @@
         },9000);
         rotationTimer=window.setInterval(()=>{
           if(!isLoggedIn()||storeIsOpen()){removeWidget();return;}
-          if(products.length>1)currentIndex=(currentIndex+1)%products.length;
-          renderAdvertisement();
+          if(products.length>1){currentIndex=(currentIndex+1)%products.length;renderAdvertisement();}
+          else if(!currentWidget)renderAdvertisement();
         },5000);
       }
     }catch(_){}finally{loading=false;}
