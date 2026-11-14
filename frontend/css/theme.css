@@ -491,3 +491,12 @@ body{padding-bottom:calc(var(--store-ad-slot-height) + env(safe-area-inset-botto
 .store-ad-slot-link:focus-visible{outline:3px solid #d5aa4c;outline-offset:2px}
 @media(max-width:380px){:root{--store-ad-slot-height:70px}.store-ad-slot{gap:7px;padding-inline:8px}.store-ad-slot-image{flex-basis:46px;width:46px;height:46px}.store-ad-slot-name{font-size:11px}.store-ad-slot-price{font-size:11px}.store-ad-slot-link{min-height:32px;padding-inline:10px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){.store-ad-slot{scroll-behavior:auto}}
+
+/* Keep customer and technician browser navigation fixed directly above the store ad. */
+#app .dashboard-bottom-tabs {
+  bottom: calc(var(--store-ad-slot-height) + env(safe-area-inset-bottom, 0px));
+  min-height: 70px;
+}
+body:has(#app .dashboard-bottom-tabs) {
+  padding-bottom: calc(var(--store-ad-slot-height) + 70px + env(safe-area-inset-bottom, 0px));
+}
