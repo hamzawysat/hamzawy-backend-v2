@@ -4,7 +4,7 @@
   const role=document.documentElement.getAttribute('data-sonaa-theme') || '';
   if(!['client','fanni'].includes(role))return;
   const userAgent=navigator.userAgent||'';
-  if(window.ReactNativeWebView||/;\\s*wv\\)/i.test(userAgent)||navigator.standalone||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches))return;
+  if(window.ReactNativeWebView||/;\s*wv\)/i.test(userAgent)||navigator.standalone||(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches))return;
   const sessionKey='hamzawy_store_ad_seen_'+role;
   let initialized=false;
   let pendingTimer=null;
