@@ -201,9 +201,8 @@ function apiResponse(pathname) {
                 if (await customerTabButtons.count() !== customerTabIds.length) {
                   failures.push('client/desktop: expected seven customer top navigation buttons');
                 }
-                const customerTabsFixedAboveAd = await page.locator('nav.client-section-tabs.dashboard-bottom-tabs').evaluate(nav => getComputedStyle(nav).position === 'fixed' && parseFloat(getComputedStyle(nav).bottom) > 0);
-                if (await page.locator('.client-section-tabs').count() !== 1 || !customerTabsFixedAboveAd || await page.locator('nav.fixed.bottom-0').count() !== 0) {
-                  failures.push('client/desktop: customer navigation is not fixed above the store ad');
+                if (await page.locator('.client-section-tabs').count() !== 1 || await page.locator('nav.fixed.bottom-0').count() !== 0) {
+                  failures.push('client/desktop: customer navigation is not positioned only at the top');
                 }
                 if (await page.locator('.client-home-dashboard').count() !== 1 || await page.evaluate(() => state.tab) !== 'home') {
                   failures.push('client/desktop: customer dashboard did not open on the home section');
@@ -289,7 +288,6 @@ function apiResponse(pathname) {
                   supportFloat: !!document.querySelector('a.support-float[href="support.html?role=fanni"]'),
                   topTabs: !!document.querySelector('nav.fanni-dashboard-tabs'),
                   topTabButtons: document.querySelectorAll('nav.fanni-dashboard-tabs button[onclick^="openTechnicianSection("]').length,
-                  fixedAboveAd: (() => { const nav = document.querySelector('nav.dashboard-bottom-tabs'); return !!nav && getComputedStyle(nav).position === 'fixed' && parseFloat(getComputedStyle(nav).bottom) > 0; })(),
                   bottomTabs: document.querySelectorAll('nav.fixed.bottom-0 button[onclick^="openTechnicianSection("]').length,
                   refreshOnLeft: (() => { const button = document.querySelector('#global-refresh'); if (!button) return false; const rect = button.getBoundingClientRect(); return rect.left >= 0 && rect.left < window.innerWidth / 2; })()
                 }));
@@ -298,10 +296,9 @@ function apiResponse(pathname) {
                 }
                 if (!technicianNavigation.notificationBell) failures.push('technician/desktop: notification bell is missing');
                 if (technicianNavigation.supportFloat) failures.push('technician/desktop: floating support shortcut still exists');
-                if (!technicianNavigation.topTabs) failures.push('technician/desktop: navigation is missing');
-                if (technicianNavigation.topTabButtons !== 7) failures.push('technician/desktop: expected 7 navigation buttons, found ' + technicianNavigation.topTabButtons);
-                if (!technicianNavigation.fixedAboveAd) failures.push('technician/desktop: navigation is not fixed above the store ad');
-                if (technicianNavigation.bottomTabs !== 0) failures.push('technician/desktop: duplicate native bottom navigation is present in the browser');
+                if (!technicianNavigation.topTabs) failures.push('technician/desktop: top navigation is missing');
+                if (technicianNavigation.topTabButtons !== 7) failures.push('technician/desktop: expected 7 top navigation buttons, found ' + technicianNavigation.topTabButtons);
+                if (technicianNavigation.bottomTabs !== 0) failures.push('technician/desktop: bottom navigation should not be present in the browser');
                 if (!technicianNavigation.refreshOnLeft) failures.push('technician/desktop: refresh control is not positioned on the left');
                 const initialTab = await page.evaluate(() => state.tab);
             if (initialTab !== 'home') failures.push('technician/mobile: dashboard did not open on the home section');
