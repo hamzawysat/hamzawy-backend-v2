@@ -1,6 +1,9 @@
 'use strict';
 
-function setTab(tab){if(!['home','new','orders','track','wallet','subscriptions','store','complaint'].includes(tab))return;state.tab=tab;if(tab==='subscriptions')state.commerceView='available';render();if((tab==='home'||tab==='orders')&&state.accountToken&&typeof loadMyOrders==='function')loadMyOrders(false);if(tab==='wallet'&&state.accountToken&&typeof loadClientWallet==='function')loadClientWallet();if(tab==='subscriptions'&&state.accountToken&&typeof loadClientCommerce==='function')loadClientCommerce();if(tab==='store'&&state.accountToken&&typeof loadStoreForRole==='function')loadStoreForRole('client');}
+const CLIENT_TAB_HISTORY=[];
+function rememberClientTab(nextTab,fromBack=false){if(!fromBack&&state.tab!==nextTab){CLIENT_TAB_HISTORY.push(state.tab);if(CLIENT_TAB_HISTORY.length>50)CLIENT_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaClientTab:nextTab},'','#'+encodeURIComponent(nextTab));}}
+function setTab(tab,fromBack=false){if(!['home','new','orders','track','wallet','subscriptions','store','complaint'].includes(tab))return;rememberClientTab(tab,fromBack);state.tab=tab;if(tab==='subscriptions')state.commerceView='available';render();if((tab==='home'||tab==='orders')&&state.accountToken&&typeof loadMyOrders==='function')loadMyOrders(false);if(tab==='wallet'&&state.accountToken&&typeof loadClientWallet==='function')loadClientWallet();if(tab==='subscriptions'&&state.accountToken&&typeof loadClientCommerce==='function')loadClientCommerce();if(tab==='store'&&state.accountToken&&typeof loadStoreForRole==='function')loadStoreForRole('client');}
+function goBack(fromPopState=false){if(!fromPopState&&CLIENT_TAB_HISTORY.length){window.history.back();return true;}if(fromPopState&&CLIENT_TAB_HISTORY.length){const previous=CLIENT_TAB_HISTORY.pop();setTab(previous,true);return true;}return false;}
 function toggleService(){
   if(state.servicesLoading){if(state.servicesError)loadServices();return;}
   if(state.servicesError){loadServices();return;}
@@ -181,7 +184,7 @@ function onComplaintText(value){
 function resetForm(){
   state.sn=null;state.clientName='';state.area='';state.address='';state.phone='';state.budget='';state.desc='';state.service='';state.showService=false;state.openCategory='';state.searchService='';state.tab='new';state.loading=false;render();
 }
-function trackNow(){state.tab='orders';loadMyOrders();}
+function trackNow(){setTab('orders');loadMyOrders();}
 function copySn(){
   if(!state.sn)return;
   if(navigator.clipboard&&navigator.clipboard.writeText){
