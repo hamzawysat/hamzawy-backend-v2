@@ -41,6 +41,18 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
+// Redirect the old public Hamzawy hostname to Railway before serving any page or API.
+// Keep the original path and query string so previously shared links continue to work.
+const LEGACY_HAMZAWY_HOST = 'hamzawy-sat.vercel.app';
+const HAMZAWY_RAILWAY_ORIGIN = 'https://hamzawy-backend-v2-production.up.railway.app';
+app.use((req, res, next) => {
+  const requestHost = String(req.headers.host || '').split(':')[0].toLowerCase();
+  if (requestHost === LEGACY_HAMZAWY_HOST) {
+    return res.redirect(307, `${HAMZAWY_RAILWAY_ORIGIN}${req.originalUrl}`);
+  }
+  return next();
+});
+
 // Retire the legacy Sonaa website hostname without interrupting the API
 // consumed by the Hamzawy Sat website and apps. This runs before static files
 // and page routes, so every non-API URL on the retired hostname returns 404.
