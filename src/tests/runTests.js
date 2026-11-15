@@ -172,7 +172,7 @@ async function run() {
       const worker = fs.readFileSync(path.join(__dirname, '../../frontend/service-worker.js'), 'utf8');
       const delivery = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
       assert.match(webPush, /aes-128-gcm/); assert.match(webPush, /VAPID_PUBLIC_KEY/);
-      const { isAllowedPushEndpoint } = require('../utils/webPush');
+      const { isAllowedPushEndpoint, normalizeNotificationPath } = require('../utils/webPush');
       assert.equal(isAllowedPushEndpoint('https://fcm.googleapis.com/fcm/send/example'), true);
       assert.equal(isAllowedPushEndpoint('https://updates.push.services.mozilla.com/wpush/v2/example'), true);
       assert.equal(isAllowedPushEndpoint('https://web.push.apple.com/example'), true);
@@ -182,9 +182,14 @@ async function run() {
       assert.equal(isAllowedPushEndpoint('https://fcm.googleapis.com.evil.test/push'), false);
       assert.equal(isAllowedPushEndpoint('http://fcm.googleapis.com/push'), false);
       assert.equal(isAllowedPushEndpoint('https://fcm.googleapis.com:8443/push'), false);
+      assert.equal(normalizeNotificationPath('https://hamzawy-backend-v2-production.up.railway.app/admin?tab=fannis'), '/admin?tab=fannis');
+      assert.equal(normalizeNotificationPath('https://attacker.invalid/admin'), '/');
+      assert.match(webPush, /TTL: String\\(PUSH_TTL_SECONDS\\)/);
+      assert.match(delivery, /ttl: 120/);
+      assert.match(worker, /www\\.hamzawy-sat\\.dynv6\\.net/);
       assert.match(route, /isAllowedPushEndpoint\(endpoint\)/);
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
-      assert.match(browser, /https:\/\/hamzawy-backend-v2-production\.up\.railway\.app/);
+      assert.match(browser, /pushManager\.subscribe/);
       assert.doesNotMatch(browser, /vercel\.app/);
       assert.match(worker, /addEventListener\('push'/); assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
