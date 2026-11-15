@@ -184,7 +184,7 @@ async function run() {
       assert.equal(isAllowedPushEndpoint('https://fcm.googleapis.com:8443/push'), false);
       assert.match(route, /isAllowedPushEndpoint\(endpoint\)/);
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
-      assert.match(browser, /https:\/\/hamzawy-backend-v2-production\.up\.railway\.app/);
+      assert.match(browser, /const apiUrl=path=>path/);
       assert.doesNotMatch(browser, /vercel\.app/);
       assert.match(worker, /addEventListener\('push'/); assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
@@ -193,6 +193,20 @@ async function run() {
       delete process.env.VAPID_PUBLIC_KEY; delete process.env.VAPID_PRIVATE_KEY;
       const r = await request(app).get('/api/notifications/web-push-public-key');
       assert.equal(r.status, 503); assert.match(r.body.message, /غير مهيأة/);
+    });
+
+    await test('legacy Hamzawy page URLs redirect to the new public domain', async () => {
+      const r = await request(app).get('/download.html')
+        .set('Host', 'hamzawy-sat.vercel.app');
+      assert.equal(r.status, 307);
+      assert.equal(r.headers.location, 'https://www.hamzawy-sat.dynv6.net/download.html');
+    });
+
+    await test('download page redirects to the GitHub Pages copy', async () => {
+      const r = await request(app).get('/download.html')
+        .set('Host', 'www.hamzawy-sat.dynv6.net');
+      assert.equal(r.status, 302);
+      assert.equal(r.headers.location, 'https://hamzawysat.github.io/hamzawy-download/');
     });
 
     await test('homepage responds without exposing Express signature', async () => {
@@ -256,6 +270,13 @@ async function run() {
         .set('Origin', 'https://hamzawy-sat.vercel.app')
         .set('Access-Control-Request-Method', 'GET');
       assert.equal(r.headers['access-control-allow-origin'], 'https://hamzawy-sat.vercel.app');
+    });
+
+    await test('CORS allows the new public site domain to call its same-origin API', async () => {
+      const r = await request(app).options('/api/test')
+        .set('Origin', 'https://www.hamzawy-sat.dynv6.net')
+        .set('Access-Control-Request-Method', 'GET');
+      assert.equal(r.headers['access-control-allow-origin'], 'https://www.hamzawy-sat.dynv6.net');
     });
 
     await test('CORS does not reflect an arbitrary origin', async () => {
