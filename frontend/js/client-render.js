@@ -79,7 +79,6 @@ function render(){
      <a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="client-home-main-btn h-8 px-3 rounded-lg text-white inline-flex items-center justify-center gap-1 text-[10px] font-extrabold whitespace-nowrap"><span aria-hidden="true">⌂</span><span>القائمة الرئيسية</span></a><a href="https://hamzawy-sat-links.vercel.app/" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:36px!important;padding:7px 11px!important;border:1px solid #d6b45a!important;border-radius:11px!important;background:linear-gradient(145deg,#fffdf5,#fff4cf)!important;color:#173c6c!important;-webkit-text-fill-color:#173c6c!important;font-size:10px!important;font-weight:900!important;line-height:1.4!important;text-decoration:none!important;white-space:nowrap!important;box-shadow:0 3px 0 #d6b45a,0 5px 10px rgba(11,27,58,.10)!important;">🔗 تابعنا على منصات التواصل</a>
     </div>
    </div>
-  ${notificationPanel()}
   </header>
 <nav class="${isBrowserDashboard?'client-section-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
     <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
@@ -90,6 +89,7 @@ function render(){
     </div>
   </nav>
   </div>
+  ${notificationPanel()}
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" class="global-refresh global-refresh-float ${globalRefreshInProgress?'is-refreshing':''}"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>
   ${renderPublicContent()}
   <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
