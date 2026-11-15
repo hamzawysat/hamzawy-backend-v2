@@ -117,39 +117,80 @@ async function sendFirebasePushNotifications(devices, payload) {
   }));
 }
 async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '' }) {
+  const report = { expo: { attempted: 0, accepted: 0, failed: 0 }, fcm: { attempted: 0, accepted: 0, failed: 0 } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
-    const expo = devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token));
+    const expo = devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\\[[^\\]]+\\]$/.test(d.token));
     const fcm = devices.filter(d => d.platform === 'fcm-android');
+    report.expo.attempted = expo.length;
+    report.fcm.attempted = fcm.length;
+
     if (expo.length && typeof fetch === 'function') {
       const messages = expo.map(d => ({
-        to: d.token, title: String(title || 'إشعار من صُنّاع').slice(0, 100),
-        body: String(message || '').slice(0, 300), sound: 'default', priority: 'high',
-        channelId: 'default', ttl: 120,
+        to: d.token,
+        title: String(title || 'إشعار من صُنّاع').slice(0, 100),
+        body: String(message || '').slice(0, 300),
+        sound: 'default',
+        priority: 'high',
+        channelId: 'default',
+        ttl: 120,
         data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link) }
       }));
       for (let start = 0; start < messages.length; start += 100) {
         const batch = messages.slice(start, start + 100);
         const response = await notificationFetch('https://exp.host/--/api/v2/push/send', {
-          method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
+          method: 'POST',
+          headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
           body: JSON.stringify(batch)
         });
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
+          report.expo.failed += batch.length;
           console.error('Expo push request failed:', response.status, JSON.stringify(result).slice(0, 240));
           continue;
         }
         const tickets = Array.isArray(result.data) ? result.data : result.data ? [result.data] : [];
-        for (let i = 0; i < tickets.length; i++) if (tickets[i]?.status === 'error' && tickets[i]?.details?.error === 'DeviceNotRegistered') {
-          const token = batch[i]?.to; if (token) await PushToken.deleteOne({ token }).catch(() => {});
+        for (let i = 0; i < batch.length; i++) {
+          const ticket = tickets[i];
+          if (ticket?.status === 'ok') report.expo.accepted += 1;
+          else {
+            report.expo.failed += 1;
+            console.error('Expo push ticket rejected:', ticket?.details?.error || ticket?.message || ticket?.status || 'missing ticket');
+            if (ticket?.details?.error === 'DeviceNotRegistered') {
+              const token = batch[i]?.to;
+              if (token) await PushToken.deleteOne({ token }).catch(() => {});
+            }
+          }
         }
       }
+    } else if (expo.length) {
+      report.expo.failed = expo.length;
+      console.error('Expo push skipped: fetch is unavailable.');
     }
+
     if (fcm.length) {
-      try { await sendFirebasePushNotifications(fcm, { title, message, type, link }); }
-      catch (error) { console.error('FCM delivery unavailable:', error.message); }
+      try {
+        const result = await sendFirebasePushNotifications(fcm, { title, message, type, link });
+        if (result && Number.isFinite(result.accepted)) {
+          report.fcm.accepted = result.accepted;
+          report.fcm.failed = Math.max(0, fcm.length - result.accepted);
+        } else {
+          report.fcm.failed = fcm.length;
+        }
+      } catch (error) {
+        report.fcm.failed = fcm.length;
+        console.error('FCM delivery unavailable:', error.message);
+      }
     }
-  } catch (error) { console.error('Push notification delivery failed:', error.message); }
+
+    if (devices.length) console.info('Native push delivery summary:', JSON.stringify({ role: recipientRole, ...report }));
+    return report;
+  } catch (error) {
+    console.error('Push notification delivery failed:', error.message);
+    report.expo.failed += report.expo.attempted - report.expo.accepted;
+    report.fcm.failed += report.fcm.attempted - report.fcm.accepted;
+    return report;
+  }
 }
 async function createNotification({ recipientRole, recipientId, type, title, message, link = '', dedupeKey = null }) {
   if (!recipientId || !['client', 'fanni', 'admin'].includes(recipientRole)) return null;
@@ -182,11 +223,38 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
 }
 async function notifyAdmins({ type, title, message, link = '', dedupeKey = null }) {
   try {
-    const admins = await Fanni.find({ $or: [{ role: 'admin' }, { adminRole: { $in: ['مشرف', 'مشرف أول', 'مدير', 'قراءة فقط'] } }] }).select('_id').lean();
-    await Promise.all(admins.map(admin => createNotification({
-      recipientRole: 'admin', recipientId: admin._id, type, title, message, link,
-      dedupeKey: dedupeKey ? dedupeKey + ':' + String(admin._id) : null
-    })));
-  } catch (error) { console.error('Admin notification creation failed:', error.message); }
+    const admins = await Fanni.find({
+      $or: [
+        { role: 'admin' },
+        { adminRole: { $in: ['مشرف', 'مشرف أول', 'مدير', 'قراءة فقط'] } }
+      ]
+    }).select('_id').lean();
+
+    if (!admins.length) {
+      console.error('Admin notification has no eligible recipients:', type);
+      return { targeted: 0, created: 0, failed: 0 };
+    }
+
+    const results = await Promise.all(admins.map(async admin => {
+      const notification = await createNotification({
+        recipientRole: 'admin',
+        recipientId: admin._id,
+        type,
+        title,
+        message,
+        link,
+        dedupeKey: dedupeKey ? dedupeKey + ':' + String(admin._id) : null
+      });
+      return Boolean(notification);
+    }));
+    const created = results.filter(Boolean).length;
+    const failed = results.length - created;
+    if (failed) console.error('Admin notification persistence incomplete:', JSON.stringify({ type, targeted: admins.length, created, failed }));
+    else console.info('Admin notifications persisted:', JSON.stringify({ type, targeted: admins.length, created }));
+    return { targeted: admins.length, created, failed };
+  } catch (error) {
+    console.error('Admin notification creation failed:', error.message);
+    return { targeted: 0, created: 0, failed: 1 };
+  }
 }
 module.exports = { createNotification, sendPushNotification, notifyAdmins };
