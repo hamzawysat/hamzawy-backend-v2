@@ -20,8 +20,6 @@ self.addEventListener('push', event => {
   const target = notificationTarget(data.url || payload.link || '/');
   event.waitUntil(self.registration.showNotification(String(payload.title || 'إشعار من حمزاوي سات'), {
     body: String(payload.body || ''),
-    icon: '/images/LOGO_UPLOAD_HERE/logo.png',
-    badge: '/images/LOGO_UPLOAD_HERE/logo.png',
     dir: 'rtl',
     lang: 'ar',
     data: { url: target },
