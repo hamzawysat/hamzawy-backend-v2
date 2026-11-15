@@ -1,6 +1,6 @@
 'use strict';
 (()=> {
-  const API_BASE='https://hamzawy-sat.vercel.app';
+  const API_BASE='https://hamzawy-backend-v2-production.up.railway.app';
   const apiUrl=path=>API_BASE+path;
   const keys={client:'sonaa_client_account_token',fanni:'fanni_token_v4',admin:'admin_token_v3'};
   const bytes=s=>Uint8Array.from(atob((s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
