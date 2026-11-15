@@ -2,7 +2,7 @@
 
 // Isolated integration/security suite. Never points at production MongoDB.
 process.env.NODE_ENV = 'test';
-process.env.ALLOWED_ORIGINS = 'https://hamzawy-backend-v2-production.up.railway.app,https://hamzawy-sat.vercel.app,http://localhost:3000';
+process.env.ALLOWED_ORIGINS = 'https://www.hamzawy-sat.dynv6.net,http://localhost:3000';
 process.env.JWT_SECRET = 'sonaa-test-only-secret-change-me';
 process.env.ADMIN_PHONE = '01012345678';
 
@@ -233,9 +233,9 @@ async function run() {
       const enforced = r.headers['content-security-policy'] || '';
       const reportOnly = r.headers['content-security-policy-report-only'] || '';
       assert.ok(enforced.includes("script-src 'self' 'unsafe-inline'"));
-      assert.ok(enforced.includes('https://hamzawy-backend-v2-production.up.railway.app'));
+      assert.ok(enforced.includes('https://www.hamzawy-sat.dynv6.net'));
       assert.ok(reportOnly.includes("script-src 'self' https://cdn.tailwindcss.com"));
-      assert.ok(reportOnly.includes('https://hamzawy-backend-v2-production.up.railway.app'));
+      assert.ok(reportOnly.includes('https://www.hamzawy-sat.dynv6.net'));
       assert.ok(reportOnly.includes("script-src-attr 'none'"));
       assert.ok(!reportOnly.includes("script-src 'self' 'unsafe-inline'"));
       const report = await request(app).post('/api/csp-report')
@@ -246,16 +246,16 @@ async function run() {
 
     await test('CORS allows configured production origin', async () => {
       const r = await request(app).options('/api/test')
-        .set('Origin', 'https://hamzawy-backend-v2-production.up.railway.app')
+        .set('Origin', 'https://www.hamzawy-sat.dynv6.net')
         .set('Access-Control-Request-Method', 'GET');
-      assert.equal(r.headers['access-control-allow-origin'], 'https://hamzawy-backend-v2-production.up.railway.app');
+      assert.equal(r.headers['access-control-allow-origin'], 'https://www.hamzawy-sat.dynv6.net');
     });
 
-    await test('CORS allows the active Vercel frontend to call the Railway API', async () => {
+    await test('CORS rejects the retired Vercel frontend origin', async () => {
       const r = await request(app).options('/api/test')
         .set('Origin', 'https://hamzawy-sat.vercel.app')
         .set('Access-Control-Request-Method', 'GET');
-      assert.equal(r.headers['access-control-allow-origin'], 'https://hamzawy-sat.vercel.app');
+      assert.equal(r.headers['access-control-allow-origin'], undefined);
     });
 
     await test('CORS does not reflect an arbitrary origin', async () => {
@@ -1748,7 +1748,7 @@ async function run() {
 
     await test('CORS preflight permits the recovery-ticket header for configured frontend origins', async () => {
       const r = await request(app).options('/api/password-recovery/request/test/messages')
-        .set('Origin', 'https://hamzawy-backend-v2-production.up.railway.app')
+        .set('Origin', 'https://www.hamzawy-sat.dynv6.net')
         .set('Access-Control-Request-Method', 'POST')
         .set('Access-Control-Request-Headers', 'content-type,x-recovery-token');
       assert.equal(r.status, 204);
