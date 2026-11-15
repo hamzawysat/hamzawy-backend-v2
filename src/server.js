@@ -108,7 +108,7 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'data:'],
-      connectSrc: ["'self'", 'https://hamzawy-backend-v2-production.up.railway.app', 'https://hamzawy-sat.vercel.app', 'https://www.hamzawy-sat.dynv6.net', 'https://www.hamzawy-sat.dynv6.net'],
+      connectSrc: ["'self'", 'https://hamzawy-backend-v2-production.up.railway.app', 'https://hamzawy-sat.vercel.app', 'https://www.hamzawy-sat.dynv6.net'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -132,7 +132,7 @@ app.use((req, res, next) => {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",
     "media-src 'self' blob: data:",
-    "connect-src 'self' https://hamzawy-backend-v2-production.up.railway.app https://hamzawy-sat.vercel.app",
+    "connect-src 'self' https://hamzawy-backend-v2-production.up.railway.app https://hamzawy-sat.vercel.app https://www.hamzawy-sat.dynv6.net",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -168,6 +168,7 @@ const allowedOrigins = new Set([
   ...configuredOrigins,
   'https://hamzawy-backend-v2-production.up.railway.app',
   'https://hamzawy-sat.vercel.app',
+  'https://www.hamzawy-sat.dynv6.net',
   ...(process.env.NODE_ENV === 'production'
     ? []
     : ['http://localhost:3000', 'http://localhost:5173'])
