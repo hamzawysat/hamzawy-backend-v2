@@ -1,7 +1,7 @@
 
 'use strict';
 
-const BASE_URL='https://hamzawy-sat.vercel.app';
+const BASE_URL='https://www.hamzawy-sat.dynv6.net';
 const TOKEN_KEY='fanni_token_v4';
 const USER_KEY='fanni_user_v4';
 const IS_DEV=['localhost','127.0.0.1'].includes(location.hostname);
