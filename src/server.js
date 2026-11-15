@@ -47,7 +47,11 @@ const LEGACY_HAMZAWY_HOST = 'hamzawy-sat.vercel.app';
 const HAMZAWY_RAILWAY_ORIGIN = 'https://hamzawy-backend-v2-production.up.railway.app';
 app.use((req, res, next) => {
   const requestHost = String(req.headers.host || '').split(':')[0].toLowerCase();
-  if (requestHost === LEGACY_HAMZAWY_HOST) {
+  const isPageRequest = req.method === 'GET' || req.method === 'HEAD';
+  const isApiRequest = req.path === '/api' || req.path.startsWith('/api/');
+  const isHealthCheck = req.path === '/health';
+
+  if (requestHost === LEGACY_HAMZAWY_HOST && isPageRequest && !isApiRequest && !isHealthCheck) {
     return res.redirect(307, `${HAMZAWY_RAILWAY_ORIGIN}${req.originalUrl}`);
   }
   return next();
