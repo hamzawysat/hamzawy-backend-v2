@@ -2,7 +2,7 @@
 
 // Isolated integration/security suite. Never points at production MongoDB.
 process.env.NODE_ENV = 'test';
-process.env.ALLOWED_ORIGINS = 'https://hamzawy-backend-v2-production.up.railway.app,http://localhost:3000';
+process.env.ALLOWED_ORIGINS = 'https://hamzawy-backend-v2-production.up.railway.app,https://hamzawy-sat.vercel.app,http://localhost:3000';
 process.env.JWT_SECRET = 'sonaa-test-only-secret-change-me';
 process.env.ADMIN_PHONE = '01012345678';
 
@@ -251,11 +251,11 @@ async function run() {
       assert.equal(r.headers['access-control-allow-origin'], 'https://hamzawy-backend-v2-production.up.railway.app');
     });
 
-    await test('CORS rejects the retired Vercel frontend origin', async () => {
+    await test('CORS allows the active Vercel frontend to call the Railway API', async () => {
       const r = await request(app).options('/api/test')
         .set('Origin', 'https://hamzawy-sat.vercel.app')
         .set('Access-Control-Request-Method', 'GET');
-      assert.equal(r.headers['access-control-allow-origin'], undefined);
+      assert.equal(r.headers['access-control-allow-origin'], 'https://hamzawy-sat.vercel.app');
     });
 
     await test('CORS does not reflect an arbitrary origin', async () => {
