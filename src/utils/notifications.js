@@ -89,32 +89,52 @@ async function firebaseAccessToken(serviceAccount) {
 }
 async function sendFirebasePushNotifications(devices, payload) {
   const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '');
-  if (!raw || typeof fetch !== 'function') return;
+  if (!raw || typeof fetch !== 'function') {
+    console.error('FCM push skipped: FIREBASE_SERVICE_ACCOUNT_JSON is not configured; registered devices:', devices.length);
+    return { accepted: 0, failed: devices.length };
+  }
   const account = JSON.parse(raw);
   if (!account.project_id || !account.client_email || !account.private_key) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is incomplete');
   const accessToken = await firebaseAccessToken(account);
   const endpoint = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(account.project_id) + '/messages:send';
   const type = String(payload.type || '');
   const data = {
-    type: type.slice(0, 50), link: normalizeNotificationLink(payload.link),
+    type: type.slice(0, 50),
+    link: normalizeNotificationLink(payload.link),
     destination: destinationFor(type)
   };
-  await Promise.all(devices.map(async device => {
+  const results = await Promise.all(devices.map(async device => {
     const response = await notificationFetch(endpoint, {
       method: 'POST',
       headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: {
         token: device.token,
-        notification: { title: String(payload.title || 'إشعار من صُنّاع').slice(0, 100), body: String(payload.message || '').slice(0, 300) },
+        notification: {
+          title: String(payload.title || 'إشعار من صُنّاع').slice(0, 100),
+          body: String(payload.message || '').slice(0, 300)
+        },
         data,
-        android: { priority: 'HIGH', ttl: '120s', notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' } },
+        android: {
+          priority: 'HIGH',
+          ttl: '120s',
+          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' }
+        },
         webpush: { headers: { TTL: '120', Urgency: 'high' } },
         apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120), 'apns-priority': '10' } }
       } })
     });
-    if (response.status === 404 || response.status === 410) await PushToken.deleteOne({ token: device.token }).catch(() => {});
-    if (!response.ok) console.error('FCM delivery failed:', response.status, (await response.text().catch(() => '')).slice(0, 300));
+    if (response.status === 404 || response.status === 410) {
+      await PushToken.deleteOne({ token: device.token }).catch(() => {});
+    }
+    if (!response.ok) {
+      const detail = (await response.text().catch(() => '')).slice(0, 240);
+      console.error('FCM delivery failed:', response.status, detail);
+      return false;
+    }
+    return true;
   }));
+  const accepted = results.filter(Boolean).length;
+  return { accepted, failed: results.length - accepted };
 }
 async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '' }) {
   const report = { expo: { attempted: 0, accepted: 0, failed: 0 }, fcm: { attempted: 0, accepted: 0, failed: 0 } };
