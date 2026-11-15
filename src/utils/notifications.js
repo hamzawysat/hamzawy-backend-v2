@@ -6,6 +6,21 @@ const PushToken = require('../models/PushToken');
 const Fanni = require('../models/Fanni');
 const { sendWebPushNotification } = require('./webPush');
 
+const CURRENT_PUBLIC_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
+const LEGACY_PUBLIC_HOSTS = new Set(['hamzawy-backend-v2-production.up.railway.app', 'hamzawy-sat.vercel.app']);
+function normalizeNotificationLink(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '/';
+  if (raw.startsWith('/') && !raw.startsWith('//')) return raw.slice(0, 200);
+  try {
+    const url = new URL(raw);
+    if (url.protocol === 'https:' && (url.origin === CURRENT_PUBLIC_ORIGIN || LEGACY_PUBLIC_HOSTS.has(url.hostname.toLowerCase()))) {
+      return ((url.pathname || '/') + url.search + url.hash).slice(0, 200);
+    }
+  } catch (_) {}
+  return '/';
+}
+
 // Bound all external notification-provider requests so a slow provider cannot
 // stall an API action or keep a serverless invocation open indefinitely.
 function notificationFetch(url, options = {}) {
@@ -81,7 +96,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   const endpoint = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(account.project_id) + '/messages:send';
   const type = String(payload.type || '');
   const data = {
-    type: type.slice(0, 50), link: String(payload.link || '').slice(0, 200),
+    type: type.slice(0, 50), link: normalizeNotificationLink(payload.link),
     destination: destinationFor(type)
   };
   await Promise.all(devices.map(async device => {
@@ -92,7 +107,9 @@ async function sendFirebasePushNotifications(devices, payload) {
         token: device.token,
         notification: { title: String(payload.title || 'إشعار من صُنّاع').slice(0, 100), body: String(payload.message || '').slice(0, 300) },
         data,
-        android: { priority: 'HIGH', notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' } }
+        android: { priority: 'HIGH', ttl: '120s', notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' } },
+        webpush: { headers: { TTL: '120', Urgency: 'high' } },
+        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120), 'apns-priority': '10' } }
       } })
     });
     if (response.status === 404 || response.status === 410) await PushToken.deleteOne({ token: device.token }).catch(() => {});
@@ -108,8 +125,8 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
       const messages = expo.map(d => ({
         to: d.token, title: String(title || 'إشعار من صُنّاع').slice(0, 100),
         body: String(message || '').slice(0, 300), sound: 'default', priority: 'high',
-        channelId: 'default',
-        data: { type: String(type || 'general').slice(0, 50), link: String(link || '').slice(0, 200) }
+        channelId: 'default', ttl: 120,
+        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link) }
       }));
       for (let start = 0; start < messages.length; start += 100) {
         const batch = messages.slice(start, start + 100);
@@ -118,7 +135,10 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
           body: JSON.stringify(batch)
         });
         const result = await response.json().catch(() => ({}));
-        if (!response.ok) continue;
+        if (!response.ok) {
+          console.error('Expo push request failed:', response.status, JSON.stringify(result).slice(0, 240));
+          continue;
+        }
         const tickets = Array.isArray(result.data) ? result.data : result.data ? [result.data] : [];
         for (let i = 0; i < tickets.length; i++) if (tickets[i]?.status === 'error' && tickets[i]?.details?.error === 'DeviceNotRegistered') {
           const token = batch[i]?.to; if (token) await PushToken.deleteOne({ token }).catch(() => {});
@@ -134,7 +154,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
 async function createNotification({ recipientRole, recipientId, type, title, message, link = '', dedupeKey = null }) {
   if (!recipientId || !['client', 'fanni', 'admin'].includes(recipientRole)) return null;
   try {
-    const payload = { recipientRole, recipientId, type, title, message, link };
+    const payload = { recipientRole, recipientId, type, title, message, link: normalizeNotificationLink(link) };
     let notification, isNew = true;
     if (dedupeKey) {
       const result = await Notification.findOneAndUpdate(
@@ -147,16 +167,15 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
     // The database notification is the source of truth. External push providers
     // are best-effort and must never hold the user's primary action indefinitely.
     if (isNew) {
-      const delivery = Promise.allSettled([
-        sendPushNotification({ recipientRole, recipientId, title, message, type, link }),
-        sendWebPushNotification({ recipientRole, recipientId, title, message, type, link })
+      const delivery = await Promise.allSettled([
+        sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link }),
+        sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link })
       ]);
-      let timeout;
-      await Promise.race([
-        delivery,
-        new Promise(resolve => { timeout = setTimeout(resolve, 2500); })
-      ]);
-      if (timeout) clearTimeout(timeout);
+      delivery.forEach((result, index) => {
+        if (result.status === 'rejected') {
+          console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
+        }
+      });
     }
     return notification;
   } catch (error) { console.error('Notification create failed:', error.message); return null; }
