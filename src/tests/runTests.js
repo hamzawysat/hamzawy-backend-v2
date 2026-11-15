@@ -191,7 +191,7 @@ async function run() {
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
       assert.match(browser, /pushManager\.subscribe/);
       assert.doesNotMatch(browser, /vercel\.app/);
-      assert.match(worker, /addEventListener\('push'/); assert.match(delivery, /sendPushNotification/);
+      assert.match(worker, /addEventListener\('push'/); assert.match(worker, /notificationTarget/); assert.doesNotMatch(worker, /LOGO_UPLOAD_HERE/); assert.match(route, /normalizeNotificationLink\(item\.link/); assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
     });
     await test('web push public key endpoint fails safely until VAPID keys are configured', async () => {
