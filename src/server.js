@@ -89,7 +89,7 @@ app.use((req, res, next) => {
   <main>
     <h1>هذا الموقع القديم لم يعد يعمل.</h1>
     <p>برجاء زيارة موقع حمزاوي سات من خلال الرابط التالي:</p>
-    <a href="https://hamzawy-sat.vercel.app/">زيارة موقع حمزاوي سات</a>
+    <a href="https://hamzawy-backend-v2-production.up.railway.app/">زيارة موقع حمزاوي سات</a>
   </main>
 </body>
 </html>`);
@@ -108,7 +108,7 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'data:'],
-      connectSrc: ["'self'", 'https://sonaa-backend-v2.vercel.app', 'https://hamzawy-sat.vercel.app'],
+      connectSrc: ["'self'", 'https://hamzawy-backend-v2-production.up.railway.app'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -132,7 +132,7 @@ app.use((req, res, next) => {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",
     "media-src 'self' blob: data:",
-    "connect-src 'self' https://sonaa-backend-v2.vercel.app https://hamzawy-sat.vercel.app",
+    "connect-src 'self' https://hamzawy-backend-v2-production.up.railway.app",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -166,9 +166,7 @@ const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '')
 
 const allowedOrigins = new Set([
   ...configuredOrigins,
-  'https://sonaa-backend-v2.vercel.app',
-  'https://hamzawy-sat.vercel.app',
-  'https://hamzawy-sat-git-hamzawy-sat-brand-conversion-hmzawy-sat.vercel.app',
+  'https://hamzawy-backend-v2-production.up.railway.app',
   ...(process.env.NODE_ENV === 'production'
     ? []
     : ['http://localhost:3000', 'http://localhost:5173'])
