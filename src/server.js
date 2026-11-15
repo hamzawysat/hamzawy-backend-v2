@@ -111,7 +111,7 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'data:'],
-      connectSrc: ["'self'", 'https://www.hamzawy-sat.dynv6.net', 'https://hamzawy-sat.vercel.app'],
+      connectSrc: ["'self'", 'https://www.hamzawy-sat.dynv6.net'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -170,7 +170,6 @@ const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '')
 const allowedOrigins = new Set([
   ...configuredOrigins,
   'https://www.hamzawy-sat.dynv6.net',
-  'https://hamzawy-sat.vercel.app',
   ...(process.env.NODE_ENV === 'production'
     ? []
     : ['http://localhost:3000', 'http://localhost:5173'])
