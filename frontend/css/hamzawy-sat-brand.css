@@ -347,7 +347,7 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button:active {
   border-bottom: 1px solid rgba(255,255,255,.16);
 }
 /* Keep the existing sticky header below the fixed brand line without changing its markup or contents. */
-#app .dashboard-brand-marquee + .app-header {
+#app .dashboard-brand-marquee + .dashboard-top-shell {
   top: 32px;
   margin-top: 32px;
 }
