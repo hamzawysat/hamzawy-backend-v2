@@ -277,4 +277,4 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null 
     return { targeted: 0, created: 0, failed: 1 };
   }
 }
-module.exports = { createNotification, sendPushNotification, notifyAdmins };
+module.exports = { createNotification, sendPushNotification, notifyAdmins, normalizeNotificationLink };

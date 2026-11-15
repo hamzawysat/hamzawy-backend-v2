@@ -6,6 +6,7 @@ const Notification = require('../models/Notification');
 const PushToken = require('../models/PushToken');
 const WebPushSubscription = require('../models/WebPushSubscription');
 const { getVapidKeys, isAllowedPushEndpoint } = require('../utils/webPush');
+const { normalizeNotificationLink } = require('../utils/notifications');
 const { auth, canAccessAdmin, isRootAdmin } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
 
@@ -75,7 +76,7 @@ function mountRoleRoutes(role) {
       return res.set('Cache-Control', 'no-store').json({
         notifications: notifications.map(item => ({
           id: String(item._id), type: item.type, title: item.title,
-          message: item.message, link: item.link || '',
+          message: item.message, link: normalizeNotificationLink(item.link || ''),
           read: Boolean(item.readAt), createdAt: item.createdAt
         })),
         unreadCount
