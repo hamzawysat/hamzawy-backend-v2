@@ -44,7 +44,7 @@ app.set('trust proxy', 1);
 // Redirect the old public Hamzawy hostname to Railway before serving any page or API.
 // Keep the original path and query string so previously shared links continue to work.
 const LEGACY_HAMZAWY_HOST = 'hamzawy-sat.vercel.app';
-const HAMZAWY_RAILWAY_ORIGIN = 'https://hamzawy-backend-v2-production.up.railway.app';
+const HAMZAWY_NEW_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
 app.use((req, res, next) => {
   const requestHost = String(req.headers.host || '').split(':')[0].toLowerCase();
   const isPageRequest = req.method === 'GET' || req.method === 'HEAD';
@@ -52,7 +52,7 @@ app.use((req, res, next) => {
   const isHealthCheck = req.path === '/health';
 
   if (requestHost === LEGACY_HAMZAWY_HOST && isPageRequest && !isApiRequest && !isHealthCheck) {
-    return res.redirect(307, `${HAMZAWY_RAILWAY_ORIGIN}${req.originalUrl}`);
+    return res.redirect(307, `${HAMZAWY_NEW_ORIGIN}${req.originalUrl}`);
   }
   return next();
 });
@@ -89,7 +89,7 @@ app.use((req, res, next) => {
   <main>
     <h1>هذا الموقع القديم لم يعد يعمل.</h1>
     <p>برجاء زيارة موقع حمزاوي سات من خلال الرابط التالي:</p>
-    <a href="https://hamzawy-backend-v2-production.up.railway.app/">زيارة موقع حمزاوي سات</a>
+    <a href="https://www.hamzawy-sat.dynv6.net/">زيارة موقع حمزاوي سات</a>
   </main>
 </body>
 </html>`);
@@ -108,7 +108,7 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'data:'],
-      connectSrc: ["'self'", 'https://hamzawy-backend-v2-production.up.railway.app', 'https://hamzawy-sat.vercel.app'],
+      connectSrc: ["'self'", 'https://hamzawy-backend-v2-production.up.railway.app', 'https://hamzawy-sat.vercel.app', 'https://www.hamzawy-sat.dynv6.net', 'https://www.hamzawy-sat.dynv6.net'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -226,7 +226,7 @@ app.get('/frontend/editor.html', (req, res) => {
 
 // Keep the public Hamzawy Sat download page available even when frontend-dist is selected.
 app.get('/download.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/download.html'));
+  return res.redirect(302, 'https://hamzawysat.github.io/hamzawy-download/');
 });
 
 app.use(express.static(frontendPath, {
