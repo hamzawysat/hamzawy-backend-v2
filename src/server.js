@@ -77,7 +77,7 @@ app.use((req, res, next) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <title>موقع صناع القديم</title>
+  <title>موقع حمزاوي سات القديم</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f7fb;color:#172033;font-family:Tahoma,Arial,sans-serif;text-align:center}
