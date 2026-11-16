@@ -235,7 +235,7 @@ const apiPost=(path,body)=>api(path,{method:'POST',body:JSON.stringify(body)});
 
 const API={
  register:p=>apiPost('/api/fanni/register',p),
- uploadRegistrationIdentity:(side,file)=>api('/api/fanni/registration-media?side='+encodeURIComponent(side),{method:'POST',body:file,headers:{'Content-Type':file.type},timeoutMs:30000}),
+ uploadRegistrationIdentity:(side,file)=>api('/api/fanni/registration-media?side='+encodeURIComponent(side),{method:'POST',body:file,headers:{'Content-Type':file.type},timeoutMs:90000}),
  login:p=>api('/api/fanni/login',{method:'POST',body:JSON.stringify(p),timeoutMs:15000}),
  profile:()=>apiGet('/api/fanni/me'),
  updateProfile:p=>api('/api/fanni/me',{method:'PATCH',body:JSON.stringify(p),timeoutMs:15000}),

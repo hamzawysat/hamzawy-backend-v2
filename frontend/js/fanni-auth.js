@@ -60,20 +60,39 @@ async function doLogin(){
 
 async function handleRegistrationIdUpload(side,file){
  if(!['front','back'].includes(side)||!file)return;
- const validTypes=['image/jpeg','image/png','image/webp'];
- if(!validTypes.includes(file.type)){state.error='صيغة الصورة غير مدعومة. استخدم JPG أو PNG أو WebP.';render();return;}
- if(file.size>5*1024*1024){state.error='حجم الصورة أكبر من 5 ميجابايت. اختار صورة أصغر.';render();return;}
  const idKey=side==='front'?'regIdFrontFileId':'regIdBackFileId';
  const previewKey=side==='front'?'regIdFrontPreview':'regIdBackPreview';
  const loadingKey=side==='front'?'regIdFrontUploading':'regIdBackUploading';
- state[idKey]='';state[previewKey]=URL.createObjectURL(file);state[loadingKey]=true;state.error='';render();
- try{const result=await API.uploadRegistrationIdentity(side,file);if(!result?.fileId)throw new Error('لم نتأكد من حفظ الصورة. حاول رفعها مرة أخرى.');state[idKey]=result.fileId;toast(side==='front'?'تم رفع وجه البطاقة الأمامي':'تم رفع وجه البطاقة الخلفي');}
- catch(e){state[idKey]='';state.error=e.message||'تعذر رفع صورة البطاقة. حاول مرة أخرى.';}
- finally{state[loadingKey]=false;render();}
+ const statusKey=side==='front'?'regIdFrontUploadStatus':'regIdBackUploadStatus';
+ const validTypes=['image/jpeg','image/png','image/webp'];
+ if(!validTypes.includes(file.type)){
+  state[statusKey]='نوع الملف غير مدعوم. اختار صورة JPG أو PNG أو WebP.';
+  toast(state[statusKey],'error');render();return;
+ }
+ if(file.size>15*1024*1024){
+  state[statusKey]='حجم الصورة أكبر من 15 ميجابايت. قلّل حجمها أو اختار صورة أخرى.';
+  toast(state[statusKey],'error');render();return;
+ }
+ if(state[previewKey]?.startsWith('blob:'))URL.revokeObjectURL(state[previewKey]);
+ state[idKey]='';state[previewKey]=URL.createObjectURL(file);state[loadingKey]=true;state[statusKey]='جاري تجهيز الصورة ورفعها...';state.error='';render();
+ try{
+  const result=await API.uploadRegistrationIdentity(side,file);
+  if(!result?.fileId)throw new Error('لم نتأكد من حفظ الصورة. حاول رفعها مرة أخرى.');
+  state[idKey]=result.fileId;
+  state[statusKey]='تم رفع الصورة بنجاح ✓';
+  toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
+ }catch(e){
+  state[idKey]='';
+  state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';
+  toast(state[statusKey],'error');
+ }finally{state[loadingKey]=false;render();}
 }
 function clearRegistrationIdImage(side){
- const idKey=side==='front'?'regIdFrontFileId':'regIdBackFileId';const previewKey=side==='front'?'regIdFrontPreview':'regIdBackPreview';
- if(state[previewKey]&&state[previewKey].startsWith('blob:'))URL.revokeObjectURL(state[previewKey]);state[idKey]='';state[previewKey]='';state.error='';render();
+ const idKey=side==='front'?'regIdFrontFileId':'regIdBackFileId';
+ const previewKey=side==='front'?'regIdFrontPreview':'regIdBackPreview';
+ const statusKey=side==='front'?'regIdFrontUploadStatus':'regIdBackUploadStatus';
+ if(state[previewKey]?.startsWith('blob:'))URL.revokeObjectURL(state[previewKey]);
+ state[idKey]='';state[previewKey]='';state[statusKey]='تم إزالة الصورة. اختار صورة بديلة.';state.error='';render();
 }
 
 async function doRegister(){
