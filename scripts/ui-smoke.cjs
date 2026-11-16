@@ -402,7 +402,7 @@ function apiResponse(pathname) {
                 await page.waitForTimeout(120);
                 const isActive = await page.evaluate(expected => [...document.querySelectorAll('button')]
                   .some(button => button.getAttribute('onclick') === "openTechnicianSection('" + expected + "')" &&
-                    String(button.className).includes('from-[#C9A34F]')), tab);
+                    button.classList.contains('is-active')), tab);
                 if (!isActive) failures.push('technician/mobile: navigation did not activate the ' + tab + ' section');
               } catch (error) {
                 failures.push('technician/mobile: ' + tab + ' navigation click failed: ' + error.message);
