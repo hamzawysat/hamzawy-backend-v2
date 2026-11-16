@@ -148,7 +148,7 @@ async function doRegister(){
  if(!areas.length){state.error='اختار منطقة عمل واحدة على الأقل من القائمة';render();return}
  if(!V.text(state.regPass,6,100)){state.error='كلمة السر لازم تكون 6 أحرف على الأقل';render();return}
  if(state.regPass!==state.regPassConfirm){state.error='تأكيد كلمة السر غير مطابق. اكتب نفس كلمة السر في الخانتين.';render();return}
- if(!state.regGuidelinesAccepted){state.error='لازم تقرأ ميثاق التعامل المهني وتحدد الموافقة قبل إنشاء الحساب.';render();return}
+ if(!state.regGuidelinesAccepted){state.error='لازم تقرأ ميثاق حمزاوي سات للتعامل المهني وتحدد الموافقة قبل إنشاء الحساب.';render();return}
  if(!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading){state.error='لازم ترفع صورة البطاقة من الأمام والخلف وتنتظر اكتمال الرفع قبل التسجيل.';render();return}
 
  state.loading=true;
