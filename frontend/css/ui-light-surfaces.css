@@ -50,7 +50,7 @@
 #app main :where(
   .bg-slate-900,.bg-slate-800,.bg-gray-900,.bg-gray-800,
   .bg-blue-950,.bg-blue-900,.bg-indigo-950,.bg-indigo-900,
-  .bg-\\[\\#171A22\\],.bg-\\[\\#171a22\\],.bg-\\[\\#0b1b3a\\],.bg-\\[\\#242832\\]
+  .bg-\[\\#171A22\],.bg-\[\\#171a22\],.bg-\[\\#0b1b3a\],.bg-\[\\#242832\]
 ),
 #admin-tab-content :where(
   .bg-slate-900,.bg-slate-800,.bg-gray-900,.bg-gray-800,
@@ -66,7 +66,7 @@
 #app main button:not(.primary-btn):not([type=submit]):not(.danger):not(.success):where(
   .bg-slate-900,.bg-slate-800,.bg-gray-900,.bg-gray-800,
   .bg-blue-950,.bg-blue-900,.bg-indigo-950,.bg-indigo-900,
-  .bg-\\[\\#171A22\\],.bg-\\[\\#171a22\\],.bg-\\[\\#0b1b3a\\],.bg-\\[\\#242832\\]
+  .bg-\[\\#171A22\],.bg-\[\\#171a22\],.bg-\[\\#0b1b3a\],.bg-\[\\#242832\]
 ){
   background:#F3F0E8!important;
   background-image:none!important;
