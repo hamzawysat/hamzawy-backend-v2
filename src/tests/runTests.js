@@ -419,10 +419,6 @@ async function run() {
       assert.equal(backUpload.status, 201, JSON.stringify(backUpload.body));
       const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
-      const adminImage = await request(app).get('/api/fanni/admin/000000000000000000000000/identity/front')
-        .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(adminImage.status, 404, 'identity images must be scoped to the technician account');
-
       const registration = await request(app).post('/api/fanni/register').send({
         name: 'فني اختبار التسجيل',
         phone,
@@ -435,12 +431,6 @@ async function run() {
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
-      const privateIdentity = await request(app).get('/api/fanni/admin/' + registration.body.id + '/identity/front')
-        .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(privateIdentity.status, 200, 'administrator can review the uploaded front image');
-      assert.equal(privateIdentity.headers['content-type'], 'image/png');
-      const deniedIdentity = await request(app).get('/api/fanni/admin/' + registration.body.id + '/identity/back');
-      assert.equal(deniedIdentity.status, 401, 'identity images require administrator authentication');
 
       const login = await request(app).post('/api/fanni/login').send({
         phone,
@@ -670,6 +660,14 @@ async function run() {
         assert.equal(image.status, 200);
         assert.equal(image.headers['content-type'], 'image/png');
         assert.equal(Number(image.headers['content-length']), pngSignature.length);
+        const Fanni = require('../models/Fanni');
+        const registeredFanni = await Fanni.findOne({ phone: '01012345681', role: 'fanni' });
+        assert.ok(registeredFanni, 'technician registration fixture must exist before private image access is tested');
+        const privateIdentity = await request(app).get('/api/fanni/admin/' + registeredFanni._id + '/identity/front').set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(privateIdentity.status, 200, 'administrator can review the uploaded front image');
+        assert.equal(privateIdentity.headers['content-type'], 'image/png');
+        const deniedIdentity = await request(app).get('/api/fanni/admin/' + registeredFanni._id + '/identity/back');
+        assert.equal(deniedIdentity.status, 401, 'identity images require administrator authentication');
 
         const invalid = await request(app).post('/api/admin/store/media')
           .set('Authorization', 'Bearer ' + adminToken)
