@@ -202,11 +202,18 @@ async function run() {
       assert.equal(r.headers.location, 'https://www.hamzawy-sat.dynv6.net/download.html');
     });
 
-    await test('download page redirects to the GitHub Pages copy', async () => {
-      const r = await request(app).get('/download.html')
+    await test('download page is served on the main domain without leaving it', async () => {
+      const r = await request(app).get('/download')
         .set('Host', 'www.hamzawy-sat.dynv6.net');
-      assert.equal(r.status, 302);
-      assert.equal(r.headers.location, 'https://hamzawysat.github.io/hamzawy-download/');
+      assert.equal(r.status, 200);
+      assert.match(r.text, /تحميل تطبيق حمزاوي سات/);
+    });
+
+    await test('official links page is served on the main domain without leaving it', async () => {
+      const r = await request(app).get('/links')
+        .set('Host', 'www.hamzawy-sat.dynv6.net');
+      assert.equal(r.status, 200);
+      assert.match(r.text, /روابطنا الرسمية/);
     });
 
     await test('homepage responds without exposing Express signature', async () => {
