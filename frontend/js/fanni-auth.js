@@ -87,6 +87,29 @@ async function handleRegistrationIdUpload(side,file){
   toast(state[statusKey],'error');
  }finally{state[loadingKey]=false;render();}
 }
+function previewRegistrationIdImage(side){
+ const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
+ const src=previewKey?state[previewKey]:'';
+ if(!src){toast('لا توجد صورة لمعاينتها.','error');return;}
+ document.getElementById('registrationIdPreviewModal')?.remove();
+ const overlay=document.createElement('div');
+ overlay.id='registrationIdPreviewModal';
+ overlay.setAttribute('role','dialog');
+ overlay.setAttribute('aria-modal','true');
+ overlay.setAttribute('aria-label',side==='front'?'معاينة الوجه الأمامي للبطاقة':'معاينة الوجه الخلفي للبطاقة');
+ overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;';
+ const panel=document.createElement('div');
+ panel.style.cssText='position:relative;width:min(100%,720px);max-height:100%;display:flex;flex-direction:column;gap:12px;align-items:center;';
+ const close=document.createElement('button');
+ close.type='button';close.textContent='إغلاق المعاينة';
+ close.style.cssText='align-self:flex-end;background:#fff;color:#111827;border:0;border-radius:10px;padding:10px 16px;font-weight:800;';
+ const img=document.createElement('img');
+ img.src=src;img.alt=side==='front'?'صورة الوجه الأمامي للبطاقة':'صورة الوجه الخلفي للبطاقة';
+ img.style.cssText='display:block;max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:12px;background:#fff;';
+ close.addEventListener('click',()=>overlay.remove());
+ overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.remove();});
+ panel.append(close,img);overlay.append(panel);document.body.append(overlay);close.focus();
+}
 function clearRegistrationIdImage(side){
  const idKey=side==='front'?'regIdFrontFileId':'regIdBackFileId';
  const previewKey=side==='front'?'regIdFrontPreview':'regIdBackPreview';
