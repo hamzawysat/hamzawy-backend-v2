@@ -13,7 +13,7 @@ function renderContent(){
  const approved=isApproved();
  const status=user?.status||'غير محدد';
  const guidelinesAccepted=Boolean(user?.technicianGuidelinesAcceptedAt&&user?.technicianGuidelinesVersion==='2026-10-20-v1');
- if(authenticated && approved && !guidelinesAccepted){document.getElementById('app').innerHTML='<main class="mx-auto max-w-[680px] p-4"><section class="panel p-5 space-y-3"><h1 class="text-xl font-black">أهلًا بيك في حمزاوي سات – ميثاق التعامل المهني مع العملاء</h1><p class="text-sm leading-7">اقرأ التعليمات التالية ووافق عليها قبل استخدام لوحة الفني.</p><div class="max-h-[55vh] overflow-y-auto rounded-xl border p-4 text-sm leading-7"><p>١. التزم بسعر العرض الذي وافق عليه العميل. أي زيادة تحتاج موافقة صريحة مسجلة داخل المنصة قبل التنفيذ.</p><p>٢. تعامل باحترام وصدق، دون ضغط أو تهديد أو تضليل.</p><p>٣. قبل قبول العرض، الردود المسموحة «نعم»، «لا»، «حسب الاتفاق». ممنوع تبادل بيانات الاتصال أو التحايل على المنصة قبل القبول.</p><p>٤. لا تضغط إنهاء المهمة إلا بعد إنجازها فعلًا.</p><p>٥. احمِ بيانات العميل ولا تستخدمها خارج الطلب.</p><p>٦. يحق للطرفين التقييم بعد الإكمال؛ ممنوع الإكراه على تقييم إيجابي أو التلاعب بالتقييمات.</p><p>٧. المخالفات قد تؤدي إلى مراجعة الطلب أو تعليق الحساب أو إيقافه.</p><p class="font-extrabold">بالضغط على الموافقة، تؤكد أنك قرأت التعليمات وفهمتها وتتعهد بالالتزام بها أثناء استخدام منصة حمزاوي سات.</p></div><label class="flex gap-2 items-start text-sm font-bold"><input id="guidelinesAcceptedCheck" type="checkbox" class="mt-1"> قرأت التعليمات وأوافق على الالتزام بها.</label><button type="button" onclick="if(!document.getElementById(\'guidelinesAcceptedCheck\')?.checked){toast(\'لازم تحدد الموافقة أولًا.\',\'error\');return;}acceptTechnicianGuidelines()" class="primary-btn w-full h-12 rounded-xl font-extrabold">موافق ثم تأكيد</button></section></main>';return;}
+ if(authenticated && approved && !guidelinesAccepted){document.getElementById('app').innerHTML='<main class="mx-auto max-w-[680px] p-4"><section class="panel p-5 space-y-3"><h1 class="text-xl font-black">أهلًا بيك في حمزاوي سات – ميثاق حمزاوي سات للتعامل المهني مع العملاء</h1><p class="text-sm leading-7">اقرأ التعليمات التالية ووافق عليها قبل استخدام لوحة الفني.</p><div class="max-h-[55vh] overflow-y-auto rounded-xl border p-4 text-sm leading-7"><p>١. التزم بسعر العرض الذي وافق عليه العميل. أي زيادة تحتاج موافقة صريحة مسجلة داخل المنصة قبل التنفيذ.</p><p>٢. تعامل باحترام وصدق، دون ضغط أو تهديد أو تضليل.</p><p>٣. قبل قبول العرض، الردود المسموحة «نعم»، «لا»، «حسب الاتفاق». ممنوع تبادل بيانات الاتصال أو التحايل على المنصة قبل القبول.</p><p>٤. لا تضغط إنهاء المهمة إلا بعد إنجازها فعلًا.</p><p>٥. احمِ بيانات العميل ولا تستخدمها خارج الطلب.</p><p>٦. يحق للطرفين التقييم بعد الإكمال؛ ممنوع الإكراه على تقييم إيجابي أو التلاعب بالتقييمات.</p><p>٧. المخالفات قد تؤدي إلى مراجعة الطلب أو تعليق الحساب أو إيقافه.</p><p class="font-extrabold">بالضغط على الموافقة، تؤكد أنك قرأت التعليمات وفهمتها وتتعهد بالالتزام بها أثناء استخدام منصة حمزاوي سات.</p></div><label class="flex gap-2 items-start text-sm font-bold"><input id="guidelinesAcceptedCheck" type="checkbox" class="mt-1"> قرأت ميثاق حمزاوي سات للتعامل المهني وأوافق على الالتزام به.</label><button type="button" onclick="if(!document.getElementById(\'guidelinesAcceptedCheck\')?.checked){toast(\'لازم تحدد الموافقة أولًا.\',\'error\');return;}acceptTechnicianGuidelines()" class="primary-btn w-full h-12 rounded-xl font-extrabold">موافق ثم تأكيد</button></section></main>';return;}
 
  document.getElementById('app').innerHTML=`
  <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات كل خدمة تبدأ بخطوة</span></div>
@@ -22,7 +22,7 @@ function renderContent(){
   <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
    <div class="flex items-center gap-2 min-w-0 flex-1">
     <div class="brand-mark h-16 w-16 sm:h-[84px] sm:w-[84px] rounded-xl flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="120" height="120" decoding="async" style="width:100%;height:100%;padding:4px;box-sizing:border-box;object-fit:contain"></div>
-    <div class="min-w-0"><h1 class="font-extrabold text-[16px] leading-tight truncate"><span class="sonaa-brand-shimmer">${esc(state.publicContent?.siteName && state.publicContent.siteName !== 'صُنّاع' ? state.publicContent.siteName : 'حمزاوي سات')}</span></h1><p class="client-header-slogan mt-2 text-sm sm:text-base font-black whitespace-nowrap">كل خدمة تبدأ بخطوة</p></div>
+    <div class="min-w-0"><h1 class="font-extrabold text-[16px] leading-tight truncate"><span class="sonaa-brand-shimmer">${esc(state.publicContent?.siteName && !/صُنّاع|صناع|صُنَاع/.test(state.publicContent.siteName) ? state.publicContent.siteName : 'حمزاوي سات')}</span></h1><p class="client-header-slogan mt-2 text-sm sm:text-base font-black whitespace-nowrap">كل خدمة تبدأ بخطوة</p></div>
    </div>
    <div class="flex flex-col items-end gap-1.5 shrink-0">
     <div class="flex items-center justify-end gap-1">
@@ -98,7 +98,7 @@ function renderContent(){
     </section>
 
     <section class="rounded-2xl border border-amber-200 bg-amber-50 p-3 space-y-3">
-     <h2 class="font-extrabold text-sm text-slate-900">ميثاق التعامل المهني مع العملاء</h2>
+     <h2 class="font-extrabold text-sm text-slate-900">ميثاق حمزاوي سات للتعامل المهني مع العملاء</h2>
      <p class="text-xs leading-6 text-slate-700">اقرأ الميثاق التالي قبل إنشاء حسابك. الموافقة مطلوبة لإتمام التسجيل.</p>
      <div class="max-h-52 overflow-y-auto rounded-xl border border-amber-200 bg-white p-3 text-xs leading-6 space-y-2">
       <p>١. التزم بسعر العرض الذي وافق عليه العميل. أي زيادة تحتاج موافقة صريحة مسجلة داخل المنصة قبل التنفيذ.</p>
@@ -109,7 +109,7 @@ function renderContent(){
       <p>٦. يحق للطرفين التقييم بعد الإكمال؛ ممنوع الإكراه على تقييم إيجابي أو التلاعب بالتقييمات.</p>
       <p>٧. المخالفات قد تؤدي إلى مراجعة الطلب أو تعليق الحساب أو إيقافه.</p>
      </div>
-     <label class="flex items-start gap-2 text-xs font-bold leading-6 text-slate-800"><input type="checkbox" class="mt-1 shrink-0" ${state.regGuidelinesAccepted?'checked':''} onchange="state.regGuidelinesAccepted=this.checked"> قرأت ميثاق التعامل المهني وفهمته وأوافق على الالتزام به.</label>
+     <label class="flex items-start gap-2 text-xs font-bold leading-6 text-slate-800"><input type="checkbox" class="mt-1 shrink-0" ${state.regGuidelinesAccepted?'checked':''} onchange="state.regGuidelinesAccepted=this.checked"> قرأت ميثاق حمزاوي سات للتعامل المهني وفهمته وأوافق على الالتزام به.</label>
     </section>
     <button onclick="doRegister()" ${state.loading||SERVICES_LOADING?'disabled':''} class="primary-btn w-full h-12">${state.loading?'جاري إنشاء الحساب...':SERVICES_LOADING?'جاري تحميل التخصصات...':'إنشاء حساب فني'}</button>
     ${state.error?errorBox(state.error):''}
