@@ -1,0 +1,92 @@
+/* Hamzawy Sat — light, readable surfaces across all web pages.
+   Visual-only overrides: no layout, data, routes, or interaction changes. */
+:root[data-sonaa-theme]{
+  --ui-surface:#FFFFFF;
+  --ui-surface-soft:#F7F5EF;
+  --ui-surface-muted:#F1EEE6;
+  --ui-border:#DDD6C8;
+  --ui-text:#242832;
+  --ui-muted:#625F58;
+  --ui-accent:#C9A34F;
+}
+/* Search results, dropdowns, autocomplete and selectable rows. */
+#app [role="listbox"],
+#app [role="option"],
+#app [role="listbox"] button,
+#app .area-search-results,
+#app .region-search-results,
+#app .dropdown-menu,
+#app .autocomplete-results,
+#app .edit-picker-list{
+  background:#FFFFFF!important;
+  color:#242832!important;
+  border-color:#DDD6C8!important;
+}
+#app [role="listbox"] button,
+#app [role="option"]{
+  color:#242832!important;
+  -webkit-text-fill-color:#242832!important;
+}
+#app [role="listbox"] button:hover,
+#app [role="option"]:hover,
+#app [role="option"][aria-selected="true"]{
+  background:#F5EEDC!important;
+  color:#242832!important;
+}
+/* Inputs and form controls remain white with readable dark text. */
+:where(input:not([type=checkbox]):not([type=radio]):not([type=hidden]),select,textarea,.field){
+  background-color:#FFFFFF!important;
+  color:#242832!important;
+  -webkit-text-fill-color:#242832!important;
+  border-color:#D8D0C1!important;
+}
+:where(input,select,textarea,.field)::placeholder{color:#77736A!important;-webkit-text-fill-color:#77736A!important;opacity:1}
+:where(input,select,textarea,.field):focus{
+  background-color:#FFFFFF!important;
+  border-color:#B88D3A!important;
+  outline-color:#B88D3A!important;
+}
+/* Lighten legacy dark utility surfaces in content areas, not site headers/hero branding. */
+#app main :where(
+  .bg-slate-900,.bg-slate-800,.bg-gray-900,.bg-gray-800,
+  .bg-blue-950,.bg-blue-900,.bg-indigo-950,.bg-indigo-900,
+  .bg-\[\#171A22\],.bg-\[\#171a22\],.bg-\[\#0b1b3a\],.bg-\[\#242832\]
+),
+#admin-tab-content :where(
+  .bg-slate-900,.bg-slate-800,.bg-gray-900,.bg-gray-800,
+  .bg-blue-950,.bg-blue-900,.bg-indigo-950,.bg-indigo-900
+){
+  background-color:#F3F0E8!important;
+  background-image:none!important;
+  border-color:#DDD6C8!important;
+  color:#242832!important;
+  -webkit-text-fill-color:#242832!important;
+}
+/* Dark content buttons become soft cream controls; preserve semantic status/action colors. */
+#app main button:not(.primary-btn):not([type=submit]):not(.danger):not(.success):where(
+  .bg-slate-900,.bg-slate-800,.bg-gray-900,.bg-gray-800,
+  .bg-blue-950,.bg-blue-900,.bg-indigo-950,.bg-indigo-900,
+  .bg-\[\#171A22\],.bg-\[\#171a22\],.bg-\[\#0b1b3a\],.bg-\[\#242832\]
+){
+  background:#F3F0E8!important;
+  background-image:none!important;
+  border-color:#DDD6C8!important;
+  color:#242832!important;
+  -webkit-text-fill-color:#242832!important;
+  text-shadow:none!important;
+}
+/* Keep cards and informational panels light even when legacy markup assigns dark backgrounds. */
+#app main :where(.panel,.card,.rounded-xl.border,.rounded-2xl.border,.modal){
+  color:#242832;
+}
+#app main :where(.panel,.card,.rounded-xl.border,.rounded-2xl.border,.modal) :where(p,span,label,small,strong,h1,h2,h3,h4){
+  color:inherit;
+}
+/* Accessible focus indication. */
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{
+  outline:2px solid #A9822E!important;
+  outline-offset:2px!important;
+}
+@media(prefers-reduced-motion:reduce){
+  :where(button,a,input,select,textarea){transition:none!important}
+}
