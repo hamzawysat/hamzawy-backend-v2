@@ -318,3 +318,6 @@ html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab {
 html[data-sonaa-theme="client"] body #app .client-section-tab:active,
 html[data-sonaa-theme="fanni"] body #app .fanni-section-tab:active,
 html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab:active {transform:translateY(2px)!important;}
+
+/* Preserve the technician dashboard's original 48px tab height. */
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab {min-height:48px!important;height:48px!important;}
