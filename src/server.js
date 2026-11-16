@@ -419,7 +419,9 @@ app.use('/api', ensureDatabase);
 
 app.use('/api/page-visits', pageVisitsRouter);
 
-app.use(['/api/fanni/register', '/api/fannis/register', '/api/technician/register', '/api/technicians/register', '/api/fanni/registration-media'], fanniRegistrationLimiter);
+app.use(['/api/fanni/register', '/api/fannis/register', '/api/technician/register', '/api/technicians/register'], fanniRegistrationLimiter);
+const fanniIdentityUploadLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { message: 'تم تجاوز عدد محاولات رفع الصور. حاول مرة أخرى بعد 15 دقيقة.' } });
+app.use('/api/fanni/registration-media', fanniIdentityUploadLimiter);
 
 app.use('/api', publicRouter);
 app.use('/api/client', clientRouter);
