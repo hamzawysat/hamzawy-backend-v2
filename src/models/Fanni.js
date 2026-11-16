@@ -237,6 +237,8 @@ fanniSchema.methods.toSafeJSON = function() {
   const obj = this.toObject();
   delete obj.passwordHash;
   delete obj.tokenVersion;
+  delete obj.identityCardFrontFileId;
+  delete obj.identityCardBackFileId;
   return obj;
 };
 
