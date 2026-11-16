@@ -655,3 +655,62 @@ html[data-sonaa-theme] body #admin-tab-content :is(
   outline: 2px solid #B8872D !important;
   outline-offset: 3px !important;
 }
+
+
+/* Coverage pass: match the actual selected-state markup used by client and
+   technician navigation (Tailwind gradient classes), plus inner selectors. */
+html[data-sonaa-theme] body #app :is(
+  .client-section-tabs button,
+  .fanni-dashboard-tabs button,
+  nav.fixed.bottom-0 button
+)[class*="from-[#C9A34F]"],
+html[data-sonaa-theme] body #app .client-orders-status-tabs .client-orders-status-tab.tab-active,
+html[data-sonaa-theme] body #app .account-tabs .account-tab.tab-active,
+html[data-sonaa-theme] body #app :is(
+  button.tab-active,
+  button.selected,
+  button.active,
+  .service-choice.selected,
+  .category-tile.active,
+  .service-chip.selected,
+  .edit-picker-option.is-selected
+),
+html[data-sonaa-theme] body #admin-tab-content :is(
+  .section-nav-btn.active,
+  .subnav-btn.active,
+  .tab-btn.active,
+  button.tab-active,
+  button.selected,
+  button[aria-pressed="true"],
+  button[aria-selected="true"],
+  button[data-state="active"]
+),
+html[data-sonaa-theme="admin"] body :is(
+  .section-nav-btn.active,
+  .subnav-btn.active,
+  .tab-btn.active,
+  button.tab-active,
+  button.selected,
+  button[aria-pressed="true"],
+  button[aria-selected="true"],
+  button[data-state="active"]
+) {
+  background: linear-gradient(145deg,#FFF1BF 0%,#F1CC79 58%,#E5B65A 100%) !important;
+  background-color: #F1CC79 !important;
+  border-color: #C99A3D !important;
+  color: #172B43 !important;
+  -webkit-text-fill-color: #172B43 !important;
+  box-shadow: 0 5px 0 #B8872D,0 8px 14px rgba(135,94,24,.22),inset 0 1px 0 rgba(255,255,255,.82) !important;
+}
+
+/* Make the active top-level client/technician tab stand out even when its
+   selected state is expressed only through Tailwind utility classes. */
+html[data-sonaa-theme] body #app :is(
+  .client-section-tabs button,
+  .fanni-dashboard-tabs button,
+  nav.fixed.bottom-0 button
+)[class*="from-[#C9A34F]"] {
+  transform: translateY(-1px);
+  position: relative;
+  z-index: 1;
+}
