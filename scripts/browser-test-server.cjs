@@ -33,12 +33,22 @@ const { ALL_SERVICES } = require('../src/config/professions');
   });
   if (client.status !== 201) throw new Error('Unable to seed browser-test client: HTTP ' + client.status);
 
+  const identityPng = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+  const identityFront = await request(app).post('/api/fanni/registration-media?side=front')
+    .set('Content-Type', 'image/png').send(identityPng);
+  if (identityFront.status !== 201) throw new Error('Unable to upload browser-test technician front ID: HTTP ' + identityFront.status);
+  const identityBack = await request(app).post('/api/fanni/registration-media?side=back')
+    .set('Content-Type', 'image/png').send(identityPng);
+  if (identityBack.status !== 201) throw new Error('Unable to upload browser-test technician back ID: HTTP ' + identityBack.status);
+
   const technician = await request(app).post('/api/fanni/register').send({
     name: 'فني اختبار المتصفح',
     phone: '01012345671',
     password: 'FanniSmokePass123',
     specialties: [ALL_SERVICES[0]],
-    areas: ['المعادي']
+    areas: ['المعادي'],
+    identityCardFrontFileId: identityFront.body.fileId,
+    identityCardBackFileId: identityBack.body.fileId
   });
   if (technician.status !== 201) throw new Error('Unable to seed browser-test technician: HTTP ' + technician.status);
 
