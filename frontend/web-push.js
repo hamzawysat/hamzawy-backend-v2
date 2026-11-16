@@ -15,6 +15,7 @@
   function account(){
     const preferred=pageRole();
     if(preferred)try{const token=localStorage.getItem(keys[preferred]);if(token)return{role:preferred,token};}catch(_){}
+    if(preferred)return null;
     for(const role of ['client','fanni','admin'])try{
       const token=localStorage.getItem(keys[role]);
       if(token)return{role,token};
@@ -57,15 +58,21 @@
     try{
       const reg=await navigator.serviceWorker.register('/service-worker.js',{scope:'/'});
       const s=await reg.pushManager.getSubscription();
+      if(!s){
+        const kr=await fetch(apiUrl('/api/notifications/web-push-public-key'),{cache:'no-store'});
+        const kd=await kr.json().catch(()=>({}));
+        if(!kr.ok||!kd.publicKey)throw Error(kd.message||'Web Push public key unavailable');
+        s=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(kd.publicKey)});
+      }
       if(s&&accountKey(account()||{role:'',token:''})===key){
         await saveSubscription(a,s);
         saved=true;hiddenFor=key;removeButton(key);
-      }else if(!s&&accountKey(account()||{role:'',token:''})===key){
-        showButton(a,'🔔 استكمال تفعيل إشعارات المتصفح');
-        checkedFor=key;
       }
     }catch(_){
-      if(accountKey(account()||{role:'',token:''})===key){showButton(a,'🔔 إعادة تفعيل إشعارات المتصفح');checkedFor=key;}
+      if(accountKey(account()||{role:'',token:''})===key){
+        showButton(a,'🔔 استكمال ربط إشعارات هذا الدومين');
+        checkedFor=key;
+      }
     }finally{
       if(saved)checkedFor=key;
       checkingFor='';
