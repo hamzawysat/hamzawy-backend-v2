@@ -22,6 +22,21 @@ function buildUrl(p){const path=p.startsWith('/api')?p:'/api/'+p.replace(/^\/+/,
 async function api(path,opts={}){const token=getToken(); const headers={...(opts.headers||{})}; if(opts.body&&!headers['Content-Type']){headers['Content-Type']='application/json';} if(token)headers['Authorization']='Bearer '+token; try{const r=await fetch(buildUrl(path),{...opts,headers,mode:'cors',credentials:'omit',signal:opts.signal||(typeof AbortSignal!=='undefined'&&typeof AbortSignal.timeout==='function'?AbortSignal.timeout(20000):undefined)}); const txt=await r.text(); if(txt.trim().startsWith('<!DOCTYPE')||txt.includes('Cannot ')){return {ok:false,status:404,data:{message:'المسار غير موجود: '+path}};} let data; try{data=txt?JSON.parse(txt):{}}catch{data={raw:txt.slice(0,500),message:txt.slice(0,200)||'استجابة غير مفهومة'};} if(!r.ok&&!data.message)data.message='فشل الطلب (HTTP '+r.status+')'; return {ok:r.ok,status:r.status,data};}catch(e){return {ok:false,status:0,data:{message:e.message||'تعذر الاتصال'}};}}
 async function tryApi(paths,opts={}){const method=String(opts.method||'GET').toUpperCase();const firstPath=Array.isArray(paths)?paths[0]:paths;const isReadLikeReport=method==='POST'&&String(firstPath||'').split('?')[0].startsWith('/api/admin/reports');if(!['GET','HEAD','OPTIONS'].includes(method)&&!isReadLikeReport&&currentAdminRoleLabel()&&!isRootAdminUI()){const key=permissionKeyForApiPath(firstPath);if(key==='__root')throw new Error('الإجراء متاح للمدير العام فقط');if(key&&state.currentAdminPermissions?.[key]?.write!==true)throw new Error('لا تملك صلاحية التنفيذ في هذا القسم');}let last={status:404,data:{message:'فشل الاتصال'}}; for(const p of paths){const res=await api(p,opts); if(res.ok)return res.data; last=res; if([400,401,403].includes(res.status))break;} const error=new Error(last.data?.message||'حدث خطأ'); error.status=last.status; throw error;}
 function extractList(data,keys=[]){if(Array.isArray(data))return data; for(const key of keys){if(Array.isArray(data?.[key]))return data[key];} if(Array.isArray(data?.data))return data.data; return [];}
+function getWhatsAppNumber(value){
+  const raw=String(value??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
+  let digits=raw.replace(/\\D/g,'');
+  if(digits.startsWith('00'))digits=digits.slice(2);
+  if(/^01[0-9]{9}$/.test(digits))digits='20'+digits.slice(1);
+  else if(/^1[0-9]{9}$/.test(digits))digits='20'+digits;
+  if(!/^[1-9][0-9]{9,14}$/.test(digits))return '';
+  return digits;
+}
+function renderWhatsAppButton(phone){
+  const number=getWhatsAppNumber(phone);
+  if(!number)return '';
+  const label=escHtml(String(phone||''));
+  return '<a href="https://wa.me/'+number+'" target="_blank" rel="noopener noreferrer" aria-label="إرسال واتساب إلى '+label+'" title="إرسال واتساب" class="inline-flex items-center justify-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700 no-underline whitespace-nowrap hover:bg-emerald-100">واتساب</a>';
+}
 function normalizePhoneInput(value){return String(value??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[\s\-().]/g,'').replace(/^(\+?20)/,'0');}
 
 const ADMIN_SECTIONS = [
