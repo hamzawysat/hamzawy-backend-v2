@@ -21,3 +21,13 @@ StoreProduct stores the GridFS ObjectId in `imageFileId`; `imageUrl` contains th
 - GridFS stores image bytes in MongoDB's `media.files` and `media.chunks` collections.
 
 Before production activation, verify available MongoDB storage quota and test a real image upload/download. A migration of any existing external images requires a separate inventory, backup, and explicit approval.
+
+
+## Technician national ID card images
+
+- New technician registrations require both the front and back of the national ID card.
+- Uploads use the existing MongoDB GridFS `media` bucket and are tagged with purpose `fanni-id-document` and side metadata.
+- Only authenticated administrators can retrieve an image, through `GET /api/fanni/admin/:id/identity/:side`. Images are served with `Cache-Control: private, no-store`; there is no public image URL.
+- Accepted formats are JPEG, PNG, and WebP; each side is limited to 5 MiB and checked against its file signature.
+- Registration verifies that the two supplied file IDs are separate GridFS objects with matching front/back metadata before creating the technician account.
+- Uploaded bytes remain in MongoDB, not the web host filesystem. Abandoned uploads are not automatically deleted; retention/cleanup should be handled under an approved privacy policy.
