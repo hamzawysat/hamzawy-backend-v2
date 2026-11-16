@@ -345,3 +345,41 @@ html[data-sonaa-theme="admin"] body #app .admin-topup-owner-tab {
 html[data-sonaa-theme="client"] body #app .client-commerce-tabs .client-commerce-tab * {
   color:inherit!important;-webkit-text-fill-color:inherit!important;
 }
+
+
+/* Remaining client order and wallet tabs: state is semantic, appearance is centralized. */
+html[data-sonaa-theme="client"] body #app .client-orders-status-tabs .client-orders-status-tab {
+  min-height:44px!important;height:44px!important;padding:0 8px!important;border:1px solid var(--sonaa-tab-idle-border)!important;
+  border-radius:11px!important;background:linear-gradient(145deg,var(--sonaa-tab-idle-start),var(--sonaa-tab-idle-end))!important;
+  color:var(--sonaa-tab-idle-text)!important;-webkit-text-fill-color:var(--sonaa-tab-idle-text)!important;
+  font-size:12px!important;font-weight:800!important;box-shadow:0 3px 0 #CBD7E7,0 5px 8px rgba(11,27,58,.08)!important;
+}
+html[data-sonaa-theme="client"] body #app .client-orders-status-tabs .client-orders-status-tab.is-active {
+  background:linear-gradient(145deg,var(--sonaa-tab-active-start),var(--sonaa-tab-active-end))!important;
+  background-color:var(--sonaa-tab-active-start)!important;background-image:linear-gradient(145deg,var(--sonaa-tab-active-start),var(--sonaa-tab-active-end))!important;
+  border-color:var(--sonaa-tab-active-border)!important;color:var(--sonaa-tab-active-text)!important;
+  -webkit-text-fill-color:var(--sonaa-tab-active-text)!important;box-shadow:0 4px 0 var(--sonaa-tab-active-border),0 7px 12px rgba(169,130,46,.18)!important;
+}
+html[data-sonaa-theme="client"] body #app .client-wallet-tabs .client-wallet-tab,
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab {
+  min-width:0!important;min-height:54px!important;padding:8px 5px!important;border:1px solid var(--sonaa-tab-idle-border)!important;
+  border-radius:12px!important;background:linear-gradient(145deg,var(--sonaa-tab-idle-start),var(--sonaa-tab-idle-end))!important;
+  color:var(--sonaa-tab-idle-text)!important;-webkit-text-fill-color:var(--sonaa-tab-idle-text)!important;
+  font-size:11px!important;font-weight:800!important;line-height:1.35!important;
+  transition:background .18s ease,border-color .18s ease,color .18s ease,box-shadow .18s ease!important;
+}
+html[data-sonaa-theme="client"] body #app .client-wallet-tabs .client-wallet-tab.is-active,
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab.is-active {
+  background:linear-gradient(145deg,var(--sonaa-tab-active-start),var(--sonaa-tab-active-end))!important;
+  background-color:var(--sonaa-tab-active-start)!important;background-image:linear-gradient(145deg,var(--sonaa-tab-active-start),var(--sonaa-tab-active-end))!important;
+  border-color:var(--sonaa-tab-active-border)!important;color:var(--sonaa-tab-active-text)!important;
+  -webkit-text-fill-color:var(--sonaa-tab-active-text)!important;box-shadow:0 3px 8px rgba(169,130,46,.18)!important;
+}
+html[data-sonaa-theme="client"] body #app .client-wallet-tab-icon,
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tab-icon {
+  display:block!important;font-size:16px!important;line-height:1.35!important;margin-bottom:4px!important;color:inherit!important;-webkit-text-fill-color:inherit!important;
+}
+@media(max-width:360px){
+ html[data-sonaa-theme="client"] body #app .client-wallet-tabs .client-wallet-tab,
+ html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab {font-size:9px!important;padding:6px 2px!important;}
+}
