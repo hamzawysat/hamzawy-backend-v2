@@ -24,7 +24,7 @@ async function tryApi(paths,opts={}){const method=String(opts.method||'GET').toU
 function extractList(data,keys=[]){if(Array.isArray(data))return data; for(const key of keys){if(Array.isArray(data?.[key]))return data[key];} if(Array.isArray(data?.data))return data.data; return [];}
 function getWhatsAppNumber(value){
   const raw=String(value??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)));
-  let digits=raw.replace(/\\D/g,'');
+  let digits=raw.replace(/\D/g,'');
   if(digits.startsWith('00'))digits=digits.slice(2);
   if(/^01[0-9]{9}$/.test(digits))digits='20'+digits.slice(1);
   else if(/^1[0-9]{9}$/.test(digits))digits='20'+digits;
