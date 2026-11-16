@@ -383,3 +383,50 @@ html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tab-icon {
  html[data-sonaa-theme="client"] body #app .client-wallet-tabs .client-wallet-tab,
  html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab {font-size:9px!important;padding:6px 2px!important;}
 }
+
+
+/* Global tactile feedback.
+   This layer intentionally comes last so the light-surface overrides above
+   cannot erase the press response inherited from the brand stylesheet. */
+html[data-sonaa-theme] body #app :is(
+  button:not(:disabled),a[href], [role="button"],[role="tab"]
+),
+html[data-sonaa-theme="admin"] body :is(
+  button:not(:disabled),a[href],[role="button"],[role="tab"]
+) {
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .14s ease,filter .14s ease,outline-offset .22s ease!important;
+}
+html[data-sonaa-theme] body #app :is(
+  button:not(:disabled),a[href],[role="button"],[role="tab"]
+):active,
+html[data-sonaa-theme="admin"] body :is(
+  button:not(:disabled),a[href],[role="button"],[role="tab"]
+):active {
+  transform:scale(.97) translateY(1px)!important;
+  filter:brightness(.91) saturate(1.12)!important;
+  outline:2px solid rgba(201,154,63,.48)!important;
+  outline-offset:3px!important;
+}
+@media(prefers-reduced-motion:no-preference){
+  html[data-sonaa-theme] body #app :is(
+    button:not(:disabled),a[href],[role="button"],[role="tab"]
+  ):active,
+  html[data-sonaa-theme="admin"] body :is(
+    button:not(:disabled),a[href],[role="button"],[role="tab"]
+  ):active {
+    animation:sonaa-button-press-pulse .42s ease-out!important;
+  }
+  @keyframes sonaa-button-press-pulse {
+    0% {outline-color:rgba(201,154,63,.62);outline-offset:0;filter:brightness(.88) saturate(1.18)}
+    100% {outline-color:rgba(201,154,63,0);outline-offset:8px;filter:brightness(1) saturate(1)}
+  }
+}
+@media(prefers-reduced-motion:reduce){
+  html[data-sonaa-theme] body #app :is(
+    button:not(:disabled),a[href],[role="button"],[role="tab"]
+  ),
+  html[data-sonaa-theme="admin"] body :is(
+    button:not(:disabled),a[href],[role="button"],[role="tab"]
+  ){transition:none!important;animation:none!important}
+}
