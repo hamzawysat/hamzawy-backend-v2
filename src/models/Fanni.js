@@ -200,6 +200,9 @@ const fanniSchema = new mongoose.Schema({
     average: { type: Number, default: 0, min: 0, max: 5 },
     count: { type: Number, default: 0, min: 0 }
   },
+  // Private MongoDB GridFS references; never expose the image bytes in public profile JSON.
+  identityCardFrontFileId: { type: mongoose.Schema.Types.ObjectId, default: null, select: false },
+  identityCardBackFileId: { type: mongoose.Schema.Types.ObjectId, default: null, select: false },
   technicianGuidelinesAcceptedAt: { type: Date, default: null },
   technicianGuidelinesVersion: { type: String, trim: true, maxlength: 40, default: '' },
   stats: {
