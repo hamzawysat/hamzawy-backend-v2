@@ -57,7 +57,7 @@
     let saved=false;
     try{
       const reg=await navigator.serviceWorker.register('/service-worker.js',{scope:'/'});
-      const s=await reg.pushManager.getSubscription();
+      let s=await reg.pushManager.getSubscription();
       if(!s){
         const kr=await fetch(apiUrl('/api/notifications/web-push-public-key'),{cache:'no-store'});
         const kd=await kr.json().catch(()=>({}));
