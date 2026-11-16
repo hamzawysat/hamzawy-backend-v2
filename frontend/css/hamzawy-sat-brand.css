@@ -440,3 +440,41 @@ html[data-sonaa-theme="index"] body .entry:active .entry-action .action-label {
   -webkit-text-fill-color: #171A22 !important;
   box-shadow: 0 2px 0 #D8B94F,0 3px 8px rgba(170,133,31,.16),inset 0 1px 0 rgba(255,255,255,.8) !important;
 }
+
+
+/* Match every app-download control and the two homepage entry actions
+   to the exact pale-gold social-links button treatment on the homepage.
+   Color-only override: preserve existing sizing, spacing, placement and motion. */
+html[data-sonaa-theme] body a.download-link,
+html[data-sonaa-theme] body button.download-link,
+html[data-sonaa-theme] body .download-link,
+html[data-sonaa-theme] body #app .app-header .dashboard-download-btn,
+html[data-sonaa-theme="index"] body .entry .entry-action .action-label {
+  background:linear-gradient(145deg,#fffdf5 0%,#fff4cf 100%)!important;
+  background-color:#fff4cf!important;
+  border:1px solid #d6b45a!important;
+  color:#173c6c!important;
+  -webkit-text-fill-color:#173c6c!important;
+  text-shadow:none!important;
+  box-shadow:0 3px 0 #d6b45a,0 5px 10px rgba(11,27,58,.10)!important;
+}
+html[data-sonaa-theme] body a.download-link:hover,
+html[data-sonaa-theme] body button.download-link:hover,
+html[data-sonaa-theme] body .download-link:hover,
+html[data-sonaa-theme] body #app .app-header .dashboard-download-btn:hover,
+html[data-sonaa-theme="index"] body .entry:hover .entry-action .action-label {
+  background:linear-gradient(145deg,#fffef9 0%,#fff7df 100%)!important;
+  color:#173c6c!important;
+  -webkit-text-fill-color:#173c6c!important;
+  box-shadow:0 4px 0 #d6b45a,0 7px 13px rgba(11,27,58,.12)!important;
+}
+html[data-sonaa-theme] body a.download-link:active,
+html[data-sonaa-theme] body button.download-link:active,
+html[data-sonaa-theme] body .download-link:active,
+html[data-sonaa-theme] body #app .app-header .dashboard-download-btn:active,
+html[data-sonaa-theme="index"] body .entry:active .entry-action .action-label {
+  background:linear-gradient(145deg,#fffdf5 0%,#fff0c2 100%)!important;
+  color:#173c6c!important;
+  -webkit-text-fill-color:#173c6c!important;
+  box-shadow:0 1px 0 #d6b45a,0 2px 5px rgba(11,27,58,.09)!important;
+}
