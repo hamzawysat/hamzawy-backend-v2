@@ -419,7 +419,7 @@ app.use('/api', ensureDatabase);
 
 app.use('/api/page-visits', pageVisitsRouter);
 
-app.use(['/api/fanni/register', '/api/fannis/register', '/api/technician/register', '/api/technicians/register'], fanniRegistrationLimiter);
+app.use(['/api/fanni/register', '/api/fannis/register', '/api/technician/register', '/api/technicians/register', '/api/fanni/registration-media'], fanniRegistrationLimiter);
 
 app.use('/api', publicRouter);
 app.use('/api/client', clientRouter);
