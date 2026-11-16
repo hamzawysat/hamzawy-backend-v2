@@ -76,7 +76,7 @@ function mountRoleRoutes(role) {
       return res.set('Cache-Control', 'no-store').json({
         notifications: notifications.map(item => ({
           id: String(item._id), type: item.type, title: item.title,
-          message: item.message, link: normalizeNotificationLink(item.link || ''),
+          message: item.message, link: normalizeNotificationLink(item.link || '', item.type),
           read: Boolean(item.readAt), createdAt: item.createdAt
         })),
         unreadCount

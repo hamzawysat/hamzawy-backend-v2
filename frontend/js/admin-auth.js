@@ -19,5 +19,12 @@ async function doLogin(){
     else { if(err){err.textContent=res.data.message||'فشل الدخول'; err.classList.remove('hidden');} if(btn){btn.textContent='دخول'; btn.disabled=false;} }
   }catch(e){ if(err){err.textContent=e.message; err.classList.remove('hidden');} if(btn){btn.textContent='دخول'; btn.disabled=false;} }
 }
+function restoreAdminTabFromNotification(){
+  const requested=decodeURIComponent(String(location.hash||'').replace(/^#/,'')).trim();
+  if(!requested)return;
+  const known=ADMIN_SECTIONS.some(section=>section.tabs.some(tab=>tab.id===requested));
+  if(known){state.tab=requested;state.pageMode='section';}
+}
+restoreAdminTabFromNotification();
 if(getToken()){ loadAll(); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }
 
