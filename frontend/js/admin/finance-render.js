@@ -22,8 +22,8 @@ function renderTopups(){
   const canShowClients=canReadTab('clientWallet');
   const switcher=`
     <div class="premium-panel p-2 grid grid-cols-2 gap-2">
-      <button type="button" onclick="setTopupOwnerTab('clients')" class="pill-btn ${owner==='clients'?'primary-pill':'soft-btn'}" ${!canShowClients?'disabled title="لا تملك صلاحية الاطلاع على طلبات شحن العملاء"':''}>طلبات شحن العملاء <span class="mr-1 text-[10px]">${(state.clientTopups||[]).filter(x=>x.status==='قيد المراجعة').length}</span></button>
-      <button type="button" onclick="setTopupOwnerTab('fannis')" class="pill-btn ${owner==='fannis'?'primary-pill':'soft-btn'}">طلبات شحن الفنيين <span class="mr-1 text-[10px]">${(state.topups||[]).filter(x=>['pending','قيد المراجعة','جديد','جديدة'].includes(String(x.status||''))).length}</span></button>
+      <button type="button" onclick="setTopupOwnerTab('clients')" class="admin-topup-owner-tab ${owner==='clients'?'is-active':''}" ${!canShowClients?'disabled title="لا تملك صلاحية الاطلاع على طلبات شحن العملاء"':''}>طلبات شحن العملاء <span class="mr-1 text-[10px]">${(state.clientTopups||[]).filter(x=>x.status==='قيد المراجعة').length}</span></button>
+      <button type="button" onclick="setTopupOwnerTab('fannis')" class="admin-topup-owner-tab ${owner==='fannis'?'is-active':''}">طلبات شحن الفنيين <span class="mr-1 text-[10px]">${(state.topups||[]).filter(x=>['pending','قيد المراجعة','جديد','جديدة'].includes(String(x.status||''))).length}</span></button>
     </div>`;
   if(owner==='clients'&&canShowClients){
     return '<section class="mt-4 space-y-4">'+switcher+renderClientWallet()+'</section>';

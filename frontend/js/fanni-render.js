@@ -36,7 +36,7 @@ function renderContent(){
  </header>
 <nav class="${isBrowserDashboard?'fanni-dashboard-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
    <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
-    ${authenticated?TECHNICIAN_TAB_DEFINITIONS.map(t=>{const info={home:['⌂','الرئيسية'],available:['📋','الطلبات المتاحة'],myOrders:['💼','عروضي'],wallet:['💳','المحفظة'],store:['🛍️','المتجر'],profile:['👤','حسابي'],support:['🎧','الدعم الفني']}[t.id];return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="min-w-0 rounded-xl border flex flex-col items-center justify-center gap-1 transition ${state.tab===t.id?'bg-gradient-to-br from-[#C9A34F] to-[#A9822E] border-[#8D6C25] text-[#171A22] shadow-[0_3px_0_#8D6C25]':'bg-gradient-to-br from-[#FFFFFF] to-[#EAF0F8] border-[#D5DFED] text-[#344965] shadow-[0_3px_0_#CBD7E7]'}"><span class="text-base leading-none">${info[0]}</span><span class="text-[9px] font-extrabold text-center">${info[1]}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
+    ${authenticated?TECHNICIAN_TAB_DEFINITIONS.map(t=>{const info={home:['⌂','الرئيسية'],available:['📋','الطلبات المتاحة'],myOrders:['💼','عروضي'],wallet:['💳','المحفظة'],store:['🛍️','المتجر'],profile:['👤','حسابي'],support:['🎧','الدعم الفني']}[t.id];return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="fanni-section-tab ${state.tab===t.id?'is-active':''}"><span class="fanni-section-tab-icon">${info[0]}</span><span class="fanni-section-tab-label">${info[1]}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
        
    </div>
   </nav>
@@ -191,7 +191,7 @@ function renderContent(){
      </div>
     </div>
    </section>`:''}
-  ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="rounded-xl px-3 py-2 text-[11px] font-extrabold ${state.myOrdersView==='active'?'bg-[#C9A34F] text-[#171A22]':'bg-slate-50 text-slate-600'}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="rounded-xl px-3 py-2 text-[11px] font-extrabold ${state.myOrdersView==='completed'?'bg-[#C9A34F] text-[#171A22]':'bg-slate-50 text-slate-600'}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
+  ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
 
   ${state.tab==='available'?`
    <section class="mt-4 space-y-3">
@@ -300,7 +300,7 @@ function renderContent(){
   ${state.tab==='wallet'?`
    <section class="mt-4 space-y-4">
     <div class="panel p-4"><div class="flex justify-between items-center"><div><h3 class="section-title">محفظتي</h3><p class="text-[10px] text-slate-500 mt-1">رصيدك ومتابعة معاملات المحفظة</p></div><b class="text-[#5A4520] 800">${esc(balance)} ج</b></div></div>
-   <div class="fanni-wallet-tabs" role="tablist" aria-label="أقسام المحفظة">${[{id:"topup",label:"شحن المحفظة",icon:"＋"},{id:"requests",label:"طلبات الشحن",icon:"📥"},{id:"transactions",label:"سجل العمليات",icon:"📄"}].map(tab=>'<button type="button" role="tab" aria-selected="'+((state.walletTab||"topup")===tab.id?"true":"false")+'" onclick="setFanniWalletTab(\''+tab.id+'\')" class="'+((state.walletTab||"topup")===tab.id?"fanni-wallet-tab-active":"fanni-wallet-tab-idle")+'"><span class="block text-base mb-1">'+tab.icon+'</span>'+tab.label+'</button>').join("")}</div>
+   <div class="fanni-wallet-tabs" role="tablist" aria-label="أقسام المحفظة">${[{id:"topup",label:"شحن المحفظة",icon:"＋"},{id:"requests",label:"طلبات الشحن",icon:"📥"},{id:"transactions",label:"سجل العمليات",icon:"📄"}].map(tab=>'<button type="button" role="tab" aria-selected="'+((state.walletTab||"topup")===tab.id?"true":"false")+'" onclick="setFanniWalletTab(\''+tab.id+'\')" class="'+((state.walletTab||"topup")===tab.id?"fanni-wallet-tab is-active":"fanni-wallet-tab")+'"><span class="fanni-wallet-tab-icon">'+tab.icon+'</span>'+tab.label+'</button>').join("")}</div>
     <div class="panel p-4 ${((state.walletTab||"topup")==="topup")?"":"hidden"}">
 
      <div class="mt-4 rounded-2xl bg-[#F8F6F0] border border-[#E8E0CF] 100 p-4 space-y-4">

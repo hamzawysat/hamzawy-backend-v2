@@ -83,8 +83,8 @@ function render(){
 <nav class="${isBrowserDashboard?'client-section-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
     <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
       ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'new',icon:'＋',label:'طلب جديد'},{id:'orders',icon:'📋',label:'طلباتي'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'subscriptions',icon:'📄',label:'الاشتراكات'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'complaint',icon:'🎧',label:'الشكاوى'}].map(t=>`
-        <button type="button" onclick="setTab('${t.id}')" class="min-w-0 rounded-xl border flex flex-col items-center justify-center gap-1 transition ${state.tab===t.id?'bg-gradient-to-br from-[#C9A34F] to-[#A9822E] border-[#8D6C25] text-[#171A22] shadow-[0_3px_0_#8D6C25]':'bg-gradient-to-br from-[#FFFFFF] to-[#EAF0F8] border-[#D5DFED] text-[#344965] shadow-[0_3px_0_#CBD7E7]'}">
-          <span class="text-base leading-none">${t.icon}</span><span class="text-[9px] font-extrabold text-center leading-tight">${t.label}</span>
+        <button type="button" onclick="setTab('${t.id}')" class="client-section-tab ${state.tab===t.id?'is-active':''}">
+          <span class="client-section-tab-icon">${t.icon}</span><span class="client-section-tab-label">${t.label}</span>
         </button>`).join('')}
     </div>
   </nav>

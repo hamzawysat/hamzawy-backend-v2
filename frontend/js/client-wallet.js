@@ -57,7 +57,7 @@ function renderClientWallet(){
  return `<section class="mt-4 space-y-4 animate-fade">
  ${balancePanel}
  <div class="client-wallet-tabs grid grid-cols-3 gap-2 rounded-2xl border border-slate-200 bg-white p-2 shadow-sm" role="tablist" aria-label="أقسام المحفظة">
- ${tabs.map(tab=>'<button type="button" role="tab" aria-selected="'+(active===tab.id?'true':'false')+'" onclick="setClientWalletTab(\''+tab.id+'\')" class="min-h-[48px] rounded-xl px-2 py-2 text-[10px] sm:text-[12px] font-extrabold transition '+(active===tab.id?'client-wallet-tab-active':'client-wallet-tab-idle')+'"><span class="block text-base mb-1">'+tab.icon+'</span>'+tab.label+'</button>').join('')}
+ ${tabs.map(tab=>'<button type="button" role="tab" aria-selected="'+(active===tab.id?'true':'false')+'" onclick="setClientWalletTab(\''+tab.id+'\')" class="client-wallet-tab '+(active===tab.id?'is-active':'')+'"><span class="client-wallet-tab-icon">'+tab.icon+'</span>'+tab.label+'</button>').join('')}
  </div>
  <div class="client-wallet-tab-content">${active==='topup'?topupPanel:active==='requests'?requestsPanel:transactionsPanel}</div>
  </section>`;
