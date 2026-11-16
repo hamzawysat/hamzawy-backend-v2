@@ -619,6 +619,41 @@ async function run() {
       });
       adminToken = jwt.sign({ id: String(admin._id), role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+      await test('store product images are uploaded to MongoDB GridFS and served through the API', async () => {
+        const StoreProduct = require('../models/StoreProduct');
+        const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+        const denied = await request(app).post('/api/admin/store/media')
+          .set('Content-Type', 'image/png').send(pngSignature);
+        assert.equal(denied.status, 401, 'media upload must require an administrator session');
+
+        const uploaded = await request(app).post('/api/admin/store/media')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .set('Content-Type', 'image/png').send(pngSignature);
+        assert.equal(uploaded.status, 201, JSON.stringify(uploaded.body));
+        assert.match(uploaded.body.imageFileId, /^[a-f0-9]{24}$/i);
+        assert.equal(uploaded.body.imageUrl, '/api/store/media/' + uploaded.body.imageFileId);
+
+        const mismatched = await request(app).post('/api/admin/store/products')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ name: 'منتج صورة غير صالحة', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: '000000000000000000000000' });
+        assert.equal(mismatched.status, 400, 'product records must not point at an unrelated GridFS file');
+
+        const product = await request(app).post('/api/admin/store/products')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ name: 'منتج اختبار صورة MongoDB', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: uploaded.body.imageFileId });
+        assert.equal(product.status, 201, JSON.stringify(product.body));
+        const image = await request(app).get(uploaded.body.imageUrl);
+        assert.equal(image.status, 200);
+        assert.equal(image.headers['content-type'], 'image/png');
+        assert.equal(Number(image.headers['content-length']), pngSignature.length);
+
+        const invalid = await request(app).post('/api/admin/store/media')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .set('Content-Type', 'image/png').send(Buffer.from('not-an-image'));
+        assert.equal(invalid.status, 400);
+      });
+
+
       await test('admin approves a client top-up once and writes a client wallet ledger entry', async () => {
         const Client = require('../models/Client');
         const ClientTopupRequest = require('../models/ClientTopupRequest');

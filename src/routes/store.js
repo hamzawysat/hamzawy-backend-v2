@@ -22,15 +22,34 @@ const orderSchema = Joi.object({
   idempotencyKey: Joi.string().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).optional()
 }).unknown(false);
 
+router.get('/media/:id', async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).end();
+    const fileId = new mongoose.Types.ObjectId(req.params.id);
+    if (!await StoreProduct.exists({ imageFileId: fileId })) return res.status(404).end();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: fileId, 'metadata.purpose': 'store-product' }).toArray();
+    if (!files.length) return res.status(404).end();
+    res.set({
+      'Content-Type': files[0].contentType || 'application/octet-stream',
+      'Content-Length': String(files[0].length),
+      'Cache-Control': 'public, max-age=31536000, immutable',
+      'X-Content-Type-Options': 'nosniff'
+    });
+    return bucket.openDownloadStream(fileId).on('error', next).pipe(res);
+  } catch (error) { return next(error); }
+});
+
 router.get('/products', async (req, res, next) => {
   try {
     const [products, config] = await Promise.all([
-      StoreProduct.find({ isActive: true }).sort({ createdAt: -1 }).select('name description details price originalPrice offerText type subscriptionDuration imageUrl stock createdAt isAdvertised adAudience adPriority adExpiresAt').lean(),
+      StoreProduct.find({ isActive: true }).sort({ createdAt: -1 }).select('name description details price originalPrice offerText type subscriptionDuration imageUrl imageFileId stock createdAt isAdvertised adAudience adPriority adExpiresAt').lean(),
       AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean()
     ]);
     const configuredSeconds = Number(config?.storeAdRotationSeconds);
     const adRotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
-    return res.set('Cache-Control', 'no-store').json({ products, adRotationSeconds });
+    const publicProducts = products.map(product => ({ ...product, imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }));
+    return res.set('Cache-Control', 'no-store').json({ products: publicProducts, adRotationSeconds });
   } catch (error) { return next(error); }
 });
 

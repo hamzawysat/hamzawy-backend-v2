@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const mongoose = require('mongoose');
 
 function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
@@ -13,7 +14,8 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
     offerText: Joi.string().trim().max(200).allow('').default(''),
     type: Joi.string().valid('product', 'subscription').default('product'),
     subscriptionDuration: Joi.string().trim().max(60).allow('').default(''),
-    imageUrl: Joi.string().uri({ scheme: ['http', 'https'] }).max(1000).allow('').default(''),
+    imageUrl: Joi.string().max(1000).allow('').custom((value, helpers) => { if (!value || /^https?:\/\//i.test(value) || /^\/api\/store\/media\/[a-f0-9]{24}$/i.test(value)) return value; return helpers.error('string.uri'); }).default(''),
+    imageFileId: Joi.string().hex().length(24).allow(null).default(null),
     isActive: Joi.boolean().default(true),
     isAdvertised: Joi.boolean().default(false),
     adAudience: Joi.string().valid('both', 'client', 'fanni').default('both'),
@@ -21,11 +23,58 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
     adExpiresAt: Joi.date().iso().allow(null).default(null),
     stock: Joi.number().integer().min(0).allow(null).default(null)
   }).unknown(false);
+  async function hasValidImageReference(value) {
+    const imageUrl = String(value.imageUrl || '');
+    const mediaPrefix = '/api/store/media/';
+    const pathId = imageUrl.startsWith(mediaPrefix) ? imageUrl.slice(mediaPrefix.length) : '';
+    const internalPath = /^[a-f0-9]{24}$/i.test(pathId) ? pathId : null;
+    if (!value.imageFileId) return !imageUrl.startsWith(mediaPrefix);
+    if (!internalPath || internalPath.toLowerCase() !== String(value.imageFileId).toLowerCase()) return false;
+    if (!mongoose.connection.db) return false;
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({
+      _id: new mongoose.Types.ObjectId(value.imageFileId),
+      'metadata.purpose': 'store-product'
+    }).limit(1).toArray();
+    return files.length === 1;
+  }
+
   const statusSchema = Joi.object({
     status: Joi.string().valid('تم التواصل', 'قيد التجهيز', 'مكتمل', 'ملغي').required(),
     adminNote: Joi.string().trim().max(1000).allow('').default(''),
     paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'عند الاستلام', 'تحويل').default('غير محدد')
   }).unknown(false);
+
+  router.post('/store/media', auth('admin'), async (req, res, next) => {
+    try {
+      const buffer = Buffer.isBuffer(req.body) ? req.body : null;
+      const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+      const signatures = {
+        'image/jpeg': value => value.length >= 3 && value[0] === 0xff && value[1] === 0xd8 && value[2] === 0xff,
+        'image/png': value => value.length >= 8 && value.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+        'image/webp': value => value.length >= 12 && value.toString('ascii', 0, 4) === 'RIFF' && value.toString('ascii', 8, 12) === 'WEBP'
+      };
+      if (!buffer || !buffer.length || buffer.length > 5 * 1024 * 1024 || !signatures[contentType] || !signatures[contentType](buffer)) {
+        return res.status(400).json({ message: 'ارفع صورة JPG أو PNG أو WebP سليمة، وبحجم لا يتجاوز 5 ميجابايت.' });
+      }
+      if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+      const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
+      const upload = bucket.openUploadStream('store-product-' + Date.now() + extension, {
+        contentType,
+        metadata: { purpose: 'store-product', uploadedBy: String(req.user?._id || ''), createdAt: new Date() }
+      });
+      const completed = new Promise((resolve, reject) => {
+        upload.once('finish', resolve);
+        upload.once('error', reject);
+      });
+      upload.end(buffer);
+      await completed;
+      const imageFileId = String(upload.id);
+      await writeAdminAudit(req, 'رفع صورة منتج إلى MongoDB', 'store-media', imageFileId, contentType + ' ' + buffer.length + ' bytes');
+      return res.status(201).json({ imageFileId, imageUrl: '/api/store/media/' + imageFileId, size: buffer.length, contentType });
+    } catch (error) { return next(error); }
+  });
 
   router.get('/store/ad-settings', auth('admin'), async (req, res, next) => {
     try {
@@ -54,6 +103,7 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
     try {
       const checked = productSchema.validate(req.body || {}, { abortEarly: false });
       if (checked.error) return res.status(400).json({ message: 'راجع اسم المنتج والسعر وباقي البيانات.' });
+      if (!await hasValidImageReference(checked.value)) return res.status(400).json({ message: 'مرجع صورة المنتج غير صالح أو الصورة غير موجودة في MongoDB.' });
       const product = await StoreProduct.create(checked.value);
       await writeAdminAudit(req, 'إضافة منتج للمتجر', 'store', String(product._id), product.name);
       return res.status(201).json({ message: 'تمت إضافة المنتج للمتجر.', product });
@@ -64,6 +114,7 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ message: 'معرّف المنتج غير صالح.' });
       const checked = productSchema.validate(req.body || {}, { abortEarly: false });
       if (checked.error) return res.status(400).json({ message: 'راجع بيانات المنتج.' });
+      if (!await hasValidImageReference(checked.value)) return res.status(400).json({ message: 'مرجع صورة المنتج غير صالح أو الصورة غير موجودة في MongoDB.' });
       const product = await StoreProduct.findByIdAndUpdate(req.params.id, { $set: checked.value }, { new: true, runValidators: true });
       if (!product) return res.status(404).json({ message: 'المنتج غير موجود.' });
       await writeAdminAudit(req, 'تعديل منتج المتجر', 'store', String(product._id), product.name);

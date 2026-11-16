@@ -185,6 +185,8 @@ app.use(cors({
   optionsSuccessStatus: 204
 }));
 
+// Parse authenticated product-image uploads as raw bytes before the JSON parser.
+app.use('/api/admin/store/media', express.raw({ type: ['image/jpeg', 'image/png', 'image/webp'], limit: '5mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 
