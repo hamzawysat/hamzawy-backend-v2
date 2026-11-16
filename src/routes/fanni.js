@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const crypto = require('crypto');
+const mongoose = require('mongoose');
 
 const Fanni = require('../models/Fanni');
 const Service = require('../models/Service');
