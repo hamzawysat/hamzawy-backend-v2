@@ -140,7 +140,10 @@ async function sendWebPushNotification(notification) {
   }
   try {
     const subscriptions = await Sub.find({
-      recipientRole: notification.recipientRole, recipientId: notification.recipientId
+      $or: [
+        { recipientRole: notification.recipientRole, recipientId: notification.recipientId },
+        { recipients: { $elemMatch: { recipientRole: notification.recipientRole, recipientId: notification.recipientId } } }
+      ]
     }).limit(200).lean();
     const results = await Promise.all(subscriptions.map(async subscription => {
       try { return await sendOne(subscription, notification, keys); }
@@ -148,7 +151,7 @@ async function sendWebPushNotification(notification) {
     }));
     const accepted = results.filter(result => result.status === 'accepted').length;
     const failed = results.length - accepted;
-    if (results.length) console.info('Web Push delivery summary:', JSON.stringify({
+    console.info('Web Push delivery summary:', JSON.stringify({
       role: notification.recipientRole, attempted: results.length, accepted, failed
     }));
     return { status: 'completed', attempted: results.length, accepted, failed, results };
