@@ -138,7 +138,7 @@ router.post('/registration-media', async (req, res, next) => {
 router.get('/admin/:id/identity/:side', auth('admin'), async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id) || !['front', 'back'].includes(req.params.side)) return res.status(404).end();
-    const fanni = await Fanni.findById(req.params.id).select('identityCardFrontFileId identityCardBackFileId').lean();
+    const fanni = await Fanni.findById(req.params.id).select('+identityCardFrontFileId +identityCardBackFileId').lean();
     if (!fanni) return res.status(404).end();
     const fileId = req.params.side === 'front' ? fanni.identityCardFrontFileId : fanni.identityCardBackFileId;
     if (!fileId || !mongoose.Types.ObjectId.isValid(String(fileId))) return res.status(404).end();
