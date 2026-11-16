@@ -368,3 +368,50 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button:active {
 @media (prefers-reduced-motion: reduce) {
   #app .dashboard-brand-marquee span { animation: none; }
 }
+
+/* Download-app buttons only: very light canary gold with a white glow.
+   Kept separate from the shared button palette. */
+html[data-sonaa-theme] .home-nav .download-link,
+html[data-sonaa-theme] .topbar .download-link,
+html[data-sonaa-theme] #app .app-header .dashboard-download-btn {
+  background: linear-gradient(145deg,#FFFDF2 0%,#FFF3C4 48%,#FFE99A 100%) !important;
+  background-color: #FFF3C4 !important;
+  border: 1px solid #E8CD72 !important;
+  color: #30270E !important;
+  -webkit-text-fill-color: #30270E !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 0 #D8B94F,0 7px 14px rgba(170,133,31,.20),inset 0 1px 0 rgba(255,255,255,.96) !important;
+  animation: hamzawyCanaryDownloadGlow 2.2s ease-in-out infinite !important;
+}
+html[data-sonaa-theme] .home-nav .download-link:hover,
+html[data-sonaa-theme] .topbar .download-link:hover,
+html[data-sonaa-theme] #app .app-header .dashboard-download-btn:hover {
+  background: linear-gradient(145deg,#FFFFFF 0%,#FFF8DD 52%,#FFEDB2 100%) !important;
+  color: #30270E !important;
+  -webkit-text-fill-color: #30270E !important;
+  box-shadow: 0 5px 0 #D8B94F,0 9px 18px rgba(170,133,31,.22),0 0 18px rgba(255,255,255,.82),inset 0 1px 0 #fff !important;
+}
+html[data-sonaa-theme] .home-nav .download-link:active,
+html[data-sonaa-theme] .topbar .download-link:active,
+html[data-sonaa-theme] #app .app-header .dashboard-download-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 #D8B94F,0 3px 8px rgba(170,133,31,.16),inset 0 1px 0 rgba(255,255,255,.8) !important;
+}
+@keyframes hamzawyCanaryDownloadGlow {
+  0%,100% {
+    filter: brightness(1);
+    box-shadow: 0 4px 0 #D8B94F,0 7px 14px rgba(170,133,31,.20),inset 0 1px 0 rgba(255,255,255,.96);
+  }
+  50% {
+    filter: brightness(1.045);
+    box-shadow: 0 4px 0 #D8B94F,0 0 0 4px rgba(255,255,255,.42),0 0 22px rgba(255,255,255,.95),0 0 34px rgba(255,238,174,.78),inset 0 1px 0 #fff;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-sonaa-theme] .home-nav .download-link,
+  html[data-sonaa-theme] .topbar .download-link,
+  html[data-sonaa-theme] #app .app-header .dashboard-download-btn {
+    animation: none !important;
+  }
+}
+
