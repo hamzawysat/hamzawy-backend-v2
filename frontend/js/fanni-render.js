@@ -119,7 +119,7 @@ function renderContent(){
     <div><label class="field-label">كلمة السر</label><input id="fanniLoginPassword" type="password" class="field" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin()}" autocomplete="current-password" value="${esc(state.loginPass)}" oninput="state.loginPass=this.value" placeholder="اكتب كلمة السر"></div>
      
     <button type="button" onclick="doLogin()" ${state.loading?'disabled':''} class="primary-btn w-full h-12">${state.loading?'جاري تسجيل الدخول...':'دخول إلى حسابي'}</button>
-    <div class="mt-3 flex items-center justify-between gap-3" dir="rtl"><button type="button" onclick="setTab('register')" class="text-xs font-bold text-black underline decoration-black underline-offset-2 hover:text-black">تسجيل فني جديد</button><a class="text-xs font-bold text-black underline decoration-black underline-offset-2 hover:text-black" href="password.html?role=fanni&mode=recovery">نسيت كلمة المرور؟</a></div>
+    <div class="mt-3 flex items-center justify-between gap-3" dir="rtl"><button type="button" onclick="setTab('register')" class="account-register-link text-xs font-bold text-black underline decoration-black underline-offset-2 hover:text-black">تسجيل فني جديد</button><a class="text-xs font-bold text-black underline decoration-black underline-offset-2 hover:text-black" href="password.html?role=fanni&mode=recovery">نسيت كلمة المرور؟</a></div>
     ${state.pendingMsg?`<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-[12px] font-bold text-amber-800">${esc(state.pendingMsg)}</div>`:''}
     ${state.error?errorBox(state.error):''}
     ${state.tab==='login'?'<p class="mt-4 text-center text-[10px] leading-5 text-slate-500">كلمة السر لا تشارك مع أي شخص.</p>':''}

@@ -58,6 +58,33 @@ async function doLogin(){
  }
 }
 
+async function compressRegistrationIdImage(file){
+ try{
+  let bitmap;
+  if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(file);
+  else{
+   const tempUrl=URL.createObjectURL(file);
+   try{bitmap=await new Promise((resolve,reject)=>{const image=new Image();image.onload=()=>resolve(image);image.onerror=()=>reject(new Error('تعذر قراءة الصورة'));image.src=tempUrl;});}
+   finally{URL.revokeObjectURL(tempUrl);}
+  }
+  const width=bitmap.width||bitmap.naturalWidth||0,height=bitmap.height||bitmap.naturalHeight||0;
+  if(!width||!height)throw new Error('أبعاد الصورة غير صالحة');
+  const scale=Math.min(1,1920/Math.max(width,height));
+  if(scale===1&&file.size<=1200*1024){if(bitmap.close)bitmap.close();return file;}
+  const canvas=document.createElement('canvas');
+  canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
+  const context=canvas.getContext('2d',{alpha:false});
+  if(!context)throw new Error('تعذر تجهيز الصورة');
+  context.fillStyle='#FFFFFF';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  if(bitmap.close)bitmap.close();
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('تعذر ضغط الصورة')),'image/jpeg',0.82));
+  if(blob.size>=file.size)return file;
+  return new File([blob],(file.name||'identity').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+ }catch(error){console.warn('تعذر ضغط صورة البطاقة، سيتم رفع الأصل:',error);return file;}
+}
+function readRegistrationIdPreview(file){
+ return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result||''));reader.onerror=()=>reject(new Error('تعذر تجهيز معاينة الصورة'));reader.readAsDataURL(file);});
+}
 async function handleRegistrationIdUpload(side,file){
  if(!['front','back'].includes(side)||!file)return;
  const idKey=side==='front'?'regIdFrontFileId':'regIdBackFileId';
@@ -65,50 +92,39 @@ async function handleRegistrationIdUpload(side,file){
  const loadingKey=side==='front'?'regIdFrontUploading':'regIdBackUploading';
  const statusKey=side==='front'?'regIdFrontUploadStatus':'regIdBackUploadStatus';
  const validTypes=['image/jpeg','image/png','image/webp'];
- if(!validTypes.includes(file.type)){
-  state[statusKey]='نوع الملف غير مدعوم. اختار صورة JPG أو PNG أو WebP.';
-  toast(state[statusKey],'error');render();return;
- }
- if(file.size>15*1024*1024){
-  state[statusKey]='حجم الصورة أكبر من 15 ميجابايت. قلّل حجمها أو اختار صورة أخرى.';
-  toast(state[statusKey],'error');render();return;
- }
- if(state[previewKey]?.startsWith('blob:'))URL.revokeObjectURL(state[previewKey]);
- state[idKey]='';state[previewKey]=URL.createObjectURL(file);state[loadingKey]=true;state[statusKey]='جاري تجهيز الصورة ورفعها...';state.error='';render();
+ if(!validTypes.includes(file.type)){state[statusKey]='نوع الملف غير مدعوم. اختار صورة JPG أو PNG أو WebP.';toast(state[statusKey],'error');render();return;}
+ if(file.size>15*1024*1024){state[statusKey]='حجم الصورة أكبر من 15 ميجابايت. قلّل حجمها أو اختار صورة أخرى.';toast(state[statusKey],'error');render();return;}
+ state[idKey]='';state[previewKey]='';state[loadingKey]=true;state[statusKey]='جاري تجهيز الصورة لتقليل وقت الرفع...';state.error='';render();
  try{
-  const result=await API.uploadRegistrationIdentity(side,file);
+  const optimizedFile=await compressRegistrationIdImage(file);
+  state[previewKey]=await readRegistrationIdPreview(optimizedFile);
+  state[statusKey]='تم تجهيز الصورة، جاري رفعها...';render();
+  const result=await API.uploadRegistrationIdentity(side,optimizedFile);
   if(!result?.fileId)throw new Error('لم نتأكد من حفظ الصورة. حاول رفعها مرة أخرى.');
-  state[idKey]=result.fileId;
-  state[statusKey]='تم رفع الصورة بنجاح ✓';
+  state[idKey]=result.fileId;state[statusKey]='تم رفع الصورة بنجاح ✓';
   toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
- }catch(e){
-  state[idKey]='';
-  state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';
-  toast(state[statusKey],'error');
- }finally{state[loadingKey]=false;render();}
+ }catch(e){state[idKey]='';state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';toast(state[statusKey],'error');}
+ finally{state[loadingKey]=false;render();}
 }
 function previewRegistrationIdImage(side){
  const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
  const src=previewKey?state[previewKey]:'';
  if(!src){toast('لا توجد صورة لمعاينتها.','error');return;}
  document.getElementById('registrationIdPreviewModal')?.remove();
- const overlay=document.createElement('div');
- overlay.id='registrationIdPreviewModal';
- overlay.setAttribute('role','dialog');
- overlay.setAttribute('aria-modal','true');
+ const overlay=document.createElement('div');overlay.id='registrationIdPreviewModal';
+ overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
  overlay.setAttribute('aria-label',side==='front'?'معاينة الوجه الأمامي للبطاقة':'معاينة الوجه الخلفي للبطاقة');
- overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.88);display:flex;align-items:center;justify-content:center;padding:16px;';
- const panel=document.createElement('div');
- panel.style.cssText='position:relative;width:min(100%,720px);max-height:100%;display:flex;flex-direction:column;gap:12px;align-items:center;';
- const close=document.createElement('button');
- close.type='button';close.textContent='إغلاق المعاينة';
- close.style.cssText='align-self:flex-end;background:#fff;color:#111827;border:0;border-radius:10px;padding:10px 16px;font-weight:800;';
- const img=document.createElement('img');
- img.src=src;img.alt=side==='front'?'صورة الوجه الأمامي للبطاقة':'صورة الوجه الخلفي للبطاقة';
- img.style.cssText='display:block;max-width:100%;max-height:calc(100vh - 100px);object-fit:contain;border-radius:12px;background:#fff;';
- close.addEventListener('click',()=>overlay.remove());
- overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.remove();});
- panel.append(close,img);overlay.append(panel);document.body.append(overlay);close.focus();
+ overlay.style.cssText='position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.94);display:flex;align-items:center;justify-content:center;padding:14px;box-sizing:border-box;';
+ const panel=document.createElement('div');panel.style.cssText='width:min(100%,760px);max-height:100%;display:flex;flex-direction:column;gap:12px;align-items:center;';
+ const heading=document.createElement('div');heading.textContent=side==='front'?'معاينة الوجه الأمامي للبطاقة':'معاينة الوجه الخلفي للبطاقة';heading.style.cssText='width:100%;color:#fff;text-align:center;font-size:15px;font-weight:800;';
+ const close=document.createElement('button');close.type='button';close.textContent='إغلاق المعاينة';close.style.cssText='align-self:flex-end;background:#fff;color:#111827;border:0;border-radius:10px;padding:10px 16px;font-weight:800;';
+ const img=document.createElement('img');img.alt=side==='front'?'صورة الوجه الأمامي للبطاقة':'صورة الوجه الخلفي للبطاقة';
+ img.src=src;img.style.cssText='display:block;width:auto;height:auto;max-width:100%;max-height:calc(100dvh - 125px);object-fit:contain;border-radius:12px;background:#fff;opacity:1;';
+ const error=document.createElement('p');error.textContent='تعذر عرض الصورة. أعد اختيار الصورة وحاول مرة أخرى.';
+ error.style.cssText='display:none;color:#fff;font-size:13px;font-weight:700;text-align:center;';
+ img.onerror=()=>{img.style.display='none';error.style.display='block';};
+ close.addEventListener('click',()=>overlay.remove());overlay.addEventListener('click',event=>{if(event.target===overlay)overlay.remove();});
+ panel.append(heading,close,img,error);overlay.append(panel);document.body.append(overlay);close.focus();
 }
 function clearRegistrationIdImage(side){
  const idKey=side==='front'?'regIdFrontFileId':'regIdBackFileId';
