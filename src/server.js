@@ -476,6 +476,11 @@ function sendHtml(res, filename) {
   return res.sendFile(file);
 }
 
+// Serve download and official social links on the same public domain.
+app.get(['/download', '/download.html'], (req, res) => sendHtml(res, 'download.html'));
+app.get(['/links', '/links/'], (req, res) => sendHtml(res, 'links.html'));
+app.get('/links.html', (req, res) => res.redirect(301, '/links'));
+
 app.get('/', (req, res) => sendHtml(res, 'index.html'));
 app.get('/client', (req, res) => sendHtml(res, 'client.html'));
 app.get('/fanni', (req, res) => sendHtml(res, 'fanni.html'));
