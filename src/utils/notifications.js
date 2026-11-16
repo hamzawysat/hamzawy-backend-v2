@@ -15,8 +15,11 @@ function adminPanelNotificationLink(tab = 'support') {
   return panelPath + '#' + safeTab;
 }
 
-function normalizeNotificationLink(value) {
+function normalizeNotificationLink(value, type = '') {
   const raw = String(value || '').trim();
+  if (['admin_password_recovery', 'admin_password_recovery_message'].includes(String(type))) {
+    return '/password.html?role=admin&mode=support';
+  }
   if (!raw) return '/';
   // Admin pages are intentionally hidden behind ADMIN_PANEL_PATH. Rewrite old
   // public /admin notification links to the configured private panel route.
@@ -231,7 +234,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
 async function createNotification({ recipientRole, recipientId, type, title, message, link = '', dedupeKey = null }) {
   if (!recipientId || !['client', 'fanni', 'admin'].includes(recipientRole)) return null;
   try {
-    const payload = { recipientRole, recipientId, type, title, message, link: normalizeNotificationLink(link) };
+    const payload = { recipientRole, recipientId, type, title, message, link: normalizeNotificationLink(link, type) };
     let notification, isNew = true;
     if (dedupeKey) {
       const result = await Notification.findOneAndUpdate(
