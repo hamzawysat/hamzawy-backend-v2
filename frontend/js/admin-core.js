@@ -1,5 +1,8 @@
 
 'use strict';
+
+// Identify the admin console independently of its public or private URL.
+window.__SONAA_PAGE_ROLE__ = 'admin';
 const BASE_URL=location.origin;
 const TOKEN_KEY='admin_token_v3';
 function escHtml(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
