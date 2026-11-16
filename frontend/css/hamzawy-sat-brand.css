@@ -499,3 +499,57 @@ html[data-sonaa-theme] body .store-ad-slot .store-ad-slot-link:active {
   background: linear-gradient(145deg,#fff8e5 0%,#ffefc2 100%) !important;
   box-shadow: 0 1px 0 #d6b45a,0 2px 5px rgba(11,27,58,.08) !important;
 }
+
+/* Brand balance pass: pale blue is the calm foundation, white is the
+   clean surface, and the agreed pale canary-gold remains the action accent.
+   Color-only rules: preserve all component dimensions and placement. */
+:root,
+[data-sonaa-theme] {
+  --page: #EAF4FF !important;
+  --paper: #F2F7FC !important;
+  --border: #DCE8F4 !important;
+  --card: #FFFFFF !important;
+  --muted: #60748A !important;
+  --brand-blue-surface: #EAF4FF;
+  --brand-blue-soft: #F2F7FC;
+  --brand-blue-border: #D7E5F2;
+  --brand-blue-ink: #52779A;
+  --brand-gold: #FFF4CF;
+}
+html[data-sonaa-theme] body {
+  background-color: #EAF4FF !important;
+  color: #263D55 !important;
+}
+html[data-sonaa-theme] body :where(.card,.panel,.modal,.premium-panel,.edit-picker-shell,.edit-specialty-category,.edit-picker-list,.account-card,.entry,.hero-badge) {
+  background-color: #FFFFFF;
+  border-color: #DCE8F4 !important;
+}
+html[data-sonaa-theme] body :where(.header,.topbar,.page-header,.app-header) {
+  background: linear-gradient(135deg,#F4F8FD 0%,#EAF4FF 58%,#E3EFFA 100%) !important;
+  border-color: #D7E5F2 !important;
+  color: #263D55 !important;
+}
+html[data-sonaa-theme] body :where(.header,.topbar,.page-header,.app-header) :where(h1,h2,h3,p,small,strong,a,span,i,svg) {
+  color: inherit;
+}
+html[data-sonaa-theme] body :where(.service-icon,.edit-category-emoji,.edit-specialty-heading,.entry-icon,.icon-tile,.category-icon,.feature-icon) {
+  background: linear-gradient(145deg,#F2F8FE 0%,#E2EFFB 100%) !important;
+  border-color: #D5E5F4 !important;
+  color: #52779A !important;
+}
+html[data-sonaa-theme] body :where(.service-icon,.edit-category-emoji,.entry-icon,.icon-tile,.category-icon,.feature-icon) :where(svg,i) {
+  color: #52779A !important;
+}
+html[data-sonaa-theme] body :where([class*="text-blue-"],[class*="text-sky-"],[class*="text-cyan-"],[class*="text-indigo-"]) {
+  color: #52779A !important;
+}
+html[data-sonaa-theme] body :where([class*="bg-blue-"],[class*="bg-sky-"],[class*="bg-cyan-"],[class*="bg-indigo-"]) {
+  background-color: #EAF4FF !important;
+}
+html[data-sonaa-theme] body :where([class*="border-blue-"],[class*="border-sky-"],[class*="border-cyan-"],[class*="border-indigo-"]) {
+  border-color: #D7E5F2 !important;
+}
+html[data-sonaa-theme] body :where([class*="ring-blue-"],[class*="ring-sky-"],[class*="ring-cyan-"],[class*="ring-indigo-"]) {
+  --tw-ring-color: #BBD4EA !important;
+}
+
