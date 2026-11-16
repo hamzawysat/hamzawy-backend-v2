@@ -435,6 +435,12 @@ async function run() {
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
+      const privateIdentity = await request(app).get('/api/fanni/admin/' + registration.body.id + '/identity/front')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(privateIdentity.status, 200, 'administrator can review the uploaded front image');
+      assert.equal(privateIdentity.headers['content-type'], 'image/png');
+      const deniedIdentity = await request(app).get('/api/fanni/admin/' + registration.body.id + '/identity/back');
+      assert.equal(deniedIdentity.status, 401, 'identity images require administrator authentication');
 
       const login = await request(app).post('/api/fanni/login').send({
         phone,
