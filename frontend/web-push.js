@@ -8,6 +8,8 @@
   const bytes=s=>Uint8Array.from(atob((s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
   let hiddenFor='', checkedFor='', checkingFor='';
   function pageRole(){
+    const explicit=String(window.__SONAA_PAGE_ROLE__||'').toLowerCase();
+    if(['admin','fanni','client'].includes(explicit))return explicit;
     const p=String(location.pathname||'').toLowerCase();
     if(/(^|[/_.-])admin([/_.-]|$)/.test(p))return 'admin';
     if(/(^|[/_.-])(fanni|technician)([/_.-]|$)/.test(p))return 'fanni';
