@@ -8,9 +8,25 @@ const { sendWebPushNotification } = require('./webPush');
 
 const CURRENT_PUBLIC_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
 const LEGACY_PUBLIC_HOSTS = new Set(['hamzawy-backend-v2-production.up.railway.app', 'hamzawy-sat.vercel.app']);
+function adminPanelNotificationLink(tab = 'support') {
+  const panelPath = String(process.env.ADMIN_PANEL_PATH || '').trim();
+  const safeTab = /^[A-Za-z][A-Za-z0-9_-]{0,40}$/.test(String(tab || '')) ? String(tab) : 'support';
+  if (!/^\/[A-Za-z0-9_-]{24,120}$/.test(panelPath)) return '/';
+  return panelPath + '#' + safeTab;
+}
+
 function normalizeNotificationLink(value) {
   const raw = String(value || '').trim();
   if (!raw) return '/';
+  // Admin pages are intentionally hidden behind ADMIN_PANEL_PATH. Rewrite old
+  // public /admin notification links to the configured private panel route.
+  try {
+    const parsed = new URL(raw, CURRENT_PUBLIC_ORIGIN);
+    const isCurrentHost = parsed.origin === CURRENT_PUBLIC_ORIGIN || LEGACY_PUBLIC_HOSTS.has(parsed.hostname.toLowerCase());
+    if (isCurrentHost && /^\/admin(?:\.html)?\/?$/i.test(parsed.pathname)) {
+      return adminPanelNotificationLink(parsed.searchParams.get('tab') || 'support');
+    }
+  } catch (_) {}
   if (raw.startsWith('/') && !raw.startsWith('//')) return raw.slice(0, 200);
   try {
     const url = new URL(raw);
