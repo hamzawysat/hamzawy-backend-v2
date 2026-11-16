@@ -404,12 +404,33 @@ async function run() {
       });
       assert.equal(legacyServiceRegistration.status, 400, 'legacy professions must not be accepted for new registrations');
 
+      const missingIdentity = await request(app).post('/api/fanni/register').send({
+        name: 'فني بدون بطاقة', phone: '01012345683', password: 'FanniTestPass123',
+        specialties: ['صيانة دش'], areas: ['المعادي']
+      });
+      assert.equal(missingIdentity.status, 400, 'registration must reject missing identity card images');
+
+      const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
+        .set('Content-Type', 'image/png').send(png);
+      assert.equal(frontUpload.status, 201, JSON.stringify(frontUpload.body));
+      const backUpload = await request(app).post('/api/fanni/registration-media?side=back')
+        .set('Content-Type', 'image/png').send(png);
+      assert.equal(backUpload.status, 201, JSON.stringify(backUpload.body));
+      const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
+      assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
+      const adminImage = await request(app).get('/api/fanni/admin/000000000000000000000000/identity/front')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(adminImage.status, 404, 'identity images must be scoped to the technician account');
+
       const registration = await request(app).post('/api/fanni/register').send({
         name: 'فني اختبار التسجيل',
         phone,
         password: 'FanniTestPass123',
         specialties: ['صيانة دش'],
-        areas: ['المعادي']
+        areas: ['المعادي'],
+        identityCardFrontFileId: frontUpload.body.fileId,
+        identityCardBackFileId: backUpload.body.fileId
       });
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
@@ -426,11 +447,8 @@ async function run() {
       const fanniToken = login.body.token;
 
       const duplicate = await request(app).post('/api/fanni/register').send({
-        name: 'فني مكرر',
-        phone,
-        password: 'FanniTestPass123',
-        specialties: ['صيانة دش'],
-        areas: ['المعادي']
+        name: 'فني مكرر', phone, password: 'FanniTestPass123', specialties: ['صيانة دش'], areas: ['المعادي'],
+        identityCardFrontFileId: frontUpload.body.fileId, identityCardBackFileId: backUpload.body.fileId
       });
       assert.equal(duplicate.status, 409);
 
