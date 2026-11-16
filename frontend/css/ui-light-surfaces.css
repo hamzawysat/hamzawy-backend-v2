@@ -279,3 +279,42 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button[aria-selected="tru
   -webkit-text-fill-color:var(--sonaa-tab-active-text)!important;
   box-shadow:0 4px 0 var(--sonaa-tab-active-border),0 7px 12px rgba(169,130,46,.18),inset 0 1px 0 rgba(255,255,255,.55)!important;
 }
+
+
+/* Dashboard tab presentation lives here; renderers provide state classes only. */
+html[data-sonaa-theme="client"] body #app .client-section-tab,
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab {
+  min-width:0!important;min-height:47px!important;height:47px!important;padding:3px 2px!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:4px!important;
+  border:1px solid var(--sonaa-tab-idle-border)!important;border-radius:12px!important;
+  background:linear-gradient(145deg,var(--sonaa-tab-idle-start),var(--sonaa-tab-idle-end))!important;
+  color:var(--sonaa-tab-idle-text)!important;-webkit-text-fill-color:var(--sonaa-tab-idle-text)!important;
+  box-shadow:0 3px 0 #CBD7E7,0 5px 8px rgba(11,27,58,.08),inset 0 1px 0 #FFFFFF!important;
+  transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease!important;
+}
+html[data-sonaa-theme="client"] body #app .client-section-tab.is-active,
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab.is-active,
+html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab.is-active {
+  background:linear-gradient(145deg,var(--sonaa-tab-active-start),var(--sonaa-tab-active-end))!important;
+  background-color:var(--sonaa-tab-active-start)!important;background-image:linear-gradient(145deg,var(--sonaa-tab-active-start),var(--sonaa-tab-active-end))!important;
+  border-color:var(--sonaa-tab-active-border)!important;color:var(--sonaa-tab-active-text)!important;
+  -webkit-text-fill-color:var(--sonaa-tab-active-text)!important;
+  box-shadow:0 4px 0 var(--sonaa-tab-active-border),0 7px 12px rgba(169,130,46,.18),inset 0 1px 0 rgba(255,255,255,.55)!important;
+}
+html[data-sonaa-theme="client"] body #app .client-section-tab-icon,
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab-icon {
+  font-size:14px!important;line-height:1!important;color:inherit!important;-webkit-text-fill-color:inherit!important;
+}
+html[data-sonaa-theme="client"] body #app .client-section-tab-label,
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab-label {
+  font-size:9px!important;font-weight:800!important;line-height:1.15!important;text-align:center!important;
+  color:inherit!important;-webkit-text-fill-color:inherit!important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab {
+  min-height:36px!important;padding:8px 12px!important;border:1px solid var(--sonaa-tab-idle-border)!important;border-radius:12px!important;
+  background:var(--sonaa-tab-idle-start)!important;color:var(--sonaa-tab-idle-text)!important;
+  -webkit-text-fill-color:var(--sonaa-tab-idle-text)!important;font-size:11px!important;font-weight:800!important;
+}
+html[data-sonaa-theme="client"] body #app .client-section-tab:active,
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab:active,
+html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab:active {transform:translateY(2px)!important;}
