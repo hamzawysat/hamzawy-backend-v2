@@ -67,7 +67,7 @@ function renderFannis(){
               </div>
             </div>
           `:''}
-          <button type="button" onclick="openFanniProfileEditor('${id}')" class="mt-3 flex h-10 w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-extrabold text-blue-800">✏️ تعديل البيانات</button>
+          <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="openFanniProfileEditor('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-extrabold text-blue-800">✏️ تعديل البيانات</button><button type="button" onclick="viewFanniIdentityCard('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-extrabold text-emerald-800">🪪 عرض صور البطاقة</button></div>
           <div class="mt-4 grid grid-cols-2 gap-2">
             <div class="rounded-[14px] bg-slate-50 border p-3"><p class="text-[10px] font-black text-slate-400">خدمات حمزاوي سات المعتمدة</p><p class="text-[11.5px] font-black mt-1 leading-6 whitespace-pre-wrap break-words">${escHtml((Array.isArray(f.activeSpecialties)?f.activeSpecialties:[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')}</p></div>
             <div class="rounded-[14px] bg-emerald-50 border border-emerald-100 p-3"><p class="text-[10px] font-black text-emerald-700">الرصيد</p><p class="text-[13px] font-black text-emerald-700 mt-1">${escHtml(String(f.balance??f.walletBalance??0))} ج</p></div>
