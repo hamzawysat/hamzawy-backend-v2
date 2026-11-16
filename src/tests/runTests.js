@@ -404,12 +404,29 @@ async function run() {
       });
       assert.equal(legacyServiceRegistration.status, 400, 'legacy professions must not be accepted for new registrations');
 
+      const missingIdentity = await request(app).post('/api/fanni/register').send({
+        name: 'فني بدون بطاقة', phone: '01012345683', password: 'FanniTestPass123',
+        specialties: ['صيانة دش'], areas: ['المعادي']
+      });
+      assert.equal(missingIdentity.status, 400, 'registration must reject missing identity card images');
+
+      const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
+        .set('Content-Type', 'image/png').send(png);
+      assert.equal(frontUpload.status, 201, JSON.stringify(frontUpload.body));
+      const backUpload = await request(app).post('/api/fanni/registration-media?side=back')
+        .set('Content-Type', 'image/png').send(png);
+      assert.equal(backUpload.status, 201, JSON.stringify(backUpload.body));
+      const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
+      assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
       const registration = await request(app).post('/api/fanni/register').send({
         name: 'فني اختبار التسجيل',
         phone,
         password: 'FanniTestPass123',
         specialties: ['صيانة دش'],
-        areas: ['المعادي']
+        areas: ['المعادي'],
+        identityCardFrontFileId: frontUpload.body.fileId,
+        identityCardBackFileId: backUpload.body.fileId
       });
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
@@ -426,11 +443,8 @@ async function run() {
       const fanniToken = login.body.token;
 
       const duplicate = await request(app).post('/api/fanni/register').send({
-        name: 'فني مكرر',
-        phone,
-        password: 'FanniTestPass123',
-        specialties: ['صيانة دش'],
-        areas: ['المعادي']
+        name: 'فني مكرر', phone, password: 'FanniTestPass123', specialties: ['صيانة دش'], areas: ['المعادي'],
+        identityCardFrontFileId: frontUpload.body.fileId, identityCardBackFileId: backUpload.body.fileId
       });
       assert.equal(duplicate.status, 409);
 
@@ -618,6 +632,49 @@ async function run() {
         specialties: ['إدارة'], areas: ['الإدارة'], status: 'معتمد', role: 'admin'
       });
       adminToken = jwt.sign({ id: String(admin._id), role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+      await test('store product images are uploaded to MongoDB GridFS and served through the API', async () => {
+        const StoreProduct = require('../models/StoreProduct');
+        const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+        const denied = await request(app).post('/api/admin/store/media')
+          .set('Content-Type', 'image/png').send(pngSignature);
+        assert.equal(denied.status, 401, 'media upload must require an administrator session');
+
+        const uploaded = await request(app).post('/api/admin/store/media')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .set('Content-Type', 'image/png').send(pngSignature);
+        assert.equal(uploaded.status, 201, JSON.stringify(uploaded.body));
+        assert.match(uploaded.body.imageFileId, /^[a-f0-9]{24}$/i);
+        assert.equal(uploaded.body.imageUrl, '/api/store/media/' + uploaded.body.imageFileId);
+
+        const mismatched = await request(app).post('/api/admin/store/products')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ name: 'منتج صورة غير صالحة', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: '000000000000000000000000' });
+        assert.equal(mismatched.status, 400, 'product records must not point at an unrelated GridFS file');
+
+        const product = await request(app).post('/api/admin/store/products')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ name: 'منتج اختبار صورة MongoDB', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: uploaded.body.imageFileId });
+        assert.equal(product.status, 201, JSON.stringify(product.body));
+        const image = await request(app).get(uploaded.body.imageUrl);
+        assert.equal(image.status, 200);
+        assert.equal(image.headers['content-type'], 'image/png');
+        assert.equal(Number(image.headers['content-length']), pngSignature.length);
+        const Fanni = require('../models/Fanni');
+        const registeredFanni = await Fanni.findOne({ phone: '01012345681', role: 'fanni' });
+        assert.ok(registeredFanni, 'technician registration fixture must exist before private image access is tested');
+        const privateIdentity = await request(app).get('/api/fanni/admin/' + registeredFanni._id + '/identity/front').set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(privateIdentity.status, 200, 'administrator can review the uploaded front image');
+        assert.equal(privateIdentity.headers['content-type'], 'image/png');
+        const deniedIdentity = await request(app).get('/api/fanni/admin/' + registeredFanni._id + '/identity/back');
+        assert.equal(deniedIdentity.status, 401, 'identity images require administrator authentication');
+
+        const invalid = await request(app).post('/api/admin/store/media')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .set('Content-Type', 'image/png').send(Buffer.from('not-an-image'));
+        assert.equal(invalid.status, 400);
+      });
+
 
       await test('admin approves a client top-up once and writes a client wallet ledger entry', async () => {
         const Client = require('../models/Client');

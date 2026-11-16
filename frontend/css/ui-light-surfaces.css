@@ -76,17 +76,84 @@
   text-shadow:none!important;
 }
 /* Keep cards and informational panels light even when legacy markup assigns dark backgrounds. */
-#app main :where(.panel,.card,.rounded-xl.border,.rounded-2xl.border,.modal){
-  color:#242832;
-}
-#app main :where(.panel,.card,.rounded-xl.border,.rounded-2xl.border,.modal) :where(p,span,label,small,strong,h1,h2,h3,h4){
-  color:inherit;
-}
+#app main :where(.panel,.card,.rounded-xl.border,.rounded-2xl.border,.modal){color:#242832}
+#app main :where(.panel,.card,.rounded-xl.border,.rounded-2xl.border,.modal) :where(p,span,label,small,strong,h1,h2,h3,h4){color:inherit}
 /* Accessible focus indication. */
-:where(a,button,input,select,textarea,[tabindex]):focus-visible{
-  outline:2px solid #A9822E!important;
-  outline-offset:2px!important;
+:where(a,button,input,select,textarea,[tabindex]):focus-visible{outline:2px solid #A9822E!important;outline-offset:2px!important}
+@media(prefers-reduced-motion:reduce){:where(button,a,input,select,textarea){transition:none!important}}
+
+/* Final dashboard readability pass: soften legacy dark-gold controls and selected tabs.
+   Keep semantic danger/success actions and technician teal primary actions unchanged. */
+html[data-sonaa-theme="client"] body #app :is(
+  button.primary-btn,button.blue-btn,button.primary,button[type="submit"]:not(.danger):not(.success),
+  .btn-primary,.client-home-main-btn,.global-refresh-float,.support-float
+),
+html[data-sonaa-theme="fanni"] body #app :is(
+  .client-home-main-btn,.fanni-wallet-shortcut,.account-top-nav .account-home-btn,
+  a.account-home-btn,.global-refresh-float
+){
+  background:linear-gradient(145deg,#FFF7E5 0%,#F5E7C4 100%)!important;
+  background-color:#F5E7C4!important;
+  background-image:linear-gradient(145deg,#FFF7E5 0%,#F5E7C4 100%)!important;
+  border-color:#DCC58F!important;
+  color:#3D3424!important;
+  -webkit-text-fill-color:#3D3424!important;
+  text-shadow:none!important;
+  box-shadow:0 2px 0 #E2D2AC,0 4px 10px rgba(61,52,36,.08),inset 0 1px 0 rgba(255,255,255,.9)!important;
 }
-@media(prefers-reduced-motion:reduce){
-  :where(button,a,input,select,textarea){transition:none!important}
+html[data-sonaa-theme="client"] body #app :is(
+  button.primary-btn,button.blue-btn,button.primary,button[type="submit"]:not(.danger):not(.success),
+  .btn-primary,.client-home-main-btn
+) :is(span,svg,i),
+html[data-sonaa-theme="fanni"] body #app :is(
+  .client-home-main-btn,.fanni-wallet-shortcut,.account-top-nav .account-home-btn,a.account-home-btn
+) :is(span,svg,i){
+  color:inherit!important;
+  -webkit-text-fill-color:inherit!important;
+}
+/* Customer and technician bottom navigation: neutral idle state, soft selected state. */
+html[data-sonaa-theme="client"] body #app nav.fixed.bottom-0 button,
+html[data-sonaa-theme="client"] body #app nav.client-section-tabs button,
+html[data-sonaa-theme="fanni"] body #app nav.fixed.bottom-0 button,
+html[data-sonaa-theme="fanni"] body #app nav.fanni-dashboard-tabs button{
+  background:linear-gradient(145deg,#FFFFFF 0%,#F7F4EC 100%)!important;
+  background-color:#FFFFFF!important;
+  border:1px solid #E3DCCF!important;
+  color:#4B463C!important;
+  -webkit-text-fill-color:#4B463C!important;
+  box-shadow:0 2px 0 #EAE4D8!important;
+  text-shadow:none!important;
+}
+html[data-sonaa-theme="client"] body #app nav.fixed.bottom-0 button[class*="from-[#C9A34F]"],
+html[data-sonaa-theme="client"] body #app nav.client-section-tabs button[class*="from-[#C9A34F]"],
+html[data-sonaa-theme="fanni"] body #app nav.fixed.bottom-0 button[class*="from-[#C9A34F]"],
+html[data-sonaa-theme="fanni"] body #app nav.fanni-dashboard-tabs button[class*="from-[#C9A34F]"]{
+  background:linear-gradient(145deg,#F9EDCF 0%,#F0E0B8 100%)!important;
+  background-color:#F3E5C4!important;
+  border-color:#DCC58F!important;
+  color:#3D3424!important;
+  -webkit-text-fill-color:#3D3424!important;
+  box-shadow:0 2px 0 #E2D2AC!important;
+}
+html[data-sonaa-theme="client"] body #app nav.fixed.bottom-0 button *,
+html[data-sonaa-theme="client"] body #app nav.client-section-tabs button *,
+html[data-sonaa-theme="fanni"] body #app nav.fixed.bottom-0 button *,
+html[data-sonaa-theme="fanni"] body #app nav.fanni-dashboard-tabs button *{
+  color:inherit!important;
+  -webkit-text-fill-color:inherit!important;
+}
+/* Technician's wallet tabs and other selected in-page tab controls. */
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs [role="tab"],
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs button{
+  background:#FFFFFF!important;
+  color:#4B463C!important;
+  -webkit-text-fill-color:#4B463C!important;
+  border-color:#E3DCCF!important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs [aria-selected="true"],
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab-active{
+  background:#F3E5C4!important;
+  color:#3D3424!important;
+  -webkit-text-fill-color:#3D3424!important;
+  border-color:#DCC58F!important;
 }

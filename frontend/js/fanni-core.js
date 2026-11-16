@@ -235,6 +235,7 @@ const apiPost=(path,body)=>api(path,{method:'POST',body:JSON.stringify(body)});
 
 const API={
  register:p=>apiPost('/api/fanni/register',p),
+ uploadRegistrationIdentity:(side,file)=>api('/api/fanni/registration-media?side='+encodeURIComponent(side),{method:'POST',body:file,headers:{'Content-Type':file.type},timeoutMs:30000}),
  login:p=>api('/api/fanni/login',{method:'POST',body:JSON.stringify(p),timeoutMs:15000}),
  profile:()=>apiGet('/api/fanni/me'),
  updateProfile:p=>api('/api/fanni/me',{method:'PATCH',body:JSON.stringify(p),timeoutMs:15000}),
@@ -295,6 +296,7 @@ let state={
  tab:forceTechnicianRegistration?'register':'login',myOrdersView:'active',
  loginPhone:'',loginPass:'',loginSubmitAllowed:false,
  regName:'',regPhone:'',regPass:'',regPassConfirm:'',regGuidelinesAccepted:false,
+ regIdFrontFileId:'',regIdBackFileId:'',regIdFrontPreview:'',regIdBackPreview:'',regIdFrontUploading:false,regIdBackUploading:false,
  regSpecialties:[],regAreas:[],regAreaSearch:'',regAreaCustom:'',openSpecialtyCategory:'',
  editProfileMode:false,editPhone:'',editAreas:[],editAreaSearch:'',editSpecialties:[],editSaving:false,
  loading:false,checkingSession:false,

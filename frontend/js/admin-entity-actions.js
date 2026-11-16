@@ -146,3 +146,21 @@ window.openFanniProfileEditor=async function(id){
  }catch(error){body.className='py-4 text-sm font-bold text-red-700';body.textContent=error.message||'تعذر تحميل بيانات الفني والقوائم.';}
 };
 
+
+
+// Display sensitive technician identity images only after an authenticated admin request.
+window.viewFanniIdentityCard=async function(id){
+ id=String(id||'').trim();if(!/^[a-f0-9]{24}$/i.test(id))return showToast('معرّف الفني غير صحيح','error');
+ const old=document.getElementById('admin-fanni-identity-modal');if(old)old.remove();
+ const modal=document.createElement('div');modal.id='admin-fanni-identity-modal';modal.className='fixed inset-0 z-[210] flex items-center justify-center bg-slate-950/70 p-3';
+ modal.innerHTML='<section dir="rtl" class="w-full max-w-2xl max-h-[94vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl"><div class="flex items-center justify-between border-b pb-3"><div><h2 class="font-black">صور بطاقة الرقم القومي للفني</h2><p class="mt-1 text-xs text-slate-500">صور سرية متاحة للإدارة للمراجعة فقط.</p></div><button type="button" data-close class="rounded-lg bg-slate-100 px-3 py-2">إغلاق ✕</button></div><div class="grid gap-4 py-4"><div><p class="mb-2 text-xs font-black">الوجه الأمامي</p><div id="fanni-id-front" class="rounded-xl bg-slate-50 p-3 text-center text-xs text-slate-500">جاري تحميل الصورة...</div></div><div><p class="mb-2 text-xs font-black">الوجه الخلفي</p><div id="fanni-id-back" class="rounded-xl bg-slate-50 p-3 text-center text-xs text-slate-500">جاري تحميل الصورة...</div></div></div></section>';
+ document.body.appendChild(modal);const urls=[];const close=()=>{urls.forEach(url=>URL.revokeObjectURL(url));modal.remove();};modal.querySelectorAll('[data-close]').forEach(button=>button.addEventListener('click',close));modal.addEventListener('click',event=>{if(event.target===modal)close();});
+ try{
+  for(const side of ['front','back']){
+   const response=await fetch(BASE_URL+'/api/fanni/admin/'+encodeURIComponent(id)+'/identity/'+side,{headers:{Authorization:'Bearer '+getToken()},credentials:'omit'});
+   if(!response.ok)throw new Error(response.status===404?'صور البطاقة غير متاحة لهذا الحساب.':'تعذر تحميل صور البطاقة.');
+   const blob=await response.blob();const url=URL.createObjectURL(blob);urls.push(url);
+   const target=modal.querySelector('#fanni-id-'+side);target.innerHTML='';const image=document.createElement('img');image.src=url;image.alt=side==='front'?'الوجه الأمامي للبطاقة':'الوجه الخلفي للبطاقة';image.className='mx-auto max-h-[55vh] w-full rounded-lg object-contain';target.appendChild(image);
+  }
+ }catch(error){showToast(error.message||'تعذر تحميل صور البطاقة','error');close();}
+};

@@ -12,6 +12,7 @@ const storeProductSchema = new mongoose.Schema({
   type: { type: String, enum: ['product', 'subscription'], default: 'product', index: true },
   subscriptionDuration: { type: String, trim: true, maxlength: 60, default: '' },
   imageUrl: { type: String, trim: true, maxlength: 1000, default: '' },
+  imageFileId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
   isActive: { type: Boolean, default: true, index: true },
   isAdvertised: { type: Boolean, default: false, index: true },
   adAudience: { type: String, enum: ['both', 'client', 'fanni'], default: 'both' },
