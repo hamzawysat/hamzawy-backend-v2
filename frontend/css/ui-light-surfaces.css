@@ -10,7 +10,7 @@
   --ui-accent:#C9A34F;
 }
 /* Search results, dropdowns, autocomplete and selectable rows. */
-#app [role="listbox],
+#app [role="listbox"],
 #app [role="option"],
 #app [role="listbox"] button,
 #app .area-search-results,
