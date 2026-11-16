@@ -42,7 +42,9 @@ const registerSchema = Joi.object({
     .min(1)
     .max(30)
     .required(),
-  guidelinesAccepted: Joi.boolean().valid(true).optional()
+  guidelinesAccepted: Joi.boolean().valid(true).optional(),
+  identityCardFrontFileId: Joi.string().hex().length(24).required(),
+  identityCardBackFileId: Joi.string().hex().length(24).required()
 });
 
 const profileUpdateSchema = Joi.object({
@@ -101,6 +103,53 @@ function requireApprovedFanni(req, res, next) {
 }
 
 /*
+ * Upload one side of a technician identity card to private MongoDB GridFS storage.
+ * Files are not publicly addressable and are linked to an account only at registration.
+ */
+router.post('/registration-media', async (req, res, next) => {
+  try {
+    const side = String(req.query.side || '');
+    if (!['front', 'back'].includes(side)) return res.status(400).json({ message: 'حدد وجه البطاقة الأمامي أو الخلفي.' });
+    const buffer = Buffer.isBuffer(req.body) ? req.body : null;
+    const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+    const signatures = {
+      'image/jpeg': value => value.length >= 3 && value[0] === 0xff && value[1] === 0xd8 && value[2] === 0xff,
+      'image/png': value => value.length >= 8 && value.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+      'image/webp': value => value.length >= 12 && value.toString('ascii', 0, 4) === 'RIFF' && value.toString('ascii', 8, 12) === 'WEBP'
+    };
+    if (!buffer || !buffer.length || buffer.length > 5 * 1024 * 1024 || !signatures[contentType] || !signatures[contentType](buffer)) {
+      return res.status(400).json({ message: 'ارفع صورة JPG أو PNG أو WebP سليمة، وبحجم لا يتجاوز 5 ميجابايت.' });
+    }
+    if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
+    const upload = bucket.openUploadStream('fanni-id-' + side + '-' + crypto.randomBytes(8).toString('hex') + extension, {
+      contentType,
+      metadata: { purpose: 'fanni-id-document', side, uploadedAt: new Date() }
+    });
+    upload.end(buffer);
+    await new Promise((resolve, reject) => { upload.once('finish', resolve); upload.once('error', reject); });
+    return res.status(201).json({ fileId: String(upload.id), side, message: 'تم رفع الصورة بنجاح.' });
+  } catch (err) { return next(err); }
+});
+
+/* Private image access for authenticated administrators reviewing technician applications. */
+router.get('/admin/:id/identity/:side', auth('admin'), async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id) || !['front', 'back'].includes(req.params.side)) return res.status(404).end();
+    const fanni = await Fanni.findById(req.params.id).select('identityCardFrontFileId identityCardBackFileId').lean();
+    if (!fanni) return res.status(404).end();
+    const fileId = req.params.side === 'front' ? fanni.identityCardFrontFileId : fanni.identityCardBackFileId;
+    if (!fileId || !mongoose.Types.ObjectId.isValid(String(fileId))) return res.status(404).end();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: new mongoose.Types.ObjectId(fileId), 'metadata.purpose': 'fanni-id-document', 'metadata.side': req.params.side }).limit(1).toArray();
+    if (!files.length) return res.status(404).end();
+    res.set({ 'Content-Type': files[0].contentType || 'application/octet-stream', 'Content-Length': String(files[0].length), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+    return bucket.openDownloadStream(new mongoose.Types.ObjectId(fileId)).on('error', next).pipe(res);
+  } catch (err) { return next(err); }
+});
+
+/*
  * POST /api/fanni/register
  */
 router.post(
@@ -108,6 +157,17 @@ router.post(
   validate(registerSchema),
   async (req, res, next) => {
     try {
+      const identityIds = [req.body.identityCardFrontFileId, req.body.identityCardBackFileId].map(value => new mongoose.Types.ObjectId(value));
+      const identityBucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+      const identityFiles = await identityBucket.find({
+        _id: { $in: identityIds },
+        'metadata.purpose': 'fanni-id-document'
+      }).toArray();
+      const uploadedSides = new Set(identityFiles.map(file => String(file.metadata?.side || '')));
+      if (identityFiles.length !== 2 || !uploadedSides.has('front') || !uploadedSides.has('back')) {
+        return res.status(400).json({ message: 'لازم ترفع صورة البطاقة من الأمام والخلف قبل إتمام التسجيل.' });
+      }
+
       const phone = normalizePhone(req.body.phone);
 
       if (!phone || !/^01[0-9]{9}$/.test(phone)) {
@@ -140,6 +200,8 @@ router.post(
         passwordHash,
         specialties,
         areas: approvedAreas,
+        identityCardFrontFileId: identityIds[0],
+        identityCardBackFileId: identityIds[1],
         ...(req.body.guidelinesAccepted === true ? {
           technicianGuidelinesAcceptedAt: new Date(),
           technicianGuidelinesVersion: TECHNICIAN_GUIDELINES_VERSION
