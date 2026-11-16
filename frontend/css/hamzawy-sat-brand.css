@@ -94,11 +94,7 @@ body { background-color:#F8F6F0; color:#171A22; }
 :where(.header,.topbar,.hero,.page-header,.app-header) :where(h1,h2,h3,p,small,strong,a,span,i,svg) {
   color:inherit;
 }
-:where(button,a.btn,.btn,button.primary,button[type="submit"],.btn-primary,.account-support-float,.floating-support,.refresh-float,.refresh-button) {
-  background:#C9A34F!important;border:1px solid #A9822E!important;color:#171A22!important;
-  box-shadow:0 3px 0 #A9822E!important;text-shadow:none!important;
-}
-:where(button,a.btn,.btn,button.primary,button[type="submit"],.btn-primary,.account-support-float,.floating-support,.refresh-float,.refresh-button) :where(svg,i,span) { color:inherit!important; }
+/* Shared button palette is defined once at the end of this file. */
 :where(.btn.secondary,.btn.light,button.secondary,a.secondary) {
   background:#F8F6F0!important;border:1px solid #C9A34F!important;color:#5A4520!important;
   box-shadow:0 2px 0 #E8E0CF!important;
@@ -367,4 +363,29 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button:active {
 }
 @media (prefers-reduced-motion: reduce) {
   #app .dashboard-brand-marquee span { animation: none; }
+}
+
+/* One centralized light palette for every button and button-like control.
+   Deliberately overrides legacy page-specific gold fills so labels stay readable. */
+html[data-sonaa-theme] body :is(#app button,#admin-tab-content button,button,a.btn,.btn,.btn-primary,.account-support-float,.floating-support,.refresh-float,.refresh-button) {
+  background:#F8F6F0!important;
+  background-color:#F8F6F0!important;
+  background-image:none!important;
+  border:1px solid #D8CFBD!important;
+  color:#171A22!important;
+  -webkit-text-fill-color:#171A22!important;
+  box-shadow:0 2px 0 #E8E0CF!important;
+  text-shadow:none!important;
+}
+html[data-sonaa-theme] body :is(#app button,#admin-tab-content button,button,a.btn,.btn,.btn-primary,.account-support-float,.floating-support,.refresh-float,.refresh-button):hover {
+  background:#FFFFFF!important;
+  background-color:#FFFFFF!important;
+  background-image:none!important;
+  border-color:#C9A34F!important;
+  color:#171A22!important;
+  -webkit-text-fill-color:#171A22!important;
+}
+html[data-sonaa-theme] body :is(#app button,#admin-tab-content button,button,a.btn,.btn,.btn-primary,.account-support-float,.floating-support,.refresh-float,.refresh-button) :is(svg,i,span) {
+  color:inherit!important;
+  -webkit-text-fill-color:inherit!important;
 }
