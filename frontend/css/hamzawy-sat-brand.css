@@ -415,3 +415,28 @@ html[data-sonaa-theme] #app .app-header .dashboard-download-btn:active {
   }
 }
 
+
+
+/* Homepage entry buttons only: match the light canary-gold download button.
+   Style the action labels, not the customer/technician cards themselves. */
+html[data-sonaa-theme="index"] body .entry .entry-action .action-label {
+  background: linear-gradient(145deg,#FFFDF2 0%,#FFF3C4 48%,#FFE99A 100%) !important;
+  background-color: #FFF3C4 !important;
+  border: 1px solid #E8CD72 !important;
+  color: #171A22 !important;
+  -webkit-text-fill-color: #171A22 !important;
+  text-shadow: none !important;
+  box-shadow: 0 4px 0 #D8B94F,0 7px 14px rgba(170,133,31,.20),inset 0 1px 0 rgba(255,255,255,.96) !important;
+}
+html[data-sonaa-theme="index"] body .entry:hover .entry-action .action-label {
+  background: linear-gradient(145deg,#FFFFFF 0%,#FFF8DD 52%,#FFEDB2 100%) !important;
+  color: #171A22 !important;
+  -webkit-text-fill-color: #171A22 !important;
+  box-shadow: 0 5px 0 #D8B94F,0 9px 18px rgba(170,133,31,.22),0 0 18px rgba(255,255,255,.82),inset 0 1px 0 #fff !important;
+}
+html[data-sonaa-theme="index"] body .entry:active .entry-action .action-label {
+  transform: translateY(2px);
+  color: #171A22 !important;
+  -webkit-text-fill-color: #171A22 !important;
+  box-shadow: 0 2px 0 #D8B94F,0 3px 8px rgba(170,133,31,.16),inset 0 1px 0 rgba(255,255,255,.8) !important;
+}
