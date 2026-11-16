@@ -41,9 +41,12 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-// Redirect the old public Hamzawy hostname to Railway before serving any page or API.
-// Keep the original path and query string so previously shared links continue to work.
-const LEGACY_HAMZAWY_HOST = 'hamzawy-sat.vercel.app';
+// Redirect retired Hamzawy page hosts to the current public domain.
+// Preserve paths and query strings so old shared and notification links remain useful.
+const LEGACY_HAMZAWY_HOSTS = new Set([
+  'hamzawy-sat.vercel.app',
+  'hamzawy-backend-v2-production.up.railway.app'
+]);
 const HAMZAWY_NEW_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
 app.use((req, res, next) => {
   const requestHost = String(req.headers.host || '').split(':')[0].toLowerCase();
@@ -51,7 +54,7 @@ app.use((req, res, next) => {
   const isApiRequest = req.path === '/api' || req.path.startsWith('/api/');
   const isHealthCheck = req.path === '/health';
 
-  if (requestHost === LEGACY_HAMZAWY_HOST && isPageRequest && !isApiRequest && !isHealthCheck) {
+  if (LEGACY_HAMZAWY_HOSTS.has(requestHost) && isPageRequest && !isApiRequest && !isHealthCheck) {
     return res.redirect(307, `${HAMZAWY_NEW_ORIGIN}${req.originalUrl}`);
   }
   return next();
@@ -108,7 +111,7 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'data:'],
-      connectSrc: ["'self'", 'https://hamzawy-backend-v2-production.up.railway.app', 'https://hamzawy-sat.vercel.app', 'https://www.hamzawy-sat.dynv6.net'],
+      connectSrc: ["'self'", 'https://www.hamzawy-sat.dynv6.net'],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -132,7 +135,7 @@ app.use((req, res, next) => {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: https:",
     "media-src 'self' blob: data:",
-    "connect-src 'self' https://hamzawy-backend-v2-production.up.railway.app https://hamzawy-sat.vercel.app https://www.hamzawy-sat.dynv6.net",
+    "connect-src 'self' https://www.hamzawy-sat.dynv6.net",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -166,8 +169,6 @@ const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '')
 
 const allowedOrigins = new Set([
   ...configuredOrigins,
-  'https://hamzawy-backend-v2-production.up.railway.app',
-  'https://hamzawy-sat.vercel.app',
   'https://www.hamzawy-sat.dynv6.net',
   ...(process.env.NODE_ENV === 'production'
     ? []
