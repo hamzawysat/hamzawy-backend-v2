@@ -164,8 +164,9 @@ router.post(
         _id: { $in: identityIds },
         'metadata.purpose': 'fanni-id-document'
       }).toArray();
-      const uploadedSides = new Set(identityFiles.map(file => String(file.metadata?.side || '')));
-      if (identityFiles.length !== 2 || !uploadedSides.has('front') || !uploadedSides.has('back')) {
+      const frontFile = identityFiles.find(file => String(file._id) === String(identityIds[0]));
+      const backFile = identityFiles.find(file => String(file._id) === String(identityIds[1]));
+      if (identityFiles.length !== 2 || frontFile?.metadata?.side !== 'front' || backFile?.metadata?.side !== 'back') {
         return res.status(400).json({ message: 'لازم ترفع صورة البطاقة من الأمام والخلف قبل إتمام التسجيل.' });
       }
 
