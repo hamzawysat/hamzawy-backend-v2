@@ -157,3 +157,51 @@ html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab-ac
   -webkit-text-fill-color:#3D3424!important;
   border-color:#DCC58F!important;
 }
+
+
+/* Central light control palette: override legacy black/gold rules from theme,
+   brand, technician and customer component stylesheets. */
+:root,[data-sonaa-theme]{
+ --blue:#EAF0F8!important;--blue2:#D5DFED!important;--blue-dark:#D5DFED!important;
+ --gold:#D5DFED!important;--teal:#DCE8F5!important;
+ --sonaa-color-173fae:#334155!important;--sonaa-color-1d4ed8:#334155!important;
+ --sonaa-color-214ca8:#334155!important;--sonaa-color-2455bf:#334155!important;
+}
+html[data-sonaa-theme] body #app :is(
+ button,a.btn,.btn,button.primary,button.primary-btn,button.blue-btn,
+ button[type=submit],.btn-primary,.account-submit,.account-nav-btn,
+ .fanni-specialty-category-head,.fanni-area-option,.fanni-area-tag
+):not(.danger):not(.success):not(.btn-danger):not(.btn-success){
+ background:#F5F7FA!important;background-color:#F5F7FA!important;background-image:none!important;
+ border-color:#D5DFED!important;color:#172033!important;-webkit-text-fill-color:#172033!important;
+ box-shadow:0 2px 0 #E2E8F0!important;text-shadow:none!important;
+}
+html[data-sonaa-theme] body #app button.account-register-link{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-height:0!important;height:auto!important;padding:0!important;border:0!important;border-radius:0!important;
+ background:transparent!important;background-color:transparent!important;background-image:none!important;
+ color:#111111!important;-webkit-text-fill-color:#111111!important;
+ box-shadow:none!important;text-shadow:none!important;font:inherit!important;font-weight:700!important;
+ text-decoration:underline!important;text-decoration-color:#111111!important;text-underline-offset:3px!important;
+}
+html[data-sonaa-theme] body #app :is(.fanni-area-picker,.fanni-specialty-options){
+ background:#FFFFFF!important;border-color:#E2E8F0!important;box-shadow:none!important;
+}
+html[data-sonaa-theme] body #app .fanni-specialty-category-head{
+ background:#F5F7FA!important;color:#172033!important;border-color:#D5DFED!important;
+}
+html[data-sonaa-theme] body #app :is(.fanni-area-option,.service-chip){
+ background:#FFFFFF!important;background-image:none!important;color:#172033!important;
+ border-color:#D5DFED!important;box-shadow:0 2px 0 #E2E8F0!important;
+}
+html[data-sonaa-theme] body #app :is(.fanni-area-option.is-selected,.service-chip.selected,.fanni-area-tag){
+ background:#EAF2FC!important;background-image:none!important;color:#1E3A5F!important;
+ border-color:#B8CDE6!important;-webkit-text-fill-color:#1E3A5F!important;
+ box-shadow:0 2px 0 #D6E4F3!important;
+}
+html[data-sonaa-theme] body #app :is(.fanni-area-option.is-selected,.service-chip.selected) .fanni-check{
+ background:#355D88!important;border-color:#355D88!important;color:#FFFFFF!important;
+}
+html[data-sonaa-theme] body #app .service-chip .service-icon{
+ background:#F1F5F9!important;border-color:#DCE4ED!important;box-shadow:none!important;
+}
