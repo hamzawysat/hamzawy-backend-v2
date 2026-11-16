@@ -2,10 +2,14 @@
 (()=> {
   // Use the origin serving the page so custom domains do not trigger cross-origin/CORS failures.
   const apiUrl=path=>path;
-  const keys={client:'sonaa_client_account_token',fanni:'fanni_token_v4',admin:'admin_token_v3'};
+  // Admin login currently writes admin_token; the private panel may also write admin_token_v3.
+  // Accept both keys so the browser push registrar sees the same authenticated admin session.
+  const keys={client:['sonaa_client_account_token'],fanni:['fanni_token_v4'],admin:['admin_token_v3','admin_token']};
   const bytes=s=>Uint8Array.from(atob((s+'='.repeat((4-s.length%4)%4)).replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
   let hiddenFor='', checkedFor='', checkingFor='';
   function pageRole(){
+    const explicit=String(window.__SONAA_PAGE_ROLE__||'').toLowerCase();
+    if(['admin','fanni','client'].includes(explicit))return explicit;
     const p=String(location.pathname||'').toLowerCase();
     if(/(^|[/_.-])admin([/_.-]|$)/.test(p))return 'admin';
     if(/(^|[/_.-])(fanni|technician)([/_.-]|$)/.test(p))return 'fanni';
@@ -14,12 +18,11 @@
   }
   function account(){
     const preferred=pageRole();
-    if(preferred)try{const token=localStorage.getItem(keys[preferred]);if(token)return{role:preferred,token};}catch(_){}
-    if(preferred)return null;
-    for(const role of ['client','fanni','admin'])try{
-      const token=localStorage.getItem(keys[role]);
-      if(token)return{role,token};
-    }catch(_){}
+    const readToken=role=>{for(const key of keys[role])try{const token=localStorage.getItem(key);if(token)return token;}catch(_){}return '';};
+    if(preferred){const token=readToken(preferred);return token?{role:preferred,token}:null;}
+    // The secret admin-panel URL has no /admin segment; detect its explicit admin token
+    // after role-specific client and technician tokens to avoid misclassifying those sessions.
+    for(const role of ['client','fanni','admin']){const token=readToken(role);if(token)return{role,token};}
     return null;
   }
   function accountKey(a){return a.role+':'+a.token;}

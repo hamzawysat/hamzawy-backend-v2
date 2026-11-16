@@ -24,7 +24,7 @@ function renderFannis(){
               <div class="min-w-0 flex-1">
                 <p class="font-black text-[13.5px] truncate">${escHtml(f.name||'بدون اسم')} ${badge?`<span class="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-full mr-1">✓ ${badge}</span>`:''}</p>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
-                  <span dir="ltr" class="text-[11px] bg-slate-900 text-white px-2.5 py-1 rounded-full font-bold">📞 ${escHtml(f.phone||'')}</span>
+                  <div class="flex items-center gap-2 flex-wrap"><span dir="ltr" class="text-[11px] bg-slate-900 text-white px-2.5 py-1 rounded-full font-bold">📞 ${escHtml(f.phone||'')}</span>${renderWhatsAppButton(f.phone)}</div>
                   <span class="text-[10px] px-2.5 py-1 rounded-full border font-black ${statusClass(f.isDisabled?'disabled':f.isApproved?'approved':f.status||'pending')}">${f.isDisabled?'معطل':f.isApproved?'معتمد':statusLabel(f.status)}</span>
                   <span class="text-[10px] bg-amber-50 border border-amber-200 text-amber-800 px-2 py-1 rounded-full font-black">${escHtml(level)}</span>
                 </div>
