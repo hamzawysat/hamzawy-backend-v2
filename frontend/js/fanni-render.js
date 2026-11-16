@@ -300,7 +300,7 @@ function renderContent(){
   ${state.tab==='wallet'?`
    <section class="mt-4 space-y-4">
     <div class="panel p-4"><div class="flex justify-between items-center"><div><h3 class="section-title">محفظتي</h3><p class="text-[10px] text-slate-500 mt-1">رصيدك ومتابعة معاملات المحفظة</p></div><b class="text-[#5A4520] 800">${esc(balance)} ج</b></div></div>
-   <div class="fanni-wallet-tabs" role="tablist" aria-label="أقسام المحفظة">${[{id:"topup",label:"شحن المحفظة",icon:"＋"},{id:"requests",label:"طلبات الشحن",icon:"📥"},{id:"transactions",label:"سجل العمليات",icon:"📄"}].map(tab=>'<button type="button" role="tab" aria-selected="'+((state.walletTab||"topup")===tab.id?"true":"false")+'" onclick="setFanniWalletTab(\''+tab.id+'\')" class="'+((state.walletTab||"topup")===tab.id?"fanni-wallet-tab-active":"fanni-wallet-tab-idle")+'"><span class="block text-base mb-1">'+tab.icon+'</span>'+tab.label+'</button>').join("")}</div>
+   <div class="fanni-wallet-tabs" role="tablist" aria-label="أقسام المحفظة">${[{id:"topup",label:"شحن المحفظة",icon:"＋"},{id:"requests",label:"طلبات الشحن",icon:"📥"},{id:"transactions",label:"سجل العمليات",icon:"📄"}].map(tab=>'<button type="button" role="tab" aria-selected="'+((state.walletTab||"topup")===tab.id?"true":"false")+'" onclick="setFanniWalletTab(\''+tab.id+'\')" class="fanni-wallet-tab ${((state.walletTab||"topup")===tab.id)?"is-active":""}"><span class="fanni-wallet-tab-icon">'+tab.icon+'</span>'+tab.label+'</button>').join("")}</div>
     <div class="panel p-4 ${((state.walletTab||"topup")==="topup")?"":"hidden"}">
 
      <div class="mt-4 rounded-2xl bg-[#F8F6F0] border border-[#E8E0CF] 100 p-4 space-y-4">
