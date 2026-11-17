@@ -95,6 +95,35 @@ function encrypt(subscription, payload) {
   return Buffer.concat([header, serverPublic, encrypted]);
 }
 
+async function removeSubscriptionRecipient(subscription, notification) {
+  const role = notification.recipientRole;
+  const recipientId = String(notification.recipientId || '');
+  const ownerMatches = subscription.recipientRole === role &&
+    String(subscription.recipientId || '') === recipientId;
+  const recipients = Array.isArray(subscription.recipients) ? subscription.recipients : [];
+
+  if (recipients.length) {
+    await Sub.updateOne(
+      { _id: subscription._id },
+      { $pull: { recipients: { recipientRole: role, recipientId: notification.recipientId } } }
+    );
+    const updated = await Sub.findById(subscription._id).lean();
+    if (!updated) return;
+    const remaining = Array.isArray(updated.recipients) ? updated.recipients : [];
+    if (!remaining.length) {
+      await Sub.deleteOne({ _id: updated._id });
+    } else if (ownerMatches) {
+      await Sub.updateOne(
+        { _id: updated._id },
+        { $set: { recipientRole: remaining[0].recipientRole, recipientId: remaining[0].recipientId } }
+      );
+    }
+    return;
+  }
+
+  if (ownerMatches) await Sub.deleteOne({ _id: subscription._id });
+}
+
 async function sendOne(subscription, notification, keys) {
   if (Number.isFinite(subscription.expirationTime) && subscription.expirationTime > 0 && subscription.expirationTime <= Date.now()) {
     await Sub.deleteOne({ _id: subscription._id }).catch(() => {});
