@@ -65,7 +65,10 @@ function channelFor(type) {
   if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint', 'admin_support_followup'].includes(type)) return 'support';
   if ([
     'wallet_charge', 'topup_request', 'admin_new_topup', 'admin_client_topup',
-    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed'
+    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed',
+    'wallet_credit', 'fanni_wallet_settlement', 'technician_settlement', 'topup_approved', 'topup_rejected',
+    'wallet_debit', 'commission_deducted', 'client_wallet_topup_approved', 'client_wallet_topup_rejected',
+    'client_wallet_credit', 'client_wallet_debit', 'client_wallet_settlement', 'client_service_refunded'
   ].includes(type)) return 'wallet_charge';
   return 'support';
 }
@@ -78,6 +81,10 @@ function destinationFor(type) {
     admin_fanni_logout: 'technicians', admin_new_client: 'clients',
     admin_client_login: 'clients', admin_client_logout: 'clients',
     admin_service_payment_held: 'orders', admin_order_offer_accepted: 'orders',
+    wallet_credit: 'wallet', fanni_wallet_settlement: 'wallet', technician_settlement: 'wallet',
+    topup_approved: 'wallet', topup_rejected: 'wallet', wallet_debit: 'wallet', commission_deducted: 'wallet',
+    client_wallet_topup_approved: 'wallet', client_wallet_topup_rejected: 'wallet', client_wallet_credit: 'wallet',
+    client_wallet_debit: 'wallet', client_wallet_settlement: 'wallet', client_service_refunded: 'wallet',
     admin_order_cancelled: 'orders', admin_order_completed: 'orders',
     admin_fanni_offer: 'orders', admin_price_change_requested: 'orders',
     admin_client_rating: 'orders'
