@@ -3,6 +3,26 @@
 async function loadWalletTransactions(){const fanniId=String(document.getElementById('wallet-fanni')?.value||state.walletSelectedFanniId||'');if(!fanniId)return showToast('اختار الفني الأول','error');state.walletSelectedFanniId=fanniId;state.walletLoading=true;state.walletTransactions=[];render();try{const data=await tryApi([`/api/admin/wallet/transactions/${encodeURIComponent(fanniId)}`],{method:'GET'});state.walletTransactions=extractList(data,['transactions','data','items']);showToast('تم تحميل كشف الحساب الحقيقي');}catch(e){state.walletTransactions=[];showToast(e.message||'تعذر تحميل كشف الحساب','error');}finally{state.walletLoading=false;if(state.tab==='wallets')render();}}
 
 
+async function addWalletBalance(){
+ const fanniId=String(document.getElementById('wallet-fanni')?.value||state.walletSelectedFanniId||'');
+ if(!fanniId)return showToast('اختار الفني الأول','error');
+ const fanni=state.fannis.find(f=>String(f._id)===fanniId);
+ const raw=prompt('اكتب مبلغ الرصيد المراد إضافته إلى محفظة '+(fanni?.name||'الفني')+' بالجنيه:','100');
+ if(raw===null)return;
+ const amount=Number(raw);
+ if(raw.trim()===''||!Number.isFinite(amount)||amount<=0)return showToast('اكتب مبلغًا صحيحًا أكبر من صفر','error');
+ const reason=prompt('سبب إضافة الرصيد (مطلوب للتوثيق):','إضافة رصيد إدارية');
+ if(reason===null)return;
+ if(!reason.trim())return showToast('اكتب سبب الإضافة','error');
+ if(!confirm('تأكيد إضافة '+amount+' جنيه إلى محفظة '+(fanni?.name||'الفني')+'؟'))return;
+ try{
+  const data=await tryApi([`/api/admin/fannis/${encodeURIComponent(fanniId)}/add-balance`],{method:'POST',body:JSON.stringify({amount,reason:reason.trim()})});
+  showToast(data.message||'تمت إضافة الرصيد وتسجيل الحركة المالية');
+  await loadAll();
+  await loadWalletTransactions();
+ }catch(e){showToast(e.message||'تعذرت إضافة الرصيد','error');}
+}
+
 async function freezeWallet(){const fanniId=String(document.getElementById('wallet-fanni')?.value||state.walletSelectedFanniId||'');if(!fanniId)return showToast('اختار الفني الأول','error');const fanni=state.fannis.find(f=>String(f._id)===fanniId);const action=fanni?.isFrozen?'unfreeze':'freeze';const reason=prompt(action==='freeze'?'سبب تجميد المحفظة (مطلوب للتوثيق):':'سبب إلغاء تجميد المحفظة:','مراجعة إدارية');if(reason===null)return;if(!reason.trim())return showToast('اكتب سبب الإجراء','error');if(!confirm(action==='freeze'?'تأكيد تجميد محفظة هذا الفني؟':'تأكيد إلغاء تجميد المحفظة؟'))return;try{const data=await tryApi([`/api/admin/wallet/freeze/${encodeURIComponent(fanniId)}`],{method:'POST',body:JSON.stringify({action,reason:reason.trim()})});showToast(data.message||'تم تنفيذ الإجراء');await loadAll();await loadWalletTransactions();}catch(e){showToast(e.message||'تعذر تحديث حالة المحفظة','error');}}
 
 
