@@ -14,6 +14,9 @@ function renderFannis(){
       const level = f.level||f.experience||'مبتدئ';
       const activeServices = new Set(Array.isArray(f.activeSpecialties)?f.activeSpecialties:[]);
       const badge = f.isTrusted?'موثوق':''; 
+      const orderAvailabilityBadge = f.acceptingOrders===false
+        ? '<span class="text-[10px] px-2.5 py-1 rounded-full border border-amber-200 bg-amber-50 text-amber-800 font-black">⏸ موقف استقبال الطلبات</span>'
+        : '<span class="text-[10px] px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 font-black">● يستقبل طلبات جديدة</span>'; 
       return `
         
 <article class="premium-card p-4 animate-fade ${isMenuOpen?'menu-active':''}">
@@ -27,6 +30,7 @@ function renderFannis(){
                   <div class="flex items-center gap-2 flex-wrap"><span dir="ltr" class="text-[11px] bg-slate-900 text-white px-2.5 py-1 rounded-full font-bold">📞 ${escHtml(f.phone||'')}</span>${renderWhatsAppButton(f.phone)}</div>
                   <span class="text-[10px] px-2.5 py-1 rounded-full border font-black ${statusClass(f.isDisabled?'disabled':f.isApproved?'approved':f.status||'pending')}">${f.isDisabled?'معطل':f.isApproved?'معتمد':statusLabel(f.status)}</span>
                   <span class="text-[10px] bg-amber-50 border border-amber-200 text-amber-800 px-2 py-1 rounded-full font-black">${escHtml(level)}</span>
+                  ${orderAvailabilityBadge}
                 </div>
                 <div class="mt-2 flex flex-wrap gap-1.5 text-[10px] font-extrabold"><span class="rounded-full border border-amber-200 bg-amber-50 text-amber-800 px-2 py-1">★ ${Number(f.ratingAverage||0).toFixed(1)} (${Number(f.ratingCount||0)} تقييم)</span><span class="rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 px-2 py-1">✓ ${Number(f.completedJobs||0)} عمل مكتمل</span></div>
               </div>

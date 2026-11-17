@@ -20,10 +20,16 @@ async function doLogin(){
   }catch(e){ if(err){err.textContent=e.message; err.classList.remove('hidden');} if(btn){btn.textContent='دخول'; btn.disabled=false;} }
 }
 function restoreAdminTabFromNotification(){
-  const requested=decodeURIComponent(String(location.hash||'').replace(/^#/,'')).trim();
+  let requested='';
+  try{requested=decodeURIComponent(String(location.hash||'').replace(/^#/,'')).trim();}catch(_){return;}
   if(!requested)return;
   const known=ADMIN_SECTIONS.some(section=>section.tabs.some(tab=>tab.id===requested));
-  if(known){state.tab=requested;state.pageMode='section';}
+  if(known){
+    state.tab=requested;
+    state.pageMode='section';
+    // Treat incoming hashes as one-time notification deep links, not a persistent default tab.
+    if(window.history&&window.history.replaceState)window.history.replaceState(window.history.state||{},'',location.pathname+location.search);
+  }
 }
 restoreAdminTabFromNotification();
 if(getToken()){ loadAll().then(()=>{if(state.pageMode==='section'&&state.tab==='store')return loadStoreProducts();if(state.pageMode==='section'&&state.tab==='storeOrders')return loadStoreOrders();}); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }

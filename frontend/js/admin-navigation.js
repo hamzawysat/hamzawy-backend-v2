@@ -4,7 +4,7 @@ const ADMIN_TAB_HISTORY=[];
 function setTab(t,scrollTarget='content',fromBack=false){
  if(!canReadTab(t)){showToast('هذا القسم غير متاح ضمن صلاحيات حسابك','error');return;}
  if(state.tab!==t){
-  if(!fromBack&&state.tab){ADMIN_TAB_HISTORY.push(state.tab);if(ADMIN_TAB_HISTORY.length>40)ADMIN_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaAdminTab:t},'','#'+encodeURIComponent(t));}
+  if(!fromBack&&state.tab){ADMIN_TAB_HISTORY.push(state.tab);if(ADMIN_TAB_HISTORY.length>40)ADMIN_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaAdminTab:t},'',window.location.pathname+window.location.search);}
   state.filter='الكل';
  }
  state.tab=t;state.pageMode='section';state.dropdowns={};state.pendingActions={};render();

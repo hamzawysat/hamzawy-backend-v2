@@ -45,6 +45,19 @@ async function run() {
     app = require('../server');
     mongoose = require('mongoose');
 
+    await test('admin shows technician order availability and refresh returns to the admin home by default', async () => {
+      const adminPeople = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-people.js'), 'utf8');
+      const adminNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
+      const adminAuth = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-auth.js'), 'utf8');
+      const adminRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
+      assert.ok(adminPeople.includes('f.acceptingOrders===false'), 'admin technician cards should reflect the persisted receiving-orders state');
+      assert.ok(adminPeople.includes('موقف استقبال الطلبات'), 'paused technicians should be visibly marked in the admin');
+      assert.ok(adminPeople.includes('يستقبل طلبات جديدة'), 'available technicians should be visibly marked in the admin');
+      assert.ok(adminRoutes.includes('...item'), 'admin technician serialization should retain acceptingOrders from the technician record');
+      assert.ok(adminNavigation.includes("window.location.pathname+window.location.search"), 'tab navigation must not persist a selected tab in the URL hash');
+      assert.ok(adminAuth.includes('Treat incoming hashes as one-time notification deep links'), 'notification deep links should be one-time and not become the refresh default');
+      assert.ok(adminAuth.includes("location.pathname+location.search"), 'admin should clear the one-time tab hash after restoring it');
+    });
     await test('store admin reuses saved product categories and browser catalogs open image-backed category cards', async () => {
       const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
       const browserStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/store-ui.js'), 'utf8');
