@@ -71,7 +71,232 @@ router.get('/advertisement/current', async (req, res, next) => {
       .lean();
     const eligible = products
       .map(product => ({ ...product, imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }))
-      .filter(product => String(product.name || '').trim() && (/^https?:\\/\\//i.test(String(product.imageUrl || '').trim()) || /^\\/api\\/store\\/media\\/[a-f0-9]{24}$/i.test(String(product.imageUrl || '').trim())));
+      .filter(product => String(product.name || '').trim() && (String(product.imageUrl || '').trim().startsWith('http://') || String(product.imageUrl || '').trim().startsWith('https://') || new RegExp('^/api/store/media/[a-f0-9]{24});
+    const currentAdvertisement = eligible.length ? eligible[slot % eligible.length] : null;
+    const nextChangeAt = (slot + 1) * rotationMs;
+    return res.set('Cache-Control', 'no-store').json({
+      currentAdvertisement,
+      rotationSeconds,
+      serverTime: now,
+      nextChangeAt,
+      slot: eligible.length ? slot % eligible.length : null,
+      totalAdvertisements: eligible.length
+    });
+  } catch (error) { return next(error); }
+});
+
+router.get('/products', async (req, res, next) => {
+  try {
+    const [products, config] = await Promise.all([
+      StoreProduct.find({ isActive: true }).sort({ createdAt: -1 }).select('name category description details price originalPrice offerText type subscriptionDuration imageUrl imageFileId stock createdAt isAdvertised adAudience adPriority adExpiresAt').lean(),
+      AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds storeCategories').lean()
+    ]);
+    const configuredSeconds = Number(config?.storeAdRotationSeconds);
+    const adRotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
+    const publicProducts = products.map(product => ({ ...product, category: String(product.category || 'عام').trim() || 'عام', imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }));
+    const categories = buildStoreCategories(publicProducts, config?.storeCategories);
+    return res.set('Cache-Control', 'no-store').json({ products: publicProducts, categories, adRotationSeconds });
+  } catch (error) { return next(error); }
+});
+
+async function submitOrder(req, res, next, role) {
+  let session = null;
+  let requestValue = null;
+  let reservedProductId = null;
+  let reservedQuantity = 0;
+  try {
+    const { error, value } = orderSchema.validate(req.body || {}, { abortEarly: false });
+    requestValue = value;
+    if (error) return res.status(400).json({ message: 'راجع بيانات طلب الشراء وطريقة الدفع.' });
+    if (role === 'fanni' && req.user?.role !== 'fanni') return res.status(403).json({ message: 'الشراء متاح لحسابات الفنيين فقط.' });
+    const buyer = role === 'client' ? req.client : req.user;
+    if (!buyer || !buyer._id) return res.status(401).json({ message: 'سجّل الدخول لإرسال طلب الشراء.' });
+
+    if (role === 'client' || (role === 'fanni' && value.paymentMethod === 'wallet')) {
+      if (!value.idempotencyKey) return res.status(400).json({ message: 'حدّث الصفحة وحاول إرسال الطلب مرة أخرى.' });
+      const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer._id, requestKey: value.idempotencyKey }).lean();
+      if (duplicate) {
+        return res.status(200).json({
+          message: 'طلب الشراء مسجل بالفعل.',
+          balance: Number(buyer.walletBalance || 0),
+          order: { id: String(duplicate._id), productName: duplicate.productName, quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt },
+          duplicate: true
+        });
+      }
+      session = await mongoose.startSession();
+      session.startTransaction();
+    }
+
+    const query = StoreProduct.findOne({ _id: value.productId, isActive: true });
+    const product = session ? await query.session(session) : await query;
+    if (!product) {
+      if (session?.inTransaction()) await session.abortTransaction();
+      return res.status(404).json({ message: 'المنتج غير متاح حاليًا.' });
+    }
+    const isSubscription = product.type === 'subscription';
+    if (!isSubscription && !['wallet', 'cash_on_delivery'].includes(value.paymentMethod)) {
+      if (session?.inTransaction()) await session.abortTransaction();
+      return res.status(400).json({ message: 'اختار طريقة الدفع: من المحفظة أو عند الاستلام.' });
+    }
+
+    if (product.stock !== null) {
+      const reserved = await StoreProduct.findOneAndUpdate(
+        { _id: product._id, isActive: true, stock: { $gte: value.quantity } },
+        { $inc: { stock: -value.quantity } },
+        session ? { new: true, session } : { new: true }
+      );
+      if (!reserved) {
+        if (session?.inTransaction()) await session.abortTransaction();
+        return res.status(409).json({ message: 'الكمية المطلوبة غير متاحة حاليًا.' });
+      }
+      reservedProductId = product._id;
+      reservedQuantity = value.quantity;
+    }
+
+    const total = Math.round((Number(product.price) * value.quantity + Number.EPSILON) * 100) / 100;
+    let paymentMethod = 'غير محدد';
+    let paymentStatus = 'غير مدفوع';
+    let updatedClient = null;
+    let balanceBefore = 0;
+
+    if (!isSubscription) {
+      if (value.paymentMethod === 'cash_on_delivery') {
+        paymentMethod = 'عند الاستلام';
+      } else if (role === 'client') {
+        const client = await Client.findOne({
+          _id: buyer._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: total }
+        }).session(session);
+        if (!client) {
+          await session.abortTransaction();
+          const current = await Client.findById(buyer._id).select('walletBalance walletFrozen').lean();
+          return res.status(409).json({
+            message: current?.walletFrozen
+              ? 'محفظتك مجمدة حاليًا. تقدر تختار الدفع عند الاستلام.'
+              : 'رصيد محفظتك غير كافٍ لهذا الطلب. تقدر تختار الدفع عند الاستلام أو تشحن محفظتك.',
+            required: total,
+            balance: Number(current?.walletBalance || 0),
+            canUseCashOnDelivery: true
+          });
+        }
+        balanceBefore = Number(client.walletBalance || 0);
+        updatedClient = await Client.findOneAndUpdate(
+          { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: total } },
+          { $inc: { walletBalance: -total } },
+          { new: true, session, runValidators: true }
+        );
+        if (!updatedClient) {
+          await session.abortTransaction();
+          return res.status(409).json({ message: 'الرصيد اتغير أثناء تنفيذ الطلب. حدّث الصفحة وحاول مرة تانية، أو اختار الدفع عند الاستلام.', canUseCashOnDelivery: true });
+        }
+        paymentMethod = 'محفظة العميل';
+        paymentStatus = 'مدفوع';
+      } else {
+        const fanni = await Fanni.findOne({
+          _id: buyer._id, status: 'معتمد', isFrozen: { $ne: true }, walletBalance: { $gte: total }
+        }).session(session);
+        if (!fanni) {
+          await session.abortTransaction();
+          const current = await Fanni.findById(buyer._id).select('walletBalance isFrozen status').lean();
+          return res.status(409).json({
+            message: current?.isFrozen
+              ? 'محفظتك مجمدة حاليًا. تقدر تختار الدفع عند الاستلام.'
+              : 'رصيد محفظتك غير كافٍ لهذا الطلب. تقدر تكمل والدفع يكون عند الاستلام.',
+            required: total,
+            balance: Number(current?.walletBalance || 0),
+            canUseCashOnDelivery: true
+          });
+        }
+        balanceBefore = Number(fanni.walletBalance || 0);
+        updatedClient = await Fanni.findOneAndUpdate(
+          { _id: fanni._id, status: 'معتمد', isFrozen: { $ne: true }, walletBalance: { $gte: total } },
+          { $inc: { walletBalance: -total } },
+          { new: true, session, runValidators: true }
+        );
+        if (!updatedClient) {
+          await session.abortTransaction();
+          return res.status(409).json({ message: 'الرصيد اتغير أثناء تنفيذ الطلب. اختار الدفع عند الاستلام وحاول مرة تانية.', canUseCashOnDelivery: true });
+        }
+        paymentMethod = 'محفظة الفني';
+        paymentStatus = 'مدفوع';
+      }
+    }
+
+    const order = new StoreOrder({
+      product: product._id, productName: product.name, productType: product.type || 'product',
+      subscriptionDuration: product.subscriptionDuration || '', unitPrice: product.price,
+      quantity: value.quantity, stockReserved: Boolean(reservedProductId), total,
+      buyerRole: role, buyerId: buyer._id, buyerName: buyer.name || 'مستخدم',
+      buyerPhone: buyer.phone || '', buyerNote: value.note,
+      paymentMethod, paymentStatus,
+      ...(value.idempotencyKey ? { requestKey: value.idempotencyKey } : {}),
+      statusHistory: [{ status: 'جديد', note: 'تم استلام طلب الشراء', by: buyer.name || 'المستخدم' }]
+    });
+    if (session) await order.save({ session });
+    else await order.save();
+
+    if (session && ['محفظة العميل', 'محفظة الفني'].includes(paymentMethod)) {
+      await new WalletTransaction({
+        ...(role === 'client' ? { client: buyer._id, type: 'client_store_payment' } : { fanni: buyer._id, type: 'fanni_store_payment' }), amount: -total,
+        balanceBefore, balanceAfter: Number(updatedClient.walletBalance),
+        description: 'شراء ' + order.productName + ' من متجر حمزاوي سات',
+        idempotencyKey: 'store-order:' + String(order._id)
+      }).save({ session });
+    }
+
+    if (session) await session.commitTransaction();
+
+    await notifyAdmins({
+      type: 'admin_store_order', title: 'طلب شراء جديد',
+      message: 'طلب ' + order.productName + ' من ' + order.buyerName + ' بإجمالي ' + order.total + ' جنيه — الدفع: ' + paymentMethod + '.',
+      link: '/admin.html?tab=storeOrders', dedupeKey: 'store-order:' + String(order._id)
+    });
+
+    return res.status(201).json({
+      message: isSubscription
+        ? (role === 'client' ? 'تم إرسال طلب الاشتراك أو التجديد للإدارة. هنتواصل معاك لتأكيد التفاصيل وطريقة الدفع.' : 'تم إرسال طلب الاشتراك أو التجديد للإدارة لتأكيد التفاصيل وطريقة الدفع.')
+        : paymentMethod === 'محفظة العميل' ? 'تم تأكيد طلبك والدفع من محفظتك بنجاح. الإدارة هتتواصل معاك لتجهيز الطلب.'
+        : paymentMethod === 'محفظة الفني' ? 'تم تأكيد طلبك وخصم المبلغ من محفظتك بنجاح. الإدارة هتتواصل معاك لتجهيز الطلب.'
+        : 'تم إرسال طلبك بنجاح. الدفع هيكون عند الاستلام، والإدارة هتتواصل معاك لتأكيد التفاصيل.',
+      balance: updatedClient ? Number(updatedClient.walletBalance) : undefined,
+      order: {
+        id: String(order._id), productName: order.productName, quantity: order.quantity,
+        total: order.total, status: order.status, paymentMethod: order.paymentMethod,
+        paymentStatus: order.paymentStatus, createdAt: order.createdAt
+      }
+    });
+  } catch (error) {
+    if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
+    if (!session && reservedProductId && reservedQuantity) {
+      await StoreProduct.updateOne({ _id: reservedProductId }, { $inc: { stock: reservedQuantity } }).catch(() => {});
+    }
+    if (error?.code === 11000 && requestValue?.idempotencyKey) {
+      const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: role === 'client' ? req.client?._id : req.user?._id, requestKey: requestValue.idempotencyKey }).lean().catch(() => null);
+      if (duplicate) return res.status(200).json({ message: 'طلب الشراء مسجل بالفعل.', order: { id: String(duplicate._id), productName: duplicate.productName, quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt }, duplicate: true });
+    }
+    return next(error);
+  } finally {
+    if (session) await session.endSession().catch(() => {});
+  }
+}
+
+router.post('/client/orders', clientAuth, (req, res, next) => submitOrder(req, res, next, 'client'));
+router.post('/fanni/orders', auth('fanni'), (req, res, next) => submitOrder(req, res, next, 'fanni'));
+
+router.get('/client/orders', clientAuth, async (req, res, next) => {
+  try {
+    const orders = await StoreOrder.find({ buyerRole: 'client', buyerId: req.client._id }).sort({ createdAt: -1 }).limit(100).lean();
+    return res.set('Cache-Control', 'no-store').json({ orders });
+  } catch (error) { return next(error); }
+});
+router.get('/fanni/orders', auth('fanni'), async (req, res, next) => {
+  try {
+    const orders = await StoreOrder.find({ buyerRole: 'fanni', buyerId: req.user._id }).sort({ createdAt: -1 }).limit(100).lean();
+    return res.set('Cache-Control', 'no-store').json({ orders });
+  } catch (error) { return next(error); }
+});
+
+module.exports = router;
+, 'i').test(String(product.imageUrl || '').trim())));
     const currentAdvertisement = eligible.length ? eligible[slot % eligible.length] : null;
     const nextChangeAt = (slot + 1) * rotationMs;
     return res.set('Cache-Control', 'no-store').json({
