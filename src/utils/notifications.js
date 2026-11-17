@@ -287,11 +287,14 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
       ]);
       const native = delivery[0].status === 'fulfilled' ? delivery[0].value : null;
       const web = delivery[1].status === 'fulfilled' ? delivery[1].value : null;
-      const channelState = (result, attempted, accepted, failed, errorText = '') => ({
-        status: result?.status === 'not_configured' ? 'not_configured' : errorText ? 'error' : attempted === 0 ? 'no_devices' : failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed',
-        attempted, accepted, failed, attempts: 1, lastAttemptAt: attemptedAt,
-        lastError: String(errorText || result?.lastError || '').slice(0, 240)
-      });
+      const channelState = (result, attempted, accepted, failed, errorText = '') => {
+        const unavailable = result?.status === 'not_configured';
+        return {
+          status: unavailable ? 'not_configured' : errorText ? 'error' : attempted === 0 ? 'no_devices' : failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed',
+          attempted, accepted, failed: unavailable ? Math.max(1, failed) : failed, attempts: 1, lastAttemptAt: attemptedAt,
+          lastError: String(errorText || result?.lastError || '').slice(0, 240)
+        };
+      };
       const expo = channelState(native?.expo, Number(native?.expo?.attempted || 0), Number(native?.expo?.accepted || 0), Number(native?.expo?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : native?.expo?.lastError || '');
       const fcm = channelState(native?.fcm, Number(native?.fcm?.attempted || 0), Number(native?.fcm?.accepted || 0), Number(native?.fcm?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : native?.fcm?.lastError || '');
       const webPush = channelState(web, Number(web?.attempted || 0), Number(web?.accepted || 0), Number(web?.failed || 0), delivery[1].status === 'rejected' ? delivery[1].reason?.message : (web?.status === 'not_configured' ? 'VAPID_NOT_CONFIGURED' : (web?.results || []).find(item => item.status !== 'accepted')?.status || ''));
@@ -299,7 +302,7 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
       const totalAttempted = expo.attempted + fcm.attempted + webPush.attempted;
       const totalAccepted = expo.accepted + fcm.accepted + webPush.accepted;
       const totalFailed = expo.failed + fcm.failed + webPush.failed;
-      const overallStatus = totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
+      const overallStatus = totalFailed === 0 && totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
       const retryable = [expo, fcm, webPush].some(channel => channel.failed > 0 && channel.attempts < 8);
       if (deliveryLog) await NotificationDelivery.updateOne(
         { _id: deliveryLog._id },
@@ -359,11 +362,13 @@ async function retryPendingNotificationDeliveries(limit = 25) {
         const accepted = Number(old.accepted || 0) + Number(fresh.accepted || 0);
         const failed = Number(fresh.failed || 0);
         const attempts = Number(old.attempts || 0) + 1;
-        const status = fresh.status === 'not_configured' ? 'not_configured' :
-          failed === 0 ? (accepted > 0 ? 'accepted' : 'no_devices') :
+        const unavailable = fresh.status === 'not_configured';
+        const effectiveFailed = unavailable ? Math.max(1, failed) : failed;
+        const status = unavailable ? 'not_configured' :
+          effectiveFailed === 0 ? (accepted > 0 ? 'accepted' : 'no_devices') :
           accepted > 0 ? 'partial' : 'failed';
         return {
-          status, attempted: Number(old.attempted || 0) + attempted, accepted, failed, attempts,
+          status, attempted: Number(old.attempted || 0) + attempted, accepted, failed: effectiveFailed, attempts,
           lastAttemptAt: attemptedAt,
           lastError: String(providerError || fresh.lastError || '').slice(0, 240)
         };
