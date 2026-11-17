@@ -139,13 +139,21 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       const config = await AdminConfig.findOne({ key: 'main' });
       const configured = Array.isArray(config?.storeCategories) ? config.storeCategories : [];
       const existingIndex = configured.findIndex(item => normalizeStoreCategoryName(item?.name) === oldName);
-      const productExists = await StoreProduct.exists({ category: oldName });
-      if (!productExists && existingIndex < 0) return res.status(404).json({ message: 'القسم غير موجود.' });
+      // Product category values created by older versions may contain repeated or surrounding
+      // whitespace. Match the normalized display name instead of requiring a byte-for-byte DB match.
+      const categoryPattern = value => {
+        const escapedName = normalizeStoreCategoryName(value).split('').map(char => '.^$*+?()[]{}|\\'.includes(char) ? '\\' + char : char).join('');
+        return new RegExp('^' + escapedName.replace(/\s+/g, '\\s+') + '$');
+      };
+      const matchingProducts = await StoreProduct.find({ category: categoryPattern(oldName) }).select('_id').lean();
+      if (!matchingProducts.length && existingIndex < 0) return res.status(404).json({ message: 'القسم غير موجود.' });
       if (newName !== oldName) {
-        const productCollision = await StoreProduct.exists({ category: newName });
+        const productCollision = await StoreProduct.exists({ category: categoryPattern(newName) });
         const categoryCollision = configured.some((item, index) => index !== existingIndex && normalizeStoreCategoryName(item?.name) === newName);
         if (productCollision || categoryCollision) return res.status(409).json({ message: 'يوجد قسم آخر بهذا الاسم بالفعل.' });
-        await StoreProduct.updateMany({ category: oldName }, { $set: { category: newName } });
+        if (matchingProducts.length) {
+          await StoreProduct.updateMany({ _id: { $in: matchingProducts.map(product => product._id) } }, { $set: { category: newName } });
+        }
       }
       const nextCategories = configured.map(item => typeof item?.toObject === 'function' ? item.toObject() : { ...item });
       const previousImageFileId = existingIndex >= 0 ? nextCategories[existingIndex].imageFileId : null;
