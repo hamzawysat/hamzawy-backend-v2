@@ -84,7 +84,7 @@ function apiResponse(pathname) {
               failures.push(target.name + '/' + viewport.name + ': central interaction stylesheet cache version is stale or duplicated');
             }
 
-            const visualTargets = await page.evaluate(() => {
+            const visualTargets = await page.evaluate(targetName => {
               const root = document.querySelector('#app');
               if (!root) return false;
               const button = document.createElement('button');
@@ -93,7 +93,19 @@ function apiResponse(pathname) {
               button.dataset.visualFeedbackTest = 'button';
               const tablist = document.createElement('div');
               tablist.setAttribute('role', 'tablist');
-              const tab = document.createElement('button');
+              let tab;
+              if (targetName === 'client') {
+                tablist.className = 'client-wallet-tabs';
+                tab = document.createElement('button');
+                tab.className = 'client-wallet-tab is-active';
+              } else if (targetName === 'technician') {
+                tablist.className = 'fanni-wallet-tabs';
+                tab = document.createElement('button');
+                tab.className = 'fanni-wallet-tab is-active';
+              } else {
+                tab = document.createElement('button');
+                tab.className = 'admin-topup-owner-tab is-active';
+              }
               tab.type = 'button';
               tab.setAttribute('role', 'tab');
               tab.setAttribute('aria-selected', 'true');
@@ -102,7 +114,7 @@ function apiResponse(pathname) {
               tablist.append(tab);
               root.append(button, tablist);
               return true;
-            });
+            }, target.name);
             if (!visualTargets) {
               failures.push(target.name + '/' + viewport.name + ': could not mount visual-feedback test controls');
             } else {
