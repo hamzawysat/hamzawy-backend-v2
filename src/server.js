@@ -35,6 +35,7 @@ const passwordRecoveryRouter = require('./routes/passwordRecovery');
 const pageVisitsRouter = require('./routes/pageVisits');
 const { auth } = require('./middleware/auth');
 const errorHandler = require('./middleware/error');
+const { retryPendingNotificationDeliveries } = require('./utils/notifications');
 
 const app = express();
 
@@ -509,5 +510,16 @@ if (require.main === module) {
 
   app.listen(PORT, () => {
     console.log(`Sunaa server listening on port ${PORT}`);
+    const runNotificationRetries = async () => {
+      try {
+        await connectDB();
+        await retryPendingNotificationDeliveries(25);
+      } catch (error) {
+        console.error('Notification retry worker failed:', error.message);
+      }
+    };
+    void runNotificationRetries();
+    const notificationRetryTimer = setInterval(() => { void runNotificationRetries(); }, 30000);
+    if (typeof notificationRetryTimer.unref === 'function') notificationRetryTimer.unref();
   });
 }
