@@ -48,6 +48,45 @@ router.get('/media/:id', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
+
+router.get('/advertisement/current', async (req, res, next) => {
+  try {
+    const audience = ['client', 'fanni'].includes(String(req.query.audience || '')) ? String(req.query.audience) : 'both';
+    const config = await AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean();
+    const configuredSeconds = Number(config?.storeAdRotationSeconds);
+    const rotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
+    const now = Date.now();
+    const rotationMs = rotationSeconds * 1000;
+    const slot = Math.floor(now / rotationMs);
+    const filter = {
+      isActive: true,
+      isAdvertised: true,
+      $and: [
+        { $or: [{ adAudience: 'both' }, { adAudience: audience }, ...(audience === 'both' ? [] : [{ adAudience: { $exists: false } }])] },
+        { $or: [{ adExpiresAt: null }, { adExpiresAt: { $exists: false } }, { adExpiresAt: { $gt: new Date(now) } }] },
+        { $or: [{ stock: null }, { stock: { $exists: false } }, { stock: { $gt: 0 } }] }
+      ]
+    };
+    const products = await StoreProduct.find(filter)
+      .sort({ adPriority: -1, createdAt: -1, _id: 1 })
+      .select('name price imageUrl imageFileId adPriority createdAt')
+      .lean();
+    const eligible = products
+      .map(product => ({ ...product, imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }))
+      .filter(product => String(product.name || '').trim() && (/^https?:\\/\\//i.test(String(product.imageUrl || '').trim()) || /^\\/api\\/store\\/media\\/[a-f0-9]{24}$/i.test(String(product.imageUrl || '').trim())));
+    const currentAdvertisement = eligible.length ? eligible[slot % eligible.length] : null;
+    const nextChangeAt = (slot + 1) * rotationMs;
+    return res.set('Cache-Control', 'no-store').json({
+      currentAdvertisement,
+      rotationSeconds,
+      serverTime: now,
+      nextChangeAt,
+      slot: eligible.length ? slot % eligible.length : null,
+      totalAdvertisements: eligible.length
+    });
+  } catch (error) { return next(error); }
+});
+
 router.get('/products', async (req, res, next) => {
   try {
     const [products, config] = await Promise.all([
