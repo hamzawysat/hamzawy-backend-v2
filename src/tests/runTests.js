@@ -268,6 +268,9 @@ async function run() {
       const adminNotificationUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-notifications.js'), 'utf8');
       assert.match(adminNotificationUi, /renderDeliveryAudit/);
       assert.match(adminNotificationUi, /admin\/delivery-log\?limit=30/);
+      assert.match(adminNotificationUi, /function renderNotificationHistory[\s\S]*?renderAdminInbox\(\)/);
+      assert.match(adminNotificationUi, /function renderNotificationHistory[\s\S]*?admin-delivery-log-list/);
+
 
 
       const walletRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin/wallet.js'), 'utf8');
