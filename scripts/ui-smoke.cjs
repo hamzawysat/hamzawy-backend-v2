@@ -76,6 +76,75 @@ function apiResponse(pathname) {
           }
           await page.waitForTimeout(900);
 
+          // Dedicated visual-feedback regression checks for all three dashboards.
+          if (['client', 'technician', 'admin'].includes(target.name)) {
+            const cssVersion = await page.locator('link[rel="stylesheet"][href*="ui-light-surfaces.css"]').evaluateAll(items =>
+              items.map(item => new URL(item.href).searchParams.get('v')));
+            if (cssVersion.length !== 1 || cssVersion[0] !== '20261117-button-feedback-v2') {
+              failures.push(target.name + '/' + viewport.name + ': central interaction stylesheet cache version is stale or duplicated');
+            }
+
+            const visualTargets = await page.evaluate(() => {
+              const root = document.querySelector('#app');
+              if (!root) return false;
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.textContent = 'اختبار ضغط';
+              button.dataset.visualFeedbackTest = 'button';
+              const tablist = document.createElement('div');
+              tablist.setAttribute('role', 'tablist');
+              const tab = document.createElement('button');
+              tab.type = 'button';
+              tab.setAttribute('role', 'tab');
+              tab.setAttribute('aria-selected', 'true');
+              tab.textContent = 'اختبار تبويب';
+              tab.dataset.visualFeedbackTest = 'tab';
+              tablist.append(tab);
+              root.append(button, tablist);
+              return true;
+            });
+            if (!visualTargets) {
+              failures.push(target.name + '/' + viewport.name + ': could not mount visual-feedback test controls');
+            } else {
+              const selectedTabStyle = await page.locator('[data-visual-feedback-test="tab"]').evaluate(element => {
+                const style = getComputedStyle(element);
+                return { backgroundImage: style.backgroundImage, boxShadow: style.boxShadow };
+              });
+              if (selectedTabStyle.backgroundImage === 'none' || selectedTabStyle.boxShadow === 'none') {
+                failures.push(target.name + '/' + viewport.name + ': selected tab has no visible active-state styling');
+              }
+
+              for (const selector of ['[data-visual-feedback-test="button"]', '[data-visual-feedback-test="tab"]']) {
+                const targetControl = page.locator(selector);
+                const bounds = await targetControl.boundingBox();
+                if (!bounds) {
+                  failures.push(target.name + '/' + viewport.name + ': visual-feedback control has no layout box');
+                  continue;
+                }
+                await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+                await page.mouse.down();
+                await page.waitForTimeout(40);
+                const pressedStyle = await targetControl.evaluate(element => {
+                  const style = getComputedStyle(element);
+                  return {
+                    backgroundColor: style.backgroundColor,
+                    transform: style.transform,
+                    animationName: style.animationName,
+                    boxShadow: style.boxShadow
+                  };
+                });
+                await page.mouse.up();
+                if (pressedStyle.transform === 'none' ||
+                    pressedStyle.backgroundColor !== 'rgb(169, 130, 46)' ||
+                    pressedStyle.animationName !== 'sonaa-button-press-pulse' ||
+                    pressedStyle.boxShadow === 'none') {
+                  failures.push(target.name + '/' + viewport.name + ': ' + selector +
+                    ' missing press feedback (' + JSON.stringify(pressedStyle) + ')');
+                }
+              }
+            }
+          }
+
           if (target.name !== 'home' && !await page.locator('#app, #setupForm, #main, main.wrap').count()) {
             failures.push(target.name + '/' + viewport.name + ': expected page root was not rendered');
           }
