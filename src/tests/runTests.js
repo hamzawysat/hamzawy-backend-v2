@@ -250,6 +250,14 @@ async function run() {
       assert.match(route, /normalizeNotificationLink\(item\.link/);
       assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
+      const deliveryModel = fs.readFileSync(path.join(__dirname, '../models/NotificationDelivery.js'), 'utf8');
+      assert.match(route, /admin\/delivery-log/);
+      assert.match(delivery, /NotificationDelivery\.findOneAndUpdate/);
+      assert.match(delivery, /channels, overallStatus, lastAttemptAt/);
+      assert.match(deliveryModel, /notificationId/);
+      assert.match(deliveryModel, /lastError/);
+      assert.doesNotMatch(deliveryModel, /token\s*:/i, 'delivery diagnostics must never store push tokens');
+
       const walletRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin/wallet.js'), 'utf8');
       assert.match(walletRoutes, /fanni_wallet_settlement/);
       assert.match(walletRoutes, /admin-fanni-wallet-settlement:/);
