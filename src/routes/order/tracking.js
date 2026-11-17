@@ -80,6 +80,10 @@ function createOrderTrackingRouter({
       safe.acceptedOfferPrice = order.acceptedOfferPrice ?? null;
       safe.clientPaymentStatus = order.clientPaymentStatus || 'unpaid';
       safe.clientPaymentAmount = Number(order.clientPaymentAmount || 0);
+      safe.clientConfirmedAt = order.clientConfirmedAt || null;
+      safe.warrantyStartsAt = order.warrantyStartsAt || null;
+      safe.warrantyExpiresAt = order.warrantyExpiresAt || null;
+      safe.warrantyStatus = order.warrantyStatus || 'pending';
       // Platform commission is internal financial data and must not be returned to clients.
       if (Array.isArray(safe.offers) && order.acceptedOfferId && ['تم اختيار فني', 'تم الانتهاء'].includes(order.status)) safe.offers = safe.offers.map(offer => ({ ...offer, offerStatus: String(offer._id) === String(order.acceptedOfferId) ? 'تم قبول العرض' : 'تم رفض العرض' }));
       safe.chatMessages = (order.chatMessages || []).map(m => ({ senderRole: m.senderRole, text: m.text, targetOfferId: m.targetOfferId || '', createdAt: m.createdAt }));
