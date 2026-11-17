@@ -87,43 +87,16 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
         return res.status(400).json({ message: 'ارفع صورة JPG أو PNG أو WebP سليمة، وبحجم لا يتجاوز 5 ميجابايت.' });
       }
       if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
-      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
-      const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
-      const upload = bucket.openUploadStream('store-product-' + Date.now() + extension, {
-        contentType,
-        metadata: { purpose: 'store-product', uploadedBy: String(req.user?._id || ''), createdAt: new Date() }
-      });
-      const completed = new Promise((resolve, reject) => {
-        upload.once('finish', resolve);
-        upload.once('error', reject);
-      });
-      upload.end(buffer);
-      await completed;
-      const imageFileId = String(upload.id);
-      await writeAdminAudit(req, 'رفع صورة منتج إلى MongoDB', 'store-media', imageFileId, contentType + ' ' + buffer.length + ' bytes');
-      return res.status(201).json({ imageFileId, imageUrl: '/api/store/media/' + imageFileId, size: buffer.length, contentType });
-    } catch (error) { return next(error); }
-  });
-
-
-  router.post('/store/category-media', auth('admin'), async (req, res, next) => {
-    try {
-      const buffer = Buffer.isBuffer(req.body) ? req.body : null;
-      const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
-      const signatures = {
-        'image/jpeg': value => value.length >= 3 && value[0] === 0xff && value[1] === 0xd8 && value[2] === 0xff,
-        'image/png': value => value.length >= 8 && value.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
-        'image/webp': value => value.length >= 12 && value.toString('ascii', 0, 4) === 'RIFF' && value.toString('ascii', 8, 12) === 'WEBP'
-      };
-      if (!buffer || !buffer.length || buffer.length > 5 * 1024 * 1024 || !signatures[contentType] || !signatures[contentType](buffer)) {
-        return res.status(400).json({ message: 'ارفع صورة JPG أو PNG أو WebP سليمة، وبحجم لا يتجاوز 5 ميجابايت.' });
+      const isCategoryImage = String(req.query.purpose || '') === 'category';
+      const purpose = isCategoryImage ? 'store-category' : 'store-product';
+      if (req.query.purpose && !['category', 'product'].includes(String(req.query.purpose))) {
+        return res.status(400).json({ message: 'نوع الصورة غير صالح.' });
       }
-      if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
       const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
       const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
-      const upload = bucket.openUploadStream('store-category-' + Date.now() + extension, {
+      const upload = bucket.openUploadStream((isCategoryImage ? 'store-category-' : 'store-product-') + Date.now() + extension, {
         contentType,
-        metadata: { purpose: 'store-category', uploadedBy: String(req.user?._id || ''), createdAt: new Date() }
+        metadata: { purpose, uploadedBy: String(req.user?._id || ''), createdAt: new Date() }
       });
       const completed = new Promise((resolve, reject) => {
         upload.once('finish', resolve);
@@ -132,10 +105,11 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       upload.end(buffer);
       await completed;
       const imageFileId = String(upload.id);
-      await writeAdminAudit(req, 'رفع صورة قسم متجر إلى MongoDB', 'store-category-media', imageFileId, contentType + ' ' + buffer.length + ' bytes');
+      await writeAdminAudit(req, isCategoryImage ? 'رفع صورة قسم متجر إلى MongoDB' : 'رفع صورة منتج إلى MongoDB', isCategoryImage ? 'store-category-media' : 'store-media', imageFileId, contentType + ' ' + buffer.length + ' bytes');
       return res.status(201).json({ imageFileId, imageUrl: '/api/store/media/' + imageFileId, size: buffer.length, contentType });
     } catch (error) { return next(error); }
   });
+
 
   router.get('/store/ad-settings', auth('admin'), async (req, res, next) => {
     try {
