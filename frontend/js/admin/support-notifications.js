@@ -1,8 +1,34 @@
 'use strict';
 
+function renderAdminInbox(){
+  const list=Array.isArray(state.adminInboxNotifications)?state.adminInboxNotifications:[];
+  const unread=Number(state.adminInboxUnread||0);
+  let html='<div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">الوارد الإداري</p><p class="text-[10px] text-slate-500">تنبيهات موجهة لحساب الإدارة الحالي — غير المقروء: '+unread+'</p></div><div class="flex gap-2"><button type="button" onclick="loadAdminInbox()" class="pill-btn soft-btn">تحديث</button><button type="button" onclick="markAllAdminInboxRead()" class="pill-btn soft-btn">قراءة الكل</button></div></div><div id="admin-inbox-list" class="space-y-2">';
+  if(!list.length)html+='<p class="p-4 text-center text-[11px] text-slate-500">لا توجد تنبيهات واردة حاليًا.</p>';
+  list.forEach(item=>{html+='<button type="button" data-admin-inbox-id="'+escHtml(item.id)+'" onclick="openAdminInboxNotification(this.dataset.adminInboxId)" class="block w-full rounded-xl border p-3 text-right '+(item.read?'border-slate-200 bg-white':'border-blue-200 bg-blue-50')+'"><b class="block text-[11px] font-black">'+escHtml(item.title||'تنبيه إداري')+'</b><span class="mt-1 block text-[10px] leading-5 text-slate-700">'+escHtml(item.message||'')+'</span><small class="mt-1 block text-[9px] text-slate-500">'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</small></button>';});
+  return html+'</div>';
+}
+async function loadAdminInbox(){
+  try{const data=await tryApi(['/api/notifications/admin'],{method:'GET'});state.adminInboxNotifications=extractList(data,['notifications']);state.adminInboxUnread=Math.max(0,Number(data.unreadCount||0));}
+  catch(e){state.adminInboxNotifications=Array.isArray(state.adminInboxNotifications)?state.adminInboxNotifications:[];console.warn('تعذر تحميل الوارد الإداري:',e.message||e);}
+  const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();
+}
+async function markAllAdminInboxRead(){
+  try{await tryApi(['/api/notifications/admin/read-all'],{method:'PATCH'});state.adminInboxNotifications=(state.adminInboxNotifications||[]).map(item=>({...item,read:true}));state.adminInboxUnread=0;const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
+  catch(e){showToast(e.message||'تعذر تعليم التنبيهات كمقروءة','error');}
+}
+async function openAdminInboxNotification(id){
+  const item=(state.adminInboxNotifications||[]).find(entry=>String(entry.id)===String(id));if(!item)return;
+  if(!item.read){try{await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});}catch(e){showToast(e.message||'تعذر تحديث حالة الإشعار','error');return;}item.read=true;state.adminInboxUnread=Math.max(0,Number(state.adminInboxUnread||0)-1);}
+  const type=String(item.type||'');
+  const tab=type.includes('order')||type.includes('offer')?'orders':type.includes('client')?'clients':type.includes('technician')||type.includes('fanni')?'fannis':type.includes('topup')||type.includes('wallet')?'topups':type.includes('complaint')||type.includes('support')?'complaints':'';
+  if(tab&&typeof setTab==='function'&&canReadTab(tab))setTab(tab);
+  else{const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
+}
 function renderNotifications(){
   return `
   <section class="mt-4 space-y-4">
+    <div class="premium-panel p-4 space-y-3">${renderAdminInbox()}</div>
     <div class="rounded-[18px] bg-gradient-to-r from-violet-600 to-purple-600 p-4 text-white"><p class="text-[12px] font-black">الإشعارات والرسائل</p><p class="text-[10px] text-violet-100 mt-1">إرسال فردي أو جماعي حسب نوع الحساب وحالته</p></div>
     <div class="premium-panel p-4 space-y-3">
       <label class="block text-[11px] font-black">طريقة الإرسال<select id="notification-mode" onchange="updateNotificationMode()" class="field mt-2 w-full"><option value="single">إشعار لفرد محدد</option><option value="group">إشعار جماعي لفئة</option></select></label>
@@ -41,7 +67,7 @@ async function loadNotificationHistory(){
   const root=document.getElementById('notification-history-list');
   state.notificationHistoryLoading=true;
   if(root)root.innerHTML=renderNotificationHistory();
-  try{const data=await tryApi(['/api/admin/notifications/direct'],{method:'GET'});state.notificationHistory=extractList(data,['notifications']);}
+  try{await loadAdminInbox();const data=await tryApi(['/api/admin/notifications/direct'],{method:'GET'});state.notificationHistory=extractList(data,['notifications']);}
   catch(e){state.notificationHistory=[];showToast(e.message||'تعذر تحميل سجل الإشعارات','error');}
   finally{state.notificationHistoryLoading=false;const target=document.getElementById('notification-history-list');if(target)target.innerHTML=renderNotificationHistory();}
 }

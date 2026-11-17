@@ -65,19 +65,27 @@ function channelFor(type) {
   if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint', 'admin_support_followup'].includes(type)) return 'support';
   if ([
     'wallet_charge', 'topup_request', 'admin_new_topup', 'admin_client_topup',
-    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed'
+    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed',
+    'wallet_credit', 'fanni_wallet_settlement', 'technician_settlement', 'topup_approved', 'topup_rejected',
+    'wallet_debit', 'commission_deducted', 'client_wallet_topup_approved', 'client_wallet_topup_rejected',
+    'client_wallet_credit', 'client_wallet_debit', 'client_wallet_settlement', 'client_service_refunded'
   ].includes(type)) return 'wallet_charge';
   return 'support';
 }
 function destinationFor(type) {
   const destinations = {
     admin_store_order: 'storeOrders', admin_subscription_request: 'commerceSubscriptions',
+    admin_new_topup: 'topups', admin_client_topup: 'clients',
     admin_subscription_renewed: 'commerceSubscriptions', admin_client_topup: 'clientWallet',
     admin_new_topup: 'technicians', admin_new_technician: 'technicians',
     admin_fanni_profile_edit: 'technicians', admin_fanni_login: 'technicians',
     admin_fanni_logout: 'technicians', admin_new_client: 'clients',
     admin_client_login: 'clients', admin_client_logout: 'clients',
     admin_service_payment_held: 'orders', admin_order_offer_accepted: 'orders',
+    wallet_credit: 'wallets', fanni_wallet_settlement: 'wallets', technician_settlement: 'wallets',
+    topup_approved: 'wallets', topup_rejected: 'wallets', wallet_debit: 'wallets', commission_deducted: 'wallets',
+    client_wallet_topup_approved: 'wallet', client_wallet_topup_rejected: 'wallet', client_wallet_credit: 'wallet',
+    client_wallet_debit: 'wallet', client_wallet_settlement: 'wallet', client_service_refunded: 'wallet',
     admin_order_cancelled: 'orders', admin_order_completed: 'orders',
     admin_fanni_offer: 'orders', admin_price_change_requested: 'orders',
     admin_client_rating: 'orders'
@@ -135,11 +143,11 @@ async function sendFirebasePushNotifications(devices, payload) {
         data,
         android: {
           priority: 'HIGH',
-          ttl: '120s',
+          ttl: '86400s',
           notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' }
         },
-        webpush: { headers: { TTL: '120', Urgency: 'high' } },
-        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120), 'apns-priority': '10' } }
+        webpush: { headers: { TTL: '86400', Urgency: 'high' } },
+        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
       } })
     });
     if (response.status === 404 || response.status === 410) {
@@ -172,8 +180,8 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         sound: 'default',
         priority: 'high',
         channelId: 'default',
-        ttl: 120,
-        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link) }
+        ttl: 86400,
+        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')) }
       }));
       for (let start = 0; start < messages.length; start += 100) {
         const batch = messages.slice(start, start + 100);
