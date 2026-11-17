@@ -49,8 +49,8 @@ self.addEventListener('push', event => {
     body: String(payload.body || ''),
     dir: 'rtl',
     lang: 'ar',
-    data: { url: target },
-    tag: 'hamzawy-' + Date.now()
+    data: { url: target, notificationId: String(data.notificationId || '') },
+    tag: data.notificationId ? 'hamzawy-' + String(data.notificationId) : 'hamzawy-' + Date.now()
   }));
 });
 
