@@ -95,7 +95,11 @@ async function run() {
       assert.ok(storeRenderer.includes("const productManagement='<section"), 'product tools should be grouped in their own section');
       assert.ok(storeRenderer.includes("'+csvImporter+form+"), 'CSV import and product form should live in product management');
       assert.ok(storeRenderer.includes("const storeManagement='<section"), 'store settings should be grouped separately');
-      assert.ok(storeRenderer.includes("'+rotationSettings+renderStoreCategoryManager(products)"), 'ad rotation and category management should live in store management');
+      assert.ok(storeRenderer.includes("'+renderStoreCategoryManager(products)+rotationSettings"), 'category management and ad rotation should live in store settings');
+      assert.ok(storeRenderer.indexOf("'+storeManagement+productManagement")>=0, 'store settings should appear above product and advertisement tools');
+      assert.match(adminStore,/function toggleStoreAdRotationSettings\(\)/,'ad rotation settings should have a dedicated collapse toggle');
+      assert.match(storeRenderer,/state\.storeAdRotationSettingsOpen=false/,'ad rotation settings should be collapsed by default');
+      assert.match(storeRenderer,/rotationOpen\?'<div class=/,'ad rotation controls should stay hidden until expanded');
     });
 
     await test('only the configured root administrator bypasses the permission matrix', async () => {
@@ -844,6 +848,8 @@ async function run() {
 
         const deniedCategoryEdit = await request(app).put('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال')).send({ name: 'قسم غير مصرح', imageUrl: '', imageFileId: null });
         assert.equal(deniedCategoryEdit.status, 401, 'category edits must require administrator authentication');
+        // Legacy product rows can contain irregular whitespace although the admin displays a normalized category name.
+        const legacyWhitespaceProduct = await StoreProduct.create({ name: 'منتج قسم بمسافات قديمة', category: '  أجهزة   الاستقبال  ', price: 2 });
         const categoryImage = await request(app).post('/api/admin/store/media?purpose=category')
           .set('Authorization', 'Bearer ' + adminToken)
           .set('Content-Type', 'image/png').send(pngSignature);
@@ -853,6 +859,7 @@ async function run() {
           .send({ name: 'أجهزة الاستقبال الرقمية', imageUrl: categoryImage.body.imageUrl, imageFileId: categoryImage.body.imageFileId });
         assert.equal(renamedCategory.status, 200, JSON.stringify(renamedCategory.body));
         assert.equal((await StoreProduct.findById(product.body.product._id).lean()).category, 'أجهزة الاستقبال الرقمية', 'renaming a category must update the products without deleting them');
+        assert.equal((await StoreProduct.findById(legacyWhitespaceProduct._id).lean()).category, 'أجهزة الاستقبال الرقمية', 'renaming must also find legacy category values with extra whitespace');
         const renamedCatalog = await request(app).get('/api/store/products');
         const renamedCategoryCard = renamedCatalog.body.categories.find(item => item.name === 'أجهزة الاستقبال الرقمية');
         assert.equal(renamedCategoryCard?.imageUrl, categoryImage.body.imageUrl, 'the custom category image must be exposed to both app and browser clients');
