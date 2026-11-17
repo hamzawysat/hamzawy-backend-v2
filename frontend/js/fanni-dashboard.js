@@ -10,7 +10,7 @@ async function refreshTechnicianPage(){
  technicianRefreshInProgress=true;
  showFanniLoading('جاري تحديث بيانات الفني...');
  try{
-  const checks=[['الخدمات',loadServices],['مناطق العمل',loadAreas]];
+  const checks=[['الخدمات',loadServices],['مناطق العمل',loadAreas],['إعلانات وأسئلة شائعة',loadFanniPublicContent]];
   if(getToken()){
    checks.push(['الملف الشخصي',loadProfile],['الطلبات المتاحة',loadOrders],['العروض والمهام',loadMyOffers],['المحفظة',loadWalletHistory],['إشعارات الحساب',loadNotifications],['أرقام التحويل',loadWalletTransferNumbers]);
   }
@@ -32,7 +32,7 @@ async function start(){
  showFanniLoading('جاري تحميل البيانات...');
  try{
   render();
-  await Promise.allSettled([loadServices(),loadAreas()]);
+  await Promise.allSettled([loadServices(),loadAreas(),loadFanniPublicContent()]);
   render();
   if(!getToken())return;
   state.checkingSession=true;
@@ -57,3 +57,5 @@ async function start(){
 
 start();
 startFanniPolling();
+
+async function loadFanniPublicContent(){try{const data=await apiGet('/api/content?role=fanni');state.publicContent={siteName:String(data.siteName||'حمزاوي سات'),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};render();return true;}catch(error){log('تعذر تحميل إعلانات وأسئلة الفني:',error);return false;}}
