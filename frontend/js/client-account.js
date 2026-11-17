@@ -51,7 +51,7 @@ function renderPublicContent(){
     '</section>';
 }
 async function loadPublicContent(){
-  try{const data=await API.request('/api/content',{method:'GET'});state.publicContent={siteName:String(data.siteName||'حمزاوي سات'),maintenance:!!data.maintenance,maintenanceMessage:String(data.maintenanceMessage||''),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};document.title=state.account?'حمزاوي سات - طلباتي':(state.accountAuthMode==='register'?'تسجيل عميل جديد | حمزاوي سات':'تسجيل دخول العميل | حمزاوي سات');render();}catch(error){log('تعذر تحميل محتوى الواجهة:',error);}
+  try{const data=await API.request('/api/content?role=client',{method:'GET'});state.publicContent={siteName:String(data.siteName||'حمزاوي سات'),maintenance:!!data.maintenance,maintenanceMessage:String(data.maintenanceMessage||''),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};document.title=state.account?'حمزاوي سات - طلباتي':(state.accountAuthMode==='register'?'تسجيل عميل جديد | حمزاوي سات':'تسجيل دخول العميل | حمزاوي سات');render();}catch(error){log('تعذر تحميل محتوى الواجهة:',error);}
 }
 function setAccountAuthMode(mode){state.accountAuthMode=mode==='register'?'register':'login';state.accountError='';render();}
 async function submitClientAccount(e){
