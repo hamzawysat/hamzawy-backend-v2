@@ -12,7 +12,7 @@ function verifyAdminDashboardSource() {
   const stats = read('frontend/js/admin/clients-render.js');
   const header = read('frontend/css/admin-header.css');
   const html = read('frontend/admin.html');
-  const quickActions = (shell.match(/onclick="adminQuickAction\\(/g) || []).length;
+  const quickActions = (shell.match(/onclick="adminQuickAction\(/g) || []).length;
   const requiredSections = ['الطلبات والعملاء', 'الفنيون', 'المحافظ والمالية', 'المتجر والخدمات', 'خدمة العملاء', 'إدارة النظام'];
   const sectionPositions = requiredSections.map(label => core.indexOf("label:'" + label + "'"));
   if (!shell.includes('class="admin-topbar') ||
