@@ -241,6 +241,8 @@ async function run() {
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
       assert.match(browser, /const apiUrl=path=>path/);
       assert.match(browser, /pushManager\.subscribe/);
+      const previewBootstrap = fs.readFileSync(path.join(__dirname, '../../frontend/js/preview-bootstrap.js'), 'utf8');
+      assert.match(previewBootstrap, /window\.__SONAA_PAGE_ROLE__ = 'admin'/);
       assert.doesNotMatch(browser, /vercel\.app/);
       assert.match(worker, /addEventListener\('push'/); assert.match(worker, /notificationTarget/);
       assert.match(worker, /addEventListener\('pushsubscriptionchange'/);
