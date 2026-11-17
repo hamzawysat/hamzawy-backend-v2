@@ -654,6 +654,33 @@ async function run() {
       });
       adminToken = jwt.sign({ id: String(admin._id), role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+      await test('admin imports store products from CSV in one validated batch and skips duplicates', async () => {
+        const StoreProduct = require('../models/StoreProduct');
+        const rows = [
+          { rowNumber: 2, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } },
+          { rowNumber: 3, product: { name: 'CSV import unique product B', category: 'CSV import category', price: 0 } },
+          { rowNumber: 4, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } },
+          { rowNumber: 5, product: { name: 'CSV row missing price', category: 'CSV import category' } }
+        ];
+        const denied = await request(app).post('/api/admin/store/products/import').send({ products: rows });
+        assert.equal(denied.status, 401, 'bulk import must require an administrator session');
+
+        const imported = await request(app).post('/api/admin/store/products/import')
+          .set('Authorization', 'Bearer ' + adminToken).send({ products: rows });
+        assert.equal(imported.status, 201, JSON.stringify(imported.body));
+        assert.equal(imported.body.importedCount, 2);
+        assert.equal(imported.body.duplicateCount, 1);
+        assert.equal(imported.body.errorCount, 1);
+        assert.equal(await StoreProduct.countDocuments({ category: 'CSV import category' }), 2);
+
+        const repeated = await request(app).post('/api/admin/store/products/import')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ products: [{ rowNumber: 2, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } }] });
+        assert.equal(repeated.status, 200, JSON.stringify(repeated.body));
+        assert.equal(repeated.body.importedCount, 0);
+        assert.equal(repeated.body.duplicateCount, 1);
+      });
+
       await test('store product images are uploaded to MongoDB GridFS and served through the API', async () => {
         const StoreProduct = require('../models/StoreProduct');
         const pngSignature = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
