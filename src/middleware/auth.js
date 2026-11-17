@@ -10,7 +10,7 @@ const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','vo
 const ROLE_WRITE_SECTIONS = {
   'قراءة فقط': [],
   'مشرف': ['orders','complaints','support','offers'],
-  'مشرف أول': ['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce'],
+  'مشرف أول': ['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce','store'],
   'مدير': ADMIN_PERMISSION_KEYS
 };
 function defaultAdminPermissions(role) {
