@@ -21,7 +21,12 @@ async function openAdminInboxNotification(id){
   const item=(state.adminInboxNotifications||[]).find(entry=>String(entry.id)===String(id));if(!item)return;
   if(!item.read){try{await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});}catch(e){showToast(e.message||'تعذر تحديث حالة الإشعار','error');return;}item.read=true;state.adminInboxUnread=Math.max(0,Number(state.adminInboxUnread||0)-1);}
   const type=String(item.type||'');
-  const tab=type.includes('order')||type.includes('offer')?'orders':type.includes('client')?'clients':type.includes('technician')||type.includes('fanni')?'fannis':type.includes('topup')||type.includes('wallet')?'topups':type.includes('complaint')||type.includes('support')?'complaints':'';
+  let tab='';
+  try{
+    const target=new URL(String(item.link||''),window.location.origin);
+    if(target.origin===window.location.origin)tab=String(target.searchParams.get('tab')||'');
+  }catch(_){}
+  if(!tab)tab=type.includes('order')||type.includes('offer')?'orders':type.includes('client')?'clients':type.includes('technician')||type.includes('fanni')?'fannis':type.includes('topup')?'topups':type.includes('wallet')?'wallets':type.includes('complaint')?'complaints':type.includes('support')?'support':type.includes('password_recovery')?'passwordRecovery':'';
   if(tab&&typeof setTab==='function'&&canReadTab(tab))setTab(tab);
   else{const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
 }
