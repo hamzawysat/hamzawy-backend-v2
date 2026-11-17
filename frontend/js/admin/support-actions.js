@@ -9,13 +9,13 @@ function addFaq(){const question=String(document.getElementById('faq-question')?
 async function removeFaq(index){
  if(!state.content||!Array.isArray(state.content.faqs)||index<0||index>=state.content.faqs.length)return;
  const faq=state.content.faqs[index];
- if(!confirm('حذف السؤال «'+String(faq?.question||'').slice(0,120)+'» نهائيًا من واجهة العميل؟'))return;
+ if(!confirm('حذف السؤال «'+String(faq?.question||'').slice(0,120)+'» نهائيًا من واجهة الجمهور المحدد؟'))return;
  const btn=document.getElementById('save-content-btn');
  if(btn)btn.disabled=true;
  try{
   const data=await tryApi(['/api/admin/content/faqs/'+index],{method:'DELETE'});
   state.content=data.content||{announcement:state.content.announcement||'',faqs:state.content.faqs.filter((_,i)=>i!==index)};
-  showToast(data.message||'تم حذف السؤال ونشر التغيير لواجهة العميل');
+  showToast(data.message||'تم حذف السؤال ونشر التغيير للجمهور المحدد');
   render();
  }catch(e){
   showToast(e.message||'تعذر حذف السؤال من واجهة العميل؛ لم يتم اعتماد الحذف','error');
