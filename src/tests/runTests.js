@@ -54,7 +54,7 @@ async function run() {
       assert.ok(adminStore.includes('function renderStoreCategoryManager(products)'), 'admin should render a dedicated category manager');
       assert.ok(adminStore.includes('saveStoreCategoryFromButton(this)'), 'admin should save category name and image edits');
       assert.ok(adminStore.includes('deleteStoreCategoryFromButton(this)'), 'admin should provide category deletion');
-      assert.ok(adminStore.includes('/api/admin/store/category-media'), 'admin should upload a custom category image');
+      assert.ok(adminStore.includes('/api/admin/store/media?purpose=category'), 'admin should upload a custom category image');
       assert.ok(browserStore.includes('function setStoreCategory(role,category)'), 'browser store should support entering and leaving a category');
       assert.ok(browserStore.includes('data-store-category'), 'category cards should have an actionable selection');
       assert.ok(browserStore.includes('categoryInfo?.imageUrl||cover?.imageUrl'), 'custom category artwork should override the product-image fallback');
