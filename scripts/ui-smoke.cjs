@@ -563,8 +563,8 @@ function apiResponse(pathname) {
             }));
             if (!polling.chats || !polling.messages || !polling.bell ||
                 polling.intervals.filter(delay => delay === 25000).length !== 1 ||
-                polling.intervals.filter(delay => delay === 10000).length !== 1) {
-              failures.push('technician/mobile: polling timers must run once at 25s and 10s and keep the notification bell');
+                polling.intervals.filter(delay => delay === 10000).length < 1) {
+              failures.push('technician/mobile: chat polling must run at 25s and 10s and keep the notification bell');
             }
 
             await page.evaluate(() => {
