@@ -43,10 +43,18 @@ router.get('/available', auth(), async (req, res, next) => {
         _id: req.userId,
         role: 'fanni',
         status: 'معتمد'
-      }).select('specialties areas technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
+      }).select('specialties areas acceptingOrders technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
       if (!fanni) {
         return res.status(403).json({
           message: 'حساب الفني غير موجود أو غير معتمد'
+        });
+      }
+
+      if (fanni.acceptingOrders === false) {
+        return res.set('Cache-Control', 'no-store').status(200).json({
+          code: 'TECHNICIAN_NOT_ACCEPTING_ORDERS',
+          message: 'فعّل استلام الطلبات عشان تقدر تشوف الطلبات الجديدة.',
+          orders: [], data: [], pagination: { page, limit, total: 0, pages: 0 }
         });
       }
 
