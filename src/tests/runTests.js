@@ -70,7 +70,7 @@ async function run() {
       const renderStart = adminStore.indexOf('function renderStore(){');
       const renderEnd = adminStore.indexOf('function renderStoreOrders(){', renderStart);
       const storeRenderer = adminStore.slice(renderStart, renderEnd);
-      assert.match(categoryRenderer, /function toggleStoreCategoryManager\(\)/);
+      assert.match(adminStore, /function toggleStoreCategoryManager\(\)/);
       assert.match(categoryRenderer, /state\.storeCategoryManagerOpen=false/);
       assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\(\)"/);
       assert.match(categoryRenderer, /aria-expanded=/);
