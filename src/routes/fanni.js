@@ -339,6 +339,24 @@ router.post('/guidelines/accept', auth(), requireFanni, requireApprovedFanni, as
   } catch (err) { next(err); }
 });
 
+router.patch('/availability', auth(), requireFanni, requireApprovedFanni, async (req, res, next) => {
+  try {
+    if (typeof req.body?.acceptingOrders !== 'boolean') {
+      return res.status(400).json({ message: 'حدد حالة استقبال الطلبات بشكل صحيح.' });
+    }
+    const fanni = await Fanni.findOneAndUpdate(
+      { _id: req.userId, role: 'fanni', status: 'معتمد' },
+      { $set: { acceptingOrders: req.body.acceptingOrders } },
+      { new: true, runValidators: true }
+    ).select('acceptingOrders');
+    if (!fanni) return res.status(404).json({ message: 'حساب الفني غير موجود أو غير معتمد.' });
+    return res.set('Cache-Control', 'no-store').json({
+      acceptingOrders: fanni.acceptingOrders !== false,
+      message: fanni.acceptingOrders === false ? 'تم إيقاف استقبال الطلبات الجديدة.' : 'تم تفعيل استقبال الطلبات الجديدة.'
+    });
+  } catch (err) { return next(err); }
+});
+
 router.get('/me', auth(), requireFanni, async (req, res) => {
   const safeUser = req.user.toSafeJSON();
   const activeServiceKeys = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
