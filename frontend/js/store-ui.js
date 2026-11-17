@@ -2,6 +2,14 @@
 function storeEsc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function storeHeaders(role){const token=role==='client'?state.accountToken:getToken();return token?{Authorization:'Bearer '+token,'Content-Type':'application/json'}:{'Content-Type':'application/json'};}
 async function loadStoreForRole(role){try{const r=await fetch('/api/store/products',{cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'تعذر تحميل المتجر');state.storeProducts=Array.isArray(d.products)?d.products:[];}catch(e){state.storeProducts=[];if(role==='client')showToast(e.message,'error');else toast(e.message,'error');}try{const r=await fetch('/api/store/'+role+'/orders',{headers:storeHeaders(role),cache:'no-store'});const d=await r.json().catch(()=>({}));if(r.ok)state.myStoreOrders=Array.isArray(d.orders)?d.orders:[];}catch(_){}render();}
+function renderStoreProductCard(p,role){
+  return '<article class="panel p-3 flex gap-3"><div class="w-24 h-24 rounded-xl bg-slate-100 overflow-hidden shrink-0">'+(p.imageUrl?'<img src="'+storeEsc(p.imageUrl)+'" loading="lazy" class="w-full h-full object-cover" alt="'+storeEsc(p.name)+'">':'<div class="h-full flex items-center justify-center text-3xl">📦</div>')+'</div><div class="min-w-0 flex-1"><b class="text-[13px]">'+storeEsc(p.name)+'</b><p class="text-[10px] font-bold text-teal-700">'+(p.type==='subscription'?'اشتراك / تجديد اشتراك':'منتج وبضاعة')+(p.subscriptionDuration?' • '+storeEsc(p.subscriptionDuration):'')+'</p><p class="text-[11px] text-slate-500 mt-1">'+storeEsc(p.description||'')+'</p><p class="text-[10px] text-slate-500">'+storeEsc(p.details||'')+'</p><p class="text-[12px] font-black text-blue-700 mt-1">'+Number(p.price||0).toLocaleString('ar-EG')+' جنيه</p>'+(p.originalPrice!=null&&Number(p.originalPrice)>Number(p.price)?'<p class="text-[10px] text-slate-400 line-through">بدلًا من '+Number(p.originalPrice).toLocaleString('ar-EG')+' جنيه</p>':'')+(p.offerText?'<p class="text-[10px] text-emerald-700 font-bold">'+storeEsc(p.offerText)+'</p>':'')+'<button onclick="submitStorePurchase(\''+storeEsc(role)+'\',\''+storeEsc(p._id)+'\')" class="mt-2 primary-btn rounded-lg px-4 py-2 text-[11px] font-black">اطلب المنتج</button></div></article>';
+}
+function setStoreCategory(role,category){
+  const current=state.storeSelectedCategoryByRole&&typeof state.storeSelectedCategoryByRole==='object'?state.storeSelectedCategoryByRole:{};
+  state.storeSelectedCategoryByRole={...current,[role]:String(category||'')};
+  render();
+}
 function renderStoreCatalog(role){
   const products=Array.isArray(state.storeProducts)?state.storeProducts:[];
   const orders=Array.isArray(state.myStoreOrders)?state.myStoreOrders:[];
@@ -11,7 +19,9 @@ function renderStoreCatalog(role){
     if(!groups.has(category))groups.set(category,[]);
     groups.get(category).push(product);
   });
-  let h='<section class="mt-4 space-y-3"><div class="panel p-4"><h3 class="font-black text-[15px]">متجر حمزاوي سات</h3><p class="text-[11px] text-slate-500 mt-1">اختار المنتج اللي محتاجه، وابعت طلبك. الإدارة هتتواصل معاك لتأكيد الطلب وطريقة الدفع.</p></div><details class="panel p-4"><summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-extrabold text-[13px]"><span>طلبات المتجر السابقة</span><span class="text-slate-500 transition-transform" aria-hidden="true">⌄</span></summary><div class="mt-3">';
+  const selectedCategory=String(state.storeSelectedCategoryByRole?.[role]||'');
+  const selectedItems=selectedCategory?groups.get(selectedCategory):null;
+  let h='<section class="mt-4 space-y-3"><div class="panel p-4"><h3 class="font-black text-[15px]">متجر حمزاوي سات</h3><p class="text-[11px] text-slate-500 mt-1">اختار القسم اللي محتاجه، وبعدها هتظهر لك المنتجات الموجودة بداخله.</p></div><details class="panel p-4"><summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-extrabold text-[13px]"><span>طلبات المتجر السابقة</span><span class="text-slate-500 transition-transform" aria-hidden="true">⌄</span></summary><div class="mt-3">';
   if(!orders.length)h+='<p class="text-[11px] text-slate-500">لسه مفيش طلبات شراء.</p>';
   orders.forEach(o=>{
     h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p><p class="text-[11px] text-slate-500">الكمية: '+o.quantity+' • '+o.total+' جنيه • الحالة: '+storeEsc(o.status)+'</p></div>';
@@ -19,14 +29,17 @@ function renderStoreCatalog(role){
   h+='</div></details>';
   if(!products.length){
     h+='<div class="panel p-5 text-center text-sm">لا توجد منتجات متاحة حاليًا.</div>';
+  }else if(selectedItems){
+    h+='<div class="flex items-center justify-between gap-2"><button type="button" onclick="setStoreCategory(\''+storeEsc(role)+'\',\'\')" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-teal-700">← كل الأقسام</button><div class="text-right"><b class="text-[13px]">'+storeEsc(selectedCategory)+'</b><p class="text-[10px] text-slate-500">'+selectedItems.length+' منتج</p></div></div>';
+    selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);});
   }else{
+    h+='<div class="grid grid-cols-2 sm:grid-cols-3 gap-3">';
     groups.forEach((items,category)=>{
-      h+='<section class="space-y-2"><div class="flex items-center justify-between gap-2 px-1"><h4 class="font-black text-[13px] text-slate-800">'+storeEsc(category)+'</h4><span class="text-[10px] text-slate-500">'+items.length+' منتج</span></div>';
-      items.forEach(p=>{
-        h+='<article class="panel p-3 flex gap-3"><div class="w-24 h-24 rounded-xl bg-slate-100 overflow-hidden shrink-0">'+(p.imageUrl?'<img src="'+storeEsc(p.imageUrl)+'" class="w-full h-full object-cover">':'<div class="h-full flex items-center justify-center text-3xl">📦</div>')+'</div><div class="min-w-0 flex-1"><b class="text-[13px]">'+storeEsc(p.name)+'</b><p class="text-[10px] font-bold text-teal-700">'+(p.type==='subscription'?'اشتراك / تجديد اشتراك':'منتج وبضاعة')+(p.subscriptionDuration?' • '+storeEsc(p.subscriptionDuration):'')+'</p><p class="text-[11px] text-slate-500 mt-1">'+storeEsc(p.description||'')+'</p><p class="text-[10px] text-slate-500">'+storeEsc(p.details||'')+'</p><p class="text-[12px] font-black text-blue-700 mt-1">'+Number(p.price||0).toLocaleString('ar-EG')+' جنيه</p>'+(p.originalPrice!=null&&Number(p.originalPrice)>Number(p.price)?'<p class="text-[10px] text-slate-400 line-through">بدلًا من '+Number(p.originalPrice).toLocaleString('ar-EG')+' جنيه</p>':'')+(p.offerText?'<p class="text-[10px] text-emerald-700 font-bold">'+storeEsc(p.offerText)+'</p>':'')+'<button onclick="submitStorePurchase(\''+storeEsc(role)+'\',\''+storeEsc(p._id)+'\')" class="mt-2 primary-btn rounded-lg px-4 py-2 text-[11px] font-black">اطلب المنتج</button></div></article>';
-      });
-      h+='</section>';
+      const cover=items.find(p=>String(p.imageUrl||'').trim())||items[0];
+      const image=cover?.imageUrl?'<img src="'+storeEsc(cover.imageUrl)+'" loading="lazy" alt="'+storeEsc(category)+'" class="w-full h-full object-cover">':'<div class="w-full h-full flex items-center justify-center text-4xl">📦</div>';
+      h+='<button type="button" data-store-role="'+storeEsc(role)+'" data-store-category="'+storeEsc(category)+'" onclick="setStoreCategory(this.dataset.storeRole,this.dataset.storeCategory)" class="panel overflow-hidden rounded-2xl border border-slate-100 bg-white text-right shadow-sm"><div class="h-28 bg-slate-100 overflow-hidden">'+image+'</div><div class="p-3"><b class="block text-[12px] font-black text-slate-800">'+storeEsc(category)+'</b><span class="mt-1 block text-[10px] text-slate-500">'+items.length+' منتج</span><span class="mt-2 block text-[10px] font-bold text-teal-700">عرض المنتجات ←</span></div></button>';
     });
+    h+='</div>';
   }
   return h+'</section>';
 }
