@@ -241,8 +241,44 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
 
       if (validRows.length) {
         const existing = await StoreProduct.find({
-          $or: validRows.map(item => ({
-            name: new RegExp('^' + String(item.product.name).replace(/[.*+?^${}()|[\]\\]/g, '\\  router.post('/store/products', auth('admin'), async (req, res, next) => {') + '
+          $or: validRows.map(item => ({ name: item.product.name, category: item.product.category || 'عام' }))
+        }).select('name category').lean();
+        const existingKeys = new Set(existing.map(productKey));
+        const toInsert = [];
+        for (const item of validRows) {
+          if (existingKeys.has(item.key)) {
+            duplicates.push({ rowNumber: item.rowNumber, name: item.product.name, message: 'المنتج موجود بالفعل بنفس الاسم والقسم؛ تم تخطيه لمنع التكرار.' });
+          } else {
+            toInsert.push(item.product);
+            existingKeys.add(item.key);
+          }
+        }
+        const inserted = toInsert.length ? await StoreProduct.insertMany(toInsert, { ordered: false }) : [];
+        if (inserted.length) {
+          await writeAdminAudit(req, 'استيراد منتجات المتجر من ملف CSV', 'store-import', 'bulk', 'imported=' + inserted.length + '; duplicates=' + duplicates.length + '; errors=' + errors.length);
+        }
+        return res.set('Cache-Control', 'no-store').status(inserted.length ? 201 : 200).json({
+          message: 'انتهى استيراد ملف المنتجات.',
+          importedCount: inserted.length,
+          duplicateCount: duplicates.length,
+          errorCount: errors.length,
+          errors,
+          duplicates
+        });
+      }
+
+      return res.set('Cache-Control', 'no-store').json({
+        message: 'لم تتم إضافة منتجات. راجع الصفوف المكررة أو التي تحتوي على أخطاء.',
+        importedCount: 0,
+        duplicateCount: duplicates.length,
+        errorCount: errors.length,
+        errors,
+        duplicates
+      });
+    } catch (error) { return next(error); }
+  });
+
+  router.post('/store/products', auth('admin'), async (req, res, next) => {') + '
     try {
       const checked = productSchema.validate(req.body || {}, { abortEarly: false });
       if (checked.error) return res.status(400).json({ message: 'راجع اسم المنتج والسعر وباقي البيانات.' });
