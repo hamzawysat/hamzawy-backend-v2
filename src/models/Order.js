@@ -212,6 +212,11 @@ default: null
 },
 
 clientPaymentStatus: { type: String, enum: ['unpaid', 'held', 'settled', 'refunded'], default: 'unpaid', index: true },
+// Customer acceptance starts the 14-day repair warranty; legacy orders remain unconfirmed.
+clientConfirmedAt: { type: Date, default: null, index: true },
+warrantyStartsAt: { type: Date, default: null },
+warrantyExpiresAt: { type: Date, default: null, index: true },
+warrantyStatus: { type: String, enum: ['pending', 'active', 'expired'], default: 'pending', index: true },
 clientPaymentAmount: { type: Number, min: 0, default: 0 },
 clientPaymentAt: { type: Date, default: null },
 technicianSettledAt: { type: Date, default: null },
