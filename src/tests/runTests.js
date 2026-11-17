@@ -174,6 +174,10 @@ async function run() {
       assert.equal(canAccessAdmin({ role: 'fanni', adminRole: 'قراءة فقط' }, { path: '/store/products', method: 'POST' }), false);
       assert.equal(defaultAdminPermissions('مشرف').settings.write, false);
       assert.equal(defaultAdminPermissions('مشرف أول').services.write, true);
+      assert.equal(defaultAdminPermissions('مشرف أول').commerce.write, true);
+      assert.equal(defaultAdminPermissions('مشرف أول').store.write, true, 'senior admins must be able to manage store products and orders');
+      const adminUsersRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/users.js'), 'utf8');
+      assert.match(adminUsersRoute, /allowedSections\\s*=\\s*\\[[^\\]]*'commerce'[^\\]]*'store'/, 'custom permission saving must accept commerce and store keys');
       assert.equal(canAccessAdmin({ role: 'fanni', adminRole: 'مدير' }, { path: '/fanni-profile-edits', method: 'GET' }), true);
       assert.equal(canAccessAdmin({ role: 'fanni', adminRole: 'مدير' }, { path: '/fanni-profile-edits/507f1f77bcf86cd799439011/approve', method: 'POST' }), true);
       assert.equal(canAccessAdmin({ role: 'fanni', adminRole: 'مشرف' }, { path: '/fanni-profile-edits', method: 'GET' }), true);
