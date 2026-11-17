@@ -629,6 +629,12 @@ function apiResponse(pathname) {
       });
       if (!response || response.status() !== 200) failures.push('admin/store-restore: admin page did not return HTTP 200');
       await storeRestorePage.getByText('منتج استعادة المتجر').waitFor({ state: 'visible', timeout: 6000 });
+      const rotationSettingsToggle = storeRestorePage.getByRole('button', { name: /مدة عرض صورة الإعلان/ });
+      await rotationSettingsToggle.waitFor({ state: 'visible', timeout: 5000 });
+      if (await rotationSettingsToggle.getAttribute('aria-expanded') !== 'false') {
+        failures.push('admin/store-restore: ad rotation settings should start collapsed');
+      }
+      await rotationSettingsToggle.click();
       const savedRotation = await storeRestorePage.locator('#store-ad-rotation-seconds').inputValue();
       if (savedRotation !== '10') failures.push('admin/store-restore: saved ad rotation setting was not restored (expected 10, received ' + savedRotation + ')');
       if (!storeApiCalls.includes('/api/admin/store/products')) failures.push('admin/store-restore: restored store tab did not request saved products');
