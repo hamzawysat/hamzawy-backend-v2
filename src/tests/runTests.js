@@ -184,6 +184,7 @@ async function run() {
       assert.equal(isAllowedPushEndpoint('https://fcm.googleapis.com:8443/push'), false);
       assert.equal(normalizeNotificationPath('https://hamzawy-backend-v2-production.up.railway.app/admin?tab=fannis'), '/admin?tab=fannis');
       assert.equal(normalizeNotificationPath('https://attacker.invalid/admin'), '/');
+      assert.match(webPush, /PUSH_TTL_SECONDS = 86400/);
       assert.match(webPush, /TTL: String\(PUSH_TTL_SECONDS\)/);
       assert.match(delivery, /ttl: 120/);
       assert.match(worker, /www\.hamzawy-sat\.dynv6\.net/);
@@ -193,6 +194,9 @@ async function run() {
       assert.match(browser, /pushManager\.subscribe/);
       assert.doesNotMatch(browser, /vercel\.app/);
       assert.match(worker, /addEventListener\('push'/); assert.match(worker, /notificationTarget/);
+      assert.match(worker, /addEventListener\('pushsubscriptionchange'/);
+      assert.match(worker, /WEB_PUSH_SUBSCRIPTION_CHANGED/);
+      assert.match(browser, /WEB_PUSH_SUBSCRIPTION_CHANGED/);
       assert.doesNotMatch(worker, /LOGO_UPLOAD_HERE/);
       assert.match(route, /normalizeNotificationLink\(item\.link/);
       assert.match(delivery, /sendPushNotification/);
