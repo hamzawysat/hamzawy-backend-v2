@@ -135,11 +135,11 @@ async function sendFirebasePushNotifications(devices, payload) {
         data,
         android: {
           priority: 'HIGH',
-          ttl: '120s',
+          ttl: '86400s',
           notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' }
         },
-        webpush: { headers: { TTL: '120', Urgency: 'high' } },
-        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120), 'apns-priority': '10' } }
+        webpush: { headers: { TTL: '86400', Urgency: 'high' } },
+        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
       } })
     });
     if (response.status === 404 || response.status === 410) {
@@ -172,7 +172,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         sound: 'default',
         priority: 'high',
         channelId: 'default',
-        ttl: 120,
+        ttl: 86400,
         data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link) }
       }));
       for (let start = 0; start < messages.length; start += 100) {
