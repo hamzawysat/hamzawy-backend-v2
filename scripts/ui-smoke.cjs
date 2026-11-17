@@ -31,6 +31,33 @@ function verifyAdminDashboardSource() {
       !shell.includes("filter(item=>item.value>0)")) {
     throw new Error('Admin dashboard KPI or quick-action regression');
   }
+  const adminContent = read('frontend/js/admin/support-render.js');
+  const adminActions = read('frontend/js/admin/support-actions.js');
+  const adminCss = read('frontend/css/admin-layout.css');
+  const publicRoute = read('src/routes/public.js');
+  const platformRoute = read('src/routes/admin/platform.js');
+  const fanniRender = read('frontend/js/fanni-render.js');
+  const fanniDashboard = read('frontend/js/fanni-dashboard.js');
+  if (!shell.includes("setTab('orders');state.filterOrder='قيد المراجعة';applyOrderFilter()") ||
+      !shell.includes("setTab('pending')") ||
+      !shell.includes("if(action==='advertisement'){setTab('content')") ||
+      shell.includes("window.open('/client.html'") || shell.includes("window.open('/fanni.html'")) {
+    throw new Error('Admin quick actions must open the matching internal pending lists and announcement editor');
+  }
+  if (!adminCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))') ||
+      !adminCss.includes('justify-content:center') ||
+      !adminContent.includes('content-announcement-audience') ||
+      !adminContent.includes('faq-audience')) {
+    throw new Error('Admin buttons or content audience controls regression');
+  }
+  if (!adminActions.includes('announcementAudience') ||
+      !adminActions.includes('audience,active:true') ||
+      !platformRoute.includes("Joi.string().valid('client','fanni','both')") ||
+      !publicRoute.includes("req.query.role || 'client'") ||
+      !fanniRender.includes('renderFanniPublicContent') ||
+      !fanniDashboard.includes("apiGet('/api/content?role=fanni')")) {
+    throw new Error('Client/technician announcement and FAQ audience targeting regression');
+  }
   if (sectionPositions.some(position => position < 0) ||
       sectionPositions.some((position, index) => index > 0 && position <= sectionPositions[index - 1])) {
     throw new Error('Admin dashboard section order regression');
