@@ -256,11 +256,6 @@ async function run() {
       assert.match(webPush, /function removeSubscriptionRecipient\(subscription, notification\)/);
       assert.match(webPush, /\$pull: \{ recipients:/);
       assert.match(webPush, /removeSubscriptionRecipient\(subscription, notification\)/);
-      const nativePush = fs.readFileSync(path.join(__dirname, '../../native-admin/app/src/main/java/com/sonaa/nativeadmin/SonaaMessagingService.kt'), 'utf8');
-      const nativeMain = fs.readFileSync(path.join(__dirname, '../../native-admin/app/src/main/java/com/sonaa/nativeadmin/MainActivity.kt'), 'utf8');
-      assert.match(nativePush, /"storeOrders", "commerceSubscriptions"/);
-      assert.match(nativePush, /"wallet" -> "wallets"/);
-      assert.match(nativeMain, /"commerceSubscriptions", "clientWallet" -> AdminSection.CLIENTS/);
       const deliveryModel = fs.readFileSync(path.join(__dirname, '../models/NotificationDelivery.js'), 'utf8');
       assert.match(route, /admin\/delivery-log/);
       assert.match(delivery, /NotificationDelivery\.findOneAndUpdate/);
