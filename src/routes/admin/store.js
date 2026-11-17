@@ -8,7 +8,12 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
   const router = express.Router();
   const categorySchema = Joi.object({
     name: Joi.string().trim().min(2).max(80).required(),
-    imageUrl: Joi.string().max(1000).allow('').custom((value, helpers) => { if (!value || /^https?:\\/\\//i.test(value) || /^\\/api\\/store\\/media\\/[a-f0-9]{24}$/i.test(value)) return value; return helpers.error('string.uri'); }).default(''),
+    imageUrl: Joi.string().max(1000).allow('').custom((value, helpers) => {
+      if (!value || value.startsWith('http://') || value.startsWith('https://')) return value;
+      const prefix = '/api/store/media/';
+      if (value.startsWith(prefix) && /^[a-f0-9]{24}$/i.test(value.slice(prefix.length))) return value;
+      return helpers.error('string.uri');
+    }).default(''),
     imageFileId: Joi.string().hex().length(24).allow(null).default(null)
   }).unknown(false);
   const productSchema = Joi.object({
