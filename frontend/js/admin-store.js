@@ -75,7 +75,8 @@ async function deleteStoreCategoryFromButton(button){
     await loadStoreProducts();
   }catch(error){showToast(error.message||'تعذر حذف القسم.','error');}
 }
-\nfunction renderStore(){
+
+function renderStore(){
   if(typeof state.storeProductFormOpen!=='boolean')state.storeProductFormOpen=false;
   const products=state.storeProducts||[];
   const categoryOptions=Array.from(new Set(['عام',...products.map(p=>String(p.category||'عام').trim()).filter(Boolean)])).filter(Boolean).sort((a,b)=>a.localeCompare(b,'ar')).map(category=>'<option value="'+escHtml(category)+'">'+escHtml(category)+'</option>').join('');
