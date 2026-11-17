@@ -153,7 +153,32 @@ async function loadNotifications(){
  catch(error){log('تعذر تحميل الإشعارات:',error.message);}
 }
 async function toggleNotifications(){state.notificationsOpen=!state.notificationsOpen;if(state.notificationsOpen)await loadNotifications();render();}
-async function openNotification(id){var previous=state.notifications.find(function(n){return n.id===id;});try{if(previous&&!previous.read)await API.readNotification(id);}catch(error){log('تعذر تعليم الإشعار كمقروء:',error.message);showToast('تعذر تحديث حالة الإشعار. حاول مرة أخرى.');return;}state.notifications=state.notifications.map(function(n){return n.id===id?Object.assign({},n,{read:true}):n;});if(previous&&!previous.read)state.notificationsUnread=Math.max(0,state.notificationsUnread-1);state.notificationsOpen=false;if(previous&&previous.link&&previous.link.indexOf('tab=orders')>=0){if(typeof rememberClientTab==='function')rememberClientTab('orders');state.tab='orders';await loadMyOrders(false);}else if(previous&&previous.link&&previous.link.indexOf('tab=complaint')>=0){if(typeof rememberClientTab==='function')rememberClientTab('complaint');state.tab='complaint';}else if(previous&&previous.link&&previous.link.indexOf('tab=wallet')>=0){if(typeof rememberClientTab==='function')rememberClientTab('wallet');state.tab='wallet';await loadClientWallet();}render();}
+async function openNotification(id){
+ var previous=state.notifications.find(function(n){return n.id===id;});
+ try{if(previous&&!previous.read)await API.readNotification(id);}
+ catch(error){log('تعذر تعليم الإشعار كمقروء:',error.message);showToast('تعذر تحديث حالة الإشعار. حاول مرة أخرى.');return;}
+ state.notifications=state.notifications.map(function(n){return n.id===id?Object.assign({},n,{read:true}):n;});
+ if(previous&&!previous.read)state.notificationsUnread=Math.max(0,state.notificationsUnread-1);
+ state.notificationsOpen=false;
+ var tab='';
+ try{var target=new URL(String(previous&&previous.link||''),window.location.origin);if(target.origin===window.location.origin)tab=String(target.searchParams.get('tab')||'');}catch(_){}
+ if(!tab&&previous){
+  var type=String(previous.type||'');
+  if(type.startsWith('client_wallet_')||type==='client_service_refunded')tab='wallet';
+  else if(type==='subscription_activated'||type==='subscription_renewed')tab='subscriptions';
+  else if(type==='store_order_update')tab='store';
+  else if(['order_created','new_offer','offer_accepted','order_cancelled','order_completed','order_rated'].includes(type))tab='orders';
+ }
+ if(['orders','complaint','wallet','subscriptions','store'].includes(tab)){
+  if(typeof rememberClientTab==='function')rememberClientTab(tab);
+  state.tab=tab;
+  if(tab==='orders')await loadMyOrders(false);
+  else if(tab==='wallet')await loadClientWallet();
+  else if(tab==='subscriptions')await loadClientCommerce();
+  else if(tab==='store')await loadStoreForRole('client');
+ }
+ render();
+}
 async function markAllNotificationsRead(){try{await API.readAllNotifications();state.notifications=state.notifications.map(function(n){return Object.assign({},n,{read:true});});state.notificationsUnread=0;render();}catch(error){showToast(error.message||'تعذر تحديث الإشعارات.');}}
 function notificationBadge(){if(!state.notificationsUnread)return '';return '<span id="notificationBadge" class="absolute -right-1 -top-1 min-w-[17px] rounded-full bg-red-600 px-1 text-[9px] font-black text-white">'+(state.notificationsUnread>99?'99+':state.notificationsUnread)+'</span>'; }
 function notificationPanel(){
