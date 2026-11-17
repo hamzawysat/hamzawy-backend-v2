@@ -6,6 +6,7 @@ const PushToken = require('../models/PushToken');
 const Fanni = require('../models/Fanni');
 const { sendWebPushNotification } = require('./webPush');
 
+const NATIVE_PUSH_TTL_SECONDS = 86400;
 const CURRENT_PUBLIC_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
 const LEGACY_PUBLIC_HOSTS = new Set(['hamzawy-backend-v2-production.up.railway.app', 'hamzawy-sat.vercel.app']);
 function adminPanelNotificationLink(tab = 'support') {
@@ -110,7 +111,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '');
   if (!raw || typeof fetch !== 'function') {
     console.error('FCM push skipped: FIREBASE_SERVICE_ACCOUNT_JSON is not configured; registered devices:', devices.length);
-    return { accepted: 0, failed: devices.length };
+    return { accepted: 0, failed: devices.length, errors: [{ code: 'missing_service_account' }] };
   }
   const account = JSON.parse(raw);
   if (!account.project_id || !account.client_email || !account.private_key) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is incomplete');
@@ -135,11 +136,11 @@ async function sendFirebasePushNotifications(devices, payload) {
         data,
         android: {
           priority: 'HIGH',
-          ttl: '120s',
+          ttl: NATIVE_PUSH_TTL_SECONDS + 's',
           notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' }
         },
-        webpush: { headers: { TTL: '120', Urgency: 'high' } },
-        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 120), 'apns-priority': '10' } }
+        webpush: { headers: { TTL: String(NATIVE_PUSH_TTL_SECONDS), Urgency: 'high' } },
+        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + NATIVE_PUSH_TTL_SECONDS), 'apns-priority': '10' } }
       } })
     });
     if (response.status === 404 || response.status === 410) {
@@ -148,15 +149,16 @@ async function sendFirebasePushNotifications(devices, payload) {
     if (!response.ok) {
       const detail = (await response.text().catch(() => '')).slice(0, 240);
       console.error('FCM delivery failed:', response.status, detail);
-      return false;
+      return { ok: false, code: 'http_' + response.status, detail };
     }
-    return true;
+    return { ok: true };
   }));
-  const accepted = results.filter(Boolean).length;
-  return { accepted, failed: results.length - accepted };
+  const accepted = results.filter(result => result.ok).length;
+  const errors = results.filter(result => !result.ok).map(result => ({ code: result.code || 'provider_rejected', detail: String(result.detail || '').slice(0, 160) }));
+  return { accepted, failed: results.length - accepted, errors };
 }
 async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '' }) {
-  const report = { expo: { attempted: 0, accepted: 0, failed: 0 }, fcm: { attempted: 0, accepted: 0, failed: 0 } };
+  const report = { expo: { attempted: 0, accepted: 0, failed: 0, errors: [] }, fcm: { attempted: 0, accepted: 0, failed: 0, errors: [] } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
     const expo = devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token));
@@ -172,7 +174,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         sound: 'default',
         priority: 'high',
         channelId: 'default',
-        ttl: 120,
+        ttl: NATIVE_PUSH_TTL_SECONDS,
         data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link) }
       }));
       for (let start = 0; start < messages.length; start += 100) {
@@ -185,6 +187,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
           report.expo.failed += batch.length;
+          report.expo.errors.push({ code: 'http_' + response.status });
           console.error('Expo push request failed:', response.status, JSON.stringify(result).slice(0, 240));
           continue;
         }
@@ -194,7 +197,9 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
           if (ticket?.status === 'ok') report.expo.accepted += 1;
           else {
             report.expo.failed += 1;
-            console.error('Expo push ticket rejected:', ticket?.details?.error || ticket?.message || ticket?.status || 'missing ticket');
+            const errorCode = String(ticket?.details?.error || ticket?.message || ticket?.status || 'missing_ticket').slice(0, 100);
+            report.expo.errors.push({ code: errorCode });
+            console.error('Expo push ticket rejected:', errorCode);
             if (ticket?.details?.error === 'DeviceNotRegistered') {
               const token = batch[i]?.to;
               if (token) await PushToken.deleteOne({ token }).catch(() => {});
@@ -204,6 +209,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
       }
     } else if (expo.length) {
       report.expo.failed = expo.length;
+      report.expo.errors.push({ code: 'fetch_unavailable' });
       console.error('Expo push skipped: fetch is unavailable.');
     }
 
@@ -213,11 +219,13 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         if (result && Number.isFinite(result.accepted)) {
           report.fcm.accepted = result.accepted;
           report.fcm.failed = Math.max(0, fcm.length - result.accepted);
+          report.fcm.errors = Array.isArray(result.errors) ? result.errors.slice(0, 10) : [];
         } else {
           report.fcm.failed = fcm.length;
         }
       } catch (error) {
         report.fcm.failed = fcm.length;
+        report.fcm.errors.push({ code: 'provider_error', detail: String(error.message || '').slice(0, 160) });
         console.error('FCM delivery unavailable:', error.message);
       }
     }
@@ -247,15 +255,37 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
     // The database notification is the source of truth. External push providers
     // are best-effort and must never hold the user's primary action indefinitely.
     if (isNew) {
-      const delivery = await Promise.allSettled([
+      const deliveryResults = await Promise.allSettled([
         sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link }),
         sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link })
       ]);
-      delivery.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
-        }
+      deliveryResults.forEach((result, index) => {
+        if (result.status === 'rejected') console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
       });
+      const native = deliveryResults[0].status === 'fulfilled' ? deliveryResults[0].value : null;
+      const web = deliveryResults[1].status === 'fulfilled' ? deliveryResults[1].value : null;
+      const nativeAttempted = Number(native?.expo?.attempted || 0) + Number(native?.fcm?.attempted || 0);
+      const nativeAccepted = Number(native?.expo?.accepted || 0) + Number(native?.fcm?.accepted || 0);
+      const nativeFailed = Number(native?.expo?.failed || 0) + Number(native?.fcm?.failed || 0);
+      const summarize = result => {
+        if (!result) return { status: 'error', attempted: 0, accepted: 0, failed: 1 };
+        const attempted = Number(result.attempted || 0), accepted = Number(result.accepted || 0), failed = Number(result.failed || 0);
+        return { status: result.status === 'not_configured' ? 'not_configured' : attempted === 0 ? 'no_devices' : accepted === attempted ? 'accepted' : accepted > 0 ? 'partial' : 'failed', attempted, accepted, failed };
+      };
+      const webOutcomes = Array.isArray(web?.results) ? web.results.slice(0, 50).map(result => ({ status: String(result.status || 'unknown'), httpStatus: Number(result.httpStatus || 0) || undefined, provider: String(result.provider || '').slice(0, 100) || undefined })) : [];
+      const delivery = {
+        checkedAt: new Date(),
+        native: {
+          ...summarize(native ? { attempted: nativeAttempted, accepted: nativeAccepted, failed: nativeFailed } : null),
+          expo: summarize(native?.expo), fcm: summarize(native?.fcm),
+          errors: [
+            ...(native?.expo?.errors || []).slice(0, 10).map(error => ({ channel: 'expo', code: String(error.code || 'unknown').slice(0, 100) })),
+            ...(native?.fcm?.errors || []).slice(0, 10).map(error => ({ channel: 'fcm', code: String(error.code || 'unknown').slice(0, 100), detail: String(error.detail || '').slice(0, 160) }))
+          ]
+        },
+        web: { ...summarize(web), outcomes: webOutcomes }
+      };
+      await Notification.updateOne({ _id: notification._id }, { $set: { delivery } }).catch(error => console.error('Notification delivery report persistence failed:', error.message));
     }
     return notification;
   } catch (error) { console.error('Notification create failed:', error.message); return null; }
