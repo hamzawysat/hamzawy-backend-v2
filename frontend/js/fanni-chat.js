@@ -74,8 +74,14 @@ function stopFanniPolling(){
  if(fanniMessagesPollTimer){clearInterval(fanniMessagesPollTimer);fanniMessagesPollTimer=null;}
 }
 function startFanniPolling(){
+ if(document.hidden||!getToken()){
+  stopFanniPolling();
+  return;
+ }
+ // Login, dashboard bootstrap, and visibility restoration can all request a
+ // start. Keep one timer per polling lane instead of resetting both timers.
+ if(fanniChatsPollTimer&&fanniMessagesPollTimer)return;
  stopFanniPolling();
- if(document.hidden||!getToken())return;
  fanniChatsPollTimer=setInterval(refreshFanniChatsSilently,25000);
  fanniMessagesPollTimer=setInterval(refreshFanniChatMessagesSilently,10000);
 }
