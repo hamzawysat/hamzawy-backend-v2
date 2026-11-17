@@ -1,4 +1,16 @@
 'use strict';
+async function loadClientWalletAccounts(){
+ if(!getToken())return;
+ state.clientWalletAccountsLoading=true;
+ try{
+  const data=await tryApi(['/api/admin/client-wallet/accounts'],{method:'GET'});
+  state.clientWalletAccounts=extractList(data,['accounts','data','items']);
+  if(state.clientWalletAccountId&&!state.clientWalletAccounts.some(x=>String(x._id||x.id)===String(state.clientWalletAccountId))){
+   state.clientWalletAccountId='';state.clientWalletSelectedId='';state.clientWalletTransactions=[];
+  }
+ }catch(error){state.clientWalletAccounts=[];showToast(error.message||'تعذر تحميل حسابات العملاء','error');}
+ finally{state.clientWalletAccountsLoading=false;if(state.tab==='clientWallet'||(state.tab==='topups'&&state.topupOwnerTab==='clients'))render();}
+}
 function clientWalletOperationKey(){return (typeof crypto!=='undefined'&&crypto.randomUUID)?crypto.randomUUID():('cw-'+Date.now()+'-'+Math.random().toString(36).slice(2));}
 function applyClientTopupFilter(){
  const rows=Array.isArray(state.clientTopups)?state.clientTopups:[];
@@ -13,7 +25,7 @@ function applyClientTopupFilter(){
 function setTopupOwnerTab(type){type=String(type||'');if(!['fannis','clients'].includes(type))return;if(type==='clients'&&!canReadTab('clientWallet'))return showToast('لا تملك صلاحية الاطلاع على طلبات شحن العملاء','error');state.topupOwnerTab=type;state.search='';render();if(type==='clients')loadClientTopups();else applyTopupFilter();}
 async function loadClientTopups(){
  if(!getToken())return;state.clientTopupsLoading=true;render();
- try{const data=await tryApi(['/api/admin/client-wallet/topup-requests'],{method:'GET'});state.clientTopups=extractList(data,['requests','items']);applyClientTopupFilter();}
+ try{const data=await tryApi(['/api/admin/client-wallet/topup-requests'],{method:'GET'});state.clientTopups=extractList(data,['requests','items']);applyClientTopupFilter();await loadClientWalletAccounts();}
  catch(error){state.clientTopups=[];state.filteredClientTopups=[];showToast(error.message||'تعذر تحميل محافظ العملاء','error');}
  finally{state.clientTopupsLoading=false;if(state.tab==='clientWallet'||(state.tab==='topups'&&state.topupOwnerTab==='clients'))render();}
 }
@@ -33,7 +45,7 @@ async function addClientWalletBalance(id){
  const amount=Number(raw);if(!Number.isInteger(amount)||amount<=0)return showToast('اكتب مبلغًا صحيحًا أكبر من صفر','error');
  const reason=prompt('سبب الإضافة الإدارية للتوثيق:','تسوية إدارية');if(reason===null)return;if(reason.trim().length<2)return showToast('اكتب سببًا واضحًا','error');const idempotencyKey=clientWalletOperationKey();
  if(!confirm('تأكيد إضافة '+amount+' جنيه إلى محفظة العميل؟'))return;
- try{const data=await tryApi(['/api/admin/clients/'+encodeURIComponent(id)+'/wallet/add-balance'],{method:'POST',body:JSON.stringify({amount,reason:reason.trim(),idempotencyKey})});showToast(data.message||'تمت إضافة الرصيد','success');if(state.tab==='clients')await loadClients(state.clientSearch||'');else await loadClientTopups();}
+ try{const data=await tryApi(['/api/admin/clients/'+encodeURIComponent(id)+'/wallet/add-balance'],{method:'POST',body:JSON.stringify({amount,reason:reason.trim(),idempotencyKey})});showToast(data.message||'تمت إضافة الرصيد','success');if(state.tab==='clients')await loadClients(state.clientSearch||'');else {await loadClientTopups();await loadClientWalletTransactions(id);}}
  catch(error){showToast(error.message||'تعذرت إضافة الرصيد','error');}
 }
 
@@ -42,7 +54,7 @@ async function deductClientWalletBalance(id){
  const amount=Number(raw);if(!Number.isInteger(amount)||amount<=0)return showToast('اكتب مبلغًا صحيحًا أكبر من صفر','error');
  const reason=prompt('سبب الخصم الإداري للتوثيق:','تسوية إدارية');if(reason===null)return;if(reason.trim().length<2)return showToast('اكتب سببًا واضحًا','error');const idempotencyKey=clientWalletOperationKey();
  if(!confirm('تأكيد خصم '+amount+' جنيه من محفظة العميل؟ لن يتم الخصم إذا كان الرصيد غير كافٍ.'))return;
- try{const data=await tryApi(['/api/admin/clients/'+encodeURIComponent(id)+'/wallet/deduct-balance'],{method:'POST',body:JSON.stringify({amount,reason:reason.trim(),idempotencyKey})});showToast(data.message||'تم خصم الرصيد','success');if(state.tab==='clients')await loadClients(state.clientSearch||'');else await loadClientTopups();}
+ try{const data=await tryApi(['/api/admin/clients/'+encodeURIComponent(id)+'/wallet/deduct-balance'],{method:'POST',body:JSON.stringify({amount,reason:reason.trim(),idempotencyKey})});showToast(data.message||'تم خصم الرصيد','success');if(state.tab==='clients')await loadClients(state.clientSearch||'');else {await loadClientTopups();await loadClientWalletTransactions(id);}}
  catch(error){showToast(error.message||'تعذر خصم الرصيد','error');}
 }
 async function settleClientWalletBalance(id,currentBalance){
@@ -50,7 +62,7 @@ async function settleClientWalletBalance(id,currentBalance){
  const balance=Number(raw);if(!Number.isInteger(balance)||balance<0||balance>100000000)return showToast('اكتب رصيدًا نهائيًا صحيحًا من صفر إلى 100 مليون','error');
  const reason=prompt('سبب تسوية الرصيد للتوثيق:','تسوية إدارية');if(reason===null)return;if(reason.trim().length<2)return showToast('اكتب سببًا واضحًا','error');const idempotencyKey=clientWalletOperationKey();
  if(!confirm('تأكيد تسوية رصيد العميل إلى '+balance+' جنيه؟ سيتم تسجيل فرق التسوية في كشف الحساب.'))return;
- try{const data=await tryApi(['/api/admin/clients/'+encodeURIComponent(id)+'/wallet/set-balance'],{method:'POST',body:JSON.stringify({balance,reason:reason.trim(),idempotencyKey})});showToast(data.message||'تمت التسوية','success');if(state.tab==='clients')await loadClients(state.clientSearch||'');else await loadClientTopups();}
+ try{const data=await tryApi(['/api/admin/clients/'+encodeURIComponent(id)+'/wallet/set-balance'],{method:'POST',body:JSON.stringify({balance,reason:reason.trim(),idempotencyKey})});showToast(data.message||'تمت التسوية','success');if(state.tab==='clients')await loadClients(state.clientSearch||'');else {await loadClientTopups();await loadClientWalletTransactions(id);}}
  catch(error){showToast(error.message||'تعذرت تسوية الرصيد','error');}
 }
 function renderClientWalletLedger(){
@@ -59,7 +71,7 @@ function renderClientWalletLedger(){
  return '<div class="premium-panel p-4 mt-4"><div class="flex justify-between items-center gap-2"><h3 class="font-black text-[12px]">كشف محفظة العميل</h3><button type="button" onclick="state.clientWalletSelectedId=\'\';state.clientWalletTransactions=[];render()" class="pill-btn soft-btn">إغلاق</button></div>'+(state.clientWalletLoading?'<p class="py-4 text-center text-[11px]">جاري تحميل الحركات...</p>':(state.clientWalletTransactions||[]).length?state.clientWalletTransactions.map(x=>'<div class="border-b py-2 text-[11px]"><div class="flex justify-between gap-2"><b>'+esc(({client_topup:'شحن محفظة',client_admin_adjustment:'إضافة إدارية',client_admin_deduction:'خصم إداري',client_admin_settlement:'تسوية رصيد',client_refund:'استرداد خدمة',client_service_payment:'دفع خدمة',client_subscription_payment:'اشتراك'}[x.type]||x.type))+'</b><strong>'+Number(x.amount||0).toLocaleString('ar-EG')+' ج</strong></div><p class="text-slate-500 mt-1">'+esc(x.description||'')+'</p><p class="text-slate-400 mt-1">الرصيد بعد الحركة: '+Number(x.balanceAfter||0).toLocaleString('ar-EG')+' ج</p></div>').join(''):'<p class="py-4 text-center text-[11px] text-slate-500">لا توجد حركات مالية.</p>')+'</div>';
 }
 async function loadClientWalletTransactions(id){
- if(!id)return;state.clientWalletSelectedId=String(id);state.clientWalletLoading=true;state.clientWalletTransactions=[];render();
+ if(!id)return;state.clientWalletSelectedId=String(id);state.clientWalletAccountId=String(id);state.clientWalletLoading=true;state.clientWalletTransactions=[];render();
  try{const data=await tryApi(['/api/admin/client-wallet/transactions/'+encodeURIComponent(id)],{method:'GET'});state.clientWalletTransactions=extractList(data,['transactions','data','items']);}
  catch(error){showToast(error.message||'تعذر تحميل كشف المحفظة','error');}
  finally{state.clientWalletLoading=false;if(['clientWallet','clients'].includes(state.tab))render();}
@@ -68,9 +80,21 @@ function renderClientWallet(){
  const rows=state.filteredClientTopups||[],pending=(state.clientTopups||[]).filter(x=>x.status==='قيد المراجعة').length;
  const accepted=(state.clientTopups||[]).filter(x=>x.status==='مقبول').reduce((sum,x)=>sum+Number(x.amount||0),0);
  const selected=String(state.clientWalletSelectedId||''),esc=v=>escHtml(String(v??''));
+ const accounts=Array.isArray(state.clientWalletAccounts)?state.clientWalletAccounts:[];
+ const accountId=String(state.clientWalletAccountId||'');
+ const account=accounts.find(x=>String(x._id||x.id)===accountId);
  return `<section class="mt-4 space-y-4">
  <div class="grid grid-cols-2 gap-2"><div class="premium-panel p-4"><p class="text-[10px] text-slate-500 font-bold">طلبات تحتاج مراجعة</p><p class="mt-2 text-2xl font-black text-amber-600">${pending}</p></div><div class="premium-panel p-4"><p class="text-[10px] text-slate-500 font-bold">إجمالي الشحن المعتمد</p><p class="mt-2 text-2xl font-black text-emerald-700">${accepted.toLocaleString('ar-EG')} ج</p></div></div>
  <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><h2 class="font-black text-sm">محافظ العملاء</h2><p class="text-[10px] text-slate-500 mt-1">مراجعة التحويلات وإدارة الأرصدة</p></div><button type="button" onclick="loadClientTopups()" class="pill-btn soft-btn">تحديث</button></div>
+ <div class="premium-panel p-4 space-y-3">
+  <div><h3 class="font-black text-[12px]">إدارة رصيد عميل</h3><p class="text-[10px] text-slate-500 mt-1">اختار أي عميل مسجل لعرض رصيده وتنفيذ العمليات المالية</p></div>
+  <select class="field" value="${esc(accountId)}" onchange="state.clientWalletAccountId=this.value;state.clientWalletSelectedId='';state.clientWalletTransactions=[];render()">
+   <option value="">اختار العميل</option>
+   ${accounts.map(c=>'<option value="'+esc(c._id||c.id)+'" '+(String(c._id||c.id)===accountId?'selected':'')+'>'+esc(c.name||'عميل')+' — '+esc(c.phone||'')+'</option>').join('')}
+  </select>
+  ${state.clientWalletAccountsLoading?'<p class="text-[10px] text-slate-500">جاري تحميل العملاء...</p>':''}
+  ${account?'<div class="rounded-xl border border-emerald-100 bg-emerald-50 p-3"><div class="flex items-center justify-between gap-2"><div><p class="font-black text-[12px]">'+esc(account.name||'عميل')+'</p><p class="text-[10px] text-slate-500" dir="ltr">'+esc(account.phone||'')+'</p></div><strong class="text-[18px] font-black text-emerald-700">'+Number(account.walletBalance||0).toLocaleString('ar-EG')+' ج</strong></div><p class="mt-1 text-[10px] '+(account.walletFrozen?'text-red-600':'text-emerald-700')+'">'+(account.walletFrozen?'المحفظة مجمدة':'المحفظة غير مجمدة')+' • '+esc(account.status||'')+'</p><div class="grid grid-cols-2 gap-2 mt-3"><button type="button" onclick="addClientWalletBalance(\''+esc(account._id||account.id)+'\')" class="pill-btn primary-pill">إضافة رصيد</button><button type="button" onclick="deductClientWalletBalance(\''+esc(account._id||account.id)+'\')" class="pill-btn soft-btn">خصم رصيد</button><button type="button" onclick="settleClientWalletBalance(\''+esc(account._id||account.id)+'\','+Number(account.walletBalance||0)+')" class="pill-btn soft-btn">تسوية الرصيد</button><button type="button" onclick="loadClientWalletTransactions(\''+esc(account._id||account.id)+'\')" class="pill-btn soft-btn">كشف الحركات</button></div></div>':'<p class="text-[10px] text-slate-500 text-center py-2">اختار العميل لعرض الرصيد وإجراءات المحفظة.</p>'}
+ </div>
  <input class="field" value="${esc(state.search)}" oninput="state.search=this.value;applyClientTopupFilter()" placeholder="بحث بالاسم أو الهاتف أو رقم العملية">
  <select class="field" onchange="state.clientWalletFilter=this.value;applyClientTopupFilter()"><option value="الكل" ${state.clientWalletFilter==='الكل'?'selected':''}>كل الحالات</option><option value="قيد المراجعة" ${state.clientWalletFilter==='قيد المراجعة'?'selected':''}>قيد المراجعة</option><option value="مقبول" ${state.clientWalletFilter==='مقبول'?'selected':''}>مقبول</option><option value="مرفوض" ${state.clientWalletFilter==='مرفوض'?'selected':''}>مرفوض</option></select>
  ${state.clientTopupsLoading?'<p class="py-6 text-center text-[12px] text-slate-500">جاري تحميل الطلبات...</p>':''}

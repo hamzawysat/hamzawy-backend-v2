@@ -801,6 +801,12 @@ async function run() {
         const before = await Client.findById(clientId).lean();
         const beforeBalance = Number(before.walletBalance || 0);
 
+        const accounts = await request(app).get('/api/admin/client-wallet/accounts')
+          .set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(accounts.status, 200, JSON.stringify(accounts.body));
+        assert.ok(accounts.body.accounts.some(item => String(item._id) === String(clientId)));
+        assert.ok(accounts.body.accounts.every(item => item.name && item.phone && item.walletBalance !== undefined));
+
         const queue = await request(app).get('/api/admin/client-wallet/topup-requests')
           .set('Authorization', 'Bearer ' + adminToken);
         assert.equal(queue.status, 200);
