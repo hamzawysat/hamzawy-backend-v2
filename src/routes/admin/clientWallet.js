@@ -3,6 +3,12 @@ const express=require('express');
 const crypto=require('crypto');
 function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,ClientTopupRequest,WalletTransaction,Order,adminName,writeAdminAudit,createNotification,validId,sendBadId,MAX_LIST_LIMIT}){
  const router=express.Router();
+ router.get('/client-wallet/accounts',auth('admin'),async(req,res,next)=>{
+  try{
+   const accounts=await Client.find({}).select('name phone status walletBalance walletFrozen createdAt').sort({name:1,createdAt:-1}).lean();
+   return res.set('Cache-Control','no-store').json({accounts,data:accounts});
+  }catch(e){next(e);}
+ });
  router.get('/client-wallet/topup-requests',auth('admin'),async(req,res,next)=>{
   try{const requests=await ClientTopupRequest.find({}).sort({createdAt:-1}).limit(MAX_LIST_LIMIT).lean();return res.json({requests,data:requests});}catch(e){next(e);}
  });
