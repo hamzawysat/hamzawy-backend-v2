@@ -19,7 +19,7 @@ async function markAllAdminInboxRead(){
 }
 async function openAdminInboxNotification(id){
   const item=(state.adminInboxNotifications||[]).find(entry=>String(entry.id)===String(id));if(!item)return;
-  if(!item.read){try{await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});}catch(e){}item.read=true;state.adminInboxUnread=Math.max(0,Number(state.adminInboxUnread||0)-1);}
+  if(!item.read){try{await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});}catch(e){showToast(e.message||'تعذر تحديث حالة الإشعار','error');return;}item.read=true;state.adminInboxUnread=Math.max(0,Number(state.adminInboxUnread||0)-1);}
   const type=String(item.type||'');
   const tab=type.includes('order')||type.includes('offer')?'orders':type.includes('client')?'clients':type.includes('technician')||type.includes('fanni')?'fannis':type.includes('topup')||type.includes('wallet')?'topups':type.includes('complaint')||type.includes('support')?'complaints':'';
   if(tab&&typeof setTab==='function'&&canReadTab(tab))setTab(tab);
