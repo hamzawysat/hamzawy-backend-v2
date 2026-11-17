@@ -51,7 +51,6 @@ router.get('/media/:id', async (req, res, next) => {
 
 router.get('/advertisement/current', async (req, res, next) => {
   try {
-    const audience = ['client', 'fanni'].includes(String(req.query.audience || '')) ? String(req.query.audience) : 'both';
     const config = await AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean();
     const configuredSeconds = Number(config?.storeAdRotationSeconds);
     const rotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
@@ -62,7 +61,6 @@ router.get('/advertisement/current', async (req, res, next) => {
       isActive: true,
       isAdvertised: true,
       $and: [
-        { $or: [{ adAudience: 'both' }, { adAudience: audience }, ...(audience === 'both' ? [] : [{ adAudience: { $exists: false } }])] },
         { $or: [{ adExpiresAt: null }, { adExpiresAt: { $exists: false } }, { adExpiresAt: { $gt: new Date(now) } }] },
         { $or: [{ stock: null }, { stock: { $exists: false } }, { stock: { $gt: 0 } }] }
       ]
