@@ -1,7 +1,7 @@
 'use strict';
 
 function normalizeStoreCategoryName(value) {
-  return String(value || '').trim().replace(/\\s+/g, ' ').slice(0, 80);
+  return String(value || '').trim().replace(/\s+/g, ' ').slice(0, 80);
 }
 
 function buildStoreCategories(products = [], configuredCategories = [], { includeEmpty = false } = {}) {
