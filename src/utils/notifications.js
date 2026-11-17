@@ -158,13 +158,16 @@ async function sendFirebasePushNotifications(devices, payload) {
     }
     if (!response.ok) {
       const detail = (await response.text().catch(() => '')).slice(0, 240);
+      const error = 'FCM_HTTP_' + response.status + ': ' + detail;
       console.error('FCM delivery failed:', response.status, detail);
-      return false;
+      return { ok: false, error };
     }
-    return true;
+    return { ok: true };
   }));
-  const accepted = results.filter(Boolean).length;
-  return { accepted, failed: results.length - accepted };
+  const accepted = results.filter(result => result?.ok).length;
+  const failed = results.length - accepted;
+  const lastError = results.find(result => !result?.ok)?.error || '';
+  return { status: failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed', accepted, failed, lastError };
 }
 async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '', notificationId = '' }) {
   const report = { expo: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' }, fcm: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' } };
