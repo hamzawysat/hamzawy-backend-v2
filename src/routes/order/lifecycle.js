@@ -367,6 +367,83 @@ router.post('/:sn/cancel', async (req, res, next) => {
 });
 
 
+router.post('/:sn/confirm-completion', async (req, res, next) => {
+  try {
+    const sn = String(req.params.sn || '').toUpperCase();
+    if (!validSN(sn)) return res.status(400).json({ message: 'كود الطلب غير صحيح.' });
+
+    const order = await Order.findOne({ sn });
+    if (!order) return res.status(404).json({ message: 'الطلب غير موجود.' });
+    if (!(await verifyClientToken(req, order))) {
+      return res.status(403).json({ message: 'لا يمكن تأكيد استلام طلب لا يخص حسابك.' });
+    }
+    if (order.status !== 'تم الانتهاء') {
+      return res.status(409).json({ message: 'لا يمكن تأكيد الاستلام قبل أن ينهي الفني الخدمة.' });
+    }
+
+    // Idempotent: a repeated confirmation never extends the original warranty.
+    if (order.clientConfirmedAt && order.warrantyExpiresAt) {
+      return res.json({
+        message: 'تم تأكيد استلام الخدمة بالفعل.',
+        order: {
+          sn: order.sn,
+          clientConfirmedAt: order.clientConfirmedAt,
+          warrantyStartsAt: order.warrantyStartsAt,
+          warrantyExpiresAt: order.warrantyExpiresAt,
+          warrantyStatus: order.warrantyStatus
+        }
+      });
+    }
+
+    const confirmedAt = new Date();
+    const expiresAt = new Date(confirmedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+    const updated = await Order.findOneAndUpdate(
+      { _id: order._id, status: 'تم الانتهاء', clientConfirmedAt: null },
+      {
+        $set: {
+          clientConfirmedAt: confirmedAt,
+          warrantyStartsAt: confirmedAt,
+          warrantyExpiresAt: expiresAt,
+          warrantyStatus: 'active'
+        }
+      },
+      { new: true, runValidators: true }
+    );
+    if (!updated) {
+      const latest = await Order.findById(order._id).select('sn clientConfirmedAt warrantyStartsAt warrantyExpiresAt warrantyStatus').lean();
+      if (latest?.clientConfirmedAt) {
+        return res.json({ message: 'تم تأكيد استلام الخدمة بالفعل.', order: latest });
+      }
+      return res.status(409).json({ message: 'تعذر تأكيد الاستلام الآن؛ حدّث الطلب وحاول مرة أخرى.' });
+    }
+
+    if (updated.assignedFanni) {
+      await createNotification({
+        recipientRole: 'fanni',
+        recipientId: updated.assignedFanni,
+        type: 'client_completion_confirmed',
+        title: 'العميل أكد استلام الخدمة',
+        message: 'أكد العميل استلام الخدمة للطلب ' + updated.sn + '. بدأ ضمان الإصلاح لمدة 14 يومًا.',
+        link: '/fanni',
+        dedupeKey: 'client-completion-confirmed:' + String(updated._id)
+      });
+    }
+
+    return res.json({
+      message: 'تم تأكيد استلام الخدمة وبدأ ضمان الإصلاح لمدة 14 يومًا.',
+      order: {
+        sn: updated.sn,
+        clientConfirmedAt: updated.clientConfirmedAt,
+        warrantyStartsAt: updated.warrantyStartsAt,
+        warrantyExpiresAt: updated.warrantyExpiresAt,
+        warrantyStatus: updated.warrantyStatus
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 router.post('/:sn/complete', auth(), async (req, res, next) => {
   let session;
   try {
