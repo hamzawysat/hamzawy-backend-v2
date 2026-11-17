@@ -133,9 +133,22 @@ function apiResponse(pathname) {
                   failures.push(target.name + '/' + viewport.name + ': visual-feedback control has no layout box');
                   continue;
                 }
-                await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+                const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+                await page.mouse.move(center.x, center.y);
+                // Loading/auth overlays can sit above the dashboard root in smoke mode.
+                // Remove only a hit-tested blocker for this isolated visual fixture.
+                await page.evaluate(({ x, y, selector }) => {
+                  const control = document.querySelector(selector);
+                  const hit = document.elementFromPoint(x, y);
+                  if (control && hit && hit !== control && !control.contains(hit)) {
+                    const blocker = hit.closest('#clientLoadingOverlay,#fanniLoadingOverlay,.client-loading-overlay,.fanni-loading-overlay') || hit;
+                    if (blocker !== control && !control.contains(blocker)) blocker.remove();
+                  }
+                }, { ...center, selector });
+                await page.mouse.move(center.x, center.y);
                 await page.mouse.down();
-                await page.waitForTimeout(40);
+                // Let the 140ms background transition reach its final pressed color.
+                await page.waitForTimeout(180);
                 const pressedStyle = await targetControl.evaluate(element => {
                   const style = getComputedStyle(element);
                   return {
