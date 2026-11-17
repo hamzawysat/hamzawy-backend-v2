@@ -199,7 +199,7 @@ function renderContent(){
    </section>`:''}
   ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
 
-  ${state.tab==='available'?\x60
+  ${state.tab==='available'?`
    <section class="mt-4 space-y-3">
     ${user?.acceptingOrders===false?'<div class="panel border border-amber-300 bg-amber-50 p-5 text-center"><p class="text-[14px] font-black text-amber-900">استقبال الطلبات الجديدة متوقف</p><p class="mt-2 text-[12px] leading-6 text-amber-800">فعّل استلام الطلبات عشان تقدر تشوف الطلبات الجديدة وتقدم عروضك.</p><button type="button" onclick="toggleOrderAvailability()" class="mt-3 rounded-xl bg-emerald-700 px-5 py-2.5 text-[12px] font-extrabold text-white">تفعيل استلام الطلبات</button></div>':''}
 
