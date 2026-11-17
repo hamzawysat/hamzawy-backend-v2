@@ -124,10 +124,13 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
   router.delete('/store/products/:id', auth('admin'), async (req, res, next) => {
     try {
       if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ message: 'معرّف المنتج غير صالح.' });
-      const product = await StoreProduct.findByIdAndUpdate(req.params.id, { $set: { isActive: false } }, { new: true });
+      const product = await StoreProduct.findById(req.params.id);
       if (!product) return res.status(404).json({ message: 'المنتج غير موجود.' });
-      await writeAdminAudit(req, 'إخفاء منتج من المتجر', 'store', String(product._id), product.name);
-      return res.json({ message: 'تم إخفاء المنتج مع الحفاظ على سجل الطلبات.' });
+      const linkedOrders = await StoreOrder.countDocuments({ product: product._id });
+      if (linkedOrders > 0) return res.status(409).json({ message: 'لا يمكن حذف هذا المنتج نهائيًا لارتباطه بطلبات سابقة. يمكنك إخفاؤه بدلًا من حذفه للحفاظ على سجل الطلبات.' });
+      await StoreProduct.deleteOne({ _id: product._id });
+      await writeAdminAudit(req, 'حذف منتج من المتجر نهائيًا', 'store', String(product._id), product.name);
+      return res.json({ message: 'تم حذف المنتج نهائيًا.' });
     } catch (error) { return next(error); }
   });
   router.get('/store/orders/count', auth('admin'), async (req, res, next) => {
