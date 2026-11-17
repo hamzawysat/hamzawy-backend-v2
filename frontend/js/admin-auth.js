@@ -15,7 +15,7 @@ async function doLogin(){
   try{
     const payload={password:pw}; if(p.includes('@')) payload.email=p; else payload.phone=p;
     const res=await api('/api/admin/login',{method:'POST',body:JSON.stringify(payload)});
-    if(res.ok && (res.data.token||res.data.data?.token)){ const adminToken=res.data.token||res.data.data.token; setToken(adminToken); localStorage.setItem('admin_token',adminToken); localStorage.setItem('token',adminToken); localStorage.setItem('auth_token',adminToken); console.log('Admin token saved'); render(); loadAll(); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); }
+    if(res.ok && (res.data.token||res.data.data?.token)){ const adminToken=res.data.token||res.data.data.token; setToken(adminToken); localStorage.setItem('admin_token',adminToken); localStorage.setItem('token',adminToken); localStorage.setItem('auth_token',adminToken); console.log('Admin token saved'); render(); loadAll().then(()=>{if(state.pageMode==='section'&&state.tab==='store')return loadStoreProducts();if(state.pageMode==='section'&&state.tab==='storeOrders')return loadStoreOrders();}); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); }
     else { if(err){err.textContent=res.data.message||'فشل الدخول'; err.classList.remove('hidden');} if(btn){btn.textContent='دخول'; btn.disabled=false;} }
   }catch(e){ if(err){err.textContent=e.message; err.classList.remove('hidden');} if(btn){btn.textContent='دخول'; btn.disabled=false;} }
 }
@@ -26,5 +26,5 @@ function restoreAdminTabFromNotification(){
   if(known){state.tab=requested;state.pageMode='section';}
 }
 restoreAdminTabFromNotification();
-if(getToken()){ loadAll(); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }
+if(getToken()){ loadAll().then(()=>{if(state.pageMode==='section'&&state.tab==='store')return loadStoreProducts();if(state.pageMode==='section'&&state.tab==='storeOrders')return loadStoreOrders();}); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }
 

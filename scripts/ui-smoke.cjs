@@ -592,6 +592,54 @@ function apiResponse(pathname) {
         }
       }
     }
+    // Regression: an existing admin session restored directly into #store must hydrate
+    // the saved product list and ad-rotation setting without logging out and back in.
+    const storeRestorePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const storeApiCalls = [];
+    const storePageErrors = [];
+    storeRestorePage.on('pageerror', error => storePageErrors.push(error.message));
+    await storeRestorePage.addInitScript(() => {
+      localStorage.setItem('admin_token_v3', 'store-tab-restore-smoke-token');
+      localStorage.setItem('admin_token', 'store-tab-restore-smoke-token');
+      localStorage.setItem('token', 'store-tab-restore-smoke-token');
+      localStorage.setItem('auth_token', 'store-tab-restore-smoke-token');
+    });
+    await storeRestorePage.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      storeApiCalls.push(url.pathname);
+      let body = apiResponse(url.pathname);
+      if (url.pathname.endsWith('/admin/store/products')) {
+        body = {
+          products: [{ _id: 'store-restore-smoke-product', name: 'منتج استعادة المتجر', category: 'عام', price: 125, isActive: true, isAdvertised: false }],
+          categories: [{ name: 'عام', productCount: 1, imageUrl: '', fallbackImageUrl: '', customImageUrl: '', imageFileId: null, hasCustomImage: false }]
+        };
+      } else if (url.pathname.endsWith('/admin/store/ad-settings')) {
+        body = { rotationSeconds: 10 };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: JSON.stringify(body)
+      });
+    });
+    try {
+      const response = await storeRestorePage.goto(BASE + '/admin-smoke-panel-20261105#store', {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      });
+      if (!response || response.status() !== 200) failures.push('admin/store-restore: admin page did not return HTTP 200');
+      await storeRestorePage.getByText('منتج استعادة المتجر').waitFor({ state: 'visible', timeout: 6000 });
+      const savedRotation = await storeRestorePage.locator('#store-ad-rotation-seconds').inputValue();
+      if (savedRotation !== '10') failures.push('admin/store-restore: saved ad rotation setting was not restored (expected 10, received ' + savedRotation + ')');
+      if (!storeApiCalls.includes('/api/admin/store/products')) failures.push('admin/store-restore: restored store tab did not request saved products');
+      if (!storeApiCalls.includes('/api/admin/store/ad-settings')) failures.push('admin/store-restore: restored store tab did not request saved ad settings');
+      if (storePageErrors.length) failures.push('admin/store-restore: ' + storePageErrors.join(' | '));
+    } catch (error) {
+      failures.push('admin/store-restore: ' + error.message);
+    } finally {
+      await storeRestorePage.close();
+    }
+
   } finally {
     await browser.close();
   }

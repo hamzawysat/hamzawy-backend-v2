@@ -81,7 +81,7 @@ let state={
   clients:[],filteredClients:[],clientsLoading:false,clientTopups:[],filteredClientTopups:[],clientTopupsLoading:false,clientWalletFilter:'الكل',clientWalletTransactions:[],clientWalletSelectedId:'',clientWalletLoading:false,commerceItems:[],clientSubscriptions:[],commerceLoading:false,accountCounts:{technicians:0,verifiedTechnicians:0,clients:0},
   adminUsers:[],adminUsersLoading:false,
   
-  storeProducts:[],storeProductsLoading:false,storeOrders:[],storeOrdersLoading:false,auditLogs:[],auditDate:'',regions:[],regionsLoading:false,regionsError:'',regionSearch:'',notifications:[],walletTransactions:[],walletSelectedFanniId:'',walletLoading:false,settings:{siteName:'حمزاوي سات',maintenance:false},
+  storeProducts:[],storeProductsLoading:false,storeProductsLoaded:false,storeProductsLoadError:'',storeCategories:[],storeAdRotationSeconds:null,storeAdSettingsLoading:false,storeAdSettingsLoaded:false,storeAdSettingsLoadError:'',storeOrders:[],storeOrdersLoading:false,auditLogs:[],auditDate:'',regions:[],regionsLoading:false,regionsError:'',regionSearch:'',notifications:[],walletTransactions:[],walletSelectedFanniId:'',walletLoading:false,settings:{siteName:'حمزاوي سات',maintenance:false},
   reports:{},pricing:null,pricingHistory:[],offerFilter:'all',clientSearch:'',content:{announcement:'',faqs:[]},supportQuery:'',supportResults:{orders:[],complaints:[]},supportViolations:[],notificationHistory:[],notificationHistoryLoading:false,
   search:'',filter:'الكل',filterTopup:'الكل',filterOrder:'الكل',filterComplaint:'الكل',filterClient:'الكل',selectedOrderSNs:[],
   errors:{fannis:'',topups:'',orders:'',complaints:'',services:'',clients:''}, error:''
