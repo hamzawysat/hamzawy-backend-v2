@@ -71,7 +71,10 @@ router.get('/advertisement/current', async (req, res, next) => {
       .lean();
     const eligible = products
       .map(product => ({ ...product, imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }))
-      .filter(product => String(product.name || '').trim() && (String(product.imageUrl || '').trim().startsWith('http://') || String(product.imageUrl || '').trim().startsWith('https://') || new RegExp('^/api/store/media/[a-f0-9]{24});
+      .filter(product => {
+        const imageUrl = String(product.imageUrl || '').trim();
+        return Boolean(String(product.name || '').trim()) && (imageUrl.startsWith('http://') || imageUrl.startsWith('https://') || new RegExp('^/api/store/media/[a-f0-9]{24}$', 'i').test(imageUrl));
+      })
     const currentAdvertisement = eligible.length ? eligible[slot % eligible.length] : null;
     const nextChangeAt = (slot + 1) * rotationMs;
     return res.set('Cache-Control', 'no-store').json({
