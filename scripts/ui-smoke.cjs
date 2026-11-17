@@ -38,7 +38,7 @@ function verifyAdminDashboardSource() {
   const platformRoute = read('src/routes/admin/platform.js');
   const fanniRender = read('frontend/js/fanni-render.js');
   const fanniDashboard = read('frontend/js/fanni-dashboard.js');
-  if (!shell.includes("setTab('orders');state.filterOrder='قيد المراجعة';applyOrderFilter()") ||
+  if (!shell.includes("setTab('orders');state.filterOrder='__new';applyOrderFilter()") ||
       !shell.includes("setTab('pending')") ||
       !shell.includes("if(action==='advertisement'){setTab('content')") ||
       shell.includes("window.open('/client.html'") || shell.includes("window.open('/fanni.html'")) {
