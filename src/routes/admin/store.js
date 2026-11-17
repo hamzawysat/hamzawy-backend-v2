@@ -169,6 +169,7 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
         await StoreProduct.updateMany({ category: oldName }, { $set: { category: newName } });
       }
       const nextCategories = configured.map(item => typeof item?.toObject === 'function' ? item.toObject() : { ...item });
+      const previousImageFileId = existingIndex >= 0 ? nextCategories[existingIndex].imageFileId : null;
       const entry = {
         name: newName,
         imageUrl: checked.value.imageUrl || '',
@@ -181,6 +182,10 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       const savedConfig = config || new AdminConfig({ key: 'main' });
       savedConfig.storeCategories = nextCategories;
       await savedConfig.save();
+      if (previousImageFileId && String(previousImageFileId) !== String(entry.imageFileId || '') && mongoose.connection.db) {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+        await bucket.delete(new mongoose.Types.ObjectId(previousImageFileId)).catch(() => {});
+      }
       await writeAdminAudit(req, newName === oldName ? 'تعديل إعدادات قسم المتجر' : 'إعادة تسمية قسم المتجر', 'store-categories', oldName, newName + (entry.imageUrl ? '؛ صورة مخصصة' : '؛ صورة تلقائية من المنتجات'));
       return res.set('Cache-Control', 'no-store').json({ message: 'تم حفظ إعدادات القسم.', category: { name: newName, imageUrl: entry.imageUrl, imageFileId: entry.imageFileId ? String(entry.imageFileId) : null } });
     } catch (error) { return next(error); }
