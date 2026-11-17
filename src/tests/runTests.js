@@ -235,7 +235,7 @@ async function run() {
       assert.equal(normalizeNotificationPath('https://attacker.invalid/admin'), '/');
       assert.match(webPush, /PUSH_TTL_SECONDS = 86400/);
       assert.match(webPush, /TTL: String\(PUSH_TTL_SECONDS\)/);
-      assert.match(delivery, /ttl: 120/);
+      assert.match(delivery, /ttl: 86400/); assert.match(delivery, /ttl: '86400s'/); assert.match(delivery, /TTL: '86400'/);
       assert.match(worker, /www\.hamzawy-sat\.dynv6\.net/);
       assert.match(route, /isAllowedPushEndpoint\(endpoint\)/);
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
@@ -250,6 +250,10 @@ async function run() {
       assert.match(route, /normalizeNotificationLink\(item\.link/);
       assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
+      const walletRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin/wallet.js'), 'utf8');
+      assert.match(walletRoutes, /fanni_wallet_settlement/);
+      assert.match(walletRoutes, /admin-fanni-wallet-settlement:/);
+      assert.match(walletRoutes, /الرصيد بعد العملية/);
     });
     await test('web push public key endpoint fails safely until VAPID keys are configured', async () => {
       delete process.env.VAPID_PUBLIC_KEY; delete process.env.VAPID_PRIVATE_KEY;
