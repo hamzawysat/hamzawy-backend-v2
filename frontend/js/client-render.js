@@ -349,7 +349,7 @@ function render(){
             `}
           </div>
         `:''}
-        ${state.tracked.status==='تم الانتهاء' ? (state.tracked.clientConfirmedAt
+        ${state.tracked.status==='تم الانتهاء' && state.tracked.completionDeclaredAt ? (state.tracked.clientConfirmedAt
             ? '<div class="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4"><p class="text-[13px] font-extrabold text-emerald-900">✓ تم تأكيد استلام الخدمة</p><p class="mt-1 text-[12px] text-emerald-800">ضمان الإصلاح ساري حتى: <strong>'+escHtml(new Date(state.tracked.warrantyExpiresAt).toLocaleDateString('ar-EG'))+'</strong></p><p class="mt-1 text-[11px] text-emerald-700">مدة الضمان 14 يومًا من تاريخ تأكيدك.</p></div>'
             : '<div class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-4"><p class="text-[13px] font-extrabold text-amber-900">الفني أعلن انتهاء الخدمة</p><p class="mt-1 text-[12px] text-amber-800">راجع الخدمة، ثم أكد الاستلام لبدء ضمان الإصلاح لمدة 14 يومًا.</p><button type="button" onclick="confirmClientCompletion(\''+escAttr(state.tracked.sn)+'\')" class="mt-3 w-full rounded-xl bg-emerald-700 p-3 text-[12px] font-extrabold text-white">تأكيد استلام الخدمة وبدء الضمان</button></div>') : ''}
         ${state.tracked.status!=='تم الانتهاء'?`
