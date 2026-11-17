@@ -431,6 +431,47 @@ function apiResponse(pathname) {
             } else if (target.name === 'admin') {
               await page.locator('#login-btn').click();
               await page.getByText('اكتب البيانات').waitFor({ state: 'visible', timeout: 3000 });
+              const storeFailureRegression = await page.evaluate(async () => {
+                if (typeof window.loadStoreProducts !== 'function' || typeof state === 'undefined') return { supported: false };
+                const originalTryApi = window.tryApi;
+                const originalRender = window.render;
+                const originalProducts = state.storeProducts;
+                const originalLoading = state.storeProductsLoading;
+                const originalError = state.storeProductsLoadError;
+                const originalTab = state.tab;
+                state.storeProducts = [{ _id: 'smoke-existing-product', name: 'منتج محفوظ للاختبار' }];
+                state.storeProductsLoading = false;
+                state.storeProductsLoadError = '';
+                state.tab = 'store';
+                window.render = () => {};
+                window.tryApi = async paths => {
+                  const endpoint = Array.isArray(paths) ? paths[0] : paths;
+                  if (String(endpoint).includes('/products')) throw new Error('simulated temporary store refresh failure');
+                  return { rotationSeconds: 5 };
+                };
+                try {
+                  await window.loadStoreProducts();
+                  return {
+                    supported: true,
+                    count: state.storeProducts.length,
+                    productId: state.storeProducts[0]?._id,
+                    loading: state.storeProductsLoading
+                  };
+                } finally {
+                  window.tryApi = originalTryApi;
+                  window.render = originalRender;
+                  state.storeProducts = originalProducts;
+                  state.storeProductsLoading = originalLoading;
+                  state.storeProductsLoadError = originalError;
+                  state.tab = originalTab;
+                }
+              });
+              if (!storeFailureRegression.supported ||
+                  storeFailureRegression.count !== 1 ||
+                  storeFailureRegression.productId !== 'smoke-existing-product' ||
+                  storeFailureRegression.loading !== false) {
+                failures.push('admin/' + viewport.name + ': a temporary store refresh failure must preserve the existing product list and clear loading state (' + JSON.stringify(storeFailureRegression) + ')');
+              }
               if (process.env.SONAA_SMOKE_REAL_API === '1') {
                 await page.locator('#login-phone').fill('01012345678');
                 await page.locator('#login-pass').fill('AdminSmokePass123');
