@@ -23,7 +23,9 @@ const schema = new mongoose.Schema({
     webPush: { type: channelSchema, default: () => ({}) }
   },
   overallStatus: { type: String, enum: ['accepted', 'partial', 'failed', 'no_devices', 'error'], default: 'no_devices', index: true },
-  lastAttemptAt: { type: Date, default: null, index: true }
+  lastAttemptAt: { type: Date, default: null, index: true },
+  nextAttemptAt: { type: Date, default: null, index: true },
+  retryLockUntil: { type: Date, default: null, index: true }
 }, { timestamps: true });
 
 schema.index({ createdAt: -1 });
