@@ -235,7 +235,7 @@ async function run() {
       assert.equal(normalizeNotificationPath('https://attacker.invalid/admin'), '/');
       assert.match(webPush, /PUSH_TTL_SECONDS = 86400/);
       assert.match(webPush, /TTL: String\(PUSH_TTL_SECONDS\)/);
-      assert.match(delivery, /ttl: 120/);
+      assert.match(delivery, /ttl: NATIVE_PUSH_TTL_SECONDS/);
       assert.match(worker, /www\.hamzawy-sat\.dynv6\.net/);
       assert.match(route, /isAllowedPushEndpoint\(endpoint\)/);
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
@@ -250,6 +250,9 @@ async function run() {
       assert.match(route, /normalizeNotificationLink\(item\.link/);
       assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
+      assert.match(delivery, /Notification\.updateOne\(\{ _id: notification\._id \}/);
+      assert.match(delivery, /missing_service_account/);
+      assert.match(delivery, /ticket\?\.details\?\.error/);
     });
     await test('web push public key endpoint fails safely until VAPID keys are configured', async () => {
       delete process.env.VAPID_PUBLIC_KEY; delete process.env.VAPID_PRIVATE_KEY;
@@ -848,6 +851,46 @@ async function run() {
         assert.equal(repeated.status, 409);
         assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), 150);
         assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: 'client-admin-credit:' + String(clientId) + ':wallet-credit-test-unique-key' }), 1);
+      });
+
+      await test('technician manual wallet credit and settlement create in-app notifications and delivery reports', async () => {
+        const Fanni = require('../models/Fanni');
+        const Notification = require('../models/Notification');
+        const WalletTransaction = require('../models/WalletTransaction');
+        const bcrypt = require('bcryptjs');
+        const technician = await Fanni.create({
+          name: 'فني اختبار الإشعارات', phone: '01055554444',
+          passwordHash: await bcrypt.hash('FanniWalletTest123', 10),
+          specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni', walletBalance: 20
+        });
+        const credit = await request(app).post('/api/admin/fannis/' + technician._id + '/add-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send({ amount: 75, reason: 'اختبار إشعار إضافة رصيد' });
+        assert.equal(credit.status, 200, JSON.stringify(credit.body));
+        const creditNotice = await Notification.findOne({ recipientRole: 'fanni', recipientId: technician._id, type: 'wallet_credit' }).lean();
+        assert.ok(creditNotice, 'manual technician credit must create an in-app notification');
+        assert.match(creditNotice.message, /75 جنيه/);
+        assert.ok(creditNotice.delivery?.native, 'native channel result should be persisted');
+        assert.ok(creditNotice.delivery?.web, 'web channel result should be persisted');
+        assert.ok(creditNotice.delivery?.native?.expo, 'Expo outcome should be persisted separately');
+        assert.ok(creditNotice.delivery?.native?.fcm, 'FCM outcome should be persisted separately');
+        assert.ok(Array.isArray(creditNotice.delivery?.native?.errors), 'provider error codes should be retained without device tokens');
+        assert.ok(Array.isArray(creditNotice.delivery?.web?.outcomes), 'web push endpoint outcomes should be summarized');
+        assert.equal(Number((await Fanni.findById(technician._id).lean()).walletBalance), 95);
+        assert.equal(await WalletTransaction.countDocuments({ fanni: technician._id, type: 'admin_adjustment' }), 1);
+
+        const settlement = await request(app).post('/api/admin/fannis/' + technician._id + '/set-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send({ amount: 120, reason: 'اختبار إشعار التسوية' });
+        assert.equal(settlement.status, 200, JSON.stringify(settlement.body));
+        const settlementNotice = await Notification.findOne({ recipientRole: 'fanni', recipientId: technician._id, type: 'fanni_wallet_settlement' }).lean();
+        assert.ok(settlementNotice, 'changed technician settlement must create an in-app notification');
+        assert.match(settlementNotice.message, /120 جنيه/);
+
+        const beforeUnchanged = await Notification.countDocuments({ recipientRole: 'fanni', recipientId: technician._id, type: 'fanni_wallet_settlement' });
+        const unchanged = await request(app).post('/api/admin/fannis/' + technician._id + '/set-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send({ amount: 120, reason: 'لا يوجد تغيير' });
+        assert.equal(unchanged.status, 200);
+        assert.equal(await Notification.countDocuments({ recipientRole: 'fanni', recipientId: technician._id, type: 'fanni_wallet_settlement' }), beforeUnchanged,
+          'setting the same balance must not send a misleading notification');
       });
 
       await test('admin can deduct client wallet without allowing a negative balance and settle the exact final balance', async () => {
