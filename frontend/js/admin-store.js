@@ -1,5 +1,177 @@
 'use strict';
 
+let storeCsvImportState={open:false,fileName:'',headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:false,result:null};
+const STORE_CSV_IMPORT_FIELDS=[
+  {key:'name',label:'اسم المنتج *',aliases:['name','productname','title','اسم المنتج','اسم','المنتج','الاسم']},
+  {key:'price',label:'السعر *',aliases:['price','currentprice','sellingprice','السعر','السعر الحالي','سعر البيع']},
+  {key:'category',label:'القسم',aliases:['category','section','group','القسم','الفئة','التصنيف']},
+  {key:'description',label:'الوصف',aliases:['description','shortdescription','الوصف','وصف']},
+  {key:'details',label:'التفاصيل والمواصفات',aliases:['details','specifications','المواصفات','التفاصيل']},
+  {key:'originalPrice',label:'السعر قبل العرض',aliases:['originalprice','oldprice','السعر الأصلي','السعر قبل الخصم','السعر قبل العرض']},
+  {key:'offerText',label:'تفاصيل العرض',aliases:['offer','offertext','العرض','تفاصيل العرض']},
+  {key:'type',label:'نوع المنتج',aliases:['type','producttype','نوع المنتج','النوع']},
+  {key:'subscriptionDuration',label:'مدة الاشتراك',aliases:['duration','subscriptionduration','مدة الاشتراك']},
+  {key:'imageUrl',label:'رابط الصورة',aliases:['image','imageurl','image_url','رابط الصورة','رابط صورة المنتج','صورة المنتج']},
+  {key:'stock',label:'الكمية / المخزون',aliases:['stock','quantity','qty','الكمية','المخزون','عدد']},
+  {key:'isActive',label:'حالة المنتج',aliases:['active','isactive','enabled','نشط','مفعل','حالة المنتج']}
+];
+function normalizeStoreCsvHeader(value){
+  return String(value||'').replace(/^\uFEFF/,'').normalize('NFKC').toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[\s_\-./\\()[\]{}:،؛]+/g,'');
+}
+function parseStoreCsvText(sourceText){
+  const source=String(sourceText||'').replace(/^\uFEFF/,'');
+  const firstLine=source.split(/\r?\n/).find(line=>line.trim())||'';
+  const candidates=[',',';','\t'];
+  const counts=candidates.map(delimiter=>{
+    let count=0,quoted=false;
+    for(let i=0;i<firstLine.length;i++){
+      const ch=firstLine[i];
+      if(ch==='"'&&quoted&&firstLine[i+1]==='"'){i++;continue;}
+      if(ch==='"'){quoted=!quoted;continue;}
+      if(!quoted&&ch===delimiter)count++;
+    }
+    return count;
+  });
+  const delimiter=candidates[counts.indexOf(Math.max(...counts))]||',';
+  const matrix=[];let row=[],cell='',quoted=false;
+  for(let i=0;i<source.length;i++){
+    const ch=source[i];
+    if(quoted){
+      if(ch==='"'&&source[i+1]==='"'){cell+='"';i++;}
+      else if(ch==='"')quoted=false;
+      else cell+=ch;
+    }else if(ch==='"'&&cell===''){quoted=true;}
+    else if(ch===delimiter){row.push(cell);cell='';}
+    else if(ch==='\n'){row.push(cell.replace(/\r$/,''));matrix.push(row);row=[];cell='';}
+    else cell+=ch;
+  }
+  if(cell.length||row.length){row.push(cell.replace(/\r$/,''));matrix.push(row);}
+  const nonEmpty=matrix.filter(cells=>cells.some(value=>String(value||'').trim()!==''));
+  const headers=(nonEmpty.shift()||[]).map(value=>String(value||'').trim());
+  const rows=nonEmpty.map(cells=>headers.map((_,index)=>String(cells[index]??'').trim()));
+  return {headers,rows,delimiter};
+}
+function autoMapStoreCsvHeaders(headers){
+  const mapping={};
+  for(const field of STORE_CSV_IMPORT_FIELDS){
+    const aliases=field.aliases.map(normalizeStoreCsvHeader);
+    const index=headers.findIndex(header=>aliases.includes(normalizeStoreCsvHeader(header)));
+    mapping[field.key]=index>=0?String(index):'';
+  }
+  return mapping;
+}
+function parseStoreCsvNumber(value){
+  const digits=String(value??'').replace(/[٠-٩]/g,digit=>'٠١٢٣٤٥٦٧٨٩'.indexOf(digit)).replace(/[۰-۹]/g,digit=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(digit));
+  const cleaned=digits.replace(/[٬,\s]/g,'').replace(/٫/g,'.').replace(/[^0-9.\-]/g,'');
+  if(!cleaned||cleaned==='-'||cleaned==='.')return null;
+  const number=Number(cleaned);
+  return Number.isFinite(number)?number:null;
+}
+function prepareStoreCsvImportRows(){
+  const valid=[],errors=[];
+  const mapping=storeCsvImportState.mapping||{};
+  const column=(row,key)=>{const index=Number(mapping[key]);return mapping[key]!==''&&Number.isInteger(index)&&index>=0?String(row[index]??'').trim():'';};
+  storeCsvImportState.rows.forEach((row,index)=>{
+    const rowNumber=index+2;
+    const name=column(row,'name');
+    const rawPrice=column(row,'price');
+    const price=parseStoreCsvNumber(rawPrice);
+    const rowErrors=[];
+    if(!name||name.length<2||name.length>120)rowErrors.push('اسم المنتج مطلوب (من حرفين إلى 120 حرفًا).');
+    if(rawPrice===''||price===null||price<0||price>100000000)rowErrors.push('السعر مطلوب ويجب أن يكون رقمًا صحيحًا من صفر فأكثر.');
+    const originalRaw=column(row,'originalPrice');
+    const originalPrice=originalRaw===''?null:parseStoreCsvNumber(originalRaw);
+    if(originalRaw!==''&&(originalPrice===null||originalPrice<0||originalPrice>100000000))rowErrors.push('السعر قبل العرض غير صالح.');
+    const stockRaw=column(row,'stock');
+    const stock=stockRaw===''?null:parseStoreCsvNumber(stockRaw);
+    if(stockRaw!==''&&(stock===null||!Number.isInteger(stock)||stock<0))rowErrors.push('الكمية يجب أن تكون عددًا صحيحًا غير سالب.');
+    const imageUrl=column(row,'imageUrl');
+    if(imageUrl){let parsed;try{parsed=new URL(imageUrl);}catch(_){parsed=null;}if(!parsed||!['http:','https:'].includes(parsed.protocol)||imageUrl.length>1000)rowErrors.push('رابط الصورة يجب أن يبدأ بـ https:// أو http://.');}
+    const category=(column(row,'category')||'عام').slice(0,80);
+    const typeRaw=column(row,'type').toLowerCase();
+    const type=(typeRaw.includes('اشتراك')||typeRaw.includes('subscription'))?'subscription':'product';
+    const activeRaw=column(row,'isActive').toLowerCase();
+    const isActive=activeRaw===''?true:!['0','false','no','inactive','غير مفعل','مخفي','لا'].includes(activeRaw);
+    const product={
+      name,category,price:price??0,originalPrice,offerText:column(row,'offerText').slice(0,200),
+      type,subscriptionDuration:column(row,'subscriptionDuration').slice(0,60),
+      description:column(row,'description').slice(0,2000),details:column(row,'details').slice(0,5000),
+      imageUrl,imageFileId:null,isActive,isAdvertised:false,adAudience:'both',adPriority:0,adExpiresAt:null,stock
+    };
+    if(rowErrors.length)errors.push({rowNumber,name,message:rowErrors.join('؛ ')});
+    else valid.push({rowNumber,product});
+  });
+  storeCsvImportState.prepared={valid,errors};
+  return storeCsvImportState.prepared;
+}
+function renderStoreCsvImportPanel(){
+  const s=storeCsvImportState;
+  const toggle='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(s.open?'إغلاق':'استيراد CSV')+'</button></div>';
+  if(!s.open)return toggle;
+  const mapping=s.headers.length?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">'+STORE_CSV_IMPORT_FIELDS.map(field=>'<label class="block text-[11px] font-bold text-slate-600">'+escHtml(field.label)+'<select data-store-csv-map="'+field.key+'" onchange="updateStoreCsvMapping(this)" class="field mt-1"><option value="">— بدون ربط —</option>'+s.headers.map((header,index)=>'<option value="'+index+'" '+(String(s.mapping[field.key]??'')===String(index)?'selected':'')+'>'+escHtml(header||('عمود '+(index+1)))+'</option>').join('')+'</select></label>').join('')+'</div>':'';
+  const prepared=s.headers.length?prepareStoreCsvImportRows():{valid:[],errors:[]};
+  const preview=s.rows.slice(0,8).map((row,index)=>{
+    const rowNumber=index+2;
+    const item=prepared.valid.find(entry=>entry.rowNumber===rowNumber);
+    const issue=prepared.errors.find(entry=>entry.rowNumber===rowNumber);
+    const name=item?.product.name||issue?.name||'—';
+    const price=item?Number(item.product.price).toLocaleString('en-US'):'—';
+    const category=item?.product.category||'—';
+    return '<tr class="border-t"><td class="p-2 text-[10px]">'+rowNumber+'</td><td class="p-2 text-[10px]">'+escHtml(name)+'</td><td class="p-2 text-[10px]">'+price+'</td><td class="p-2 text-[10px]">'+escHtml(category)+'</td><td class="p-2 text-[10px] '+(issue?'text-rose-700':'text-emerald-700')+'">'+(issue?escHtml(issue.message):item?'جاهز':'—')+'</td></tr>';
+  }).join('');
+  const summary=s.headers.length?'<div class="rounded-xl bg-slate-50 p-3 text-xs flex flex-wrap gap-x-4 gap-y-1"><span>إجمالي الصفوف: <b>'+s.rows.length+'</b></span><span class="text-emerald-700">جاهز: <b>'+prepared.valid.length+'</b></span><span class="text-rose-700">به أخطاء: <b>'+prepared.errors.length+'</b></span></div>':'';
+  const result=s.result?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">تمت الإضافة: <b>'+Number(s.result.importedCount||0)+'</b> • المكرر والمتخطى: <b>'+Number(s.result.duplicateCount||0)+'</b> • صفوف بها أخطاء: <b>'+Number(s.result.errorCount||0)+'</b></div>':'';
+  const resultDetails=s.result?[...(s.result.duplicates||[]),...(s.result.errors||[])].slice(0,12).map(item=>'<li class="text-[10px] text-slate-600">الصف '+Number(item.rowNumber||0)+': '+escHtml(item.name||'')+' — '+escHtml(item.message||'تم تخطي الصف')+'</li>').join(''):'';
+  const table=prepared.valid.length||prepared.errors.length?'<div class="overflow-x-auto rounded-xl border"><table class="w-full text-right"><thead><tr class="bg-slate-50"><th class="p-2 text-[10px]">صف</th><th class="p-2 text-[10px]">المنتج</th><th class="p-2 text-[10px]">السعر</th><th class="p-2 text-[10px]">القسم</th><th class="p-2 text-[10px]">المراجعة</th></tr></thead><tbody>'+preview+'</tbody></table><p class="text-[10px] text-slate-500 p-2">المعاينة تعرض أول 8 صفوف فقط. سيتم فحص جميع الصفوف عند الاستيراد.</p></div>':'';
+  return toggle+'<section class="premium-panel p-4 space-y-3"><div><b class="block text-sm">رفع ملف المنتجات CSV</b><p class="text-[10px] text-slate-500 mt-1">يمكن ربط الأعمدة تلقائيًا أو اختيار العمود يدويًا. اسم المنتج والسعر إلزاميان. المنتجات المكررة بنفس الاسم والقسم سيتم تخطيها، ولن يتم تعديل المنتجات الموجودة.</p></div><input type="file" accept=".csv,text/csv" class="field w-full" onchange="handleStoreCsvFile(this.files&&this.files[0])"><p class="text-[10px] text-slate-500">'+(s.fileName?'الملف: '+escHtml(s.fileName):'يدعم CSV بفواصل أو فاصلة منقوطة أو Tab، مع دعم النصوص العربية.')+'</p>'+mapping+summary+table+result+(resultDetails?'<ul class="rounded-xl bg-slate-50 p-3 space-y-1">'+resultDetails+'</ul>':'')+'<div class="flex gap-2"><button type="button" onclick="importStoreCsvProducts()" '+(!prepared.valid.length||s.busy?'disabled':'')+' class="primary-btn rounded-xl px-4 py-3 flex-1 disabled:opacity-40">'+(s.busy?'جاري الاستيراد...':'استيراد '+prepared.valid.length+' منتج')+'</button><button type="button" onclick="resetStoreCsvImporter()" class="rounded-xl border px-4 py-3 text-xs font-bold">مسح الملف</button></div></section>';
+}
+function toggleStoreCsvImporter(){storeCsvImportState.open=!storeCsvImportState.open;render();}
+function resetStoreCsvImporter(){storeCsvImportState={open:true,fileName:'',headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:false,result:null};render();}
+async function handleStoreCsvFile(file){
+  if(!file)return;
+  if(file.size>900*1024)return showToast('حجم ملف CSV كبير. قلل الملف إلى أقل من 900 كيلوبايت أو قسّمه إلى ملفين.','error');
+  try{
+    const buffer=await file.arrayBuffer();
+    let csvText;
+    try{csvText=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch(_){csvText=new TextDecoder('windows-1256').decode(buffer);}
+    const parsed=parseStoreCsvText(csvText);
+    if(parsed.headers.length<2||!parsed.rows.length)throw new Error('الملف فارغ أو لا يحتوي على صف عناوين وصفوف منتجات.');
+    if(parsed.rows.length>500)throw new Error('الحد الأقصى للاستيراد هو 500 منتج في المرة الواحدة.');
+    storeCsvImportState.fileName=file.name||'products.csv';
+    storeCsvImportState.headers=parsed.headers;
+    storeCsvImportState.rows=parsed.rows;
+    storeCsvImportState.mapping=autoMapStoreCsvHeaders(parsed.headers);
+    storeCsvImportState.result=null;
+    prepareStoreCsvImportRows();
+    render();
+    showToast('تمت قراءة الملف. راجع المعاينة وربط الأعمدة قبل الاستيراد.');
+  }catch(error){showToast(error.message||'تعذرت قراءة ملف CSV.','error');}
+}
+function updateStoreCsvMapping(select){
+  const key=String(select?.dataset?.storeCsvMap||'');
+  if(!STORE_CSV_IMPORT_FIELDS.some(field=>field.key===key))return;
+  storeCsvImportState.mapping[key]=String(select.value??'');
+  storeCsvImportState.result=null;
+  prepareStoreCsvImportRows();
+  render();
+}
+async function importStoreCsvProducts(){
+  if(storeCsvImportState.busy)return;
+  if(storeCsvImportState.mapping.name===''||storeCsvImportState.mapping.price==='')return showToast('اربط عمود اسم المنتج وعمود السعر أولًا.','error');
+  const prepared=prepareStoreCsvImportRows();
+  if(!prepared.valid.length)return showToast('لا توجد صفوف سليمة للاستيراد. راجع الأخطاء الظاهرة.','error');
+  if(!confirm('سيتم إضافة '+prepared.valid.length+' منتج إلى المتجر. المنتجات الموجودة أو المكررة سيتم تخطيها دون تعديلها. هل تريد المتابعة؟'))return;
+  storeCsvImportState.busy=true;render();
+  try{
+    const result=await tryApi(['/api/admin/store/products/import'],{method:'POST',body:JSON.stringify({products:prepared.valid})});
+    storeCsvImportState.result=result;
+    showToast('تم استيراد '+Number(result.importedCount||0)+' منتج بنجاح.');
+    if(Number(result.importedCount||0)>0)await loadStoreProducts();
+  }catch(error){showToast(error.message||'تعذر استيراد المنتجات.','error');}
+  finally{storeCsvImportState.busy=false;render();}
+}
+
 let storeProductsLoadSequence=0;
 async function loadStoreProducts(){
   const requestId=++storeProductsLoadSequence;
@@ -131,10 +303,11 @@ function renderStore(){
     : '<div class="premium-panel p-4 space-y-2"><b class="block text-sm">مدة عرض صورة الإعلان</b><p class="text-[11px] text-slate-500">'+(state.storeAdSettingsLoading||(!state.storeAdSettingsLoaded&&!state.storeAdSettingsLoadError)?'جاري تحميل المدة المحفوظة من الخادم...':'تعذر تحميل المدة المحفوظة؛ لم نعرض قيمة افتراضية بدلًا منها.')+'</p><button type="button" onclick="loadStoreProducts()" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold">إعادة تحميل إعدادات المتجر</button></div>';
   const form='<div class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreProductForm()" aria-expanded="'+(state.storeProductFormOpen?'true':'false')+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">إضافة منتج جديد</b><span class="block mt-1 text-[11px] text-slate-500">افتح النموذج لإدخال بيانات المنتج</span></span><span class="text-xl font-black transition-transform '+(state.storeProductFormOpen?'rotate-180':'')+'" aria-hidden="true">⌄</span></button>'+
     (state.storeProductFormOpen?'<div class="border-t border-slate-100 p-4 grid gap-2"><input id="store-name" class="field" placeholder="اسم المنتج"><div class="grid grid-cols-2 gap-2"><label class="block min-w-0"><span class="block text-[10px] font-bold text-slate-600 mb-1">اختار قسمًا موجودًا</span><select id="store-category" class="field w-full"><option value="">اختار قسمًا</option>'+categoryOptions+'</select></label><label class="block min-w-0"><span class="block text-[10px] font-bold text-slate-600 mb-1">أو اكتب قسمًا جديدًا</span><input id="store-category-new" class="field w-full" maxlength="80" placeholder="اسم القسم الجديد"></label></div><input id="store-price" type="number" min="0" class="field" placeholder="السعر الحالي بالجنيه"><input id="store-original-price" type="number" min="0" class="field" placeholder="السعر قبل العرض (اختياري)"><input id="store-offer" class="field" maxlength="200" placeholder="تفاصيل العرض (اختياري)"><select id="store-type" class="field"><option value="product">بضاعة ومنتج</option><option value="subscription">اشتراك أو تجديد اشتراك</option></select><input id="store-duration" class="field" maxlength="60" placeholder="مدة الاشتراك (مثال: شهر أو سنة)"><textarea id="store-description" class="field" placeholder="الوصف المختصر"></textarea><textarea id="store-details" class="field" placeholder="التفاصيل والمواصفات"></textarea><label class="block text-xs font-bold text-slate-700">رابط صورة المنتج (اختياري)<input id="store-image-url" type="url" inputmode="url" maxlength="1000" class="field mt-1" placeholder="https://example.com/product-image.jpg"><span class="mt-1 block text-[10px] font-normal text-slate-500">ضع رابط الصورة هنا، أو اتركه فارغًا واستخدم الرفع من جهازك.</span></label><label class="field block">رفع صورة من الجهاز (اختياري)<input id="store-image-file" type="file" accept="image/jpeg,image/png,image/webp" class="block w-full mt-2 text-xs"></label><input id="store-stock" type="number" min="0" class="field" placeholder="الكمية (اتركها فارغة بدون تحديد)"><label class="flex items-center gap-2 rounded-xl border p-3 text-xs font-bold"><input id="store-ad-enabled" type="checkbox"> نشر المنتج كشريط إعلاني أسفل الصفحة</label><select id="store-ad-audience" class="field"><option value="both">الإعلان للعميل والفني</option><option value="client">للعميل فقط</option><option value="fanni">للفني فقط</option></select><select id="store-ad-days" class="field"><option value="1">مدة الإعلان: يوم واحد</option><option value="3">3 أيام</option><option value="7" selected>أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><select id="store-ad-priority" class="field"><option value="0">الأولوية: عادية</option><option value="10">منخفضة</option><option value="20">20</option><option value="30">30</option><option value="40">40</option><option value="50">متوسطة</option><option value="60">60</option><option value="70">70</option><option value="80">مرتفعة</option><option value="90">90</option><option value="100">الأولوية القصوى</option></select><button type="button" onclick="createStoreProduct()" class="primary-btn rounded-xl py-3">إضافة المنتج</button></div>':'')+'</div>';
-  const cards=products.map(p=>'<article class="premium-card p-3 flex gap-3"><div class="w-16 h-16 bg-slate-100 rounded-xl overflow-hidden shrink-0">'+(p.imageUrl?'<img class="w-full h-full object-cover" src="'+escHtml(p.imageUrl)+'" alt="'+escHtml(p.name)+'">':'📦')+'</div><div class="min-w-0 flex-1"><b>'+escHtml(p.name)+'</b><p class="text-[10px] font-bold text-blue-700">القسم: '+escHtml(p.category||'عام')+'</p><p class="text-[11px]">'+escHtml(p.description||'')+'</p><p class="text-[10px] text-teal-700">'+(p.type==='subscription'?'اشتراك / تجديد':'منتج')+(p.offerText?' • '+escHtml(p.offerText):'')+'</p><b>'+Number(p.price||0).toLocaleString('ar-EG')+' جنيه</b>'+(p.originalPrice!=null&&Number(p.originalPrice)>Number(p.price)?'<p class="text-[10px] line-through text-slate-400">بدلًا من '+Number(p.originalPrice).toLocaleString('ar-EG')+' جنيه</p>':'')+'<p class="text-[10px]">'+(p.isActive?'متاح':'مخفي')+' • '+(p.isAdvertised?'إعلان نشط':'بدون إعلان')+'</p><button class="text-teal-700 text-xs" onclick="manageStoreProductAdvertisement(\''+escHtml(p._id)+'\')">'+(p.isAdvertised?'إيقاف الإعلان':'نشر الإعلان')+'</button> <button class="text-blue-700 text-xs" onclick="editStoreProduct(\''+escHtml(p._id)+'\')">تعديل</button> <label class="text-xs text-blue-700">تغيير الصورة<input type="file" class="hidden" data-product-id="'+escHtml(p._id)+'" accept="image/jpeg,image/png,image/webp" onchange="replaceStoreProductImage(this.dataset.productId,this.files[0])"></label> '+(p.isActive?'<button class="text-rose-700 text-xs" onclick="hideStoreProduct(\''+escHtml(p._id)+'\')">إخفاء</button>':'<button class="text-emerald-700 text-xs" onclick="showStoreProduct(\''+escHtml(p._id)+'\')">إظهار</button>')+' <button class="text-red-700 text-xs font-bold" onclick="deleteStoreProduct(\''+escHtml(p._id)+'\')">حذف نهائي</button></div></article>').join('');
+  const csvImporter=renderStoreCsvImportPanel();
+    const cards=products.map(p=>'<article class="premium-card p-3 flex gap-3"><div class="w-16 h-16 bg-slate-100 rounded-xl overflow-hidden shrink-0">'+(p.imageUrl?'<img class="w-full h-full object-cover" src="'+escHtml(p.imageUrl)+'" alt="'+escHtml(p.name)+'">':'📦')+'</div><div class="min-w-0 flex-1"><b>'+escHtml(p.name)+'</b><p class="text-[10px] font-bold text-blue-700">القسم: '+escHtml(p.category||'عام')+'</p><p class="text-[11px]">'+escHtml(p.description||'')+'</p><p class="text-[10px] text-teal-700">'+(p.type==='subscription'?'اشتراك / تجديد':'منتج')+(p.offerText?' • '+escHtml(p.offerText):'')+'</p><b>'+Number(p.price||0).toLocaleString('ar-EG')+' جنيه</b>'+(p.originalPrice!=null&&Number(p.originalPrice)>Number(p.price)?'<p class="text-[10px] line-through text-slate-400">بدلًا من '+Number(p.originalPrice).toLocaleString('ar-EG')+' جنيه</p>':'')+'<p class="text-[10px]">'+(p.isActive?'متاح':'مخفي')+' • '+(p.isAdvertised?'إعلان نشط':'بدون إعلان')+'</p><button class="text-teal-700 text-xs" onclick="manageStoreProductAdvertisement(\''+escHtml(p._id)+'\')">'+(p.isAdvertised?'إيقاف الإعلان':'نشر الإعلان')+'</button> <button class="text-blue-700 text-xs" onclick="editStoreProduct(\''+escHtml(p._id)+'\')">تعديل</button> <label class="text-xs text-blue-700">تغيير الصورة<input type="file" class="hidden" data-product-id="'+escHtml(p._id)+'" accept="image/jpeg,image/png,image/webp" onchange="replaceStoreProductImage(this.dataset.productId,this.files[0])"></label> '+(p.isActive?'<button class="text-rose-700 text-xs" onclick="hideStoreProduct(\''+escHtml(p._id)+'\')">إخفاء</button>':'<button class="text-emerald-700 text-xs" onclick="showStoreProduct(\''+escHtml(p._id)+'\')">إظهار</button>')+' <button class="text-red-700 text-xs font-bold" onclick="deleteStoreProduct(\''+escHtml(p._id)+'\')">حذف نهائي</button></div></article>').join('');
   const refreshStatus=state.storeProductsLoading&&products.length?'<div class="text-[11px] text-slate-500">جاري تحديث قائمة المنتجات مع الاحتفاظ بالقائمة الحالية...</div>':(state.storeProductsLoadError&&products.length?'<div class="premium-panel p-3 text-[11px] text-amber-800 flex items-center justify-between gap-2"><span>تعذر تحديث القائمة. المعروض هو آخر بيانات محفوظة.</span><button type="button" class="font-black underline" onclick="loadStoreProducts()">إعادة المحاولة</button></div>':'');
   const emptyProductsState=!state.storeProductsLoaded&&products.length===0&&state.storeProductsLoadError?'<div class="premium-panel p-5 text-center text-sm text-amber-800">تعذر تحميل المنتجات المحفوظة. <button type="button" class="font-black underline" onclick="loadStoreProducts()">إعادة المحاولة</button></div>':!state.storeProductsLoaded&&products.length===0?'<div class="premium-panel p-5 text-center text-sm text-slate-500">جاري تحميل المنتجات المحفوظة...</div>':(cards||'<div class="premium-panel p-5">لا توجد منتجات بعد.</div>');
-  return '<section class="mt-4 space-y-3">'+rotationSettings+renderStoreCategoryManager(products)+form+'<b>المنتجات الحالية ('+(state.storeProductsLoading&&products.length===0?'...':products.length)+')</b>'+refreshStatus+emptyProductsState+'</section>';
+  return '<section class="mt-4 space-y-3">'+rotationSettings+csvImporter+renderStoreCategoryManager(products)+form+'<b>المنتجات الحالية ('+(state.storeProductsLoading&&products.length===0?'...':products.length)+')</b>'+refreshStatus+emptyProductsState+'</section>';
 }
 function renderStoreOrders(){
   if(typeof state.storeOrderStatusTab!=='string')state.storeOrderStatusTab='جديد';

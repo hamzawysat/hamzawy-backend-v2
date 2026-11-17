@@ -204,6 +204,80 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       return res.set('Cache-Control', 'no-store').json({ products, categories });
     } catch (error) { return next(error); }
   });
+  router.post('/store/products/import', auth('admin'), async (req, res, next) => {
+    try {
+      const rows = Array.isArray(req.body?.products) ? req.body.products : [];
+      if (!rows.length || rows.length > 500) {
+        return res.status(400).json({ message: 'ارفع من 1 إلى 500 منتج في الدفعة الواحدة.' });
+      }
+      const validRows = [];
+      const errors = [];
+      const duplicates = [];
+      const seen = new Set();
+      const normalizeKey = value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
+      const productKey = value => normalizeKey(value.name) + '::' + normalizeKey(value.category || 'عام');
+
+      for (let index = 0; index < rows.length; index += 1) {
+        const row = rows[index] || {};
+        const rowNumber = Number.isInteger(Number(row.rowNumber)) && Number(row.rowNumber) > 0 ? Number(row.rowNumber) : index + 2;
+        const source = row.product && typeof row.product === 'object' && !Array.isArray(row.product) ? row.product : row;
+        const checked = productSchema.validate(source, { abortEarly: false, convert: true });
+        if (checked.error) {
+          errors.push({ rowNumber, name: String(source.name || '').slice(0, 120), message: checked.error.details.map(detail => detail.message).join('؛ ') });
+          continue;
+        }
+        if (!await hasValidImageReference(checked.value)) {
+          errors.push({ rowNumber, name: checked.value.name, message: 'رابط صورة المنتج أو مرجع الصورة غير صالح.' });
+          continue;
+        }
+        const key = productKey(checked.value);
+        if (seen.has(key)) {
+          duplicates.push({ rowNumber, name: checked.value.name, message: 'المنتج مكرر داخل ملف الاستيراد بنفس الاسم والقسم.' });
+          continue;
+        }
+        seen.add(key);
+        validRows.push({ rowNumber, product: checked.value, key });
+      }
+
+      if (validRows.length) {
+        const existing = await StoreProduct.find({
+          $or: validRows.map(item => ({ name: item.product.name, category: item.product.category || 'عام' }))
+        }).select('name category').lean();
+        const existingKeys = new Set(existing.map(productKey));
+        const toInsert = [];
+        for (const item of validRows) {
+          if (existingKeys.has(item.key)) {
+            duplicates.push({ rowNumber: item.rowNumber, name: item.product.name, message: 'المنتج موجود بالفعل بنفس الاسم والقسم؛ تم تخطيه لمنع التكرار.' });
+          } else {
+            toInsert.push(item.product);
+            existingKeys.add(item.key);
+          }
+        }
+        const inserted = toInsert.length ? await StoreProduct.insertMany(toInsert, { ordered: false }) : [];
+        if (inserted.length) {
+          await writeAdminAudit(req, 'استيراد منتجات المتجر من ملف CSV', 'store-import', 'bulk', 'imported=' + inserted.length + '; duplicates=' + duplicates.length + '; errors=' + errors.length);
+        }
+        return res.set('Cache-Control', 'no-store').status(inserted.length ? 201 : 200).json({
+          message: 'انتهى استيراد ملف المنتجات.',
+          importedCount: inserted.length,
+          duplicateCount: duplicates.length,
+          errorCount: errors.length,
+          errors,
+          duplicates
+        });
+      }
+
+      return res.set('Cache-Control', 'no-store').json({
+        message: 'لم تتم إضافة منتجات. راجع الصفوف المكررة أو التي تحتوي على أخطاء.',
+        importedCount: 0,
+        duplicateCount: duplicates.length,
+        errorCount: errors.length,
+        errors,
+        duplicates
+      });
+    } catch (error) { return next(error); }
+  });
+
   router.post('/store/products', auth('admin'), async (req, res, next) => {
     try {
       const checked = productSchema.validate(req.body || {}, { abortEarly: false });

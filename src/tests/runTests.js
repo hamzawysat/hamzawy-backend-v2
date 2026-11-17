@@ -105,6 +105,19 @@ async function run() {
       assert.equal(canHandle(['دش وكاميرات وشاشات'], 'صيانة دش'), false, 'a historical category label must not grant every service');
     });
 
+    await test('admin store CSV importer supports Arabic headers, quoted fields and manual column mapping', async () => {
+      const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      assert.ok(adminStore.includes('function parseStoreCsvText(sourceText)'), 'admin should parse CSV rows and quoted fields');
+      assert.ok(adminStore.includes('function autoMapStoreCsvHeaders(headers)'), 'admin should recognize common Arabic and English column names');
+      assert.ok(adminStore.includes('function updateStoreCsvMapping(select)'), 'admin should allow manual column mapping');
+      assert.ok(adminStore.includes('function prepareStoreCsvImportRows()'), 'admin should validate rows before import');
+      assert.ok(adminStore.includes('/api/admin/store/products/import'), 'admin should submit products through the bulk import endpoint');
+      assert.ok(adminStore.includes('استيراد CSV'), 'store management should expose a CSV import action');
+      assert.ok(adminStore.includes("TextDecoder('windows-1256')"), 'admin should support Arabic Excel CSV files saved with Windows-1256 encoding');
+      assert.ok(adminStore.includes('resultDetails'), 'admin should show row-level import errors and duplicate reasons after submission');
+      assert.ok(adminStore.includes('اسم المنتج *') && adminStore.includes('السعر *'), 'product name and price must remain required for imports');
+    });
+
     await test('role defaults are restored and manager can publish orders and moderate offers', async () => {
       const readOnly = { role: 'fanni', adminRole: 'قراءة فقط' };
       assert.equal(canAccessAdmin(readOnly, { path: '/orders', method: 'GET' }), true);
@@ -653,6 +666,33 @@ async function run() {
         specialties: ['إدارة'], areas: ['الإدارة'], status: 'معتمد', role: 'admin'
       });
       adminToken = jwt.sign({ id: String(admin._id), role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+      await test('admin imports store products from CSV in one validated batch and skips duplicates', async () => {
+        const StoreProduct = require('../models/StoreProduct');
+        const rows = [
+          { rowNumber: 2, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } },
+          { rowNumber: 3, product: { name: 'CSV import unique product B', category: 'CSV import category', price: 0 } },
+          { rowNumber: 4, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } },
+          { rowNumber: 5, product: { name: 'CSV row missing price', category: 'CSV import category' } }
+        ];
+        const denied = await request(app).post('/api/admin/store/products/import').send({ products: rows });
+        assert.equal(denied.status, 401, 'bulk import must require an administrator session');
+
+        const imported = await request(app).post('/api/admin/store/products/import')
+          .set('Authorization', 'Bearer ' + adminToken).send({ products: rows });
+        assert.equal(imported.status, 201, JSON.stringify(imported.body));
+        assert.equal(imported.body.importedCount, 2);
+        assert.equal(imported.body.duplicateCount, 1);
+        assert.equal(imported.body.errorCount, 1);
+        assert.equal(await StoreProduct.countDocuments({ category: 'CSV import category' }), 2);
+
+        const repeated = await request(app).post('/api/admin/store/products/import')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ products: [{ rowNumber: 2, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } }] });
+        assert.equal(repeated.status, 200, JSON.stringify(repeated.body));
+        assert.equal(repeated.body.importedCount, 0);
+        assert.equal(repeated.body.duplicateCount, 1);
+      });
 
       await test('store product images are uploaded to MongoDB GridFS and served through the API', async () => {
         const StoreProduct = require('../models/StoreProduct');
