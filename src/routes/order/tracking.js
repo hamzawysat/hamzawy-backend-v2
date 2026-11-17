@@ -80,6 +80,7 @@ function createOrderTrackingRouter({
       safe.acceptedOfferPrice = order.acceptedOfferPrice ?? null;
       safe.clientPaymentStatus = order.clientPaymentStatus || 'unpaid';
       safe.clientPaymentAmount = Number(order.clientPaymentAmount || 0);
+      safe.completionDeclaredAt = order.completionDeclaredAt || null;
       safe.clientConfirmedAt = order.clientConfirmedAt || null;
       safe.warrantyStartsAt = order.warrantyStartsAt || null;
       safe.warrantyExpiresAt = order.warrantyExpiresAt || null;
