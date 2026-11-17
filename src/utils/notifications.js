@@ -119,7 +119,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '');
   if (!raw || typeof fetch !== 'function') {
     console.error('FCM push skipped: FIREBASE_SERVICE_ACCOUNT_JSON is not configured; registered devices:', devices.length);
-    return { accepted: 0, failed: devices.length };
+    return { status: 'not_configured', accepted: 0, failed: devices.length, lastError: 'FIREBASE_SERVICE_ACCOUNT_JSON_NOT_CONFIGURED' };
   }
   const account = JSON.parse(raw);
   if (!account.project_id || !account.client_email || !account.private_key) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is incomplete');
@@ -165,7 +165,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   return { accepted, failed: results.length - accepted };
 }
 async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '' }) {
-  const report = { expo: { attempted: 0, accepted: 0, failed: 0 }, fcm: { attempted: 0, accepted: 0, failed: 0 } };
+  const report = { expo: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' }, fcm: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
     const expo = devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token));
@@ -203,7 +203,9 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
           if (ticket?.status === 'ok') report.expo.accepted += 1;
           else {
             report.expo.failed += 1;
-            console.error('Expo push ticket rejected:', ticket?.details?.error || ticket?.message || ticket?.status || 'missing ticket');
+            const ticketError = ticket?.details?.error || ticket?.message || ticket?.status || 'missing ticket';
+            report.expo.lastError = String(ticketError).slice(0, 240);
+            console.error('Expo push ticket rejected:', ticketError);
             if (ticket?.details?.error === 'DeviceNotRegistered') {
               const token = batch[i]?.to;
               if (token) await PushToken.deleteOne({ token }).catch(() => {});
@@ -222,6 +224,8 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         if (result && Number.isFinite(result.accepted)) {
           report.fcm.accepted = result.accepted;
           report.fcm.failed = Math.max(0, fcm.length - result.accepted);
+          report.fcm.status = result.status || (report.fcm.failed === 0 ? 'accepted' : report.fcm.accepted > 0 ? 'partial' : 'failed');
+          report.fcm.lastError = String(result.lastError || '').slice(0, 240);
         } else {
           report.fcm.failed = fcm.length;
         }
@@ -231,6 +235,10 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
       }
     }
 
+    for (const channel of ['expo', 'fcm']) {
+      const item = report[channel];
+      if (!item.status || item.status === 'no_devices') item.status = item.attempted === 0 ? 'no_devices' : item.failed === 0 ? 'accepted' : item.accepted > 0 ? 'partial' : 'failed';
+    }
     if (devices.length) console.info('Native push delivery summary:', JSON.stringify({ role: recipientRole, ...report }));
     return report;
   } catch (error) {
