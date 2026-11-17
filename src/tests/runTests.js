@@ -113,6 +113,8 @@ async function run() {
       assert.ok(adminStore.includes('function prepareStoreCsvImportRows()'), 'admin should validate rows before import');
       assert.ok(adminStore.includes('/api/admin/store/products/import'), 'admin should submit products through the bulk import endpoint');
       assert.ok(adminStore.includes('استيراد CSV'), 'store management should expose a CSV import action');
+      assert.ok(adminStore.includes("TextDecoder('windows-1256')"), 'admin should support Arabic Excel CSV files saved with Windows-1256 encoding');
+      assert.ok(adminStore.includes('resultDetails'), 'admin should show row-level import errors and duplicate reasons after submission');
       assert.ok(adminStore.includes('اسم المنتج *') && adminStore.includes('السعر *'), 'product name and price must remain required for imports');
     });
 
