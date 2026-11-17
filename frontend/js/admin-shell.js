@@ -184,9 +184,10 @@ function renderAdminQuickActions(){
   '</div></section>';
 }
 function adminQuickAction(action){
-  if(action==='order'){window.open('/client.html','_blank','noopener');return;}
-  if(action==='technician'){window.open('/fanni.html','_blank','noopener');return;}
-  if(action==='product'||action==='advertisement'){
+  if(action==='order'){setTab('orders');state.filterOrder='قيد المراجعة';applyOrderFilter();return;}
+  if(action==='technician'){setTab('pending');return;}
+  if(action==='advertisement'){setTab('content');return;}
+  if(action==='product'){
     state.storeProductEditingId=null;
     state.storeProductFormOpen=true;
     state.storeNewProductAsAdvertisement=action==='advertisement';
