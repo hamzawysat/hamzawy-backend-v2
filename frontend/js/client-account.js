@@ -164,4 +164,10 @@ function notificationPanel(){
  return html+'</div></div>';
 }
 document.addEventListener('click',function(event){var item=event.target.closest('[data-notification-id]');if(item)openNotification(item.getAttribute('data-notification-id'));});
+if(!window.__sonaaClientNotificationRefresh){
+ window.__sonaaClientNotificationRefresh=true;
+ window.setInterval(function(){if(document.visibilityState!=='hidden'&&state.accountToken&&state.account)void loadNotifications();},20000);
+ document.addEventListener('visibilitychange',function(){if(!document.hidden&&state.accountToken&&state.account)void loadNotifications();});
+ window.addEventListener('focus',function(){if(state.accountToken&&state.account)void loadNotifications();});
+}
 document.addEventListener('focusout',function(){if(!clientLiveRenderPending||!state.account||!['orders','track'].includes(state.tab))return;setTimeout(function(){if(clientLiveRenderPending&&!['INPUT','TEXTAREA','SELECT'].includes(document.activeElement?.tagName)){clientLiveRenderPending=false;const scrollY=window.scrollY||window.pageYOffset||0;render();window.scrollTo({top:scrollY,left:0,behavior:'instant'});focusClientPostAction();}},0);});
