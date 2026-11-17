@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const Notification = require('../models/Notification');
+const NotificationDelivery = require('../models/NotificationDelivery');
 const PushToken = require('../models/PushToken');
 const Fanni = require('../models/Fanni');
 const { sendWebPushNotification } = require('./webPush');
@@ -255,14 +256,40 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
     // The database notification is the source of truth. External push providers
     // are best-effort and must never hold the user's primary action indefinitely.
     if (isNew) {
+      const deliveryLog = await NotificationDelivery.findOneAndUpdate(
+        { notificationId: notification._id },
+        { $setOnInsert: {
+          notificationId: notification._id, recipientRole, recipientId, type,
+          channels: { expo: {}, fcm: {}, webPush: {} }, overallStatus: 'no_devices'
+        } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).catch(error => { console.error('Notification delivery audit create failed:', error.message); return null; });
+      const attemptedAt = new Date();
       const delivery = await Promise.allSettled([
         sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link }),
         sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link })
       ]);
+      const native = delivery[0].status === 'fulfilled' ? delivery[0].value : null;
+      const web = delivery[1].status === 'fulfilled' ? delivery[1].value : null;
+      const channelState = (result, attempted, accepted, failed, errorText = '') => ({
+        status: errorText ? 'error' : attempted === 0 ? 'no_devices' : failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed',
+        attempted, accepted, failed, attempts: 1, lastAttemptAt: attemptedAt,
+        lastError: String(errorText || '').slice(0, 240)
+      });
+      const expo = channelState(native?.expo, Number(native?.expo?.attempted || 0), Number(native?.expo?.accepted || 0), Number(native?.expo?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : '');
+      const fcm = channelState(native?.fcm, Number(native?.fcm?.attempted || 0), Number(native?.fcm?.accepted || 0), Number(native?.fcm?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : '');
+      const webPush = channelState(web, Number(web?.attempted || 0), Number(web?.accepted || 0), Number(web?.failed || 0), delivery[1].status === 'rejected' ? delivery[1].reason?.message : (web?.status === 'not_configured' ? 'VAPID_NOT_CONFIGURED' : ''));
+      const channels = { expo, fcm, webPush };
+      const totalAttempted = expo.attempted + fcm.attempted + webPush.attempted;
+      const totalAccepted = expo.accepted + fcm.accepted + webPush.accepted;
+      const totalFailed = expo.failed + fcm.failed + webPush.failed;
+      const overallStatus = totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
+      if (deliveryLog) await NotificationDelivery.updateOne(
+        { _id: deliveryLog._id },
+        { $set: { channels, overallStatus, lastAttemptAt: attemptedAt } }
+      ).catch(error => console.error('Notification delivery audit update failed:', error.message));
       delivery.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
-        }
+        if (result.status === 'rejected') console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
       });
     }
     return notification;
