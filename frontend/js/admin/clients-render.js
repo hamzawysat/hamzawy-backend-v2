@@ -14,20 +14,21 @@ function renderClients(){
 
 
 function renderStats(){
-  const monthlyStats=[];const now=new Date();for(let offset=11;offset>=0;offset--){const month=new Date(now.getFullYear(),now.getMonth()-offset,1);const label=new Intl.DateTimeFormat('ar-EG-u-ca-gregory',{month:'short',year:'numeric',timeZone:'Africa/Cairo'}).format(month);const created=state.orders.filter(o=>{const d=new Date(o.createdAt||0);return !Number.isNaN(d.getTime())&&d.getFullYear()===month.getFullYear()&&d.getMonth()===month.getMonth();}).length;const completed=state.orders.filter(o=>{if(!['تم الانتهاء','منتهي','مكتمل'].includes(String(o.status||'')))return false;const d=new Date(o.completedAt||o.updatedAt||o.createdAt||0);return !Number.isNaN(d.getTime())&&d.getFullYear()===month.getFullYear()&&d.getMonth()===month.getMonth();}).length;monthlyStats.push({label,created,completed});}const maxMonthly=Math.max(1,...monthlyStats.map(m=>Math.max(m.created,m.completed)));
-  return `
-  <section class="mt-4 space-y-3">
-    <div class="grid grid-cols-2 gap-3">
-      <div class="stat-card"><p class="text-[28px] font-black">${state.accountCounts.technicians}</p><p class="text-[11px] font-bold text-slate-500">إجمالي الفنيين</p></div>
-      <div class="stat-card"><p class="text-[28px] font-black text-blue-700">${state.accountCounts.clients}</p><p class="text-[11px] font-bold text-slate-500">إجمالي العملاء المسجلين</p></div>
-      <div class="stat-card"><p class="text-[28px] font-black text-emerald-600">${state.accountCounts.verifiedTechnicians}</p><p class="text-[11px] font-bold text-slate-500">إجمالي الفنيين المعتمدين</p></div>
-      <div class="stat-card"><p class="text-[28px] font-black text-blue-700">${state.orders.length}</p><p class="text-[11px] font-bold text-slate-500">طلبات</p></div>
-      <div class="stat-card"><p class="text-[28px] font-black">${state.topups.length}</p><p class="text-[11px] font-bold text-slate-500">شحن</p></div>
-      <div class="stat-card col-span-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-0"><p class="text-[26px] font-black">${state.topups.filter(t=>t.status==='approved').reduce((s,t)=>s+Number(t.amount||0),0)} جنيه</p><p class="text-[11px] font-bold text-emerald-100">إجمالي الشحن المقبول</p></div>
-    </div>
-    <div class="premium-panel p-4"><p class="text-[12px] font-black mb-3">إحصائيات شهرية — التقويم الميلادي</p><p class="text-[10px] text-slate-500 mb-3">عدد الطلبات حسب تاريخ الإنشاء، والمكتملة حسب تاريخ الإكمال أو آخر تحديث. السجل المعروض محدود بالطلبات المحمّلة في اللوحة.</p><div class="space-y-3">${monthlyStats.map(m=>'<div><div class="flex justify-between gap-2 text-[10px] mb-1"><span>'+escHtml(m.label)+'</span><span>طلبات '+m.created+' • مكتملة '+m.completed+'</span></div><div class="h-2 rounded-full bg-slate-100 overflow-hidden flex"><div class="h-full bg-blue-600" style="width:'+(m.created/maxMonthly*100)+'%"></div><div class="h-full bg-emerald-500" style="width:'+(m.completed/maxMonthly*100)+'%"></div></div></div>').join('')}</div><div class="flex gap-4 mt-3 text-[10px]"><span class="text-blue-700 font-bold">■ الطلبات المنشأة</span><span class="text-emerald-700 font-bold">■ الطلبات المكتملة</span></div></div>
-  </section>`;
-  applyAdminPermissionGuards();
+  const monthlyStats=[];const now=new Date();
+  for(let offset=11;offset>=0;offset--){
+    const month=new Date(now.getFullYear(),now.getMonth()-offset,1);
+    const label=new Intl.DateTimeFormat('ar-EG-u-ca-gregory',{month:'short',year:'numeric',timeZone:'Africa/Cairo'}).format(month);
+    const created=state.orders.filter(o=>{const d=new Date(o.createdAt||0);return !Number.isNaN(d.getTime())&&d.getFullYear()===month.getFullYear()&&d.getMonth()===month.getMonth();}).length;
+    const completed=state.orders.filter(o=>{if(!['تم الانتهاء','منتهي','مكتمل'].includes(String(o.status||'')))return false;const d=new Date(o.completedAt||o.updatedAt||o.createdAt||0);return !Number.isNaN(d.getTime())&&d.getFullYear()===month.getFullYear()&&d.getMonth()===month.getMonth();}).length;
+    monthlyStats.push({label,created,completed});
+  }
+  const maxMonthly=Math.max(1,...monthlyStats.map(m=>Math.max(m.created,m.completed)));
+  return `<div class="premium-panel p-4">
+    <h3 class="text-[12px] font-black mb-2">إحصائيات الطلبات الشهرية</h3>
+    <p class="text-[10px] text-slate-500 mb-3">عدد الطلبات حسب تاريخ الإنشاء، والمكتملة حسب تاريخ الإكمال أو آخر تحديث. السجل المعروض محدود بالطلبات المحمّلة في اللوحة.</p>
+    <div class="space-y-3">${monthlyStats.map(m=>'<div><div class="flex justify-between gap-2 text-[10px] mb-1"><span>'+escHtml(m.label)+'</span><span>طلبات '+m.created+' • مكتملة '+m.completed+'</span></div><div class="h-2 rounded-full bg-slate-100 overflow-hidden flex"><div class="h-full bg-blue-600" style="width:'+(m.created/maxMonthly*100)+'%"></div><div class="h-full bg-emerald-500" style="width:'+(m.completed/maxMonthly*100)+'%"></div></div></div>').join('')}</div>
+    <div class="flex gap-4 mt-3 text-[10px]"><span class="text-blue-700 font-bold">■ الطلبات المنشأة</span><span class="text-emerald-700 font-bold">■ الطلبات المكتملة</span></div>
+  </div>`;
 }
 
 // --- Existing logic preserved ---
