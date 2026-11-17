@@ -89,7 +89,9 @@
         if(product.adAudience&&product.adAudience!=='both'&&product.adAudience!==role)return false;
         if(product.adExpiresAt&&new Date(product.adExpiresAt).getTime()<=now)return false;
         if(product.stock!==null&&product.stock!==undefined&&Number(product.stock)<=0)return false;
-        return Boolean(String(product.name||'').trim()&&/^https?:\/\//i.test(String(product.imageUrl||'')));
+const imageUrl=String(product.imageUrl||'').trim();
+        const hasUsableImage=/^https?:\/\//i.test(imageUrl)||/^\/api\/store\/media\/[a-f0-9]{24}$/i.test(imageUrl);
+        return Boolean(String(product.name||'').trim()&&hasUsableImage);
       }).sort((a,b)=>(Number(b.adPriority)||0)-(Number(a.adPriority)||0)||new Date(b.createdAt||0)-new Date(a.createdAt||0));
       loaded=true;
       if(!products.length)return;
