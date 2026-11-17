@@ -254,6 +254,14 @@ async function run() {
       assert.match(route, /admin\/delivery-log/);
       assert.match(delivery, /NotificationDelivery\.findOneAndUpdate/);
       assert.match(delivery, /channels, overallStatus, lastAttemptAt/);
+      assert.match(delivery, /retryPendingNotificationDeliveries/);
+      assert.match(delivery, /collapseId: 'hamzawy-'/);
+      assert.match(delivery, /notificationId: String\(notification\._id\)/);
+      assert.match(webPush, /notificationId: String\(notification\.notificationId/);
+      assert.match(worker, /tag: data\.notificationId/);
+      const serverSource = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+      assert.match(serverSource, /retryPendingNotificationDeliveries\(25\)/);
+
       assert.match(deliveryModel, /notificationId/);
       assert.match(deliveryModel, /lastError/);
       assert.doesNotMatch(deliveryModel, /token\s*:/i, 'delivery diagnostics must never store push tokens');
