@@ -128,6 +128,7 @@ function apiResponse(pathname) {
 
               for (const selector of ['[data-visual-feedback-test="button"]', '[data-visual-feedback-test="tab"]']) {
                 const targetControl = page.locator(selector);
+                await targetControl.scrollIntoViewIfNeeded();
                 const bounds = await targetControl.boundingBox();
                 if (!bounds) {
                   failures.push(target.name + '/' + viewport.name + ': visual-feedback control has no layout box');
