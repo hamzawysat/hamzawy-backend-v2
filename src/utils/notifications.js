@@ -75,14 +75,15 @@ function channelFor(type) {
 function destinationFor(type) {
   const destinations = {
     admin_store_order: 'storeOrders', admin_subscription_request: 'commerceSubscriptions',
+    admin_new_topup: 'topups', admin_client_topup: 'clients',
     admin_subscription_renewed: 'commerceSubscriptions', admin_client_topup: 'clientWallet',
     admin_new_topup: 'technicians', admin_new_technician: 'technicians',
     admin_fanni_profile_edit: 'technicians', admin_fanni_login: 'technicians',
     admin_fanni_logout: 'technicians', admin_new_client: 'clients',
     admin_client_login: 'clients', admin_client_logout: 'clients',
     admin_service_payment_held: 'orders', admin_order_offer_accepted: 'orders',
-    wallet_credit: 'wallet', fanni_wallet_settlement: 'wallet', technician_settlement: 'wallet',
-    topup_approved: 'wallet', topup_rejected: 'wallet', wallet_debit: 'wallet', commission_deducted: 'wallet',
+    wallet_credit: 'wallets', fanni_wallet_settlement: 'wallets', technician_settlement: 'wallets',
+    topup_approved: 'wallets', topup_rejected: 'wallets', wallet_debit: 'wallets', commission_deducted: 'wallets',
     client_wallet_topup_approved: 'wallet', client_wallet_topup_rejected: 'wallet', client_wallet_credit: 'wallet',
     client_wallet_debit: 'wallet', client_wallet_settlement: 'wallet', client_service_refunded: 'wallet',
     admin_order_cancelled: 'orders', admin_order_completed: 'orders',
