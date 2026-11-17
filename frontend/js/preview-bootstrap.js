@@ -8,6 +8,10 @@
   const params = new URLSearchParams(window.location.search);
 
   if (page === 'admin') {
+    // The admin panel uses a private URL without an /admin path segment.
+    // Tell the shared push registrar the real role so stale client/technician
+    // tokens in the same browser cannot claim the admin's Web Push subscription.
+    window.__SONAA_PAGE_ROLE__ = 'admin';
     if (params.get('preview') === 'true') window.IS_EDITOR_PREVIEW = true;
     return;
   }
