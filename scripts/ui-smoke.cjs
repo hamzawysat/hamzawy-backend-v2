@@ -80,7 +80,7 @@ function apiResponse(pathname) {
           if (['client', 'technician', 'admin'].includes(target.name)) {
             const cssVersion = await page.locator('link[rel="stylesheet"][href*="ui-light-surfaces.css"]').evaluateAll(items =>
               items.map(item => new URL(item.href).searchParams.get('v')));
-            if (cssVersion.length !== 1 || cssVersion[0] !== '20261117-button-feedback-v2') {
+            if (cssVersion.length !== 1 || cssVersion[0] !== '20261117-button-feedback-v3') {
               failures.push(target.name + '/' + viewport.name + ': central interaction stylesheet cache version is stale or duplicated');
             }
 
