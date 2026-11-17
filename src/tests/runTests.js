@@ -49,6 +49,7 @@ async function run() {
       const adminPeople = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-people.js'), 'utf8');
       const adminNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
       const adminAuth = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-auth.js'), 'utf8');
+      const adminShell = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-shell.js'), 'utf8');
       const adminRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
       assert.ok(adminPeople.includes('f.acceptingOrders===false'), 'admin technician cards should reflect the persisted receiving-orders state');
       assert.ok(adminPeople.includes('موقف استقبال الطلبات'), 'paused technicians should be visibly marked in the admin');
@@ -59,6 +60,7 @@ async function run() {
       assert.ok(adminAuth.includes("sessionStorage?.getItem('sonaaAdminLastView')"), 'admin startup should restore the last selected section after refresh');
       assert.ok(adminAuth.includes('Notification links open their target once'), 'notification deep links should open once and then preserve the selected section');
       assert.ok(adminAuth.includes('return refreshCurrentTab()'), 'restored sections should reload their own data after startup');
+      assert.ok(adminShell.includes("pageMode==='home'"), 'the dashboard home view should also remain the selected view after refresh');
     });
     await test('store admin reuses saved product categories and browser catalogs open image-backed category cards', async () => {
       const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
