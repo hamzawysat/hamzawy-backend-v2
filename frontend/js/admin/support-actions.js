@@ -1,9 +1,9 @@
 'use strict';
 
-async function loadContent(){try{const data=await tryApi(['/api/admin/content'],{method:'GET'});state.content=data.content||{announcement:'',faqs:[]};if(state.tab==='content')render();}catch(e){showToast(e.message||'تعذر تحميل المحتوى','error');}}
+async function loadContent(){try{const data=await tryApi(['/api/admin/content'],{method:'GET'});state.content=data.content||{announcement:'',announcementAudience:'client',faqs:[]};if(state.tab==='content')render();}catch(e){showToast(e.message||'تعذر تحميل المحتوى','error');}}
 
 
-function addFaq(){const question=String(document.getElementById('faq-question')?.value||'').trim();const answer=String(document.getElementById('faq-answer')?.value||'').trim();if(question.length<2||question.length>250||answer.length<2||answer.length>1000)return showToast('اكتب سؤالًا وإجابة صالحين','error');state.content=state.content||{announcement:'',faqs:[]};state.content.faqs=Array.isArray(state.content.faqs)?state.content.faqs:[];if(state.content.faqs.length>=100)return showToast('الحد الأقصى 100 سؤال','error');state.content.faqs.push({question,answer,active:true});render();}
+function addFaq(){const question=String(document.getElementById('faq-question')?.value||'').trim();const answer=String(document.getElementById('faq-answer')?.value||'').trim();if(question.length<2||question.length>250||answer.length<2||answer.length>1000)return showToast('اكتب سؤالًا وإجابة صالحين','error');state.content=state.content||{announcement:'',faqs:[]};state.content.faqs=Array.isArray(state.content.faqs)?state.content.faqs:[];if(state.content.faqs.length>=100)return showToast('الحد الأقصى 100 سؤال','error');const audience=String(document.getElementById('faq-audience')?.value||'client');if(!['client','fanni','both'].includes(audience))return showToast('اختيار الجمهور غير صحيح','error');state.content.faqs.push({question,answer,audience,active:true});render();}
 
 
 async function removeFaq(index){
@@ -28,13 +28,13 @@ async function removeFaq(index){
 function previewContent(){const announcement=String(document.getElementById('content-announcement')?.value||state.content?.announcement||'').trim();const faqs=Array.isArray(state.content?.faqs)?state.content.faqs:[];const sample=faqs.slice(0,10).map((f,i)=>(i+1)+'. '+f.question+'\n'+f.answer).join('\n\n');alert('معاينة محتوى صُنّاع\n\nالإعلان:\n'+(announcement||'لا يوجد إعلان')+'\n\nالأسئلة الشائعة ('+faqs.length+'):\n'+(sample||'لا توجد أسئلة'));}
 
 
-async function saveAnnouncement(){const announcement=String(document.getElementById('content-announcement')?.value??'').trim();try{const data=await tryApi(['/api/admin/content/announcement'],{method:'PATCH',body:JSON.stringify({announcement})});state.content={...(state.content||{faqs:[]}),...(data.content||{}),announcement};showToast(data.message||'تم حفظ الإعلان');render();}catch(e){showToast(e.message||'تعذر حفظ الإعلان','error');}}
+async function saveAnnouncement(){const announcement=String(document.getElementById('content-announcement')?.value??'').trim();const announcementAudience=String(document.getElementById('content-announcement-audience')?.value||'client');try{const data=await tryApi(['/api/admin/content/announcement'],{method:'PATCH',body:JSON.stringify({announcement,announcementAudience})});state.content={...(state.content||{faqs:[]}),...(data.content||{}),announcement,announcementAudience};showToast(data.message||'تم حفظ الإعلان');render();}catch(e){showToast(e.message||'تعذر حفظ الإعلان','error');}}
 
 
 async function clearAnnouncement(){const field=document.getElementById('content-announcement');if(field)field.value='';if(state.content)state.content.announcement='';await saveAnnouncement();}
 
 
-async function saveContent(){const announcement=String(document.getElementById('content-announcement')?.value||'').trim();const faqs=Array.isArray(state.content?.faqs)?state.content.faqs:[];const btn=document.getElementById('save-content-btn');if(btn)btn.disabled=true;try{const data=await tryApi(['/api/admin/content'],{method:'PUT',body:JSON.stringify({announcement,faqs})});state.content=data.content||{announcement,faqs};showToast(data.message||'تم حفظ المحتوى');render();}catch(e){showToast(e.message||'تعذر حفظ المحتوى','error');}finally{if(btn)btn.disabled=false;}}
+async function saveContent(){const announcement=String(document.getElementById('content-announcement')?.value||'').trim();const announcementAudience=String(document.getElementById('content-announcement-audience')?.value||'client');const faqs=Array.isArray(state.content?.faqs)?state.content.faqs:[];const btn=document.getElementById('save-content-btn');if(btn)btn.disabled=true;try{const data=await tryApi(['/api/admin/content'],{method:'PUT',body:JSON.stringify({announcement,announcementAudience,faqs})});state.content=data.content||{announcement,announcementAudience,faqs};showToast(data.message||'تم حفظ المحتوى');render();}catch(e){showToast(e.message||'تعذر حفظ المحتوى','error');}finally{if(btn)btn.disabled=false;}}
 
 
 async function searchSupport(){const q=String(document.getElementById('support-query')?.value||'').trim();if(q.length<2)return showToast('اكتب كود طلب أو رقم هاتف للبحث','error');state.supportQuery=q;try{state.supportResults=await tryApi(['/api/admin/support/search?q='+encodeURIComponent(q)],{method:'GET'});state.supportViolations=[];render();}catch(e){showToast(e.message||'تعذر البحث في الدعم','error');}}
