@@ -189,11 +189,8 @@ function adminQuickAction(action){
   if(action==='product'||action==='advertisement'){
     state.storeProductEditingId=null;
     state.storeProductFormOpen=true;
+    state.storeNewProductAsAdvertisement=action==='advertisement';
     setTab('store');
-    if(action==='advertisement'){
-      const checkbox=document.getElementById('store-ad-enabled');
-      if(checkbox)checkbox.checked=true;
-    }
     return;
   }
 }
