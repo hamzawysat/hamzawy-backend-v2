@@ -688,7 +688,7 @@ async function run() {
 
         const deniedCategoryEdit = await request(app).put('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال')).send({ name: 'قسم غير مصرح', imageUrl: '', imageFileId: null });
         assert.equal(deniedCategoryEdit.status, 401, 'category edits must require administrator authentication');
-        const categoryImage = await request(app).post('/api/admin/store/category-media')
+        const categoryImage = await request(app).post('/api/admin/store/media?purpose=category')
           .set('Authorization', 'Bearer ' + adminToken)
           .set('Content-Type', 'image/png').send(pngSignature);
         assert.equal(categoryImage.status, 201, JSON.stringify(categoryImage.body));
