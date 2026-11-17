@@ -141,8 +141,12 @@ function apiResponse(pathname) {
                   const control = document.querySelector(selector);
                   const hit = document.elementFromPoint(x, y);
                   if (control && hit && hit !== control && !control.contains(hit)) {
-                    const blocker = hit.closest('#clientLoadingOverlay,#fanniLoadingOverlay,.client-loading-overlay,.fanni-loading-overlay') || hit;
-                    if (blocker !== control && !control.contains(blocker)) blocker.remove();
+                    const knownOverlay = hit.closest('#clientLoadingOverlay,#fanniLoadingOverlay,.client-loading-overlay,.fanni-loading-overlay');
+                    const hitStyle = getComputedStyle(hit);
+                    const isExternalOverlay = !hit.closest('#app') && !['BODY','HTML'].includes(hit.tagName) &&
+                      ['fixed','absolute'].includes(hitStyle.position) && Number(hitStyle.zIndex) > 0;
+                    const blocker = knownOverlay || (isExternalOverlay ? hit : null);
+                    if (blocker && blocker !== control && !control.contains(blocker)) blocker.remove();
                   }
                 }, { ...center, selector });
                 await page.mouse.move(center.x, center.y);
