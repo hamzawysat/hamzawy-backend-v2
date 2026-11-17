@@ -418,15 +418,19 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     }
 
     if (updated.assignedFanni) {
-      await createNotification({
-        recipientRole: 'fanni',
-        recipientId: updated.assignedFanni,
-        type: 'client_completion_confirmed',
-        title: 'العميل أكد استلام الخدمة',
-        message: 'أكد العميل استلام الخدمة للطلب ' + updated.sn + '. بدأ ضمان الإصلاح لمدة 14 يومًا.',
-        link: '/fanni',
-        dedupeKey: 'client-completion-confirmed:' + String(updated._id)
-      });
+      try {
+        await createNotification({
+          recipientRole: 'fanni',
+          recipientId: updated.assignedFanni,
+          type: 'client_completion_confirmed',
+          title: 'العميل أكد استلام الخدمة',
+          message: 'أكد العميل استلام الخدمة للطلب ' + updated.sn + '. بدأ ضمان الإصلاح لمدة 14 يومًا.',
+          link: '/fanni',
+          dedupeKey: 'client-completion-confirmed:' + String(updated._id)
+        });
+      } catch (notificationError) {
+        console.error('Could not notify technician about client confirmation:', notificationError.message);
+      }
     }
 
     return res.json({
