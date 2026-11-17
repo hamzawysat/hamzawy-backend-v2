@@ -255,6 +255,9 @@ async function run() {
       assert.match(delivery, /NotificationDelivery\.findOneAndUpdate/);
       assert.match(delivery, /channels, overallStatus, lastAttemptAt/);
       assert.match(delivery, /retryPendingNotificationDeliveries/);
+      assert.match(delivery, /unavailable \? Math\.max\(1, failed\) : failed/);
+      assert.match(delivery, /effectiveFailed === 0/);
+
       assert.match(delivery, /collapseId: 'hamzawy-'/);
       assert.match(delivery, /notificationId: String\(notification\._id\)/);
       assert.match(webPush, /notificationId: String\(notification\.notificationId/);
