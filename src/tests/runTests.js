@@ -45,6 +45,18 @@ async function run() {
     app = require('../server');
     mongoose = require('mongoose');
 
+    await test('store admin reuses saved product categories and browser catalogs open image-backed category cards', async () => {
+      const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      const browserStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/store-ui.js'), 'utf8');
+      assert.ok(adminStore.includes('id="store-category"'), 'admin form should offer an existing-category dropdown');
+      assert.ok(adminStore.includes('id="store-category-new"'), 'admin form should accept a new category beside the dropdown');
+      assert.ok(adminStore.includes("document.getElementById('store-category-new')"), 'new category text should be saved with the product');
+      assert.ok(browserStore.includes('function setStoreCategory(role,category)'), 'browser store should support entering and leaving a category');
+      assert.ok(browserStore.includes('data-store-category'), 'category cards should have an actionable selection');
+      assert.ok(browserStore.includes('const cover=items.find(p=>String(p.imageUrl||\'\').trim())||items[0]'), 'category artwork should come from a product in that category');
+      assert.ok(browserStore.includes('selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);})'), 'opening a category should show only its products');
+    });
+
     await test('only the configured root administrator bypasses the permission matrix', async () => {
       assert.equal(isRootAdmin({ role: 'admin', phone: '01012345678' }), true);
       assert.equal(isRootAdmin({ role: 'admin', phone: '01012345679' }), false);
