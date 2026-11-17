@@ -129,7 +129,8 @@ async function sendFirebasePushNotifications(devices, payload) {
   const data = {
     type: type.slice(0, 50),
     link: normalizeNotificationLink(payload.link),
-    destination: destinationFor(type)
+    destination: destinationFor(type),
+    notificationId: String(payload.notificationId || '')
   };
   const results = await Promise.all(devices.map(async device => {
     const response = await notificationFetch(endpoint, {
@@ -144,8 +145,9 @@ async function sendFirebasePushNotifications(devices, payload) {
         data,
         android: {
           priority: 'HIGH',
+          collapse_key: payload.notificationId ? 'hamzawy-' + String(payload.notificationId) : undefined,
           ttl: '86400s',
-          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' }
+          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
         },
         webpush: { headers: { TTL: '86400', Urgency: 'high' } },
         apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
@@ -164,7 +166,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   const accepted = results.filter(Boolean).length;
   return { accepted, failed: results.length - accepted };
 }
-async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '' }) {
+async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '', notificationId = '' }) {
   const report = { expo: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' }, fcm: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
@@ -182,7 +184,8 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         priority: 'high',
         channelId: 'default',
         ttl: 86400,
-        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')) }
+        ...(notificationId ? { collapseId: 'hamzawy-' + String(notificationId) } : {}),
+        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')), notificationId: String(notificationId || '') }
       }));
       for (let start = 0; start < messages.length; start += 100) {
         const batch = messages.slice(start, start + 100);
@@ -221,7 +224,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
 
     if (fcm.length) {
       try {
-        const result = await sendFirebasePushNotifications(fcm, { title, message, type, link });
+        const result = await sendFirebasePushNotifications(fcm, { title, message, type, link, notificationId });
         if (result && Number.isFinite(result.accepted)) {
           report.fcm.accepted = result.accepted;
           report.fcm.failed = Math.max(0, fcm.length - result.accepted);
@@ -276,8 +279,8 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
       ).catch(error => { console.error('Notification delivery audit create failed:', error.message); return null; });
       const attemptedAt = new Date();
       const delivery = await Promise.allSettled([
-        sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link }),
-        sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link })
+        sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link, notificationId: String(notification._id) }),
+        sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link, notificationId: String(notification._id) })
       ]);
       const native = delivery[0].status === 'fulfilled' ? delivery[0].value : null;
       const web = delivery[1].status === 'fulfilled' ? delivery[1].value : null;
