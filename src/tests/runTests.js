@@ -692,7 +692,7 @@ async function run() {
           .set('Authorization', 'Bearer ' + adminToken)
           .set('Content-Type', 'image/png').send(pngSignature);
         assert.equal(categoryImage.status, 201, JSON.stringify(categoryImage.body));
-        const renamedCategory = await request(app).put('/api/admin/store/categories/أجهزة الاستقبال')
+        const renamedCategory = await request(app).put('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال'))
           .set('Authorization', 'Bearer ' + adminToken)
           .send({ name: 'أجهزة الاستقبال الرقمية', imageUrl: categoryImage.body.imageUrl, imageFileId: categoryImage.body.imageFileId });
         assert.equal(renamedCategory.status, 200, JSON.stringify(renamedCategory.body));
