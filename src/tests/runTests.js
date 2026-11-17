@@ -570,6 +570,35 @@ async function run() {
       assert.equal(removedToken.status, 200);
       assert.equal(removedToken.body.deleted, 1);
       assert.equal(await PushToken.countDocuments({ token: expoToken }), 0);
+
+      const Fanni = require('../models/Fanni');
+      const approvedFanni = await Fanni.findOne({ phone });
+      approvedFanni.status = 'معتمد';
+      approvedFanni.technicianGuidelinesAcceptedAt = new Date();
+      approvedFanni.technicianGuidelinesVersion = '2026-10-20-v1';
+      await approvedFanni.save();
+
+      const defaultProfile = await request(app).get('/api/fanni/me').set('Authorization', 'Bearer ' + fanniToken);
+      assert.equal(defaultProfile.status, 200);
+      assert.equal(defaultProfile.body.acceptingOrders, true, 'existing technicians should default to accepting orders');
+
+      const paused = await request(app).patch('/api/fanni/availability')
+        .set('Authorization', 'Bearer ' + fanniToken).send({ acceptingOrders: false });
+      assert.equal(paused.status, 200);
+      assert.equal(paused.body.acceptingOrders, false);
+      const persisted = await Fanni.findById(approvedFanni._id).lean();
+      assert.equal(persisted.acceptingOrders, false, 'availability must persist in MongoDB');
+
+      const hiddenOpportunities = await request(app).get('/api/orders/available')
+        .set('Authorization', 'Bearer ' + fanniToken);
+      assert.equal(hiddenOpportunities.status, 200);
+      assert.equal(hiddenOpportunities.body.code, 'TECHNICIAN_NOT_ACCEPTING_ORDERS');
+      assert.deepEqual(hiddenOpportunities.body.orders, []);
+
+      const resumed = await request(app).patch('/api/fanni/availability')
+        .set('Authorization', 'Bearer ' + fanniToken).send({ acceptingOrders: true });
+      assert.equal(resumed.status, 200);
+      assert.equal(resumed.body.acceptingOrders, true);
     });
 
     await test('wallet top-up requests remain pending and never credit balance before admin review', async () => {
