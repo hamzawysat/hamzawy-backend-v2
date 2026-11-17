@@ -2,6 +2,51 @@
 
 const { chromium } = require('playwright');
 
+const fs = require('fs');
+const path = require('path');
+
+function verifyAdminDashboardSource() {
+  const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
+  const shell = read('frontend/js/admin-shell.js');
+  const core = read('frontend/js/admin-core.js');
+  const stats = read('frontend/js/admin/clients-render.js');
+  const header = read('frontend/css/admin-header.css');
+  const html = read('frontend/admin.html');
+  const quickActions = (shell.match(/onclick="adminQuickAction\(/g) || []).length;
+  const requiredSections = ['الطلبات والعملاء', 'الفنيون', 'المحافظ والمالية', 'المتجر والخدمات', 'خدمة العملاء', 'إدارة النظام'];
+  const sectionPositions = requiredSections.map(label => core.indexOf("label:'" + label + "'"));
+  if (!shell.includes('class="admin-topbar') ||
+      !shell.includes('class="admin-header-search') ||
+      !shell.includes("setTab('notifications')") ||
+      !shell.includes('mode=account') ||
+      !shell.includes('onclick="logout()"') ||
+      shell.includes('قنوات حمزاوي سات الرسمية') ||
+      shell.includes('visualEditorLink') ||
+      shell.includes('goBack()')) {
+    throw new Error('Admin dashboard header or removed channels section regression');
+  }
+  if (quickActions !== 4 || !shell.includes('طلبات اليوم') ||
+      !shell.includes('عملاء جدد') || !shell.includes('شكاوى جديدة') ||
+      !shell.includes('فنيين بانتظار الاعتماد') ||
+      !shell.includes("filter(item=>item.value>0)")) {
+    throw new Error('Admin dashboard KPI or quick-action regression');
+  }
+  if (sectionPositions.some(position => position < 0) ||
+      sectionPositions.some((position, index) => index > 0 && position <= sectionPositions[index - 1])) {
+    throw new Error('Admin dashboard section order regression');
+  }
+  if (!core.includes("label:'نظرة عامة'") ||
+      !stats.includes('إحصائيات الطلبات الشهرية') ||
+      stats.includes('stat-card')) {
+    throw new Error('Admin overview/statistics merge regression');
+  }
+  if (!header.includes('.admin-topbar') ||
+      !html.includes('admin-header.css?v=20261118-admin-dashboard1')) {
+    throw new Error('Admin dashboard header stylesheet/cache regression');
+  }
+}
+verifyAdminDashboardSource();
+
 const BASE = process.env.SONAA_SMOKE_BASE || 'http://127.0.0.1:4173';
 const pages = [
   { path: '/index.html', name: 'home' },
