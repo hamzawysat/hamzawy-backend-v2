@@ -1658,6 +1658,24 @@ async function run() {
       assert.equal(settledOrder.status, 'تم الانتهاء');
       assert.equal(settledOrder.clientPaymentStatus, 'settled');
       assert.ok(settledOrder.technicianSettledAt);
+      assert.ok(settledOrder.completionDeclaredAt, 'technician completion must be timestamped for the new confirmation flow');
+      const deniedConfirmation = await request(app).post('/api/orders/' + order.sn + '/confirm-completion')
+        .set('Authorization', 'Bearer ' + secondClientToken).send({});
+      assert.equal(deniedConfirmation.status, 403, 'another client must not confirm this order');
+      const confirmedAtResponse = await request(app).post('/api/orders/' + order.sn + '/confirm-completion')
+        .set('Authorization', 'Bearer ' + clientToken).send({});
+      assert.equal(confirmedAtResponse.status, 200, JSON.stringify(confirmedAtResponse.body));
+      const confirmedOrder = await Order.findById(order._id).lean();
+      assert.ok(confirmedOrder.clientConfirmedAt);
+      assert.equal(confirmedOrder.warrantyStatus, 'active');
+      assert.equal(confirmedOrder.warrantyStartsAt.getTime(), confirmedOrder.clientConfirmedAt.getTime());
+      assert.equal(confirmedOrder.warrantyExpiresAt.getTime() - confirmedOrder.warrantyStartsAt.getTime(), 14 * 24 * 60 * 60 * 1000);
+      const originalWarrantyExpiry = confirmedOrder.warrantyExpiresAt.getTime();
+      const repeatedConfirmation = await request(app).post('/api/orders/' + order.sn + '/confirm-completion')
+        .set('Authorization', 'Bearer ' + clientToken).send({});
+      assert.equal(repeatedConfirmation.status, 200);
+      assert.equal(new Date(repeatedConfirmation.body.order.warrantyExpiresAt).getTime(), originalWarrantyExpiry, 'repeated confirmation must not extend the warranty');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1585, 'client confirmation must not change the existing technician settlement');
       const settlementLedger = await WalletTransaction.findOne({ order: order._id, type: 'technician_settlement' }).lean();
       assert.ok(settlementLedger);
       assert.equal(settlementLedger.amount, 650);
