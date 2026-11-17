@@ -1,13 +1,17 @@
 'use strict';
 
 const ADMIN_TAB_HISTORY=[];
+const ADMIN_LAST_VIEW_KEY='sonaaAdminLastView';
+function saveAdminLastView(tab,pageMode='section'){
+ try{if(window.sessionStorage)window.sessionStorage.setItem(ADMIN_LAST_VIEW_KEY,JSON.stringify({tab,pageMode}));}catch(_){}
+}
 function setTab(t,scrollTarget='content',fromBack=false){
  if(!canReadTab(t)){showToast('هذا القسم غير متاح ضمن صلاحيات حسابك','error');return;}
  if(state.tab!==t){
   if(!fromBack&&state.tab){ADMIN_TAB_HISTORY.push(state.tab);if(ADMIN_TAB_HISTORY.length>40)ADMIN_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaAdminTab:t},'',window.location.pathname+window.location.search);}
   state.filter='الكل';
  }
- state.tab=t;state.pageMode='section';state.dropdowns={};state.pendingActions={};render();
+ state.tab=t;state.pageMode='section';saveAdminLastView(t,'section');state.dropdowns={};state.pendingActions={};render();
  if(t==='profileEdits')loadFanniProfileEdits();else if(t==='orders')loadOrders();else if(t==='roles')loadAdminUsers();else if(t==='complaints')loadComplaints();else if(t==='services')loadServices();else if(t==='regions')loadRegions();else if(t==='pricing')loadPricing();else if(t==='settings')loadSettings();else if(t==='security')loadAuditLogs();else if(t==='pageVisits')loadPageVisits();else if(t==='notifications')loadNotificationHistory();else if(t==='support')loadSupportViolations();else if(t==='content')loadContent();else if(t==='topups'){applyTopupFilter();if(canReadTab('clientWallet'))loadClientTopups();}else if(t==='clients')loadClients();else if(t==='clientWallet')loadClientTopups();else if(t==='commercePlans')loadCommerceCatalog();else if(t==='commerceSubscriptions')loadClientSubscriptions();else if(t==='store')loadStoreProducts();else if(t==='storeOrders')loadStoreOrders();else if(t==='wallets')render();else applyFilter();
 }
 function goBack(fromPopState=false){

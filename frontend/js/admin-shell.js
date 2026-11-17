@@ -37,6 +37,7 @@ function render(){
   const inputFocusSnapshot=captureAdminInputFocus();
   if(!getToken()){renderLogin();return;}
   if(!canReadTab(state.tab)){const first=ADMIN_SECTIONS.flatMap(section=>section.tabs).find(item=>canReadTab(item.id));state.tab=first?.id||'dashboard';}
+  if(state.pageMode==='home'){try{window.sessionStorage?.setItem('sonaaAdminLastView',JSON.stringify({tab:state.tab||'dashboard',pageMode:'home'}));}catch(_){}}
   const visibleSections=ADMIN_SECTIONS.filter(section=>section.tabs.some(item=>canReadTab(item.id)));
   const isAuth=true;
   const pendingCount=state.fannis.filter(f=>!f.isApproved&&!f.isDisabled&&f.status!=='rejected').length;

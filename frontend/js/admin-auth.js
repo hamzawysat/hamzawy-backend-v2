@@ -21,16 +21,24 @@ async function doLogin(){
 }
 function restoreAdminTabFromNotification(){
   let requested='';
-  try{requested=decodeURIComponent(String(location.hash||'').replace(/^#/,'')).trim();}catch(_){return;}
-  if(!requested)return;
-  const known=ADMIN_SECTIONS.some(section=>section.tabs.some(tab=>tab.id===requested));
-  if(known){
+  try{requested=decodeURIComponent(String(location.hash||'').replace(/^#/,'')).trim();}catch(_){}
+  const knownTab=id=>ADMIN_SECTIONS.some(section=>section.tabs.some(tab=>tab.id===id));
+  if(requested&&knownTab(requested)){
     state.tab=requested;
     state.pageMode='section';
-    // Treat incoming hashes as one-time notification deep links, not a persistent default tab.
+    try{if(window.sessionStorage)window.sessionStorage.setItem('sonaaAdminLastView',JSON.stringify({tab:requested,pageMode:'section'}));}catch(_){}
+    // Notification links open their target once; the selected section then survives refreshes.
     if(window.history&&window.history.replaceState)window.history.replaceState(window.history.state||{},'',location.pathname+location.search);
+    return;
   }
+  try{
+    const saved=JSON.parse(window.sessionStorage?.getItem('sonaaAdminLastView')||'null');
+    if(saved&&knownTab(saved.tab)){
+      state.tab=saved.tab;
+      state.pageMode=saved.pageMode==='home'?'home':'section';
+    }
+  }catch(_){}
 }
 restoreAdminTabFromNotification();
-if(getToken()){ loadAll().then(()=>{if(state.pageMode==='section'&&state.tab==='store')return loadStoreProducts();if(state.pageMode==='section'&&state.tab==='storeOrders')return loadStoreOrders();}); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }
+if(getToken()){ loadAll().then(()=>{if(state.pageMode==='section'&&typeof refreshCurrentTab==='function'){if(!canReadTab(state.tab)){state.tab='dashboard';state.pageMode='home';try{window.sessionStorage?.removeItem('sonaaAdminLastView');}catch(_){}}else return refreshCurrentTab();}}); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }
 
