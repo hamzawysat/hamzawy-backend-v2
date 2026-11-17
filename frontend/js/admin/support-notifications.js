@@ -27,7 +27,8 @@ async function openAdminInboxNotification(id){
 }
 function renderNotifications(){
   return `
-  <section class="mt-4 space-y-4">\n    <div class="premium-panel p-4 space-y-3">${renderAdminInbox()}</div>
+  <section class="mt-4 space-y-4">
+    <div class="premium-panel p-4 space-y-3">${renderAdminInbox()}</div>
     <div class="rounded-[18px] bg-gradient-to-r from-violet-600 to-purple-600 p-4 text-white"><p class="text-[12px] font-black">الإشعارات والرسائل</p><p class="text-[10px] text-violet-100 mt-1">إرسال فردي أو جماعي حسب نوع الحساب وحالته</p></div>
     <div class="premium-panel p-4 space-y-3">
       <label class="block text-[11px] font-black">طريقة الإرسال<select id="notification-mode" onchange="updateNotificationMode()" class="field mt-2 w-full"><option value="single">إشعار لفرد محدد</option><option value="group">إشعار جماعي لفئة</option></select></label>
