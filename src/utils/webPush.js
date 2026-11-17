@@ -5,7 +5,8 @@ const Sub = require('../models/WebPushSubscription');
 
 const enc = value => Buffer.from(value).toString('base64url');
 const dec = value => Buffer.from(String(value || ''), 'base64url');
-const PUSH_TTL_SECONDS = 120;
+// Keep queued pushes available through temporary device/network downtime.
+const PUSH_TTL_SECONDS = 86400;
 const CURRENT_PUBLIC_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
 const LEGACY_PUBLIC_HOSTS = new Set(['hamzawy-backend-v2-production.up.railway.app', 'hamzawy-sat.vercel.app']);
 
