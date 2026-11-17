@@ -91,7 +91,7 @@ function createAdminPlatformRouter({
   });
   router.patch('/content/announcement', auth('admin'), async (req, res, next) => {
     try {
-      const schema = Joi.object({ announcement: Joi.string().trim().max(1000).allow('').required() }).required();
+      const schema = Joi.object({ announcement: Joi.string().trim().max(1000).allow('').required(), announcementAudience: Joi.string().valid('client','fanni','both').default('client') }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'نص الإعلان غير صالح؛ الحد الأقصى 1000 حرف' });
       const config = await getAdminConfig();
@@ -99,6 +99,7 @@ function createAdminPlatformRouter({
       const faqCount = Array.isArray(config.content?.faqs) ? config.content.faqs.length : 0;
       // Update only the announcement path so unrelated legacy FAQ records are not revalidated.
       config.set('content.announcement', value.announcement);
+      config.set('content.announcementAudience', value.announcementAudience);
       config.history.push({
         key: 'content',
         before: { announcementLength: previousLength, faqCount },
@@ -118,10 +119,12 @@ function createAdminPlatformRouter({
     try {
       const schema = Joi.object({
         announcement: Joi.string().trim().max(1000).allow('').required(),
+        announcementAudience: Joi.string().valid('client','fanni','both').default('client'),
         faqs: Joi.array().max(100).items(Joi.object({
           question: Joi.string().trim().min(2).max(250).required(),
           answer: Joi.string().trim().min(2).max(1000).required(),
-          active: Joi.boolean().default(true)
+          active: Joi.boolean().default(true),
+          audience: Joi.string().valid('client','fanni','both').default('client')
         }).required()).required()
       }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
