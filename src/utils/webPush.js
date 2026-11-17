@@ -107,7 +107,7 @@ async function sendOne(subscription, notification, keys) {
   const body = encrypt(subscription, {
     title: String(notification.title || 'إشعار من حمزاوي سات').slice(0, 100),
     body: String(notification.message || '').slice(0, 300),
-    data: { url: normalizeNotificationPath(notification.link) }
+    data: { url: normalizeNotificationPath(notification.link), notificationId: String(notification.notificationId || '') }
   });
   const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function' ? AbortSignal.timeout(5000) : undefined;
   const response = await fetch(subscription.endpoint, {

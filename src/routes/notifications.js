@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
 const PushToken = require('../models/PushToken');
 const WebPushSubscription = require('../models/WebPushSubscription');
+const NotificationDelivery = require('../models/NotificationDelivery');
 const { getVapidKeys, isAllowedPushEndpoint } = require('../utils/webPush');
 const { normalizeNotificationLink } = require('../utils/notifications');
 const { auth, canAccessAdmin, isRootAdmin } = require('../middleware/auth');
@@ -26,6 +27,23 @@ function roleAuth(role) {
     return next();
   });
 }
+
+router.get('/admin/delivery-log', roleAuth('admin'), async (req, res, next) => {
+  try {
+    const limit = Math.min(100, Math.max(1, Number.parseInt(req.query.limit, 10) || 50));
+    const filter = {};
+    if (['client', 'fanni', 'admin'].includes(String(req.query.role || ''))) filter.recipientRole = String(req.query.role);
+    if (['accepted', 'partial', 'failed', 'no_devices', 'error'].includes(String(req.query.status || ''))) filter.overallStatus = String(req.query.status);
+    const entries = await NotificationDelivery.find(filter).sort({ createdAt: -1 }).limit(limit).lean();
+    return res.set('Cache-Control', 'no-store').json({
+      deliveries: entries.map(item => ({
+        id: String(item._id), notificationId: String(item.notificationId), role: item.recipientRole,
+        recipientId: String(item.recipientId), type: item.type, overallStatus: item.overallStatus,
+        channels: item.channels, createdAt: item.createdAt, lastAttemptAt: item.lastAttemptAt
+      }))
+    });
+  } catch (error) { return next(error); }
+});
 
 router.get('/web-push-public-key',(req,res)=>{const k=getVapidKeys();if(!k)return res.status(503).json({message:'إشعارات الويب غير مهيأة على الخادم.'});return res.set('Cache-Control','no-store').json({publicKey:k.pub.toString('base64url')});});
 function mountRoleRoutes(role) {

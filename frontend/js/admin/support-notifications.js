@@ -25,10 +25,26 @@ async function openAdminInboxNotification(id){
   if(tab&&typeof setTab==='function'&&canReadTab(tab))setTab(tab);
   else{const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
 }
+function renderDeliveryAudit(){
+  const entries=Array.isArray(state.adminDeliveryLogs)?state.adminDeliveryLogs:[];
+  if(!entries.length)return '<p class="p-3 text-center text-[10px] text-slate-500">لا توجد سجلات إرسال بعد.</p>';
+  const label=status=>({accepted:'قبله مزود الإرسال',partial:'قبول جزئي',failed:'فشل',error:'خطأ',no_devices:'لا توجد أجهزة مسجلة',not_configured:'القناة غير مهيأة'})[status]||String(status||'غير معروف');
+  return entries.map(item=>{
+    const channels=item.channels||{};
+    const channel=(name,title)=>{const c=channels[name]||{};return '<div class="rounded-lg bg-slate-50 p-2"><b>'+title+': '+label(c.status)+'</b><div class="mt-1 text-[9px] text-slate-600">محاولات أجهزة: '+Number(c.attempted||0)+' • قبول: '+Number(c.accepted||0)+' • فشل: '+Number(c.failed||0)+'</div>'+(c.lastError?'<div class="mt-1 text-[9px] text-red-700 break-words">السبب: '+escHtml(c.lastError)+'</div>':'')+'</div>';};
+    return '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[10px]">'+escHtml(item.type||'إشعار')+'</b><span class="text-[9px] text-slate-500">'+escHtml(item.role||'')+'</span></div><div class="grid grid-cols-1 gap-2">'+channel('expo','Expo')+channel('fcm','FCM')+channel('webPush','Web Push')+'</div><small class="block text-[9px] text-slate-500">'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</small></div>';
+  }).join('');
+}
+async function loadNotificationDeliveryAudit(){
+  try{const data=await tryApi(['/api/notifications/admin/delivery-log?limit=30'],{method:'GET'});state.adminDeliveryLogs=extractList(data,['deliveries']);}
+  catch(e){state.adminDeliveryLogs=Array.isArray(state.adminDeliveryLogs)?state.adminDeliveryLogs:[];console.warn('تعذر تحميل سجل تتبع الإشعارات:',e.message||e);}
+  const root=document.getElementById('admin-delivery-log-list');if(root)root.innerHTML=renderDeliveryAudit();
+}
 function renderNotifications(){
   return `
   <section class="mt-4 space-y-4">
     <div class="premium-panel p-4 space-y-3">${renderAdminInbox()}</div>
+    <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">تتبع تسليم الإشعارات</p><p class="text-[10px] text-slate-500">نتائج مزودي الإرسال لكل قناة، دون تخزين رموز الأجهزة</p></div><button type="button" onclick="loadNotificationDeliveryAudit()" class="pill-btn soft-btn">تحديث</button></div><div id="admin-delivery-log-list" class="space-y-2">${renderDeliveryAudit()}</div></div>
     <div class="rounded-[18px] bg-gradient-to-r from-violet-600 to-purple-600 p-4 text-white"><p class="text-[12px] font-black">الإشعارات والرسائل</p><p class="text-[10px] text-violet-100 mt-1">إرسال فردي أو جماعي حسب نوع الحساب وحالته</p></div>
     <div class="premium-panel p-4 space-y-3">
       <label class="block text-[11px] font-black">طريقة الإرسال<select id="notification-mode" onchange="updateNotificationMode()" class="field mt-2 w-full"><option value="single">إشعار لفرد محدد</option><option value="group">إشعار جماعي لفئة</option></select></label>
@@ -57,9 +73,12 @@ function updateNotificationAudience(){const role=document.getElementById('notifi
 
 
 function renderNotificationHistory(){
-  if(state.notificationHistoryLoading)return '<p class="p-4 text-center text-[11px] text-slate-500">جاري تحميل سجل الإشعارات...</p>';
-  if(!state.notificationHistory.length)return '<p class="p-4 text-center text-[11px] text-slate-500">لا توجد إشعارات إدارية محفوظة.</p>';
-  return state.notificationHistory.map(item => '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-[11px] font-black break-words">'+escHtml(item.title||'إشعار بدون عنوان')+'</p><p class="mt-1 text-[10px] leading-5 text-slate-600 break-words">'+escHtml(item.message||'')+'</p></div><button type="button" data-id="'+escHtml(item.id)+'" onclick="deleteNotificationCampaign(this.dataset.id)" class="shrink-0 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[10px] font-black text-red-700">حذف</button></div><div class="flex flex-wrap items-center gap-2 text-[9px] text-slate-500"><span class="rounded-full bg-slate-100 px-2 py-1">'+(item.recipientRole==='client'?'العملاء':'الفنيون')+'</span><span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">عدد المستلمين: '+Number(item.count||0)+'</span><span>'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</span></div></div>').join('');
+  const campaignContent=state.notificationHistoryLoading
+    ? '<p class="p-4 text-center text-[11px] text-slate-500">جاري تحميل سجل الإشعارات...</p>'
+    : !state.notificationHistory.length
+      ? '<p class="p-4 text-center text-[11px] text-slate-500">لا توجد إشعارات إدارية محفوظة.</p>'
+      : state.notificationHistory.map(item => '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-[11px] font-black break-words">'+escHtml(item.title||'إشعار بدون عنوان')+'</p><p class="mt-1 text-[10px] leading-5 text-slate-600 break-words">'+escHtml(item.message||'')+'</p></div><button type="button" data-id="'+escHtml(item.id)+'" onclick="deleteNotificationCampaign(this.dataset.id)" class="shrink-0 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[10px] font-black text-red-700">حذف</button></div><div class="flex flex-wrap items-center gap-2 text-[9px] text-slate-500"><span class="rounded-full bg-slate-100 px-2 py-1">'+(item.recipientRole==='client'?'العملاء':'الفنيون')+'</span><span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">عدد المستلمين: '+Number(item.count||0)+'</span><span>'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</span></div></div>').join('');
+  return '<div class="space-y-4">'+renderAdminInbox()+'<div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">تتبع تسليم الإشعارات</p><p class="text-[10px] text-slate-500">حالة Expo وFCM وإشعارات المتصفح لكل قناة</p></div><button type="button" onclick="loadNotificationDeliveryAudit()" class="pill-btn soft-btn">تحديث</button></div><div id="admin-delivery-log-list" class="space-y-2">'+renderDeliveryAudit()+'</div></div><div id="notification-campaign-history" class="space-y-2">'+campaignContent+'</div></div>';
 }
 
 
@@ -67,7 +86,7 @@ async function loadNotificationHistory(){
   const root=document.getElementById('notification-history-list');
   state.notificationHistoryLoading=true;
   if(root)root.innerHTML=renderNotificationHistory();
-  try{await loadAdminInbox();const data=await tryApi(['/api/admin/notifications/direct'],{method:'GET'});state.notificationHistory=extractList(data,['notifications']);}
+  try{await Promise.all([loadAdminInbox(),loadNotificationDeliveryAudit()]);const data=await tryApi(['/api/admin/notifications/direct'],{method:'GET'});state.notificationHistory=extractList(data,['notifications']);}
   catch(e){state.notificationHistory=[];showToast(e.message||'تعذر تحميل سجل الإشعارات','error');}
   finally{state.notificationHistoryLoading=false;const target=document.getElementById('notification-history-list');if(target)target.innerHTML=renderNotificationHistory();}
 }

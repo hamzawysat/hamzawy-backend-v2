@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const Notification = require('../models/Notification');
+const NotificationDelivery = require('../models/NotificationDelivery');
 const PushToken = require('../models/PushToken');
 const Fanni = require('../models/Fanni');
 const { sendWebPushNotification } = require('./webPush');
@@ -118,7 +119,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   const raw = String(process.env.FIREBASE_SERVICE_ACCOUNT_JSON || '');
   if (!raw || typeof fetch !== 'function') {
     console.error('FCM push skipped: FIREBASE_SERVICE_ACCOUNT_JSON is not configured; registered devices:', devices.length);
-    return { accepted: 0, failed: devices.length };
+    return { status: 'not_configured', accepted: 0, failed: devices.length, lastError: 'FIREBASE_SERVICE_ACCOUNT_JSON_NOT_CONFIGURED' };
   }
   const account = JSON.parse(raw);
   if (!account.project_id || !account.client_email || !account.private_key) throw new Error('FIREBASE_SERVICE_ACCOUNT_JSON is incomplete');
@@ -128,7 +129,8 @@ async function sendFirebasePushNotifications(devices, payload) {
   const data = {
     type: type.slice(0, 50),
     link: normalizeNotificationLink(payload.link),
-    destination: destinationFor(type)
+    destination: destinationFor(type),
+    notificationId: String(payload.notificationId || '')
   };
   const results = await Promise.all(devices.map(async device => {
     const response = await notificationFetch(endpoint, {
@@ -143,8 +145,9 @@ async function sendFirebasePushNotifications(devices, payload) {
         data,
         android: {
           priority: 'HIGH',
+          collapse_key: payload.notificationId ? 'hamzawy-' + String(payload.notificationId) : undefined,
           ttl: '86400s',
-          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION' }
+          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
         },
         webpush: { headers: { TTL: '86400', Urgency: 'high' } },
         apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
@@ -155,20 +158,23 @@ async function sendFirebasePushNotifications(devices, payload) {
     }
     if (!response.ok) {
       const detail = (await response.text().catch(() => '')).slice(0, 240);
+      const error = 'FCM_HTTP_' + response.status + ': ' + detail;
       console.error('FCM delivery failed:', response.status, detail);
-      return false;
+      return { ok: false, error };
     }
-    return true;
+    return { ok: true };
   }));
-  const accepted = results.filter(Boolean).length;
-  return { accepted, failed: results.length - accepted };
+  const accepted = results.filter(result => result?.ok).length;
+  const failed = results.length - accepted;
+  const lastError = results.find(result => !result?.ok)?.error || '';
+  return { status: failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed', accepted, failed, lastError };
 }
-async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '' }) {
-  const report = { expo: { attempted: 0, accepted: 0, failed: 0 }, fcm: { attempted: 0, accepted: 0, failed: 0 } };
+async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '', notificationId = '', channels = ['expo', 'fcm'] }) {
+  const report = { expo: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' }, fcm: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
-    const expo = devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token));
-    const fcm = devices.filter(d => d.platform === 'fcm-android');
+    const expo = channels.includes('expo') ? devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token)) : [];
+    const fcm = channels.includes('fcm') ? devices.filter(d => d.platform === 'fcm-android') : [];
     report.expo.attempted = expo.length;
     report.fcm.attempted = fcm.length;
 
@@ -181,7 +187,8 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         priority: 'high',
         channelId: 'default',
         ttl: 86400,
-        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')) }
+        ...(notificationId ? { collapseId: 'hamzawy-' + String(notificationId) } : {}),
+        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')), notificationId: String(notificationId || '') }
       }));
       for (let start = 0; start < messages.length; start += 100) {
         const batch = messages.slice(start, start + 100);
@@ -193,6 +200,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
           report.expo.failed += batch.length;
+          report.expo.lastError = 'EXPO_HTTP_' + response.status + ': ' + JSON.stringify(result).slice(0, 180);
           console.error('Expo push request failed:', response.status, JSON.stringify(result).slice(0, 240));
           continue;
         }
@@ -202,7 +210,9 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
           if (ticket?.status === 'ok') report.expo.accepted += 1;
           else {
             report.expo.failed += 1;
-            console.error('Expo push ticket rejected:', ticket?.details?.error || ticket?.message || ticket?.status || 'missing ticket');
+            const ticketError = ticket?.details?.error || ticket?.message || ticket?.status || 'missing ticket';
+            report.expo.lastError = String(ticketError).slice(0, 240);
+            console.error('Expo push ticket rejected:', ticketError);
             if (ticket?.details?.error === 'DeviceNotRegistered') {
               const token = batch[i]?.to;
               if (token) await PushToken.deleteOne({ token }).catch(() => {});
@@ -217,19 +227,26 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
 
     if (fcm.length) {
       try {
-        const result = await sendFirebasePushNotifications(fcm, { title, message, type, link });
+        const result = await sendFirebasePushNotifications(fcm, { title, message, type, link, notificationId });
         if (result && Number.isFinite(result.accepted)) {
           report.fcm.accepted = result.accepted;
           report.fcm.failed = Math.max(0, fcm.length - result.accepted);
+          report.fcm.status = result.status || (report.fcm.failed === 0 ? 'accepted' : report.fcm.accepted > 0 ? 'partial' : 'failed');
+          report.fcm.lastError = String(result.lastError || '').slice(0, 240);
         } else {
           report.fcm.failed = fcm.length;
         }
       } catch (error) {
         report.fcm.failed = fcm.length;
+        report.fcm.lastError = String(error.message || 'FCM_DELIVERY_UNAVAILABLE').slice(0, 240);
         console.error('FCM delivery unavailable:', error.message);
       }
     }
 
+    for (const channel of ['expo', 'fcm']) {
+      const item = report[channel];
+      if (!item.status || item.status === 'no_devices') item.status = item.attempted === 0 ? 'no_devices' : item.failed === 0 ? 'accepted' : item.accepted > 0 ? 'partial' : 'failed';
+    }
     if (devices.length) console.info('Native push delivery summary:', JSON.stringify({ role: recipientRole, ...report }));
     return report;
   } catch (error) {
@@ -255,19 +272,129 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
     // The database notification is the source of truth. External push providers
     // are best-effort and must never hold the user's primary action indefinitely.
     if (isNew) {
+      const deliveryLog = await NotificationDelivery.findOneAndUpdate(
+        { notificationId: notification._id },
+        { $setOnInsert: {
+          notificationId: notification._id, recipientRole, recipientId, type,
+          channels: { expo: {}, fcm: {}, webPush: {} }, overallStatus: 'no_devices'
+        } },
+        { upsert: true, new: true, setDefaultsOnInsert: true }
+      ).catch(error => { console.error('Notification delivery audit create failed:', error.message); return null; });
+      const attemptedAt = new Date();
       const delivery = await Promise.allSettled([
-        sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link }),
-        sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link })
+        sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link, notificationId: String(notification._id) }),
+        sendWebPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link, notificationId: String(notification._id) })
       ]);
+      const native = delivery[0].status === 'fulfilled' ? delivery[0].value : null;
+      const web = delivery[1].status === 'fulfilled' ? delivery[1].value : null;
+      const channelState = (result, attempted, accepted, failed, errorText = '') => ({
+        status: result?.status === 'not_configured' ? 'not_configured' : errorText ? 'error' : attempted === 0 ? 'no_devices' : failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed',
+        attempted, accepted, failed, attempts: 1, lastAttemptAt: attemptedAt,
+        lastError: String(errorText || result?.lastError || '').slice(0, 240)
+      });
+      const expo = channelState(native?.expo, Number(native?.expo?.attempted || 0), Number(native?.expo?.accepted || 0), Number(native?.expo?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : native?.expo?.lastError || '');
+      const fcm = channelState(native?.fcm, Number(native?.fcm?.attempted || 0), Number(native?.fcm?.accepted || 0), Number(native?.fcm?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : native?.fcm?.lastError || '');
+      const webPush = channelState(web, Number(web?.attempted || 0), Number(web?.accepted || 0), Number(web?.failed || 0), delivery[1].status === 'rejected' ? delivery[1].reason?.message : (web?.status === 'not_configured' ? 'VAPID_NOT_CONFIGURED' : (web?.results || []).find(item => item.status !== 'accepted')?.status || ''));
+      const channels = { expo, fcm, webPush };
+      const totalAttempted = expo.attempted + fcm.attempted + webPush.attempted;
+      const totalAccepted = expo.accepted + fcm.accepted + webPush.accepted;
+      const totalFailed = expo.failed + fcm.failed + webPush.failed;
+      const overallStatus = totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
+      const retryable = [expo, fcm, webPush].some(channel => channel.failed > 0 && channel.attempts < 8);
+      if (deliveryLog) await NotificationDelivery.updateOne(
+        { _id: deliveryLog._id },
+        { $set: { channels, overallStatus, lastAttemptAt: attemptedAt, nextAttemptAt: retryable ? new Date(attemptedAt.getTime() + 60000) : null } }
+      ).catch(error => console.error('Notification delivery audit update failed:', error.message));
       delivery.forEach((result, index) => {
-        if (result.status === 'rejected') {
-          console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
-        }
+        if (result.status === 'rejected') console.error('Notification channel failed:', index === 0 ? 'native' : 'web', result.reason?.message || 'unknown error');
       });
     }
     return notification;
   } catch (error) { console.error('Notification create failed:', error.message); return null; }
 }
+async function retryPendingNotificationDeliveries(limit = 25) {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+  const pending = await NotificationDelivery.find({
+    overallStatus: { $in: ['partial', 'failed'] },
+    nextAttemptAt: { $lte: now },
+    createdAt: { $gte: cutoff }
+  }).sort({ nextAttemptAt: 1 }).limit(Math.min(100, Math.max(1, Number(limit) || 25))).lean();
+
+  for (const item of pending) {
+    const locked = await NotificationDelivery.findOneAndUpdate(
+      { _id: item._id, nextAttemptAt: { $lte: now }, $or: [{ retryLockUntil: null }, { retryLockUntil: { $lte: now } }] },
+      { $set: { retryLockUntil: new Date(now.getTime() + 120000) } },
+      { new: true }
+    ).lean();
+    if (!locked) continue;
+    try {
+      const notification = await Notification.findById(item.notificationId).lean();
+      if (!notification) {
+        await NotificationDelivery.updateOne({ _id: item._id }, { $set: { overallStatus: 'error', nextAttemptAt: null, retryLockUntil: null } });
+        continue;
+      }
+      const previous = locked.channels || {};
+      const retryExpo = Number(previous.expo?.failed || 0) > 0 && Number(previous.expo?.attempts || 0) < 8;
+      const retryFcm = Number(previous.fcm?.failed || 0) > 0 && Number(previous.fcm?.attempts || 0) < 8;
+      const retryWeb = Number(previous.webPush?.failed || 0) > 0 && Number(previous.webPush?.attempts || 0) < 8;
+      const retryNative = retryExpo || retryFcm;
+      const attemptedAt = new Date();
+      const [nativeResult, webResult] = await Promise.all([
+        retryNative ? sendPushNotification({
+          recipientRole: notification.recipientRole, recipientId: notification.recipientId,
+          title: notification.title, message: notification.message, type: notification.type,
+          link: notification.link, notificationId: String(notification._id),
+          channels: [ ...(retryExpo ? ['expo'] : []), ...(retryFcm ? ['fcm'] : []) ]
+        }) : Promise.resolve(null),
+        retryWeb ? sendWebPushNotification({
+          recipientRole: notification.recipientRole, recipientId: notification.recipientId,
+          title: notification.title, message: notification.message, type: notification.type,
+          link: notification.link, notificationId: String(notification._id)
+        }) : Promise.resolve(null)
+      ]);
+      const merge = (old = {}, fresh = null, providerError = '') => {
+        if (!fresh) return old;
+        const attempted = Number(fresh.attempted || 0);
+        const accepted = Number(old.accepted || 0) + Number(fresh.accepted || 0);
+        const failed = Number(fresh.failed || 0);
+        const attempts = Number(old.attempts || 0) + 1;
+        const status = fresh.status === 'not_configured' ? 'not_configured' :
+          failed === 0 ? (accepted > 0 ? 'accepted' : 'no_devices') :
+          accepted > 0 ? 'partial' : 'failed';
+        return {
+          status, attempted: Number(old.attempted || 0) + attempted, accepted, failed, attempts,
+          lastAttemptAt: attemptedAt,
+          lastError: String(providerError || fresh.lastError || '').slice(0, 240)
+        };
+      };
+      const channels = {
+        expo: retryNative ? merge(previous.expo, nativeResult?.expo) : previous.expo,
+        fcm: retryNative ? merge(previous.fcm, nativeResult?.fcm) : previous.fcm,
+        webPush: retryWeb ? merge(previous.webPush, webResult, webResult?.status === 'not_configured' ? 'VAPID_NOT_CONFIGURED' : (webResult?.results || []).find(result => result.status !== 'accepted')?.status || '') : previous.webPush
+      };
+      const retryable = Object.values(channels).some(channel => Number(channel?.failed || 0) > 0 && Number(channel?.attempts || 0) < 8);
+      const maxAttempts = Math.max(1, ...Object.values(channels).map(channel => Number(channel?.attempts || 0)));
+      const delayMs = Math.min(60 * 60 * 1000, 30000 * Math.pow(2, maxAttempts));
+      const totalAttempted = Object.values(channels).reduce((sum, channel) => sum + Number(channel?.attempted || 0), 0);
+      const totalAccepted = Object.values(channels).reduce((sum, channel) => sum + Number(channel?.accepted || 0), 0);
+      const totalFailed = Object.values(channels).reduce((sum, channel) => sum + Number(channel?.failed || 0), 0);
+      const overallStatus = totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
+      await NotificationDelivery.updateOne({ _id: item._id }, { $set: {
+        channels, overallStatus, lastAttemptAt: attemptedAt,
+        nextAttemptAt: retryable ? new Date(attemptedAt.getTime() + delayMs) : null,
+        retryLockUntil: null
+      } });
+    } catch (error) {
+      console.error('Notification delivery retry failed:', error.message);
+      await NotificationDelivery.updateOne({ _id: item._id }, {
+        $set: { retryLockUntil: null, nextAttemptAt: new Date(Date.now() + 5 * 60 * 1000), overallStatus: 'partial' }
+      }).catch(() => {});
+    }
+  }
+  return { scanned: pending.length };
+}
+
 async function notifyAdmins({ type, title, message, link = '', dedupeKey = null }) {
   try {
     const admins = await Fanni.find({
@@ -304,4 +431,4 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null 
     return { targeted: 0, created: 0, failed: 1 };
   }
 }
-module.exports = { createNotification, sendPushNotification, notifyAdmins, normalizeNotificationLink };
+module.exports = { createNotification, sendPushNotification, notifyAdmins, normalizeNotificationLink, retryPendingNotificationDeliveries };

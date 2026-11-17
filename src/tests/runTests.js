@@ -250,6 +250,29 @@ async function run() {
       assert.match(route, /normalizeNotificationLink\(item\.link/);
       assert.match(delivery, /sendPushNotification/);
       assert.match(delivery, /sendWebPushNotification/);
+      const deliveryModel = fs.readFileSync(path.join(__dirname, '../models/NotificationDelivery.js'), 'utf8');
+      assert.match(route, /admin\/delivery-log/);
+      assert.match(delivery, /NotificationDelivery\.findOneAndUpdate/);
+      assert.match(delivery, /channels, overallStatus, lastAttemptAt/);
+      assert.match(delivery, /retryPendingNotificationDeliveries/);
+      assert.match(delivery, /collapseId: 'hamzawy-'/);
+      assert.match(delivery, /notificationId: String\(notification\._id\)/);
+      assert.match(webPush, /notificationId: String\(notification\.notificationId/);
+      assert.match(worker, /tag: data\.notificationId/);
+      const serverSource = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+      assert.match(serverSource, /retryPendingNotificationDeliveries\(25\)/);
+
+      assert.match(deliveryModel, /notificationId/);
+      assert.match(deliveryModel, /lastError/);
+      assert.doesNotMatch(deliveryModel, /token\s*:/i, 'delivery diagnostics must never store push tokens');
+      const adminNotificationUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-notifications.js'), 'utf8');
+      assert.match(adminNotificationUi, /renderDeliveryAudit/);
+      assert.match(adminNotificationUi, /admin\/delivery-log\?limit=30/);
+      assert.match(adminNotificationUi, /function renderNotificationHistory[\s\S]*?renderAdminInbox\(\)/);
+      assert.match(adminNotificationUi, /function renderNotificationHistory[\s\S]*?admin-delivery-log-list/);
+
+
+
       const walletRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin/wallet.js'), 'utf8');
       assert.match(walletRoutes, /fanni_wallet_settlement/);
       assert.match(walletRoutes, /admin-fanni-wallet-settlement:/);
