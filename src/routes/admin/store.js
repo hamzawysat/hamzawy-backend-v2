@@ -278,7 +278,7 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
     } catch (error) { return next(error); }
   });
 
-  router.post('/store/products', auth('admin'), async (req, res, next) => {') + '
+  router.post('/store/products', auth('admin'), async (req, res, next) => {
     try {
       const checked = productSchema.validate(req.body || {}, { abortEarly: false });
       if (checked.error) return res.status(400).json({ message: 'راجع اسم المنتج والسعر وباقي البيانات.' });
