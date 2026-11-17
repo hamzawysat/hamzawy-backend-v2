@@ -252,6 +252,9 @@ async function run() {
       assert.match(delivery, /sendWebPushNotification/);
       assert.match(delivery, /admin_new_topup: 'topups'/);
       assert.match(delivery, /admin_client_topup: 'clientWallet'/);
+      assert.match(delivery, /admin_password_recovery: 'recovery'/);
+      assert.match(delivery, /admin_support_request: 'support'/);
+      assert.match(delivery, /admin_new_complaint: 'complaints'/);
       assert.match(delivery, /wallet_charge: 'topups'/);
       assert.match(webPush, /function removeSubscriptionRecipient\(subscription, notification\)/);
       assert.match(webPush, /\$pull: \{ recipients:/);
