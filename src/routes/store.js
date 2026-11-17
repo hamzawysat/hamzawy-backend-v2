@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const StoreProduct = require('../models/StoreProduct');
 const StoreOrder = require('../models/StoreOrder');
 const AdminConfig = require('../models/AdminConfig');
+const { buildStoreCategories } = require('../utils/storeCategories');
 const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -26,9 +27,16 @@ router.get('/media/:id', async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).end();
     const fileId = new mongoose.Types.ObjectId(req.params.id);
-    if (!await StoreProduct.exists({ imageFileId: fileId })) return res.status(404).end();
+    const [productReference, categoryReference] = await Promise.all([
+      StoreProduct.exists({ imageFileId: fileId }),
+      AdminConfig.exists({ key: 'main', storeCategories: { $elemMatch: { imageFileId: fileId } } })
+    ]);
+    if (!productReference && !categoryReference) return res.status(404).end();
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
-    const files = await bucket.find({ _id: fileId, 'metadata.purpose': 'store-product' }).toArray();
+    const files = await bucket.find({
+      _id: fileId,
+      'metadata.purpose': productReference ? 'store-product' : 'store-category'
+    }).toArray();
     if (!files.length) return res.status(404).end();
     res.set({
       'Content-Type': files[0].contentType || 'application/octet-stream',
@@ -44,12 +52,13 @@ router.get('/products', async (req, res, next) => {
   try {
     const [products, config] = await Promise.all([
       StoreProduct.find({ isActive: true }).sort({ createdAt: -1 }).select('name category description details price originalPrice offerText type subscriptionDuration imageUrl imageFileId stock createdAt isAdvertised adAudience adPriority adExpiresAt').lean(),
-      AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean()
+      AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds storeCategories').lean()
     ]);
     const configuredSeconds = Number(config?.storeAdRotationSeconds);
     const adRotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
     const publicProducts = products.map(product => ({ ...product, category: String(product.category || 'عام').trim() || 'عام', imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }));
-    return res.set('Cache-Control', 'no-store').json({ products: publicProducts, adRotationSeconds });
+    const categories = buildStoreCategories(publicProducts, config?.storeCategories);
+    return res.set('Cache-Control', 'no-store').json({ products: publicProducts, categories, adRotationSeconds });
   } catch (error) { return next(error); }
 });
 

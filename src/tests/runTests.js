@@ -51,8 +51,13 @@ async function run() {
       assert.ok(adminStore.includes('id="store-category"'), 'admin form should offer an existing-category dropdown');
       assert.ok(adminStore.includes('id="store-category-new"'), 'admin form should accept a new category beside the dropdown');
       assert.ok(adminStore.includes("document.getElementById('store-category-new')"), 'new category text should be saved with the product');
+      assert.ok(adminStore.includes('function renderStoreCategoryManager(products)'), 'admin should render a dedicated category manager');
+      assert.ok(adminStore.includes('saveStoreCategoryFromButton(this)'), 'admin should save category name and image edits');
+      assert.ok(adminStore.includes('deleteStoreCategoryFromButton(this)'), 'admin should provide category deletion');
+      assert.ok(adminStore.includes('/api/admin/store/media?purpose=category'), 'admin should upload a custom category image');
       assert.ok(browserStore.includes('function setStoreCategory(role,category)'), 'browser store should support entering and leaving a category');
       assert.ok(browserStore.includes('data-store-category'), 'category cards should have an actionable selection');
+      assert.ok(browserStore.includes('categoryInfo?.imageUrl||cover?.imageUrl'), 'custom category artwork should override the product-image fallback');
       assert.ok(browserStore.includes('const cover=items.find(p=>String(p.imageUrl||\'\').trim())||items[0]'), 'category artwork should come from a product in that category');
       assert.ok(browserStore.includes('selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);})'), 'opening a category should show only its products');
     });
@@ -677,6 +682,37 @@ async function run() {
         assert.equal(publicCatalog.status, 200, JSON.stringify(publicCatalog.body));
         const publicProduct = publicCatalog.body.products.find(item => String(item._id) === String(product.body.product._id));
         assert.equal(publicProduct?.category, 'أجهزة الاستقبال', 'the public catalog must expose product categories to browser and mobile clients');
+        const fallbackCategory = publicCatalog.body.categories.find(item => item.name === 'أجهزة الاستقبال');
+        assert.equal(fallbackCategory?.imageUrl, uploaded.body.imageUrl, 'without a custom category image, the category card must use a product image');
+        assert.equal(fallbackCategory?.hasCustomImage, false);
+
+        const deniedCategoryEdit = await request(app).put('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال')).send({ name: 'قسم غير مصرح', imageUrl: '', imageFileId: null });
+        assert.equal(deniedCategoryEdit.status, 401, 'category edits must require administrator authentication');
+        const categoryImage = await request(app).post('/api/admin/store/media?purpose=category')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .set('Content-Type', 'image/png').send(pngSignature);
+        assert.equal(categoryImage.status, 201, JSON.stringify(categoryImage.body));
+        const renamedCategory = await request(app).put('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال'))
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ name: 'أجهزة الاستقبال الرقمية', imageUrl: categoryImage.body.imageUrl, imageFileId: categoryImage.body.imageFileId });
+        assert.equal(renamedCategory.status, 200, JSON.stringify(renamedCategory.body));
+        assert.equal((await StoreProduct.findById(product.body.product._id).lean()).category, 'أجهزة الاستقبال الرقمية', 'renaming a category must update the products without deleting them');
+        const renamedCatalog = await request(app).get('/api/store/products');
+        const renamedCategoryCard = renamedCatalog.body.categories.find(item => item.name === 'أجهزة الاستقبال الرقمية');
+        assert.equal(renamedCategoryCard?.imageUrl, categoryImage.body.imageUrl, 'the custom category image must be exposed to both app and browser clients');
+        assert.equal(renamedCategoryCard?.hasCustomImage, true);
+        const servedCategoryImage = await request(app).get(categoryImage.body.imageUrl);
+        assert.equal(servedCategoryImage.status, 200, 'custom category images must be served even though they are not product images');
+        const adminCatalog = await request(app).get('/api/admin/store/products').set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(adminCatalog.status, 200);
+        assert.ok(adminCatalog.body.categories.some(item => item.name === 'أجهزة الاستقبال الرقمية'));
+
+        const deletedCategory = await request(app).delete('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال الرقمية'))
+          .set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(deletedCategory.status, 200, JSON.stringify(deletedCategory.body));
+        assert.equal(deletedCategory.body.movedProducts, 1, 'deleting a populated category must safely move its products to the default category');
+        assert.equal((await StoreProduct.findById(product.body.product._id).lean()).category, 'عام');
+        assert.equal((await request(app).get(categoryImage.body.imageUrl)).status, 404, 'deleted category artwork must no longer be publicly served');
         const image = await request(app).get(uploaded.body.imageUrl);
         assert.equal(image.status, 200);
         assert.equal(image.headers['content-type'], 'image/png');
