@@ -105,6 +105,17 @@ async function run() {
       assert.equal(canHandle(['دش وكاميرات وشاشات'], 'صيانة دش'), false, 'a historical category label must not grant every service');
     });
 
+    await test('admin store CSV importer supports Arabic headers, quoted fields and manual column mapping', async () => {
+      const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      assert.ok(adminStore.includes('function parseStoreCsvText(sourceText)'), 'admin should parse CSV rows and quoted fields');
+      assert.ok(adminStore.includes('function autoMapStoreCsvHeaders(headers)'), 'admin should recognize common Arabic and English column names');
+      assert.ok(adminStore.includes('function updateStoreCsvMapping(select)'), 'admin should allow manual column mapping');
+      assert.ok(adminStore.includes('function prepareStoreCsvImportRows()'), 'admin should validate rows before import');
+      assert.ok(adminStore.includes('/api/admin/store/products/import'), 'admin should submit products through the bulk import endpoint');
+      assert.ok(adminStore.includes('استيراد CSV'), 'store management should expose a CSV import action');
+      assert.ok(adminStore.includes('اسم المنتج *') && adminStore.includes('السعر *'), 'product name and price must remain required for imports');
+    });
+
     await test('role defaults are restored and manager can publish orders and moderate offers', async () => {
       const readOnly = { role: 'fanni', adminRole: 'قراءة فقط' };
       assert.equal(canAccessAdmin(readOnly, { path: '/orders', method: 'GET' }), true);
