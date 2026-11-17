@@ -99,3 +99,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 .admin-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
 .admin-quick-grid button{width:100%;min-height:52px;display:flex;align-items:center;justify-content:center;text-align:center;}
 @media(max-width:420px){#admin-tab-content .flex:has(>button+button){grid-template-columns:repeat(2,minmax(0,1fr));}}
+
+.section-nav-items{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+.section-nav-btn{width:100%;min-height:58px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;padding:9px 7px!important;}
+.section-nav-label{flex:0 1 auto;text-align:center;}
