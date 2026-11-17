@@ -169,12 +169,12 @@ async function sendFirebasePushNotifications(devices, payload) {
   const lastError = results.find(result => !result?.ok)?.error || '';
   return { status: failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed', accepted, failed, lastError };
 }
-async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '', notificationId = '' }) {
+async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '', notificationId = '', channels = ['expo', 'fcm'] }) {
   const report = { expo: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' }, fcm: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
     const expo = devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token));
-    const fcm = devices.filter(d => d.platform === 'fcm-android');
+    const fcm = channels.includes('fcm') ? devices.filter(d => d.platform === 'fcm-android') : [];
     report.expo.attempted = expo.length;
     report.fcm.attempted = fcm.length;
 
@@ -344,7 +344,8 @@ async function retryPendingNotificationDeliveries(limit = 25) {
         retryNative ? sendPushNotification({
           recipientRole: notification.recipientRole, recipientId: notification.recipientId,
           title: notification.title, message: notification.message, type: notification.type,
-          link: notification.link, notificationId: String(notification._id)
+          link: notification.link, notificationId: String(notification._id),
+          channels: [ ...(retryExpo ? ['expo'] : []), ...(retryFcm ? ['fcm'] : []) ]
         }) : Promise.resolve(null),
         retryWeb ? sendWebPushNotification({
           recipientRole: notification.recipientRole, recipientId: notification.recipientId,
