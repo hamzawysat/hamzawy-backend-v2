@@ -314,6 +314,20 @@ async function doTrack(){
   state.trackLoading=true;state.trackError='';state.tracked=null;render();
   try{const order=await API.getOrder(input);state.tracked=order;}catch(error){state.trackError=error.message||'تعذر عرض الطلب حاليًا. حاول مرة أخرى.';}finally{state.trackLoading=false;render();focusClientPostAction();}
 }
+async function confirmClientCompletion(sn){
+  const code=String(sn||'').trim().toUpperCase();
+  if(!VALIDATORS.sn(code))return showToast('كود الطلب غير صحيح.');
+  if(!confirm('هل تؤكد استلام الخدمة؟ بعد التأكيد يبدأ ضمان الإصلاح لمدة 14 يومًا.'))return;
+  try{
+    await API.confirmCompletion(code);
+    state.trackInput=code;
+    await doTrack();
+    if(state.accountToken&&state.account)await loadMyOrders(false);
+    showToast('تم تأكيد استلام الخدمة وبدأ ضمان الـ14 يومًا.','success');
+  }catch(error){
+    showToast(error.message||'تعذر تأكيد استلام الخدمة حاليًا.');
+  }
+}
 async function acceptOffer(sn,offerId){
   if(!confirm('تأكيد قبول هذا العرض؟'))return;
   if(state.acceptingOffer)return;

@@ -66,6 +66,11 @@ function safeOrder(order, clientRating = null, ratingsByFanni = new Map(), compl
     acceptedOfferPrice: data.acceptedOfferPrice ?? null,
     clientPaymentStatus: data.clientPaymentStatus || 'unpaid',
     clientPaymentAmount: Number(data.clientPaymentAmount || 0),
+    completionDeclaredAt: data.completionDeclaredAt || null,
+    clientConfirmedAt: data.clientConfirmedAt || null,
+    warrantyStartsAt: data.warrantyStartsAt || null,
+    warrantyExpiresAt: data.warrantyExpiresAt || null,
+    warrantyStatus: data.warrantyStatus || 'pending',
     offers: (() => {
       const seenTechnicians = new Set();
       const uniqueOffers = (Array.isArray(data.offers) ? data.offers : []).filter(offer => {

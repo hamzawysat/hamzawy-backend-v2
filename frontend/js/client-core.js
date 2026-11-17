@@ -254,6 +254,17 @@ const API={
       body:JSON.stringify({offerId,clientToken:token})
     });
   },
+  async confirmCompletion(sn){
+    const cleanSN=sanitizeInput(sn,20).toUpperCase();
+    if(!VALIDATORS.sn(cleanSN))throw new Error('كود الطلب غير صحيح.');
+    const token=this.getClientToken(cleanSN)||state.accountToken;
+    if(!token)throw new Error('سجّل الدخول أو افتح الطلب من الجهاز الذي حُفظت عليه بيانات المتابعة.');
+    return this.request('/api/orders/'+encodeURIComponent(cleanSN)+'/confirm-completion',{
+      method:'POST',
+      headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},
+      body:JSON.stringify({clientToken:token})
+    });
+  },
   async cancelOrder(sn){
     const cleanSN=sanitizeInput(sn,20).toUpperCase();
     if(!VALIDATORS.sn(cleanSN))throw new Error('كود الطلب غير صحيح.');
