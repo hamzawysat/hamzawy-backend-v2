@@ -108,7 +108,7 @@ function render(){
       </section>`:''}
       ${state.pageMode==='section'?`<div class="mt-3 premium-panel p-3 flex flex-col gap-2.5">
         ${state.tab==='orders'?`
-          <select onchange="onFilterOrder(this.value)" class="field"><option value="الكل">كل الحالات</option><option value="قيد المراجعة">قيد المراجعة</option><option value="تم النشر">تم النشر</option><option value="وصلتك عروض">وصلت عروض</option><option value="تم اختيار فني">تم اختيار فني</option><option value="تم الانتهاء">تم الانتهاء</option></select>
+          <select onchange="onFilterOrder(this.value)" class="field"><option value="الكل">كل الحالات</option><option value="__new">الطلبات الجديدة</option><option value="قيد المراجعة">قيد المراجعة</option><option value="تم النشر">تم النشر</option><option value="وصلتك عروض">وصلت عروض</option><option value="تم اختيار فني">تم اختيار فني</option><option value="تم الانتهاء">تم الانتهاء</option></select>
         `:state.tab==='fannis'||state.tab==='pending'||state.tab==='disabled'||state.tab==='levels'?`
           <select onchange="onFilter(this.value)" class="field"><option value="الكل">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="approved">معتمد</option><option value="rejected">مرفوض</option><option value="disabled">معطل</option></select>
         `:''}
@@ -184,12 +184,13 @@ function renderAdminQuickActions(){
   '</div></section>';
 }
 function adminQuickAction(action){
-  if(action==='order'){window.open('/client.html','_blank','noopener');return;}
-  if(action==='technician'){window.open('/fanni.html','_blank','noopener');return;}
-  if(action==='product'||action==='advertisement'){
+  if(action==='order'){setTab('orders');state.filterOrder='__new';applyOrderFilter();return;}
+  if(action==='technician'){setTab('pending');return;}
+  if(action==='advertisement'){setTab('content');return;}
+  if(action==='product'){
     state.storeProductEditingId=null;
     state.storeProductFormOpen=true;
-    state.storeNewProductAsAdvertisement=action==='advertisement';
+    state.storeNewProductAsAdvertisement=false;
     setTab('store');
     return;
   }

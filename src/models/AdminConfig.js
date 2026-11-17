@@ -38,10 +38,12 @@ const adminConfigSchema = new mongoose.Schema({
   },
   content: {
     announcement: { type: String, trim: true, maxlength: 1000, default: '' },
+    announcementAudience: { type: String, enum: ['client', 'fanni', 'both'], default: 'client' },
     faqs: [{
       question: { type: String, trim: true, maxlength: 250, required: true },
       answer: { type: String, trim: true, maxlength: 1000, required: true },
       active: { type: Boolean, default: true },
+      audience: { type: String, enum: ['client', 'fanni', 'both'], default: 'client' },
       createdAt: { type: Date, default: Date.now }
     }]
   },

@@ -293,7 +293,7 @@ let dashboardSpecialtiesCollapsed=true;
 function toggleDashboardSpecialties(){dashboardSpecialtiesCollapsed=!dashboardSpecialtiesCollapsed;render();}
 let forceTechnicianRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim()==='register';
 let state={
- storeProducts:[],myStoreOrders:[],
+ storeProducts:[],myStoreOrders:[],publicContent:{siteName:'حمزاوي سات',announcement:'',faqs:[]},
  tab:forceTechnicianRegistration?'register':'login',myOrdersView:'active',
  loginPhone:'',loginPass:'',loginSubmitAllowed:false,
  regName:'',regPhone:'',regPass:'',regPassConfirm:'',regGuidelinesAccepted:false,

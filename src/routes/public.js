@@ -181,16 +181,16 @@ router.get('/services', async (req, res, next) => {
 router.get('/content', async (req, res, next) => {
   try {
     const config = await AdminConfig.findOne({ key: 'main' }).select('content settings.siteName settings.maintenance settings.maintenanceMessage').lean();
-    const content = config?.content || { announcement: '', faqs: [] };
+    const content = config?.content || { announcement: '', announcementAudience: 'client', faqs: [] };
+    const role = ['client','fanni'].includes(String(req.query.role || 'client')) ? String(req.query.role || 'client') : 'client';
+    const announcementAudience = String(content.announcementAudience || 'client');
+    const announcementVisible = announcementAudience === 'both' || announcementAudience === role;
     return res.set('Cache-Control', 'no-store').json({
       siteName: String(config?.settings?.siteName && config.settings.siteName !== 'صُنّاع' ? config.settings.siteName : 'حمزاوي سات'),
       maintenance: Boolean(config?.settings?.maintenance),
       maintenanceMessage: String(config?.settings?.maintenanceMessage || ''),
-      announcement: String(content.announcement || ''),
-      faqs: (Array.isArray(content.faqs) ? content.faqs : []).filter(item => item.active !== false).map(item => ({
-        question: String(item.question || ''),
-        answer: String(item.answer || '')
-      }))
+      announcement: announcementVisible ? String(content.announcement || '') : '',
+      faqs: (Array.isArray(content.faqs) ? content.faqs : []).filter(item => item.active !== false && (String(item.audience || 'client') === 'both' || String(item.audience || 'client') === role)).map(item => ({ question: String(item.question || ''), answer: String(item.answer || '') }))
     });
   } catch (err) { next(err); }
 });
