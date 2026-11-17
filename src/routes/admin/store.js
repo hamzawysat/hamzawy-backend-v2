@@ -7,6 +7,7 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
   const router = express.Router();
   const productSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
+    category: Joi.string().trim().max(80).allow('').default('عام'),
     description: Joi.string().trim().max(2000).allow('').default(''),
     details: Joi.string().trim().max(5000).allow('').default(''),
     price: Joi.number().min(0).max(100000000).required(),
