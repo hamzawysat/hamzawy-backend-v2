@@ -398,12 +398,14 @@ html[data-sonaa-theme="admin"] body :is(
   transition:background-color .14s ease,background-image .14s ease,color .14s ease,
     border-color .14s ease,transform .14s ease,box-shadow .14s ease,filter .14s ease!important;
 }
+/* The extra :not() specificity intentionally beats legacy component
+   backgrounds that also use !important, so the pressed state stays visible. */
 html[data-sonaa-theme] body #app :is(
   button:not(:disabled),a[href],[role="button"],[role="tab"]
-):active,
+):active:not(#sonaa-press-feedback-specificity):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
 html[data-sonaa-theme="admin"] body :is(
   button:not(:disabled),a[href],[role="button"],[role="tab"]
-):active {
+):active:not(#sonaa-press-feedback-specificity):not(.danger):not(.success):not(.btn-danger):not(.btn-success) {
   background:#A9822E!important;
   background-color:#A9822E!important;
   background-image:none!important;
@@ -417,10 +419,10 @@ html[data-sonaa-theme="admin"] body :is(
 @media(prefers-reduced-motion:no-preference){
   html[data-sonaa-theme] body #app :is(
     button:not(:disabled),a[href],[role="button"],[role="tab"]
-  ):active,
+  ):active:not(#sonaa-press-feedback-specificity):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
   html[data-sonaa-theme="admin"] body :is(
     button:not(:disabled),a[href],[role="button"],[role="tab"]
-  ):active {
+  ):active:not(#sonaa-press-feedback-specificity):not(.danger):not(.success):not(.btn-danger):not(.btn-success) {
     animation:sonaa-button-press-pulse .38s ease-out!important;
   }
   @keyframes sonaa-button-press-pulse {
