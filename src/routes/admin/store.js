@@ -2,9 +2,15 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
+const { normalizeStoreCategoryName, buildStoreCategories } = require('../../utils/storeCategories');
 
 function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
+  const categorySchema = Joi.object({
+    name: Joi.string().trim().min(2).max(80).required(),
+    imageUrl: Joi.string().max(1000).allow('').custom((value, helpers) => { if (!value || /^https?:\\/\\//i.test(value) || /^\\/api\\/store\\/media\\/[a-f0-9]{24}$/i.test(value)) return value; return helpers.error('string.uri'); }).default(''),
+    imageFileId: Joi.string().hex().length(24).allow(null).default(null)
+  }).unknown(false);
   const productSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
     category: Joi.string().trim().max(80).allow('').default('عام'),
@@ -36,6 +42,23 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
     const files = await bucket.find({
       _id: new mongoose.Types.ObjectId(value.imageFileId),
       'metadata.purpose': 'store-product'
+    }).limit(1).toArray();
+    return files.length === 1;
+  }
+
+
+  async function hasValidCategoryImageReference(value) {
+    const imageUrl = String(value.imageUrl || '');
+    const mediaPrefix = '/api/store/media/';
+    const pathId = imageUrl.startsWith(mediaPrefix) ? imageUrl.slice(mediaPrefix.length) : '';
+    const internalPath = /^[a-f0-9]{24}$/i.test(pathId) ? pathId : null;
+    if (!value.imageFileId) return !imageUrl.startsWith(mediaPrefix);
+    if (!internalPath || internalPath.toLowerCase() !== String(value.imageFileId).toLowerCase()) return false;
+    if (!mongoose.connection.db) return false;
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({
+      _id: new mongoose.Types.ObjectId(value.imageFileId),
+      'metadata.purpose': 'store-category'
     }).limit(1).toArray();
     return files.length === 1;
   }
@@ -77,6 +100,38 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
     } catch (error) { return next(error); }
   });
 
+
+  router.post('/store/category-media', auth('admin'), async (req, res, next) => {
+    try {
+      const buffer = Buffer.isBuffer(req.body) ? req.body : null;
+      const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+      const signatures = {
+        'image/jpeg': value => value.length >= 3 && value[0] === 0xff && value[1] === 0xd8 && value[2] === 0xff,
+        'image/png': value => value.length >= 8 && value.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+        'image/webp': value => value.length >= 12 && value.toString('ascii', 0, 4) === 'RIFF' && value.toString('ascii', 8, 12) === 'WEBP'
+      };
+      if (!buffer || !buffer.length || buffer.length > 5 * 1024 * 1024 || !signatures[contentType] || !signatures[contentType](buffer)) {
+        return res.status(400).json({ message: 'ارفع صورة JPG أو PNG أو WebP سليمة، وبحجم لا يتجاوز 5 ميجابايت.' });
+      }
+      if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+      const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
+      const upload = bucket.openUploadStream('store-category-' + Date.now() + extension, {
+        contentType,
+        metadata: { purpose: 'store-category', uploadedBy: String(req.user?._id || ''), createdAt: new Date() }
+      });
+      const completed = new Promise((resolve, reject) => {
+        upload.once('finish', resolve);
+        upload.once('error', reject);
+      });
+      upload.end(buffer);
+      await completed;
+      const imageFileId = String(upload.id);
+      await writeAdminAudit(req, 'رفع صورة قسم متجر إلى MongoDB', 'store-category-media', imageFileId, contentType + ' ' + buffer.length + ' bytes');
+      return res.status(201).json({ imageFileId, imageUrl: '/api/store/media/' + imageFileId, size: buffer.length, contentType });
+    } catch (error) { return next(error); }
+  });
+
   router.get('/store/ad-settings', auth('admin'), async (req, res, next) => {
     try {
       const config = await AdminConfig.findOne({ key: 'main' }).select('storeAdRotationSeconds').lean();
@@ -94,10 +149,75 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       return res.set('Cache-Control', 'no-store').json({ message: 'تم حفظ مدة عرض الإعلان.', rotationSeconds: Number(config.storeAdRotationSeconds) || checked.value.rotationSeconds });
     } catch (error) { return next(error); }
   });
+
+  router.put('/store/categories/:name', auth('admin'), async (req, res, next) => {
+    try {
+      const oldName = normalizeStoreCategoryName(req.params.name);
+      const checked = categorySchema.validate(req.body || {}, { abortEarly: false });
+      if (!oldName || checked.error) return res.status(400).json({ message: 'راجع اسم القسم والصورة.' });
+      if (!await hasValidCategoryImageReference(checked.value)) return res.status(400).json({ message: 'مرجع صورة القسم غير صالح أو الصورة غير موجودة في MongoDB.' });
+      const newName = normalizeStoreCategoryName(checked.value.name);
+      const config = await AdminConfig.findOne({ key: 'main' });
+      const configured = Array.isArray(config?.storeCategories) ? config.storeCategories : [];
+      const existingIndex = configured.findIndex(item => normalizeStoreCategoryName(item?.name) === oldName);
+      const productExists = await StoreProduct.exists({ category: oldName });
+      if (!productExists && existingIndex < 0) return res.status(404).json({ message: 'القسم غير موجود.' });
+      if (newName !== oldName) {
+        const productCollision = await StoreProduct.exists({ category: newName });
+        const categoryCollision = configured.some((item, index) => index !== existingIndex && normalizeStoreCategoryName(item?.name) === newName);
+        if (productCollision || categoryCollision) return res.status(409).json({ message: 'يوجد قسم آخر بهذا الاسم بالفعل.' });
+        await StoreProduct.updateMany({ category: oldName }, { $set: { category: newName } });
+      }
+      const nextCategories = configured.map(item => typeof item?.toObject === 'function' ? item.toObject() : { ...item });
+      const entry = {
+        name: newName,
+        imageUrl: checked.value.imageUrl || '',
+        imageFileId: checked.value.imageFileId ? new mongoose.Types.ObjectId(checked.value.imageFileId) : null,
+        createdAt: existingIndex >= 0 ? nextCategories[existingIndex].createdAt || new Date() : new Date(),
+        updatedAt: new Date()
+      };
+      if (existingIndex >= 0) nextCategories[existingIndex] = entry;
+      else nextCategories.push(entry);
+      const savedConfig = config || new AdminConfig({ key: 'main' });
+      savedConfig.storeCategories = nextCategories;
+      await savedConfig.save();
+      await writeAdminAudit(req, newName === oldName ? 'تعديل إعدادات قسم المتجر' : 'إعادة تسمية قسم المتجر', 'store-categories', oldName, newName + (entry.imageUrl ? '؛ صورة مخصصة' : '؛ صورة تلقائية من المنتجات'));
+      return res.set('Cache-Control', 'no-store').json({ message: 'تم حفظ إعدادات القسم.', category: { name: newName, imageUrl: entry.imageUrl, imageFileId: entry.imageFileId ? String(entry.imageFileId) : null } });
+    } catch (error) { return next(error); }
+  });
+
+  router.delete('/store/categories/:name', auth('admin'), async (req, res, next) => {
+    try {
+      const name = normalizeStoreCategoryName(req.params.name);
+      if (!name) return res.status(400).json({ message: 'اسم القسم غير صالح.' });
+      if (name === 'عام') return res.status(400).json({ message: 'لا يمكن حذف قسم عام الافتراضي.' });
+      const config = await AdminConfig.findOne({ key: 'main' });
+      const configured = Array.isArray(config?.storeCategories) ? config.storeCategories : [];
+      const existing = configured.find(item => normalizeStoreCategoryName(item?.name) === name);
+      const productCount = await StoreProduct.countDocuments({ category: name });
+      if (!existing && !productCount) return res.status(404).json({ message: 'القسم غير موجود.' });
+      if (productCount) await StoreProduct.updateMany({ category: name }, { $set: { category: 'عام' } });
+      if (config) {
+        config.storeCategories = configured.filter(item => normalizeStoreCategoryName(item?.name) !== name);
+        await config.save();
+      }
+      if (existing?.imageFileId && mongoose.connection.db) {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+        await bucket.delete(new mongoose.Types.ObjectId(existing.imageFileId)).catch(() => {});
+      }
+      await writeAdminAudit(req, 'حذف قسم من المتجر', 'store-categories', name, 'productsMovedTo=عام; productCount=' + productCount);
+      return res.set('Cache-Control', 'no-store').json({ message: productCount ? 'تم حذف القسم ونقل منتجاته إلى قسم عام.' : 'تم حذف القسم.' , movedProducts: productCount });
+    } catch (error) { return next(error); }
+  });
+
   router.get('/store/products', auth('admin'), async (req, res, next) => {
     try {
-      const products = await StoreProduct.find({}).sort({ createdAt: -1 }).limit(500).lean();
-      return res.set('Cache-Control', 'no-store').json({ products });
+      const [products, config] = await Promise.all([
+        StoreProduct.find({}).sort({ createdAt: -1 }).limit(500).lean(),
+        AdminConfig.findOne({ key: 'main' }).select('storeCategories').lean()
+      ]);
+      const categories = buildStoreCategories(products, config?.storeCategories, { includeEmpty: true });
+      return res.set('Cache-Control', 'no-store').json({ products, categories });
     } catch (error) { return next(error); }
   });
   router.post('/store/products', auth('admin'), async (req, res, next) => {
