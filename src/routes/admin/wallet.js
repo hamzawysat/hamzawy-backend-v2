@@ -54,10 +54,16 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
       if (!fanni) throw new Error('ADD_BALANCE_FANNI_NOT_FOUND');
       const transaction = new WalletTransaction({ fanni: fanni._id, type: 'admin_adjustment', amount, balanceBefore, balanceAfter: Number(fanni.walletBalance), description: `إضافة إدارية بمبلغ ${amount}. ${reason}`.trim().slice(0, 500), idempotencyKey: `admin-add-balance:${String(fanni._id)}:${crypto.randomBytes(16).toString('hex')}` });
       await transaction.save({ session });
-      outcome = { fanni, balance: Number(fanni.walletBalance) };
+      outcome = { fanni, balance: Number(fanni.walletBalance), transactionId: transaction._id };
     });
     if (!outcome) { return res.status(404).json({ message: 'الفني غير موجود' }); }
     await writeAdminAudit(req, 'إضافة رصيد لمحفظة فني', 'wallet', String(outcome.fanni._id), `amount=${amount}; balance=${outcome.balance}; reason=${reason}`);
+    await createNotification({
+      recipientRole: 'fanni', recipientId: outcome.fanni._id, type: 'wallet_credit',
+      title: 'تم إضافة رصيد إلى محفظتك',
+      message: `أضافت الإدارة ${amount} جنيه إلى محفظتك. ${reason}`.trim(),
+      link: '/fanni', dedupeKey: 'admin-fanni-wallet-credit:' + String(outcome.transactionId)
+    });
     return res.json({ message: 'تمت إضافة الرصيد وتسجيل الحركة المالية', balance: outcome.balance, fanni: publicFanni(outcome.fanni) });
   } catch (err) { next(err); } finally { if (session) await session.endSession(); }
 });
