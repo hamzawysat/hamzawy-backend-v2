@@ -126,11 +126,11 @@ async function removeSubscriptionRecipient(subscription, notification) {
 
 async function sendOne(subscription, notification, keys) {
   if (Number.isFinite(subscription.expirationTime) && subscription.expirationTime > 0 && subscription.expirationTime <= Date.now()) {
-    await Sub.deleteOne({ _id: subscription._id }).catch(() => {});
+    await removeSubscriptionRecipient(subscription, notification).catch(() => {});
     return { status: 'expired' };
   }
   if (!isAllowedPushEndpoint(subscription.endpoint)) {
-    await Sub.deleteOne({ _id: subscription._id }).catch(() => {});
+    await removeSubscriptionRecipient(subscription, notification).catch(() => {});
     return { status: 'invalid_endpoint' };
   }
   const body = encrypt(subscription, {
@@ -149,7 +149,7 @@ async function sendOne(subscription, notification, keys) {
     body, ...(signal ? { signal } : {})
   });
   if (response.status === 404 || response.status === 410) {
-    await Sub.deleteOne({ _id: subscription._id }).catch(() => {});
+    await removeSubscriptionRecipient(subscription, notification).catch(() => {});
     return { status: 'gone', httpStatus: response.status };
   }
   if (!response.ok) {
