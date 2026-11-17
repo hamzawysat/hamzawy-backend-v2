@@ -32,7 +32,7 @@ async function uploadStoreCategoryImage(file){
   if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024)throw new Error('اختار صورة JPG أو PNG أو WebP لا تتجاوز 20 ميجابايت.');
   const optimized=await optimizeStoreProductImage(file);
   if(optimized.size>5*1024*1024)throw new Error('حجم الصورة بعد الضغط ما زال أكبر من 5 ميجابايت. اختار صورة أصغر.');
-  const response=await fetch('/api/admin/store/category-media',{method:'POST',headers:{Authorization:'Bearer '+getToken(),'Content-Type':optimized.type},body:optimized});
+  const response=await fetch('/api/admin/store/media?purpose=category',{method:'POST',headers:{Authorization:'Bearer '+getToken(),'Content-Type':optimized.type},body:optimized});
   const result=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(result.message||'تعذر رفع صورة القسم.');
   return result;
