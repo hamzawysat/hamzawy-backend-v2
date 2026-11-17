@@ -194,6 +194,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         const result = await response.json().catch(() => ({}));
         if (!response.ok) {
           report.expo.failed += batch.length;
+          report.expo.lastError = 'EXPO_HTTP_' + response.status + ': ' + JSON.stringify(result).slice(0, 180);
           console.error('Expo push request failed:', response.status, JSON.stringify(result).slice(0, 240));
           continue;
         }
@@ -231,6 +232,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         }
       } catch (error) {
         report.fcm.failed = fcm.length;
+        report.fcm.lastError = String(error.message || 'FCM_DELIVERY_UNAVAILABLE').slice(0, 240);
         console.error('FCM delivery unavailable:', error.message);
       }
     }
@@ -280,13 +282,13 @@ async function createNotification({ recipientRole, recipientId, type, title, mes
       const native = delivery[0].status === 'fulfilled' ? delivery[0].value : null;
       const web = delivery[1].status === 'fulfilled' ? delivery[1].value : null;
       const channelState = (result, attempted, accepted, failed, errorText = '') => ({
-        status: errorText ? 'error' : attempted === 0 ? 'no_devices' : failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed',
+        status: result?.status === 'not_configured' ? 'not_configured' : errorText ? 'error' : attempted === 0 ? 'no_devices' : failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed',
         attempted, accepted, failed, attempts: 1, lastAttemptAt: attemptedAt,
-        lastError: String(errorText || '').slice(0, 240)
+        lastError: String(errorText || result?.lastError || '').slice(0, 240)
       });
-      const expo = channelState(native?.expo, Number(native?.expo?.attempted || 0), Number(native?.expo?.accepted || 0), Number(native?.expo?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : '');
-      const fcm = channelState(native?.fcm, Number(native?.fcm?.attempted || 0), Number(native?.fcm?.accepted || 0), Number(native?.fcm?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : '');
-      const webPush = channelState(web, Number(web?.attempted || 0), Number(web?.accepted || 0), Number(web?.failed || 0), delivery[1].status === 'rejected' ? delivery[1].reason?.message : (web?.status === 'not_configured' ? 'VAPID_NOT_CONFIGURED' : ''));
+      const expo = channelState(native?.expo, Number(native?.expo?.attempted || 0), Number(native?.expo?.accepted || 0), Number(native?.expo?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : native?.expo?.lastError || '');
+      const fcm = channelState(native?.fcm, Number(native?.fcm?.attempted || 0), Number(native?.fcm?.accepted || 0), Number(native?.fcm?.failed || 0), delivery[0].status === 'rejected' ? delivery[0].reason?.message : native?.fcm?.lastError || '');
+      const webPush = channelState(web, Number(web?.attempted || 0), Number(web?.accepted || 0), Number(web?.failed || 0), delivery[1].status === 'rejected' ? delivery[1].reason?.message : (web?.status === 'not_configured' ? 'VAPID_NOT_CONFIGURED' : (web?.results || []).find(item => item.status !== 'accepted')?.status || ''));
       const channels = { expo, fcm, webPush };
       const totalAttempted = expo.attempted + fcm.attempted + webPush.attempted;
       const totalAccepted = expo.accepted + fcm.accepted + webPush.accepted;
