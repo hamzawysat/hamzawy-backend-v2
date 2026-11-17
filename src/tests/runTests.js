@@ -276,6 +276,13 @@ async function run() {
       assert.match(deliveryModel, /notificationId/);
       assert.match(deliveryModel, /lastError/);
       assert.doesNotMatch(deliveryModel, /token\s*:/i, 'delivery diagnostics must never store push tokens');
+      const clientNotificationUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
+      const fanniNotificationUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-notifications.js'), 'utf8');
+      assert.match(clientNotificationUi, /subscription_activated/);
+      assert.match(clientNotificationUi, /loadClientCommerce\(\)/);
+      assert.match(clientNotificationUi, /loadStoreForRole\('client'\)/);
+      assert.match(fanniNotificationUi, /client_service_refunded/);
+      assert.match(fanniNotificationUi, /loadStoreForRole\('fanni'\)/);
       const adminNotificationUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-notifications.js'), 'utf8');
       assert.match(adminNotificationUi, /renderDeliveryAudit/);
       assert.match(adminNotificationUi, /admin\/delivery-log\?limit=30/);
