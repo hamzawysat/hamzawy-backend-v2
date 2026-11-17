@@ -384,7 +384,7 @@ async function retryPendingNotificationDeliveries(limit = 25) {
       const totalAttempted = Object.values(channels).reduce((sum, channel) => sum + Number(channel?.attempted || 0), 0);
       const totalAccepted = Object.values(channels).reduce((sum, channel) => sum + Number(channel?.accepted || 0), 0);
       const totalFailed = Object.values(channels).reduce((sum, channel) => sum + Number(channel?.failed || 0), 0);
-      const overallStatus = totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
+      const overallStatus = totalFailed === 0 && totalAttempted === 0 ? 'no_devices' : totalFailed === 0 ? 'accepted' : totalAccepted > 0 ? 'partial' : 'failed';
       await NotificationDelivery.updateOne({ _id: item._id }, { $set: {
         channels, overallStatus, lastAttemptAt: attemptedAt,
         nextAttemptAt: retryable ? new Date(attemptedAt.getTime() + delayMs) : null,
