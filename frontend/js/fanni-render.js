@@ -157,6 +157,12 @@ function renderContent(){
       </div>
       <span class="rounded-full bg-cyan-50 px-3 py-1.5 text-[10px] font-extrabold text-cyan-800">لوحة الفني</span>
      </div>
+     <div class="mt-4 rounded-xl border ${user?.acceptingOrders===false?'border-amber-300 bg-amber-50':'border-emerald-200 bg-emerald-50'} p-3">
+      <div class="flex items-center justify-between gap-3">
+       <div><p class="text-[12px] font-extrabold text-slate-900">استقبال الطلبات الجديدة</p><p class="mt-1 text-[10px] font-bold ${user?.acceptingOrders===false?'text-amber-800':'text-emerald-800'}">${user?.acceptingOrders===false?'متوقف — لن تظهر لك فرص جديدة':'مفعّل — ستصلك فرص العمل المناسبة'}</p></div>
+       <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="rounded-xl px-4 py-2.5 text-[11px] font-extrabold text-white disabled:opacity-50 ${user?.acceptingOrders===false?'bg-emerald-700':'bg-amber-700'}">${state.availabilitySaving?'جاري الحفظ...':user?.acceptingOrders===false?'تفعيل الاستقبال':'عدم استلام طلبات'}</button>
+      </div>
+     </div>
      <div class="mt-4 grid grid-cols-2 gap-2">
       <article class="rounded-xl border border-slate-200 bg-white p-3">
        <p class="text-[10px] font-bold text-slate-500">فرص العمل المتاحة</p>
