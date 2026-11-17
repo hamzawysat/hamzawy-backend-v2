@@ -50,7 +50,7 @@ async function createStoreProduct(){
   const raw=document.getElementById('store-stock')?.value;
   const isAdvertised=!!document.getElementById('store-ad-enabled')?.checked;
   if(name.length<2||!Number.isFinite(price)||price<0)return showToast('اكتب اسم المنتج وسعرًا صحيحًا','error');
-  if(imageUrlInput&&(!/^https?:\\/\\//i.test(imageUrlInput)||imageUrlInput.length>1000))return showToast('اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://','error');
+  if(imageUrlInput){let parsedImageUrl;try{parsedImageUrl=new URL(imageUrlInput);}catch(_){return showToast('اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://','error');}if(!['http:','https:'].includes(parsedImageUrl.protocol)||imageUrlInput.length>1000)return showToast('اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://','error');}
   if(isAdvertised&&!imageUrlInput&&!imageFile)return showToast('أضف رابط صورة أو ارفع صورة من جهازك قبل تفعيل الإعلان','error');
   try{
     // If both are supplied, prefer the URL; otherwise preserve the existing upload flow.
