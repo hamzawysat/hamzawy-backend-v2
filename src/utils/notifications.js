@@ -181,7 +181,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         priority: 'high',
         channelId: 'default',
         ttl: 86400,
-        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link) }
+        data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')) }
       }));
       for (let start = 0; start < messages.length; start += 100) {
         const batch = messages.slice(start, start + 100);
