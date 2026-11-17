@@ -300,7 +300,7 @@ let state={
  regIdFrontFileId:'',regIdBackFileId:'',regIdFrontPreview:'',regIdBackPreview:'',regIdFrontUploading:false,regIdBackUploading:false,
  regSpecialties:[],regAreas:[],regAreaSearch:'',regAreaCustom:'',openSpecialtyCategory:'',
  editProfileMode:false,editPhone:'',editAreas:[],editAreaSearch:'',editSpecialties:[],editSaving:false,
- loading:false,checkingSession:false,
+ loading:false,checkingSession:false,availabilitySaving:false,
  
  orders:[],filteredOrders:[],ordersPagination:{page:1,limit:20,total:0,pages:0},search:'',filterSkill:'الكل',
  myOffers:[],completedOffers:[],offerModal:null,offerPrice:'',offerMessage:'',
