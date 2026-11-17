@@ -73,3 +73,20 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
   line-height:1;
   text-align:center;
 }
+
+/* Unified dashboard cards and quick actions */
+.admin-kpi-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-top:12px}
+.admin-kpi-card{min-height:96px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px;border:1px solid #dbe5f1;border-radius:15px;background:#fff;color:#17366c;box-shadow:0 4px 12px rgba(11,27,58,.07);text-align:center}
+.admin-kpi-card strong{font-size:23px;line-height:1.2;font-weight:900;color:#102b50}
+.admin-kpi-card>span:last-child{font-size:10px;font-weight:800;color:#64748b}
+.admin-kpi-icon{font-size:17px}
+.admin-quick-actions{margin-top:12px;padding:13px;border:1px solid #dbe5f1;border-radius:16px;background:#fff;box-shadow:0 4px 12px rgba(11,27,58,.06)}
+.admin-quick-actions h2{margin:0 0 10px;font-size:12px;font-weight:900;color:#17366c}
+.admin-quick-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.admin-quick-grid button{min-height:44px;padding:8px 5px;border:1px solid #cbd8eb;border-radius:11px;background:#f8fafc;color:#17366c;font-size:11px;font-weight:900;box-shadow:0 3px 0 #dbe5f1}
+.admin-quick-grid button:hover{background:#eef4fc}
+.section-nav-group{background:#fff!important;border:1px solid #dbe5f1!important;border-radius:16px!important;box-shadow:0 4px 12px rgba(11,27,58,.06)!important}
+.section-nav-btn{min-height:58px!important;background:#f8fafc!important;border:1px solid #dbe5f1!important;border-radius:11px!important;color:#334155!important;box-shadow:none!important}
+.section-nav-btn.active{background:#17366c!important;border-color:#17366c!important;color:#fff!important;box-shadow:0 3px 8px rgba(23,54,108,.18)!important}
+.section-nav-btn .section-nav-count{display:none!important}
+@media(max-width:640px){.admin-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.admin-kpi-card{min-height:82px}.admin-kpi-card strong{font-size:20px}.admin-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.section-nav-group{padding:9px!important}}
