@@ -87,6 +87,23 @@ async function saveProfileChanges(){
  });
 }
 
+async function toggleOrderAvailability(){
+ if(!getToken()||!currentUser||currentUser.status!=='معتمد')return;
+ if(state.availabilitySaving)return;
+ const next=currentUser.acceptingOrders===false;
+ state.availabilitySaving=true;
+ render();
+ try{
+  const result=await API.availability(next);
+  currentUser={...(currentUser||{}),acceptingOrders:result.acceptingOrders!==false};
+  setAuth(getToken(),currentUser);
+  if(!currentUser.acceptingOrders){state.orders=[];state.filteredOrders=[];state.ordersPagination={page:1,limit:20,total:0,pages:0};}
+  else await loadOrders();
+  toast(result.message||'تم تحديث حالة استقبال الطلبات.');
+ }catch(error){toast(error.message||'تعذر تحديث حالة استقبال الطلبات.','error');}
+ finally{state.availabilitySaving=false;render();}
+}
+
 async function loadProfile(){
  if(!getToken())return false;
 

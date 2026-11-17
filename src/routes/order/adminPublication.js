@@ -83,7 +83,7 @@ function createOrderAdminPublicationRouter({
       }
   
       // Notify only approved technicians matching both the service and work area.
-      const eligibleFannis = await Fanni.find({ role: 'fanni', status: 'معتمد' }).select('_id specialties areas').lean();
+      const eligibleFannis = await Fanni.find({ role: 'fanni', status: 'معتمد', acceptingOrders: { $ne: false } }).select('_id specialties areas acceptingOrders').lean();
       for (const fanni of eligibleFannis) {
         if (fanniCanHandleService(fanni.specialties, order.service) && (order.areaMatchingEnabled !== true || fanniWorksInArea(fanni.areas, order.area))) {
           await createNotification({

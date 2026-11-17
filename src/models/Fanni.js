@@ -95,6 +95,8 @@ const fanniSchema = new mongoose.Schema({
     default: 'قيد المراجعة',
     index: true
   },
+  // Technician can pause new opportunities without affecting assigned jobs or chats.
+  acceptingOrders: { type: Boolean, default: true, index: true },
   rejectionReason: { type: String, maxlength: 500 },
   pendingProfileChange: {
     before: {

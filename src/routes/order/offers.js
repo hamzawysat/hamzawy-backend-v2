@@ -222,7 +222,7 @@ function createOrderOfferRouter({
         _id: req.userId,
         role: 'fanni',
         status: 'معتمد'
-      }).select('specialties areas walletBalance level isFrozen limits badges isVerified isFeatured featuredUntil');
+      }).select('specialties areas acceptingOrders walletBalance level isFrozen limits badges isVerified isFeatured featuredUntil');
   
       if (!fanni) {
         return res.status(403).json({
@@ -230,6 +230,13 @@ function createOrderOfferRouter({
         });
       }
   
+      if (fanni.acceptingOrders === false) {
+        return res.status(403).json({
+          code: 'TECHNICIAN_NOT_ACCEPTING_ORDERS',
+          message: 'أنت موقف استقبال الطلبات الجديدة. فعّل الاستقبال أولًا لتقديم عرض.'
+        });
+      }
+
       if (fanni.isFrozen === true) {
         return res.status(403).json({ message: 'محفظتك مجمدة مؤقتًا؛ تواصل مع الإدارة قبل تقديم عروض جديدة' });
       }

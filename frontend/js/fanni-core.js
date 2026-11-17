@@ -238,6 +238,7 @@ const API={
  uploadRegistrationIdentity:(side,file)=>api('/api/fanni/registration-media?side='+encodeURIComponent(side),{method:'POST',body:file,headers:{'Content-Type':file.type},timeoutMs:90000}),
  login:p=>api('/api/fanni/login',{method:'POST',body:JSON.stringify(p),timeoutMs:15000}),
  profile:()=>apiGet('/api/fanni/me'),
+ availability:acceptingOrders=>api('/api/fanni/availability',{method:'PATCH',body:JSON.stringify({acceptingOrders})}),
  updateProfile:p=>api('/api/fanni/me',{method:'PATCH',body:JSON.stringify(p),timeoutMs:15000}),
  available:(page=1)=>apiGet('/api/orders/available?page='+encodeURIComponent(page)),
  myOffers:()=>apiGet('/api/orders/my-offers'),
@@ -299,7 +300,7 @@ let state={
  regIdFrontFileId:'',regIdBackFileId:'',regIdFrontPreview:'',regIdBackPreview:'',regIdFrontUploading:false,regIdBackUploading:false,
  regSpecialties:[],regAreas:[],regAreaSearch:'',regAreaCustom:'',openSpecialtyCategory:'',
  editProfileMode:false,editPhone:'',editAreas:[],editAreaSearch:'',editSpecialties:[],editSaving:false,
- loading:false,checkingSession:false,
+ loading:false,checkingSession:false,availabilitySaving:false,
  
  orders:[],filteredOrders:[],ordersPagination:{page:1,limit:20,total:0,pages:0},search:'',filterSkill:'الكل',
  myOffers:[],completedOffers:[],offerModal:null,offerPrice:'',offerMessage:'',
