@@ -190,7 +190,7 @@ function adminQuickAction(action){
   if(action==='product'){
     state.storeProductEditingId=null;
     state.storeProductFormOpen=true;
-    state.storeNewProductAsAdvertisement=action==='advertisement';
+    state.storeNewProductAsAdvertisement=false;
     setTab('store');
     return;
   }
