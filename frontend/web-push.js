@@ -113,6 +113,16 @@
     }
     showButton(a,'🔔 تفعيل إشعارات المتصفح');
   }
+  if('serviceWorker' in navigator){
+    navigator.serviceWorker.addEventListener('message',event=>{
+      if(event.data?.type!=='WEB_PUSH_SUBSCRIPTION_CHANGED')return;
+      const a=account();
+      if(!a)return;
+      checkedFor='';
+      hiddenFor='';
+      void existingSubscription(a);
+    });
+  }
   function refresh(){mount(account());}
   // CON uses native Expo notifications; keep the browser permission banner out of its WebView.
   if(window.__SONAA_CON_APP__){removeButton();return;}
