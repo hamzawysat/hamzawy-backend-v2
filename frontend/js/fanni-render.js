@@ -43,7 +43,7 @@ function renderContent(){
   </div>
   ${notificationPanel()}
 
- <main class="mx-auto max-w-[680px] px-3 ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
+ ${renderFanniPublicContent()}<main class="mx-auto max-w-[680px] px-3 ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
  ${!authenticated?`
   <section class="account-gate fanni-login-gate mt-5 px-4 py-6 flex flex-col items-center">
    <div class="w-full max-w-[440px]">
@@ -429,3 +429,5 @@ function render(){
     if (appRoot) appRoot.innerHTML = '<main class="mx-auto max-w-[680px] p-6"><section class="empty-state panel p-6 text-center" role="alert"><p class="font-extrabold">تعذر عرض بيانات الصفحة حاليًا.</p><p class="mt-2 text-sm text-slate-500">حاول إعادة تحميل الصفحة.</p><button type="button" onclick="location.reload()" class="primary-btn mt-4 px-5 py-3">إعادة المحاولة</button></section></main>';
   }
 }
+
+function renderFanniPublicContent(){const c=state.publicContent||{announcement:'',faqs:[]};const faqs=Array.isArray(c.faqs)?c.faqs:[];if(!String(c.announcement||'').trim()&&!faqs.length)return '';return '<section class="mx-auto mt-3 w-full max-w-[640px] space-y-2">'+(String(c.announcement||'').trim()?'<div class="panel border-blue-200 bg-blue-50 p-3 text-[12px] font-bold leading-6">'+esc(c.announcement)+'</div>':'')+(faqs.length?'<details class="panel p-3"><summary class="cursor-pointer text-[12px] font-extrabold">الأسئلة الشائعة</summary><div class="mt-3 space-y-3">'+faqs.map(f=>'<div class="border-t pt-2"><p class="text-[11px] font-extrabold">'+esc(f.question)+'</p><p class="mt-1 text-[11px] leading-5 text-slate-600">'+esc(f.answer)+'</p></div>').join('')+'</div></details>':'')+'</section>';}
