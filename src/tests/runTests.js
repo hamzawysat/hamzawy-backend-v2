@@ -599,6 +599,10 @@ async function run() {
         .set('Authorization', 'Bearer ' + fanniToken).send({ acceptingOrders: true });
       assert.equal(resumed.status, 200);
       assert.equal(resumed.body.acceptingOrders, true);
+      approvedFanni.status = 'قيد المراجعة';
+      approvedFanni.technicianGuidelinesAcceptedAt = null;
+      approvedFanni.technicianGuidelinesVersion = '';
+      await approvedFanni.save();
     });
 
     await test('wallet top-up requests remain pending and never credit balance before admin review', async () => {
