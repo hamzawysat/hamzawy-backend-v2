@@ -265,6 +265,10 @@ async function run() {
       assert.match(deliveryModel, /notificationId/);
       assert.match(deliveryModel, /lastError/);
       assert.doesNotMatch(deliveryModel, /token\s*:/i, 'delivery diagnostics must never store push tokens');
+      const adminNotificationUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-notifications.js'), 'utf8');
+      assert.match(adminNotificationUi, /renderDeliveryAudit/);
+      assert.match(adminNotificationUi, /admin\/delivery-log\?limit=30/);
+
 
       const walletRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin/wallet.js'), 'utf8');
       assert.match(walletRoutes, /fanni_wallet_settlement/);
