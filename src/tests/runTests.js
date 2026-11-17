@@ -686,7 +686,7 @@ async function run() {
         assert.equal(fallbackCategory?.imageUrl, uploaded.body.imageUrl, 'without a custom category image, the category card must use a product image');
         assert.equal(fallbackCategory?.hasCustomImage, false);
 
-        const deniedCategoryEdit = await request(app).put('/api/admin/store/categories/أجهزة الاستقبال').send({ name: 'قسم غير مصرح', imageUrl: '', imageFileId: null });
+        const deniedCategoryEdit = await request(app).put('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال')).send({ name: 'قسم غير مصرح', imageUrl: '', imageFileId: null });
         assert.equal(deniedCategoryEdit.status, 401, 'category edits must require administrator authentication');
         const categoryImage = await request(app).post('/api/admin/store/category-media')
           .set('Authorization', 'Bearer ' + adminToken)
@@ -707,7 +707,7 @@ async function run() {
         assert.equal(adminCatalog.status, 200);
         assert.ok(adminCatalog.body.categories.some(item => item.name === 'أجهزة الاستقبال الرقمية'));
 
-        const deletedCategory = await request(app).delete('/api/admin/store/categories/أجهزة الاستقبال الرقمية')
+        const deletedCategory = await request(app).delete('/api/admin/store/categories/' + encodeURIComponent('أجهزة الاستقبال الرقمية'))
           .set('Authorization', 'Bearer ' + adminToken);
         assert.equal(deletedCategory.status, 200, JSON.stringify(deletedCategory.body));
         assert.equal(deletedCategory.body.movedProducts, 1, 'deleting a populated category must safely move its products to the default category');
