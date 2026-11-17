@@ -62,6 +62,25 @@ async function run() {
       assert.ok(browserStore.includes('selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);})'), 'opening a category should show only its products');
     });
 
+    await test('store admin groups product tools and store settings separately and collapses category manager by default', async () => {
+      const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      const categoryStart = adminStore.indexOf('function renderStoreCategoryManager(products)');
+      const categoryEnd = adminStore.indexOf('async function uploadStoreCategoryImage', categoryStart);
+      const categoryRenderer = adminStore.slice(categoryStart, categoryEnd);
+      const renderStart = adminStore.indexOf('function renderStore(){');
+      const renderEnd = adminStore.indexOf('function renderStoreOrders(){', renderStart);
+      const storeRenderer = adminStore.slice(renderStart, renderEnd);
+      assert.match(categoryRenderer, /function toggleStoreCategoryManager\(\)/);
+      assert.match(categoryRenderer, /state\.storeCategoryManagerOpen=false/);
+      assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\(\)"/);
+      assert.match(categoryRenderer, /aria-expanded=/);
+      assert.match(categoryRenderer, /isOpen\?'<div class=/, 'category rows should stay hidden until the manager is expanded');
+      assert.ok(storeRenderer.includes("const productManagement='<section"), 'product tools should be grouped in their own section');
+      assert.ok(storeRenderer.includes("'+csvImporter+form+"), 'CSV import and product form should live in product management');
+      assert.ok(storeRenderer.includes("const storeManagement='<section"), 'store settings should be grouped separately');
+      assert.ok(storeRenderer.includes("'+rotationSettings+renderStoreCategoryManager(products)"), 'ad rotation and category management should live in store management');
+    });
+
     await test('only the configured root administrator bypasses the permission matrix', async () => {
       assert.equal(isRootAdmin({ role: 'admin', phone: '01012345678' }), true);
       assert.equal(isRootAdmin({ role: 'admin', phone: '01012345679' }), false);
