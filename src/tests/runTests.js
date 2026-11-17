@@ -281,6 +281,8 @@ async function run() {
       assert.match(adminNotificationUi, /admin\/delivery-log\?limit=30/);
       assert.match(adminNotificationUi, /function renderNotificationHistory[\s\S]*?renderAdminInbox\(\)/);
       assert.match(adminNotificationUi, /function renderNotificationHistory[\s\S]*?admin-delivery-log-list/);
+      assert.match(adminNotificationUi, /new URL\(String\(item\.link\|\|''\),window\.location\.origin\)/);
+      assert.match(adminNotificationUi, /target\.searchParams\.get\('tab'\)/);
 
 
 
