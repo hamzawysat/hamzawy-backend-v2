@@ -658,8 +658,13 @@ async function run() {
 
         const product = await request(app).post('/api/admin/store/products')
           .set('Authorization', 'Bearer ' + adminToken)
-          .send({ name: 'منتج اختبار صورة MongoDB', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: uploaded.body.imageFileId });
+          .send({ name: 'منتج اختبار صورة MongoDB', category: 'أجهزة الاستقبال', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: uploaded.body.imageFileId });
         assert.equal(product.status, 201, JSON.stringify(product.body));
+        assert.equal(product.body.product.category, 'أجهزة الاستقبال', 'admin product creation must persist its selected store category');
+        const publicCatalog = await request(app).get('/api/store/products');
+        assert.equal(publicCatalog.status, 200, JSON.stringify(publicCatalog.body));
+        const publicProduct = publicCatalog.body.products.find(item => String(item._id) === String(product.body.product._id));
+        assert.equal(publicProduct?.category, 'أجهزة الاستقبال', 'the public catalog must expose product categories to browser and mobile clients');
         const image = await request(app).get(uploaded.body.imageUrl);
         assert.equal(image.status, 200);
         assert.equal(image.headers['content-type'], 'image/png');
