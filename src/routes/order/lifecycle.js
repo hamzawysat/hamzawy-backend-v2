@@ -377,8 +377,8 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     if (!(await verifyClientToken(req, order))) {
       return res.status(403).json({ message: 'لا يمكن تأكيد استلام طلب لا يخص حسابك.' });
     }
-    if (order.status !== 'تم الانتهاء') {
-      return res.status(409).json({ message: 'لا يمكن تأكيد الاستلام قبل أن ينهي الفني الخدمة.' });
+    if (order.status !== 'تم الانتهاء' || !order.completionDeclaredAt) {
+      return res.status(409).json({ message: 'لا يمكن تأكيد الاستلام إلا للطلبات التي أنهى الفني تنفيذها بعد تفعيل نظام التأكيد.' });
     }
 
     // Idempotent: a repeated confirmation never extends the original warranty.
@@ -490,6 +490,7 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
       await Fanni.updateOne({ _id: fanni._id, role: 'fanni' }, { $inc: { 'stats.completedJobs': 1 } }, { session });
     }
     order.status = 'تم الانتهاء';
+    order.completionDeclaredAt = new Date();
     await order.save({ session });
     await session.commitTransaction();
 
