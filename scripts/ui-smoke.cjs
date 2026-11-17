@@ -432,7 +432,7 @@ function apiResponse(pathname) {
               await page.locator('#login-btn').click();
               await page.getByText('اكتب البيانات').waitFor({ state: 'visible', timeout: 3000 });
               const storeFailureRegression = await page.evaluate(async () => {
-                if (typeof window.loadStoreProducts !== 'function' || !window.state) return { supported: false };
+                if (typeof window.loadStoreProducts !== 'function' || typeof state === 'undefined') return { supported: false };
                 const originalTryApi = window.tryApi;
                 const originalRender = window.render;
                 const originalProducts = state.storeProducts;
@@ -470,7 +470,7 @@ function apiResponse(pathname) {
                   storeFailureRegression.count !== 1 ||
                   storeFailureRegression.productId !== 'smoke-existing-product' ||
                   storeFailureRegression.loading !== false) {
-                failures.push('admin/' + viewport.name + ': a temporary store refresh failure must preserve the existing product list and clear loading state');
+                failures.push('admin/' + viewport.name + ': a temporary store refresh failure must preserve the existing product list and clear loading state (' + JSON.stringify(storeFailureRegression) + ')');
               }
               if (process.env.SONAA_SMOKE_REAL_API === '1') {
                 await page.locator('#login-phone').fill('01012345678');
