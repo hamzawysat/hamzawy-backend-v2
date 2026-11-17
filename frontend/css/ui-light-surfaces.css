@@ -439,3 +439,59 @@ html[data-sonaa-theme="admin"] body :is(
     button:not(:disabled),a[href],[role="button"],[role="tab"]
   ){transition:none!important;animation:none!important}
 }
+
+
+/* Regression hardening: legacy dashboard rules contain several !important
+   declarations. Three always-true :not() ID selectors intentionally give these
+   final interaction states enough specificity without adding IDs to the DOM. */
+html[data-sonaa-theme] body #app button:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme] body #app a[href]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme] body #app [role="button"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme] body #app [role="tab"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme="admin"] body button:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme="admin"] body a[href]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme="admin"] body [role="button"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+html[data-sonaa-theme="admin"] body [role="tab"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success) {
+  background:#A9822E!important;
+  background-color:#A9822E!important;
+  background-image:none!important;
+  border-color:#8F6D27!important;
+  color:#FFF9EB!important;
+  -webkit-text-fill-color:#FFF9EB!important;
+  transform:scale(.985) translateY(1px)!important;
+  box-shadow:0 1px 0 #76591F,0 2px 5px rgba(74,52,12,.18),inset 0 1px 2px rgba(255,255,255,.16)!important;
+}
+@media(prefers-reduced-motion:no-preference){
+  html[data-sonaa-theme] body #app button:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme] body #app a[href]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme] body #app [role="button"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme] body #app [role="tab"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme="admin"] body button:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme="admin"] body a[href]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme="admin"] body [role="button"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success),
+  html[data-sonaa-theme="admin"] body [role="tab"]:active:not(#sonaa-press-a):not(#sonaa-press-b):not(#sonaa-press-c):not(.danger):not(.success):not(.btn-danger):not(.btn-success) {
+    animation:sonaa-button-press-pulse .38s ease-out!important;
+  }
+  @keyframes sonaa-button-press-pulse {
+    0% {box-shadow:0 1px 0 #76591F,0 0 0 0 rgba(169,130,46,.34),inset 0 1px 2px rgba(255,255,255,.16)}
+    65% {box-shadow:0 1px 0 #76591F,0 0 0 5px rgba(169,130,46,.13),inset 0 1px 2px rgba(255,255,255,.16)}
+    100% {box-shadow:0 1px 0 #76591F,0 0 0 8px rgba(169,130,46,0),inset 0 1px 2px rgba(255,255,255,.16)}
+  }
+}
+html[data-sonaa-theme="client"] body #app .client-wallet-tabs .client-wallet-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="client"] body #app .client-commerce-tabs .client-commerce-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="client"] body #app .client-orders-status-tabs .client-orders-status-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="client"] body #app .client-section-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="fanni"] body #app .fanni-section-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="admin"] body #app .admin-topup-owner-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
+html[data-sonaa-theme="admin"] body #app [role="tab"][aria-selected="true"]:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c) {
+  background:linear-gradient(145deg,#FFF1BF,#E8C978)!important;
+  background-color:#FFF1BF!important;
+  background-image:linear-gradient(145deg,#FFF1BF,#E8C978)!important;
+  border-color:#B88D3A!important;
+  color:#3D3424!important;
+  -webkit-text-fill-color:#3D3424!important;
+  box-shadow:0 4px 0 #B88D3A,0 7px 12px rgba(169,130,46,.18),inset 0 1px 0 rgba(255,255,255,.55)!important;
+}
