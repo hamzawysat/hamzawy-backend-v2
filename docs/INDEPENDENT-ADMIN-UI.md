@@ -22,7 +22,7 @@ A host for this artifact must:
 - Route `/api/*` to the existing backend through a same-origin reverse proxy.
 - Keep private admin routes private and never publish API credentials or secrets in static files.
 - Apply no-cache/revalidation headers to HTML and suitable versioned caching to static assets.
-- Keep backend CORS/CSP allowlists aligned with the actual browser origin if cross-origin requests are deliberately introduced.
+- Keep backend CORS/CSP allowlists aligned with the actual browser origin if cross-origin requests are deliberately introduced. The backend reads exact HTTP(S) origins from `ALLOWED_ORIGINS` and applies that validated list to both CORS and CSP `connect-src`; do not use wildcard origins.
 
 ## Portability boundary
 
