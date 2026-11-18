@@ -42,7 +42,9 @@ function renderReferralManagement(){
  const rows=filteredReferralRows();
  const paidClient=(s.rewards||[]).find(x=>x._id==='client')||{};
  const paidFanni=(s.rewards||[]).find(x=>x._id==='fanni')||{};
- const paidTotal=Number(paidClient.inviterPaid||0)+Number(paidClient.inviteePaid||0)+Number(paidFanni.inviterPaid||0)+Number(paidFanni.inviteePaid||0);
+ const paidClientTotal=Number(paidClient.inviterPaid||0)+Number(paidClient.inviteePaid||0);
+ const paidFanniTotal=Number(paidFanni.inviterPaid||0)+Number(paidFanni.inviteePaid||0);
+ const paidTotal=paidClientTotal+paidFanniTotal;
  const dueTotal=Number(paidClient.inviterDue||0)+Number(paidClient.inviteeDue||0)+Number(paidFanni.inviterDue||0)+Number(paidFanni.inviteeDue||0);
  return `<section class="mt-4 space-y-3">
   <div class="premium-panel p-4">
@@ -50,7 +52,7 @@ function renderReferralManagement(){
    <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border p-3"><div><p class="text-xs font-extrabold">تشغيل نظام الدعوات</p><p class="mt-1 text-[10px] text-slate-500">الإيقاف يمنع الدعوات الجديدة فقط ولا يوقف الدعوات السابقة</p></div><button type="button" onclick="toggleReferralSystem(${!s.enabled})" class="rounded-xl px-4 py-2.5 text-xs font-extrabold text-white ${s.enabled?'bg-rose-700':'bg-emerald-700'}">${s.enabled?'إيقاف':'تشغيل'}</button></div>
   </div>
   <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
-   ${[['إجمالي الدعوات',s.total||0],['دعوات العملاء',s.clients||0],['دعوات الفنيين',s.technicians||0],['المكافآت المصروفة',paidTotal+' ج'],['المكافآت المستحقة',dueTotal+' ج'],['دعوات معلقة',(s.statuses||{}).pending||0],['قيد التقدم',(s.statuses||{}).in_progress||0],['مستحقة',(s.statuses||{}).eligible||0],['مكتملة',(s.statuses||{}).completed||0],['مرفوضة',(s.statuses||{}).rejected||0]].map(([label,value])=>'<article class="premium-panel p-3"><p class="text-[10px] font-bold text-slate-500">'+label+'</p><p class="mt-1 text-xl font-black">'+value+'</p></article>').join('')}
+   ${[['إجمالي الدعوات',s.total||0],['دعوات العملاء',s.clients||0],['دعوات الفنيين',s.technicians||0],['مكافآت العملاء المصروفة',paidClientTotal+' ج'],['مكافآت الفنيين المصروفة',paidFanniTotal+' ج'],['إجمالي المكافآت المصروفة',paidTotal+' ج'],['المكافآت المستحقة',dueTotal+' ج'],['دعوات معلقة',(s.statuses||{}).pending||0],['قيد التقدم',(s.statuses||{}).in_progress||0],['مستحقة',(s.statuses||{}).eligible||0],['مكتملة',(s.statuses||{}).completed||0],['مرفوضة',(s.statuses||{}).rejected||0]].map(([label,value])=>'<article class="premium-panel p-3"><p class="text-[10px] font-bold text-slate-500">'+label+'</p><p class="mt-1 text-xl font-black">'+value+'</p></article>').join('')}
   </div>
   <div class="premium-panel p-3 space-y-2">
    <h3 class="text-sm font-black">سجل الدعوات</h3>
