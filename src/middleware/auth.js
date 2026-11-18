@@ -6,19 +6,19 @@ const { normalizePhone } = require('../utils/phone');
 
 const ADMIN_ROLES = ['مشرف', 'مشرف أول', 'مدير', 'قراءة فقط'];
 
-const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','settings','content','support','regions','offers','notifications','clientsData','commerce','store'];
+const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','settings','content','support','regions','offers','notifications','clientsData','commerce','store','website'];
 const ROLE_WRITE_SECTIONS = {
   'قراءة فقط': [],
   'مشرف': ['orders','complaints','support','offers'],
   'مشرف أول': ['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce'],
-  'مدير': ADMIN_PERMISSION_KEYS
+  'مدير': ADMIN_PERMISSION_KEYS.filter(key => key !== 'website')
 };
 function defaultAdminPermissions(role) {
   const writes = new Set(ROLE_WRITE_SECTIONS[role] || []);
   const reads = role === 'قراءة فقط'
-    ? new Set(ADMIN_PERMISSION_KEYS)
+    ? new Set(ADMIN_PERMISSION_KEYS.filter(key => key !== 'website'))
     : new Set(role === 'مدير' || role === 'مشرف أول'
-      ? ADMIN_PERMISSION_KEYS
+      ? ADMIN_PERMISSION_KEYS.filter(key => key !== 'website')
       : ['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store']);
   return Object.fromEntries(ADMIN_PERMISSION_KEYS.map(key => [key, {
     read: reads.has(key) || writes.has(key),
@@ -33,7 +33,7 @@ const PERMISSION_SECTIONS = {
   publishOrders: [/^\/admin\/[^/]+\/publish$/],
   voiceReview: [/^\/[^/]+\/voice$/, /^\/admin\/[^/]+\/voice-reviewed$/],
   passwordRecovery: [/^\/password-recovery\/admin\/requests(\/|$)/, /^\/password-recovery\/admin\/support-passwords(\/|$)/],
-  orders: [/^\/orders(\/|$)/],
+  orders: [/^\/orders(?!\/[^/]+\/offers(?:\/|$))(\/|$)/],
   complaints: [/^\/complaints(\/|$)/],
   services: [/^\/services(\/|$)/],
   clients: [/^\/clients(\/|$)/],
@@ -43,10 +43,11 @@ const PERMISSION_SECTIONS = {
   content: [/^\/content(\/|$)/],
   support: [/^\/support(\/|$)/],
   regions: [/^\/regions(\/|$)/],
-  offers: [/^\/offers(\/|$)/],
+  offers: [/^\/offers(\/|$)/, /^\/orders\/[^/]+\/offers(\/|$)/],
   notifications: [/^\/notifications(\/|$)/],
   clientsData: [/^\/client-accounts(\/|$)/],
   store: [/^\/store(\/|$)/],
+  website: [/^\/ui-layout(\/|$)/],
   commerce: [/^\/commerce(\/|$)/]
 };
 
@@ -66,7 +67,7 @@ function canAccessAdmin(user, req) {
   // while router-mounted endpoints expose only their local path. Normalize both.
   const path = (String(req.path || '/').replace(/^\/api\/(?:admin|admins|auth\/admin)(?=\/|$)/, '') || '/');
   // لا يمكن تفويض إدارة الحسابات الإدارية أو سجل التدقيق لأي منصب فرعي.
-  if (path.startsWith('/admin-users') || path === '/bootstrap' || path.startsWith('/audit-logs')) return false;
+  if (path.startsWith('/admin-users') || path === '/bootstrap' || path.startsWith('/audit-logs') || /^\/orders\/[^/]+\/assign$/.test(path)) return false;
 
   let section = null;
   for (const [key, patterns] of Object.entries(PERMISSION_SECTIONS)) {

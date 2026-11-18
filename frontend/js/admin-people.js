@@ -19,15 +19,22 @@ function renderFannis(){
         : '<span class="text-[10px] px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 font-black">● يستقبل طلبات جديدة</span>'; 
       return `
         
-<article class="premium-card p-4 animate-fade ${isMenuOpen?'menu-active':''}">
+<article class="premium-card p-3 animate-fade ${isMenuOpen?'menu-active':''}">
           <label class="text-[10px] font-bold"><input type="checkbox" ${((state.selectedBulkFanniIds||[]).includes(id))?'checked':''} onchange="toggleBulkSelection('fannis','${id}',this.checked)"> تحديد</label>
+          <details class="person-accordion" ${isMenuOpen?'open':''}>
+            <summary class="person-accordion-summary">
+              <span class="person-accordion-main"><strong>${escHtml(f.name||'بدون اسم')}</strong><span>${renderPhoneCallLink(f.phone)}</span></span>
+              <span class="person-accordion-status">${f.isDisabled?'معطل':f.isApproved?'معتمد':statusLabel(f.status)}</span>
+              <span class="person-accordion-toggle">عرض التفاصيل <b>＋</b></span>
+            </summary>
+            <div class="person-accordion-body">
           <div class="flex justify-between items-start gap-3">
             <div class="flex items-center gap-3 min-w-0 flex-1">
               <div class="h-10 w-10 rounded-full bg-gradient-to-br from-slate-800 to-slate-600 text-white flex items-center justify-center font-black">${escHtml((f.name||'؟').slice(0,1))}</div>
               <div class="min-w-0 flex-1">
                 <p class="font-black text-[13.5px] truncate">${escHtml(f.name||'بدون اسم')} ${badge?`<span class="text-[9px] bg-blue-600 text-white px-2 py-0.5 rounded-full mr-1">✓ ${badge}</span>`:''}</p>
                 <div class="flex items-center gap-2 mt-1 flex-wrap">
-                  <div class="flex items-center gap-2 flex-wrap"><span dir="ltr" class="text-[11px] bg-slate-900 text-white px-2.5 py-1 rounded-full font-bold">📞 ${escHtml(f.phone||'')}</span>${renderWhatsAppButton(f.phone)}</div>
+                  <div class="flex items-center gap-2 flex-wrap"><span class="text-[11px]">${renderPhoneCallLink(f.phone)}</span>${renderWhatsAppButton(f.phone)}</div>
                   <span class="text-[10px] px-2.5 py-1 rounded-full border font-black ${statusClass(f.isDisabled?'disabled':f.isApproved?'approved':f.status||'pending')}">${f.isDisabled?'معطل':f.isApproved?'معتمد':statusLabel(f.status)}</span>
                   <span class="text-[10px] bg-amber-50 border border-amber-200 text-amber-800 px-2 py-1 rounded-full font-black">${escHtml(level)}</span>
                   ${orderAvailabilityBadge}
@@ -37,7 +44,7 @@ function renderFannis(){
             </div>
             <div class="action-wrap">
               <button onclick="event.stopPropagation();toggleMenu('${menuKey}')" class="pill-btn soft-btn flex items-center gap-1.5">
-                <span>${f.isApproved?'معتمد':f.isDisabled?'معطل':'إجراء'}</span>
+                <span>إجراءات</span>
                 <span class="text-[12px]">${isMenuOpen?'▲':'▼'}</span>
               </button>
               ${isMenuOpen?`
@@ -92,6 +99,8 @@ function renderFannis(){
               <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2"><p class="text-[10px] font-black text-indigo-900">الثقة والتحقق والظهور</p><label class="block text-[10px] font-bold">درجة الثقة الداخلية (0–100)</label><input id="trust-score-${escHtml(id)}" type="number" min="0" max="100" value="${Number(f.trustScore??50)}" class="field"><label class="flex items-center gap-2 text-[10px] font-bold"><input id="verified-${escHtml(id)}" type="checkbox" ${(f.isVerified||Array.isArray(f.badges)&&f.badges.includes('verified'))?'checked':''}> بيانات الفني تم التحقق منها</label><label class="flex items-center gap-2 text-[10px] font-bold"><input id="featured-${escHtml(id)}" type="checkbox" ${f.isFeatured?'checked':''}> إظهار شارة «فني مميز» في العروض الجديدة</label><label class="block text-[10px] font-bold">انتهاء التمييز (اختياري)</label><input id="featured-until-${escHtml(id)}" type="date" value="${f.featuredUntil?String(f.featuredUntil).slice(0,10):''}" class="field"><button onclick="saveFanniProfileControls('${escHtml(id)}')" class="pill-btn primary-pill w-full">حفظ بيانات الثقة والظهور</button></div>
             </div>
           </details>
+            </div>
+          </details>
         </article>
       `;
     }).join('')}
@@ -142,7 +151,8 @@ const ADMIN_PERMISSION_SECTIONS=[
   ['notifications','الإشعارات'],
   ['clientsData','بيانات حسابات العملاء'],
   ['commerce','الاشتراكات والباقات'],
-  ['store','المتجر والطلبات']
+  ['store','المتجر والطلبات'],
+  ['website','تصميم وتخطيط صفحات الموقع']
 ];
 function getDefaultAdminPermissions(role){
   const keys=ADMIN_PERMISSION_SECTIONS.map(([key])=>key);
@@ -150,12 +160,12 @@ function getDefaultAdminPermissions(role){
     'قراءة فقط':[],
     'مشرف':['orders','complaints','support','offers'],
     'مشرف أول':['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce'],
-    'مدير':keys
+    'مدير':keys.filter(key=>key!=='website')
   };
   const readOnly=role==='قراءة فقط';
   const readAll=role==='مدير'||role==='مشرف أول'||readOnly;
-  const writeSet=new Set(writes[role]||[]);
-  const readSet=new Set(readAll?keys:['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store']);
+  const writeSet=new Set((writes[role]||[]).filter(key=>key!=='website'));
+  const readSet=new Set(readAll?keys.filter(key=>key!=='website'):['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store']);
   return Object.fromEntries(keys.map(key=>[key,{read:readSet.has(key)||writeSet.has(key),write:writeSet.has(key)}]));
 }
 function getEffectiveAdminPermissions(user){

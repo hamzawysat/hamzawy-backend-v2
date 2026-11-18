@@ -103,3 +103,34 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 .section-nav-items{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
 .section-nav-btn{width:100%;min-height:58px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;padding:9px 7px!important;}
 .section-nav-label{flex:0 1 auto;text-align:center;}
+
+
+/* Technician action menu: compact, aligned and contained within the card. */
+.action-wrap{position:relative;flex:0 0 auto;min-width:108px;max-width:132px;z-index:30}
+.action-wrap>button{width:100%;min-width:0;justify-content:center;white-space:nowrap}
+.dropdown-menu{position:absolute;top:calc(100% + 6px);inset-inline-end:0;inset-inline-start:auto;width:min(236px,calc(100vw - 40px));max-width:calc(100vw - 40px);max-height:min(68vh,440px);overflow-y:auto;overscroll-behavior:contain;z-index:100;padding:8px;border:1px solid #dbe5f1;border-radius:14px;background:#fff;box-shadow:0 12px 32px rgba(11,27,58,.2);display:flex;flex-direction:column;gap:4px}
+.dropdown-menu .dropdown-item{display:flex;width:100%;min-height:40px;align-items:center;justify-content:flex-start;text-align:right;white-space:normal;line-height:1.4;padding:9px 10px;border-radius:9px;font-size:11px;font-weight:800;background:#f8fafc;color:#24364b}
+.dropdown-menu .dropdown-item:hover{background:#edf3fb}
+.action-wrap .dropdown-menu .p-2{width:100%;min-width:0}
+@media(max-width:420px){.action-wrap{min-width:98px;max-width:112px}.dropdown-menu{width:min(220px,calc(100vw - 28px));max-width:calc(100vw - 28px)}}
+
+
+/* Compact collapsed rows for clients and technicians; details remain available on demand. */
+.person-accordion{min-width:0}
+.person-accordion-summary{display:flex;align-items:center;gap:9px;min-height:58px;padding:8px 4px;cursor:pointer;list-style:none}
+.person-accordion-summary::-webkit-details-marker{display:none}
+.person-accordion-main{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.person-accordion-main strong{font-size:12px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person-accordion-main>span{font-size:11px;color:#475569;direction:ltr;text-align:right;width:max-content;max-width:100%}
+.person-accordion-status{flex:0 0 auto;border:1px solid #dbe5f1;border-radius:999px;background:#f8fafc;padding:5px 8px;font-size:10px;font-weight:900;color:#334155}
+.person-accordion-toggle{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;border-radius:999px;background:#eff6ff;color:#1d4ed8;padding:7px 9px;font-size:10px;font-weight:900}
+.person-accordion-toggle b{font-size:14px;line-height:1}
+.person-accordion[open]>.person-accordion-summary{border-bottom:1px solid #e2e8f0;margin-bottom:10px}
+.person-accordion[open]>.person-accordion-summary .person-accordion-toggle b{transform:rotate(45deg)}
+.person-accordion-body{min-width:0}
+@media(max-width:420px){
+ .person-accordion-summary{gap:6px}
+ .person-accordion-status{font-size:9px;padding:4px 6px}
+ .person-accordion-toggle{font-size:9px;padding:6px 7px}
+ .person-accordion-main strong{font-size:11px}
+}
