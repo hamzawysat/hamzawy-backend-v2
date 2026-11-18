@@ -68,7 +68,7 @@ function verifyAdminDashboardSource() {
     throw new Error('Admin overview/statistics merge regression');
   }
   if (!header.includes('.admin-topbar') ||
-      !html.includes('admin-header.css?v=20261118-admin-actions-audience1')) {
+      !/<link rel="stylesheet" href="\/css\/admin-header\.css\?v=[^"]+">/.test(html)) {
     throw new Error('Admin dashboard header stylesheet/cache regression');
   }
 }
