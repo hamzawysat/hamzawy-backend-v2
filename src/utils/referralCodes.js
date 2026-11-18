@@ -19,7 +19,7 @@ function readReferralCode(value) {
   const match = /^(C|T)-([A-F0-9]{24})-([A-F0-9]{12})$/.exec(code);
   if (!match) return null;
   const kind = match[1] === 'C' ? 'client' : 'fanni';
-  const expected = makeReferralCode(kind, match[2]);
+  const expected = makeReferralCode(kind, match[2]).toUpperCase();
   const a = Buffer.from(expected);
   const b = Buffer.from(code);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
