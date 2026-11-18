@@ -192,8 +192,7 @@ router.post('/login', async (req, res, next) => {
     await notifyAdmins({
       type: 'admin_client_login', title: 'تسجيل دخول عميل',
       message: 'سجّل العميل ' + client.name + ' (' + client.phone + ') الدخول إلى حسابه.',
-      link: '/admin?tab=clients',
-      dedupeKey: 'client-logout:' + crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')
+      link: '/admin?tab=clients'
     });
     return res.json({
       message: supportLogin ? 'تم الدخول بكلمة دعم مؤقتة. غيّر كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
@@ -211,7 +210,8 @@ router.post('/logout', clientAuth, async (req, res, next) => {
     await notifyAdmins({
       type: 'admin_client_logout', title: 'تسجيل خروج عميل',
       message: 'سجّل العميل ' + req.client.name + ' (' + req.client.phone + ') الخروج من حسابه.',
-      link: '/admin?tab=clients'
+      link: '/admin?tab=clients',
+      dedupeKey: 'client-logout:' + crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')
     });
     return res.json({ message: 'تم تسجيل الخروج بنجاح.' });
   } catch (error) { return next(error); }
