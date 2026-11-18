@@ -1747,21 +1747,26 @@ async function run() {
       const completed = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
       assert.equal(completed.status, 200, JSON.stringify(completed.body));
-      assert.equal(completed.body.settlement.amount, 650);
-      assert.equal(completed.body.settlement.balance, 1585);
-      const settledOrder = await Order.findById(order._id).lean();
-      assert.equal(settledOrder.status, 'تم الانتهاء');
-      assert.equal(settledOrder.clientPaymentStatus, 'settled');
-      assert.ok(settledOrder.technicianSettledAt);
-      assert.ok(settledOrder.completionDeclaredAt, 'technician completion must be timestamped for the new confirmation flow');
+      assert.equal(completed.body.settlement, undefined, 'technician completion must never release held customer funds');
+      assert.match(completed.body.message, /تظل محجوزة حتى يؤكد العميل/);
+      const pendingConfirmationOrder = await Order.findById(order._id).lean();
+      assert.equal(pendingConfirmationOrder.status, 'تم الانتهاء');
+      assert.equal(pendingConfirmationOrder.clientPaymentStatus, 'held', 'customer funds must remain held after technician completion');
+      assert.equal(pendingConfirmationOrder.technicianSettledAt, null);
+      assert.ok(pendingConfirmationOrder.completionDeclaredAt, 'technician completion must be timestamped for the customer confirmation flow');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'technician wallet must not be credited before customer confirmation');
+      assert.equal(await WalletTransaction.countDocuments({ order: order._id, type: 'technician_settlement' }), 0, 'no settlement ledger entry may exist before customer confirmation');
       const deniedConfirmation = await request(app).post('/api/orders/' + order.sn + '/confirm-completion')
         .set('Authorization', 'Bearer ' + secondClientToken).send({});
       assert.equal(deniedConfirmation.status, 403, 'another client must not confirm this order');
       const confirmedAtResponse = await request(app).post('/api/orders/' + order.sn + '/confirm-completion')
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(confirmedAtResponse.status, 200, JSON.stringify(confirmedAtResponse.body));
+      assert.equal(confirmedAtResponse.body.settlement.amount, 650);
       const confirmedOrder = await Order.findById(order._id).lean();
       assert.ok(confirmedOrder.clientConfirmedAt);
+      assert.equal(confirmedOrder.clientPaymentStatus, 'settled');
+      assert.ok(confirmedOrder.technicianSettledAt);
       assert.equal(confirmedOrder.warrantyStatus, 'active');
       assert.equal(confirmedOrder.warrantyStartsAt.getTime(), confirmedOrder.clientConfirmedAt.getTime());
       assert.equal(confirmedOrder.warrantyExpiresAt.getTime() - confirmedOrder.warrantyStartsAt.getTime(), 14 * 24 * 60 * 60 * 1000);
@@ -1770,13 +1775,13 @@ async function run() {
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(repeatedConfirmation.status, 200);
       assert.equal(new Date(repeatedConfirmation.body.order.warrantyExpiresAt).getTime(), originalWarrantyExpiry, 'repeated confirmation must not extend the warranty');
-      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1585, 'client confirmation must not change the existing technician settlement');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1585, 'customer confirmation must release the held amount exactly once');
       const settlementLedger = await WalletTransaction.findOne({ order: order._id, type: 'technician_settlement' }).lean();
       assert.ok(settlementLedger);
       assert.equal(settlementLedger.amount, 650);
       const duplicateCompletion = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
-      assert.equal(duplicateCompletion.status, 409, 'completed orders must not credit the technician twice');
+      assert.equal(duplicateCompletion.status, 409, 'completed orders must not be completed twice');
       assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1585);
 
       const CommerceItem = require('../models/CommerceItem');
