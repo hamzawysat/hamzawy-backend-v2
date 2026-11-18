@@ -8,9 +8,9 @@ The `frontend/admin.html` page is the entry point for the Kotlin WebView admin a
 npm run build:admin
 ```
 
-The artifact preserves root-relative paths and includes shared runtime resources needed by the admin page. It excludes unrelated public entry pages and the one-time `admin-setup.html` bootstrap page plus its script. The bundle is a separate deployable artifact, but it is not yet a minimal admin-only source tree because some runtime assets remain shared.
+The artifact preserves root-relative paths and includes shared runtime resources needed by the admin page. It excludes unrelated public entry pages and the one-time `admin-setup.html` bootstrap page plus its script. The shared `password.html` account page is included because the admin client/technician editor opens it for profile editing and account recovery. The bundle is a separate deployable artifact, but it is not yet a minimal admin-only source tree because some runtime assets remain shared.
 
-The build validates the static dependency closure reachable from `admin.html` through HTML, CSS and JavaScript references. This catches missing statically referenced files; it cannot prove that every dynamically constructed URL or runtime code path works. Those still require staging tests.
+The build validates the static dependency closure reachable from both `admin.html` and the shared `password.html` account page through HTML, CSS and JavaScript references. CI serves the generated artifact independently and browser-smoke-tests both entry points, including their local assets and runtime page errors. This catches missing statically referenced files; it cannot prove that every dynamically constructed URL or runtime code path works. Those still require staging tests.
 
 ## Hosting contract
 
@@ -34,4 +34,4 @@ The current Kotlin app still validates the existing Hamzawy Sat host and private
 
 ## Validation status
 
-The build checks static HTML/CSS/JS dependency references and excludes the one-time bootstrap page. A successful artifact build is not equivalent to a live staging integration test. Authentication, recovery, image upload/read, notifications, service-worker behavior, WebView navigation, and caching must all be exercised against a non-production staging origin before enabling a separate deployment.
+The build checks static HTML/CSS/JS dependency references for the admin dashboard and its shared account editor, and excludes the one-time bootstrap page. CI also runs an isolated browser smoke test against the generated static artifact. A successful artifact build is not equivalent to a live staging integration test. Authentication, recovery, image upload/read, notifications, service-worker behavior, WebView navigation, and caching must all be exercised against a non-production staging origin before enabling a separate deployment.
