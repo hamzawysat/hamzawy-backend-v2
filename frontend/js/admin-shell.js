@@ -172,8 +172,7 @@ function renderAdminKpis(){
     {label:'عملاء جدد',value:(state.clients||[]).filter(item=>isAdminToday(item.createdAt||item.created_at||item.registeredAt)).length,icon:'👥'},
     {label:'شكاوى جديدة',value:getPendingComplaintCount(),icon:'💬'},
     {label:'فنيين بانتظار الاعتماد',value:getPendingTechnicianCount(),icon:'👷'}
-  ].filter(item=>item.value>0);
-  if(!items.length)return '';
+  ];
   return '<section class="admin-kpi-grid" aria-label="المؤشرات الرئيسية">'+items.map(item=>'<article class="admin-kpi-card"><span class="admin-kpi-icon">'+item.icon+'</span><strong>'+Number(item.value).toLocaleString('ar-EG')+'</strong><span>'+item.label+'</span></article>').join('')+'</section>';
 }
 function renderAdminQuickActions(){
