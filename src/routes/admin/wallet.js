@@ -79,6 +79,61 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
   } catch (err) { next(err); } finally { if (session) await session.endSession(); }
 });
 
+
+router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
+  amount: Joi.number().strict().positive().max(100000000).required(),
+  reason: reasonSchema.required()
+})), async (req, res, next) => {
+  if (!validId(req.params.id)) return sendBadId(res);
+  let session;
+  try {
+    session = await mongoose.startSession();
+    let outcome = null;
+    const amount = Number(req.body.amount);
+    const reason = String(req.body.reason || '').trim();
+    if (reason.length < 2) return res.status(400).json({ message: 'اكتب سببًا واضحًا للخصم.' });
+    await session.withTransaction(async () => {
+      const fanni = await Fanni.findOneAndUpdate(
+        { _id: req.params.id, role: 'fanni', walletBalance: { $gte: amount } },
+        { $inc: { walletBalance: -amount }, $push: { decisions: decision(req, 'خصم إداري', `خصم ${amount} جنيه من المحفظة. ${reason}`.trim()) } },
+        { new: true, session, runValidators: true }
+      );
+      if (!fanni) {
+        const exists = await Fanni.exists({ _id: req.params.id, role: 'fanni' }).session(session);
+        outcome = { kind: exists ? 'insufficient' : 'missing' };
+        return;
+      }
+      const balanceAfter = Number(fanni.walletBalance || 0);
+      const balanceBefore = balanceAfter + amount;
+      const transaction = new WalletTransaction({
+        fanni: fanni._id,
+        type: 'admin_adjustment',
+        amount: -amount,
+        balanceBefore,
+        balanceAfter,
+        description: `خصم إداري بمبلغ ${amount}. السبب: ${reason}`.slice(0, 500),
+        idempotencyKey: `admin-deduct-balance:${String(fanni._id)}:${crypto.randomBytes(16).toString('hex')}`
+      });
+      await transaction.save({ session });
+      outcome = { kind: 'deducted', fanni, balance: balanceAfter, transactionId: transaction._id };
+    });
+    if (outcome?.kind === 'missing') return res.status(404).json({ message: 'الفني غير موجود.' });
+    if (outcome?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد الفني غير كافٍ لإتمام الخصم. لم يتم إجراء أي تغيير.' });
+    await writeAdminAudit(req, 'خصم رصيد من محفظة فني', 'wallet', String(outcome.fanni._id), `amount=-${amount}; balance=${outcome.balance}; reason=${reason}`);
+    await createNotification({
+      recipientRole: 'fanni',
+      recipientId: outcome.fanni._id,
+      type: 'wallet_debit',
+      title: 'تم خصم مبلغ من محفظتك',
+      message: `خصمت الإدارة ${amount} جنيه من محفظتك. الرصيد بعد العملية: ${outcome.balance} جنيه. السبب: ${reason}`,
+      link: '/fanni',
+      dedupeKey: 'admin-fanni-wallet-debit:' + String(outcome.transactionId)
+    });
+    return res.json({ message: 'تم خصم الرصيد وتسجيل الحركة المالية.', balance: outcome.balance, fanni: publicFanni(outcome.fanni) });
+  } catch (err) { next(err); }
+  finally { if (session) await session.endSession(); }
+});
+
 router.get('/topup-requests', auth('admin'), async (req, res, next) => {
   try {
     const list = await TopupRequest.find({}).sort({ createdAt: -1 }).limit(MAX_LIST_LIMIT).lean();
