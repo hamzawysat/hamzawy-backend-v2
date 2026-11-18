@@ -31,11 +31,17 @@ function getWhatsAppNumber(value){
   if(!/^[1-9][0-9]{9,14}$/.test(digits))return '';
   return digits;
 }
+function renderPhoneCallLink(phone){
+  const number=getWhatsAppNumber(phone);
+  if(!number)return escHtml(String(phone||''));
+  const label=escHtml(String(phone||''));
+  return '<a href="tel:+'+number+'" dir="ltr" aria-label="اتصال هاتفي بـ '+label+'" title="اتصال هاتفي" class="inline-flex items-center gap-1 text-sm text-slate-700 font-bold no-underline hover:text-blue-700">📞 '+label+'</a>';
+}
 function renderWhatsAppButton(phone){
   const number=getWhatsAppNumber(phone);
   if(!number)return '';
   const label=escHtml(String(phone||''));
-  return '<a href="https://wa.me/'+number+'" target="_blank" rel="noopener noreferrer" aria-label="إرسال واتساب إلى '+label+'" title="إرسال واتساب" class="inline-flex items-center justify-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700 no-underline whitespace-nowrap hover:bg-emerald-100">واتساب</a>';
+  return '<a href="https://wa.me/'+number+'" aria-label="إرسال واتساب إلى '+label+'" title="إرسال واتساب" class="inline-flex items-center justify-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[10px] font-black text-emerald-700 no-underline whitespace-nowrap hover:bg-emerald-100">واتساب</a>';
 }
 function normalizePhoneInput(value){return String(value??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[\s\-().]/g,'').replace(/^(\+?20)/,'0');}
 
@@ -110,6 +116,15 @@ document.addEventListener('click', function(event){
     const clickedSummary = clickedMenu === menu && event.target.closest('summary');
     if(menu !== clickedMenu || !clickedSummary) menu.open = false;
   });
+});
+
+// Close the custom technician action menu when the user taps anywhere outside it.
+document.addEventListener('click', function(event){
+  if(event.target && event.target.closest && event.target.closest('.action-wrap')) return;
+  if(Object.keys(state.dropdowns||{}).length){
+    state.dropdowns={};
+    render();
+  }
 });
 function setPendingAction(key, action, label){
   state.pendingActions[key]={action,label};
