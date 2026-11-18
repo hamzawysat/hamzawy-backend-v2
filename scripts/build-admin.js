@@ -45,19 +45,29 @@ function referencedAssets(file, content) {
   }
   return [...found];
 }
-function validateDependencyClosure() {
+function copyAndValidateDependencyClosure() {
   const queue = ['admin.html'], visited = new Set(), missing = new Set();
   while (queue.length) {
     const relative = queue.shift();
     if (visited.has(relative)) continue;
     visited.add(relative);
-    const full = path.join(output, relative);
-    if (!fs.existsSync(full) || !fs.statSync(full).isFile()) { missing.add(relative); continue; }
+    if (excludedPages.has(relative)) { missing.add(relative + ' (excluded)'); continue; }
+    const sourceFile = path.join(source, relative);
+    if (!fs.existsSync(sourceFile) || !fs.statSync(sourceFile).isFile()) { missing.add(relative); continue; }
+    const destination = path.join(output, relative);
+    fs.mkdirSync(path.dirname(destination), { recursive: true });
+    fs.copyFileSync(sourceFile, destination);
     if (!/\.(?:html?|css|js|mjs)$/i.test(relative)) continue;
-    for (const asset of referencedAssets(relative, fs.readFileSync(full, 'utf8'))) {
-      const target = path.join(output, asset);
+    for (const asset of referencedAssets(relative, fs.readFileSync(sourceFile, 'utf8'))) {
+      if (excludedPages.has(asset)) { missing.add(asset + ' (excluded)'); continue; }
+      const target = path.join(source, asset);
       if (!fs.existsSync(target) || !fs.statSync(target).isFile()) missing.add(asset);
       else if (/\.(?:html?|css|js|mjs)$/i.test(asset)) queue.push(asset);
+      else {
+        const copied = path.join(output, asset);
+        fs.mkdirSync(path.dirname(copied), { recursive: true });
+        fs.copyFileSync(target, copied);
+      }
     }
   }
   if (fs.existsSync(path.join(output, 'admin-setup.html')) || fs.existsSync(path.join(output, 'js/admin-setup.js'))) throw new Error('One-time admin bootstrap files must not be included in the public UI artifact');
@@ -68,14 +78,7 @@ function main() {
   if (!fs.existsSync(path.join(source, 'admin.html'))) throw new Error('frontend/admin.html is missing');
   fs.rmSync(output, { recursive: true, force: true });
   fs.mkdirSync(output, { recursive: true });
-  for (const file of walk(source)) {
-    const relative = path.relative(source, file).split(path.sep).join('/');
-    if (excludedPages.has(relative)) continue;
-    const destination = path.join(output, relative);
-    fs.mkdirSync(path.dirname(destination), { recursive: true });
-    fs.copyFileSync(file, destination);
-  }
-  const dependencies = validateDependencyClosure();
+  const dependencies = copyAndValidateDependencyClosure();
   const manifest = {
     schemaVersion: 1, entrypoint: '/admin.html', apiMode: 'same-origin',
     dependencyValidation: 'static-html-css-js-closure',
