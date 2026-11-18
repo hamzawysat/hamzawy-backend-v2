@@ -7,16 +7,9 @@ const root = path.resolve(__dirname, '..');
 const source = path.join(root, 'frontend');
 const output = path.join(root, 'admin-dist');
 
-// Keep the admin artifact independent from unrelated public entry pages and
-// never publish the one-time bootstrap form as part of the static UI bundle.
 const excludedPages = new Set([
-  'index.html',
-  'client.html',
-  'fanni.html',
-  'technicians.html',
-  'customers.html',
-  'admin-setup.html',
-  'js/admin-setup.js'
+  'index.html', 'client.html', 'fanni.html', 'technicians.html',
+  'customers.html', 'admin-setup.html', 'js/admin-setup.js'
 ]);
 
 function walk(dir) {
@@ -27,27 +20,25 @@ function walk(dir) {
 }
 
 function cleanAssetPath(raw) {
-  if (!raw || /^(?:[a-z]+:)?\\/\\//i.test(raw) || /^(?:data|blob|javascript):/i.test(raw)) return null;
+  if (!raw || /^(?:[a-z]+:)?\/\//i.test(raw) || /^(?:data|blob|javascript):/i.test(raw)) return null;
   const value = raw.split(/[?#]/, 1)[0];
-  if (!value || !/\\.(?:html?|css|js|mjs|json|webmanifest|png|jpe?g|webp|svg|gif|ico|woff2?|ttf|otf|mp4|webm)$/i.test(value)) return null;
-  return value.replace(/^\\//, '');
+  if (!value || !/\.(?:html?|css|js|mjs|json|webmanifest|png|jpe?g|webp|svg|gif|ico|woff2?|ttf|otf|mp4|webm)$/i.test(value)) return null;
+  return value.replace(/^\//, '');
 }
 
-// Discover assets reachable from admin.html through HTML, CSS and JS references.
-// This is deliberately conservative: it validates static file references, not API routes.
 function referencedAssets(file, content) {
   const found = new Set();
   const patterns = [
-    /(?:src|href)\\s*=\\s*["']([^"'#]+)["']/gi,
-    /url\\(\\s*["']?([^"'")]+)["']?\\s*\\)/gi,
-    /(?:import\\s*\\(|import\\s+[^;]*?from\\s*)["']([^"']+)["']/gi,
-    /["'`]((?:\\/(?:js|css|images|fonts|icons)\\/|\\/(?:web-push\\.js|page-visit\\.js|manifest\\.webmanifest|service-worker\\.js))[^"'`\\s]*)["'`]/g
+    /(?:src|href)\s*=\s*["']([^"'#]+)["']/gi,
+    /url\(\s*["']?([^"')]+)["']?\s*\)/gi,
+    /(?:import\s*\(|import\s+[^;]*?from\s*)["']([^"']+)["']/gi,
+    /["']((?:\/(?:js|css|images|fonts|icons)\/|\/(?:web-push\.js|page-visit\.js|manifest\.webmanifest|service-worker\.js))[^"'\s]*)["']/g
   ];
   for (const pattern of patterns) {
     let match;
     while ((match = pattern.exec(content))) {
       const raw = match[1];
-      if (!raw || /^(?:[a-z]+:)?\\/\\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) continue;
+      if (!raw || /^(?:[a-z]+:)?\/\//i.test(raw) || raw.startsWith('data:') || raw.startsWith('blob:')) continue;
       const candidate = cleanAssetPath(raw);
       if (!candidate) continue;
       const resolved = raw.startsWith('/')
@@ -73,23 +64,22 @@ function validateDependencyClosure() {
       missing.add(relative);
       continue;
     }
-    if (!/\\.(?:html?|css|js|mjs)$/i.test(relative)) continue;
+    if (!/\.(?:html?|css|js|mjs)$/i.test(relative)) continue;
     const content = fs.readFileSync(full, 'utf8');
     for (const asset of referencedAssets(relative, content)) {
       const target = path.join(output, asset);
       if (!fs.existsSync(target) || !fs.statSync(target).isFile()) missing.add(asset);
-      else if (/\\.(?:html?|css|js|mjs)$/i.test(asset)) queue.push(asset);
+      else if (/\.(?:html?|css|js|mjs)$/i.test(asset)) queue.push(asset);
     }
   }
 
-  // admin-setup is intentionally not part of the deployable artifact.
   if (fs.existsSync(path.join(output, 'admin-setup.html')) ||
       fs.existsSync(path.join(output, 'js/admin-setup.js'))) {
     throw new Error('One-time admin bootstrap files must not be included in the public UI artifact');
   }
   if (missing.size) {
-    throw new Error('Admin UI dependency check failed; missing referenced files:\\n' +
-      [...missing].sort().map(x => ' - ' + x).join('\\n'));
+    throw new Error('Admin UI dependency check failed; missing referenced files:\n' +
+      [...missing].sort().map(x => ' - ' + x).join('\n'));
   }
   return [...visited].sort();
 }
@@ -127,7 +117,7 @@ function main() {
     ],
     files: walk(output).map(file => path.relative(output, file).split(path.sep).join('/')).sort()
   };
-  fs.writeFileSync(path.join(output, 'admin-ui-manifest.json'), JSON.stringify(manifest, null, 2) + '\\n');
+  fs.writeFileSync(path.join(output, 'admin-ui-manifest.json'), JSON.stringify(manifest, null, 2) + '\n');
 
   console.log('Admin UI artifact created at admin-dist');
   console.log('Files:', manifest.files.length);
