@@ -113,3 +113,24 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 .dropdown-menu .dropdown-item:hover{background:#edf3fb}
 .action-wrap .dropdown-menu .p-2{width:100%;min-width:0}
 @media(max-width:420px){.action-wrap{min-width:98px;max-width:112px}.dropdown-menu{width:min(220px,calc(100vw - 28px));max-width:calc(100vw - 28px)}}
+
+
+/* Compact collapsed rows for clients and technicians; details remain available on demand. */
+.person-accordion{min-width:0}
+.person-accordion-summary{display:flex;align-items:center;gap:9px;min-height:58px;padding:8px 4px;cursor:pointer;list-style:none}
+.person-accordion-summary::-webkit-details-marker{display:none}
+.person-accordion-main{display:flex;flex:1;min-width:0;flex-direction:column;gap:3px}
+.person-accordion-main strong{font-size:12px;font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.person-accordion-main>span{font-size:11px;color:#475569;direction:ltr;text-align:right;width:max-content;max-width:100%}
+.person-accordion-status{flex:0 0 auto;border:1px solid #dbe5f1;border-radius:999px;background:#f8fafc;padding:5px 8px;font-size:10px;font-weight:900;color:#334155}
+.person-accordion-toggle{display:inline-flex;align-items:center;gap:4px;flex:0 0 auto;border-radius:999px;background:#eff6ff;color:#1d4ed8;padding:7px 9px;font-size:10px;font-weight:900}
+.person-accordion-toggle b{font-size:14px;line-height:1}
+.person-accordion[open]>.person-accordion-summary{border-bottom:1px solid #e2e8f0;margin-bottom:10px}
+.person-accordion[open]>.person-accordion-summary .person-accordion-toggle b{transform:rotate(45deg)}
+.person-accordion-body{min-width:0}
+@media(max-width:420px){
+ .person-accordion-summary{gap:6px}
+ .person-accordion-status{font-size:9px;padding:4px 6px}
+ .person-accordion-toggle{font-size:9px;padding:6px 7px}
+ .person-accordion-main strong{font-size:11px}
+}
