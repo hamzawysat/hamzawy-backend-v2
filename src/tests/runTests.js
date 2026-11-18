@@ -275,6 +275,8 @@ async function run() {
       assert.doesNotMatch(webPush, /\.limit\(200\)/, 'web push must not silently omit subscriptions after the first 200');
       assert.match(webPush, /TTL: String\(PUSH_TTL_SECONDS\)/);
       assert.match(delivery, /ttl: 86400/); assert.match(delivery, /ttl: '86400s'/); assert.match(delivery, /TTL: '86400'/);
+      assert.match(delivery, /for \(let start = 0; start < devices\.length; start \+= 50\)/, 'FCM delivery must process devices in bounded batches');
+      assert.doesNotMatch(delivery, /Promise\.all\(devices\.map/, 'FCM delivery must not fan out one request per device without a concurrency bound');
       assert.match(worker, /www\.hamzawy-sat\.dynv6\.net/);
       assert.match(route, /isAllowedPushEndpoint\(endpoint\)/);
       assert.match(route, /web-subscription/); assert.match(browser, /PushManager/);
