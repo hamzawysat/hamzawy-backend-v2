@@ -5,7 +5,8 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node src/tests/runTests.js",
-    "postinstall": "node scripts/build-frontend.js"
+    "postinstall": "node scripts/build-frontend.js",
+    "build:admin": "node scripts/build-admin.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
