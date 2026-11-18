@@ -11,7 +11,7 @@ const ROLE_WRITE_SECTIONS = {
   'قراءة فقط': [],
   'مشرف': ['orders','complaints','support','offers'],
   'مشرف أول': ['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce'],
-  'مدير': ADMIN_PERMISSION_KEYS
+  'مدير': ADMIN_PERMISSION_KEYS.filter(key => key !== 'website')
 };
 function defaultAdminPermissions(role) {
   const writes = new Set(ROLE_WRITE_SECTIONS[role] || []);
