@@ -60,6 +60,7 @@ function renderContent(){
       </div>
   ${state.tab==='register'?`
    <div class="space-y-4">
+    ${new URLSearchParams(window.location.search).get('ref')?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold text-emerald-800">تم فتح تسجيل الفني من خلال دعوة. أكمل التسجيل لتفعيل الدعوة.</div>':''}
     <div><label class="field-label">الاسم بالكامل *</label><input id="fanniRegName" class="field" autocomplete="name" enterkeyhint="next" value="${esc(state.regName)}" oninput="state.regName=this.value.slice(0,50)" placeholder="الاسم بالكامل"></div>
     <div><label class="field-label">رقم التليفون *</label><input id="fanniRegPhone" class="field" inputmode="numeric" autocomplete="tel" enterkeyhint="next" value="${esc(state.regPhone)}" oninput="state.regPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
 
