@@ -57,11 +57,25 @@ async function main() {
     const response = await page.goto('http://127.0.0.1:4174/admin.html', { waitUntil: 'domcontentloaded', timeout: 20000 });
     if (!response || response.status() !== 200) throw new Error('Independent admin entrypoint did not return HTTP 200');
     await page.locator('body').waitFor();
-    await page.waitForTimeout(1500);
+    await page.waitForTimeout(1000);
+    const accountPage = await browser.newPage();
+    accountPage.on('response', response => {
+      const url = new URL(response.url());
+      if (url.origin === 'http://127.0.0.1:4174' && !url.pathname.startsWith('/api/') && response.status() >= 400) {
+        failedAssets.push(response.status() + ' ' + url.pathname);
+      }
+    });
+    accountPage.on('pageerror', error => pageErrors.push('password.html: ' + error.message));
+    const accountResponse = await accountPage.goto('http://127.0.0.1:4174/password.html?role=admin&mode=admin-edit', { waitUntil: 'domcontentloaded', timeout: 20000 });
+    if (!accountResponse || accountResponse.status() !== 200) throw new Error('Admin account editor entrypoint did not return HTTP 200');
+    await accountPage.locator('body').waitFor();
+    await accountPage.waitForTimeout(500);
+    await accountPage.close();
     if (failedAssets.length) throw new Error('Independent admin artifact has missing assets: ' + failedAssets.join('; '));
     if (pageErrors.length) throw new Error('Independent admin page runtime errors: ' + pageErrors.join('; '));
     const manifest = JSON.parse(fs.readFileSync(path.join(root, 'admin-ui-manifest.json'), 'utf8'));
-    if (manifest.entrypoint !== '/admin.html' || manifest.apiMode !== 'same-origin') throw new Error('Admin artifact manifest contract is invalid');
+    if (manifest.entrypoint !== '/admin.html' || manifest.apiMode !== 'same-origin' ||
+        !manifest.validatedEntrypoints.includes('password.html')) throw new Error('Admin artifact manifest contract is invalid or account editor is not included');
     for (const forbidden of ['editor.backup.html', 'admin-setup.html', 'js/admin-setup.js']) {
       if (manifest.files.includes(forbidden)) throw new Error('Unexpected non-release file included: ' + forbidden);
     }
