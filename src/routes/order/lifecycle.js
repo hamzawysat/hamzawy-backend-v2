@@ -369,21 +369,34 @@ router.post('/:sn/cancel', async (req, res, next) => {
 
 
 router.post('/:sn/confirm-completion', async (req, res, next) => {
+  let session;
+  let settlement = null;
+  let confirmedOrder = null;
   try {
     const sn = String(req.params.sn || '').toUpperCase();
     if (!validSN(sn)) return res.status(400).json({ message: 'كود الطلب غير صحيح.' });
 
-    const order = await Order.findOne({ sn });
-    if (!order) return res.status(404).json({ message: 'الطلب غير موجود.' });
+    session = await mongoose.startSession();
+    session.startTransaction();
+
+    const order = await Order.findOne({ sn }).session(session);
+    if (!order) {
+      await session.abortTransaction();
+      return res.status(404).json({ message: 'الطلب غير موجود.' });
+    }
     if (!(await verifyClientToken(req, order))) {
+      await session.abortTransaction();
       return res.status(403).json({ message: 'لا يمكن تأكيد استلام طلب لا يخص حسابك.' });
     }
     if (order.status !== 'تم الانتهاء' || !order.completionDeclaredAt) {
-      return res.status(409).json({ message: 'لا يمكن تأكيد الاستلام إلا للطلبات التي أنهى الفني تنفيذها بعد تفعيل نظام التأكيد.' });
+      await session.abortTransaction();
+      return res.status(409).json({ message: 'لا يمكن تأكيد الاستلام إلا بعد أن يسجل الفني إنهاء الخدمة.' });
     }
 
-    // Idempotent: a repeated confirmation never extends the original warranty.
-    if (order.clientConfirmedAt && order.warrantyExpiresAt) {
+    // Idempotent: repeated confirmation must never pay the technician twice
+    // or extend the original warranty.
+    if (order.clientConfirmedAt) {
+      await session.abortTransaction();
       return res.json({
         message: 'تم تأكيد استلام الخدمة بالفعل.',
         order: {
@@ -391,62 +404,106 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
           clientConfirmedAt: order.clientConfirmedAt,
           warrantyStartsAt: order.warrantyStartsAt,
           warrantyExpiresAt: order.warrantyExpiresAt,
-          warrantyStatus: order.warrantyStatus
+          warrantyStatus: order.warrantyStatus,
+          clientPaymentStatus: order.clientPaymentStatus
         }
       });
     }
 
+    // Customer-wallet funds stay held until this explicit customer action.
+    // Credit and ledger entry are committed atomically with the confirmation.
+    if (order.clientPaymentStatus === 'held') {
+      const amount = Number(order.clientPaymentAmount || 0);
+      if (!Number.isFinite(amount) || amount <= 0 || !order.assignedFanni) {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'بيانات المبلغ المحجوز أو الفني غير سليمة؛ لم يتم تأكيد الطلب أو صرف أي رصيد.' });
+      }
+
+      const fanni = await Fanni.findOne({ _id: order.assignedFanni, role: 'fanni' }).session(session);
+      if (!fanni) {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'تعذر العثور على الفني المعيّن؛ لم يتم صرف المبلغ.' });
+      }
+
+      const balanceBefore = Number(fanni.walletBalance || 0);
+      const updatedFanni = await Fanni.findOneAndUpdate(
+        { _id: fanni._id, role: 'fanni' },
+        { $inc: { walletBalance: amount } },
+        { new: true, session, runValidators: true }
+      );
+      if (!updatedFanni) {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'تعذر تحديث محفظة الفني؛ لم يتم تأكيد الاستلام أو صرف المبلغ.' });
+      }
+
+      await new WalletTransaction({
+        fanni: fanni._id,
+        order: order._id,
+        orderSN: order.sn,
+        type: 'technician_settlement',
+        amount,
+        balanceBefore,
+        balanceAfter: Number(updatedFanni.walletBalance),
+        description: 'صرف مستحقات تنفيذ الطلب ' + order.sn + ' بعد تأكيد العميل استلام الخدمة',
+        idempotencyKey: 'technician-settlement:' + String(order._id)
+      }).save({ session });
+
+      order.clientPaymentStatus = 'settled';
+      order.technicianSettledAt = new Date();
+      settlement = { amount, balance: Number(updatedFanni.walletBalance), fanniId: fanni._id };
+    }
+
     const confirmedAt = new Date();
-    const expiresAt = new Date(confirmedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
-    const updated = await Order.findOneAndUpdate(
-      { _id: order._id, status: 'تم الانتهاء', clientConfirmedAt: null },
-      {
-        $set: {
-          clientConfirmedAt: confirmedAt,
-          warrantyStartsAt: confirmedAt,
-          warrantyExpiresAt: expiresAt,
-          warrantyStatus: 'active'
-        }
-      },
-      { new: true, runValidators: true }
-    );
-    if (!updated) {
-      const latest = await Order.findById(order._id).select('sn clientConfirmedAt warrantyStartsAt warrantyExpiresAt warrantyStatus').lean();
-      if (latest?.clientConfirmedAt) {
-        return res.json({ message: 'تم تأكيد استلام الخدمة بالفعل.', order: latest });
-      }
-      return res.status(409).json({ message: 'تعذر تأكيد الاستلام الآن؛ حدّث الطلب وحاول مرة أخرى.' });
-    }
+    order.clientConfirmedAt = confirmedAt;
+    order.warrantyStartsAt = confirmedAt;
+    order.warrantyExpiresAt = new Date(confirmedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+    order.warrantyStatus = 'active';
+    await order.save({ session });
+    confirmedOrder = order;
 
-    if (updated.assignedFanni) {
-      try {
-        await createNotification({
-          recipientRole: 'fanni',
-          recipientId: updated.assignedFanni,
-          type: 'client_completion_confirmed',
-          title: 'العميل أكد استلام الخدمة',
-          message: 'أكد العميل استلام الخدمة للطلب ' + updated.sn + '. بدأ ضمان الإصلاح لمدة 14 يومًا.',
-          link: '/fanni',
-          dedupeKey: 'client-completion-confirmed:' + String(updated._id)
-        });
-      } catch (notificationError) {
-        console.error('Could not notify technician about client confirmation:', notificationError.message);
-      }
-    }
-
-    return res.json({
-      message: 'تم تأكيد استلام الخدمة وبدأ ضمان الإصلاح لمدة 14 يومًا.',
-      order: {
-        sn: updated.sn,
-        clientConfirmedAt: updated.clientConfirmedAt,
-        warrantyStartsAt: updated.warrantyStartsAt,
-        warrantyExpiresAt: updated.warrantyExpiresAt,
-        warrantyStatus: updated.warrantyStatus
-      }
-    });
+    await session.commitTransaction();
   } catch (err) {
-    next(err);
+    if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
+    if (err && err.code === 11000) {
+      return res.status(409).json({ message: 'تم تسجيل تسوية هذا الطلب بالفعل؛ لم يتم تكرار صرف المستحقات.' });
+    }
+    return next(err);
+  } finally {
+    if (session) await session.endSession();
   }
+
+  if (confirmedOrder.assignedFanni) {
+    try {
+      await createNotification({
+        recipientRole: 'fanni',
+        recipientId: confirmedOrder.assignedFanni,
+        type: 'client_completion_confirmed',
+        title: 'العميل أكد استلام الخدمة',
+        message: settlement
+          ? 'أكد العميل استلام الخدمة للطلب ' + confirmedOrder.sn + ' وتم تحويل مستحقاتك إلى محفظتك. بدأ ضمان الإصلاح لمدة 14 يومًا.'
+          : 'أكد العميل استلام الخدمة للطلب ' + confirmedOrder.sn + '. بدأ ضمان الإصلاح لمدة 14 يومًا.',
+        link: '/fanni',
+        dedupeKey: 'client-completion-confirmed:' + String(confirmedOrder._id)
+      });
+    } catch (notificationError) {
+      console.error('Could not notify technician about client confirmation:', notificationError.message);
+    }
+  }
+
+  return res.json({
+    message: settlement
+      ? 'تم تأكيد استلام الخدمة وتحويل مستحقات الفني وبدء ضمان الإصلاح لمدة 14 يومًا.'
+      : 'تم تأكيد استلام الخدمة وبدأ ضمان الإصلاح لمدة 14 يومًا.',
+    order: {
+      sn: confirmedOrder.sn,
+      clientConfirmedAt: confirmedOrder.clientConfirmedAt,
+      warrantyStartsAt: confirmedOrder.warrantyStartsAt,
+      warrantyExpiresAt: confirmedOrder.warrantyExpiresAt,
+      warrantyStatus: confirmedOrder.warrantyStatus,
+      clientPaymentStatus: confirmedOrder.clientPaymentStatus
+    },
+    settlement: settlement ? { amount: settlement.amount } : null
+  });
 });
 
 router.post('/:sn/complete', auth(), async (req, res, next) => {
@@ -455,7 +512,7 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
     if (req.user.role !== 'fanni') return res.status(403).json({ message: 'إكمال المهمة متاح للفني المعيّن فقط' });
     if (!(await hasAcceptedGuidelines(req.userId))) return res.status(428).json({ code: 'TECHNICIAN_GUIDELINES_REQUIRED', message: 'يجب الموافقة على ميثاق التعامل المهني أولًا.' });
     const sn = String(req.params.sn || '').toUpperCase();
-    if (!/^SN\d{6}$/.test(sn)) return res.status(400).json({ message: 'كود الطلب غير صحيح' });
+    if (!/^SN\\d{6}$/.test(sn)) return res.status(400).json({ message: 'كود الطلب غير صحيح' });
 
     session = await mongoose.startSession();
     session.startTransaction();
@@ -470,36 +527,19 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
 
     const fanni = await Fanni.findOne({ _id: req.userId, role: 'fanni' }).session(session);
     if (!fanni) { await session.abortTransaction(); return res.status(404).json({ message: 'حساب الفني غير موجود.' }); }
-    let settlement = null;
-    if (order.clientPaymentStatus === 'held') {
-      const amount = Number(order.clientPaymentAmount || 0);
-      if (!Number.isFinite(amount) || amount <= 0) { await session.abortTransaction(); return res.status(409).json({ message: 'قيمة المبلغ المحجوز غير سليمة؛ لم يتم إنهاء الطلب أو صرف أي رصيد.' }); }
-      const before = Number(fanni.walletBalance || 0);
-      const updatedFanni = await Fanni.findOneAndUpdate(
-        { _id: fanni._id, role: 'fanni' },
-        { $inc: { walletBalance: amount, 'stats.completedJobs': 1 } },
-        { new: true, session, runValidators: true }
-      );
-      if (!updatedFanni) { await session.abortTransaction(); return res.status(409).json({ message: 'تعذر تحديث محفظة الفني؛ لم يتم إنهاء الطلب.' }); }
-      await new WalletTransaction({
-        fanni: fanni._id, order: order._id, orderSN: order.sn,
-        type: 'technician_settlement', amount,
-        balanceBefore: before, balanceAfter: Number(updatedFanni.walletBalance),
-        description: 'صرف مستحقات تنفيذ الطلب ' + order.sn + ' بعد تأكيد إتمام المهمة',
-        idempotencyKey: 'technician-settlement:' + String(order._id)
-      }).save({ session });
-      order.clientPaymentStatus = 'settled';
-      order.technicianSettledAt = new Date();
-      settlement = { amount, balance: Number(updatedFanni.walletBalance) };
-    } else {
-      await Fanni.updateOne({ _id: fanni._id, role: 'fanni' }, { $inc: { 'stats.completedJobs': 1 } }, { session });
-    }
+
+    // Completing the work only records the technician's declaration.
+    // Customer-wallet funds remain held until /confirm-completion succeeds.
+    await Fanni.updateOne(
+      { _id: fanni._id, role: 'fanni' },
+      { $inc: { 'stats.completedJobs': 1 } },
+      { session }
+    );
+
     order.status = 'تم الانتهاء';
     order.completionDeclaredAt = new Date();
     await order.save({ session });
 
-    // Referral rewards are settled in the same MongoDB transaction as completion,
-    // so the completion and both wallet credits either all commit or all roll back.
     if (order.clientAccount) {
       await refreshReferralProgress({ kind: 'client', inviteeId: order.clientAccount, mongoose, session });
     }
@@ -507,30 +547,29 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
     await session.commitTransaction();
 
     await autoPromoteFanni(req.userId, 'إكمال المهمة ' + order.sn);
-    if (settlement) await createNotification({ recipientRole: 'fanni', recipientId: req.userId, type: 'technician_settlement', title: 'تم تحويل مستحقاتك', message: 'تم إضافة ' + settlement.amount + ' جنيه إلى محفظتك مقابل تنفيذ الطلب ' + order.sn + '.', link: '/fanni', dedupeKey: 'technician-settlement-notice:' + String(order._id) });
     if (order.clientAccount) {
       await createNotification({
         recipientRole: 'client', recipientId: order.clientAccount,
-        type: 'order_completed', title: 'الفني أنهى المهمة',
-        message: settlement ? 'تم إنهاء الطلب ' + order.sn + ' وتحويل مستحقات الفني. يمكنك الآن تقييم الخدمة.' : 'تم تسجيل اكتمال الطلب ' + order.sn + '. افتح الطلب لتقييم الفني.',
+        type: 'order_completed', title: 'الفني أعلن إنهاء الخدمة',
+        message: order.clientPaymentStatus === 'held'
+          ? 'أنهى الفني الطلب ' + order.sn + '. المبلغ ما زال محجوزًا ولن يُحوّل إلا بعد تأكيدك استلام الخدمة.'
+          : 'سجّل الفني اكتمال الطلب ' + order.sn + '. يمكنك الآن تأكيد الاستلام وتقييم الخدمة.',
         link: '/client.html?tab=orders', dedupeKey: 'order-completed:' + String(order._id)
       });
     }
-        await notifyAdmins({
-      type: 'admin_order_completed', title: 'الفني أكمل المهمة',
-      message: 'أكمل الفني ' + (req.user.name || 'فني') + ' الطلب ' + order.sn + ' لخدمة ' + (order.service || '') + (settlement ? ' وتم تحويل ' + settlement.amount + ' جنيه من المستحقات.' : '.'),
+    await notifyAdmins({
+      type: 'admin_order_completed', title: 'الفني أعلن إنهاء المهمة',
+      message: 'أعلن الفني ' + (req.user.name || 'فني') + ' إنهاء الطلب ' + order.sn + ' لخدمة ' + (order.service || '') + '.',
       link: '/admin?tab=orders',
       dedupeKey: 'admin-order-completed:' + String(order._id)
     });
 
     return res.json({
-      message: settlement ? 'تم إكمال المهمة وتحويل مستحقاتك إلى محفظتك بنجاح.' : 'تم إكمال المهمة بنجاح',
-      order: { sn: order.sn, status: order.status, clientPaymentStatus: order.clientPaymentStatus },
-      settlement
+      message: 'تم تسجيل إنهاء المهمة. مستحقات الفني تظل محجوزة حتى يؤكد العميل استلام الخدمة.',
+      order: { sn: order.sn, status: order.status, clientPaymentStatus: order.clientPaymentStatus }
     });
   } catch (err) {
     if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
-    if (err && err.code === 11000) return res.status(409).json({ message: 'تم تسجيل تسوية هذا الطلب بالفعل؛ لم يتم تكرار صرف المستحقات.' });
     next(err);
   } finally {
     if (session) await session.endSession();
