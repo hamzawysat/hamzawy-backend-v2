@@ -43,7 +43,7 @@ const PERMISSION_SECTIONS = {
   content: [/^\/content(\/|$)/],
   support: [/^\/support(\/|$)/],
   regions: [/^\/regions(\/|$)/],
-  offers: [/^\/offers(\/|$)/],
+  offers: [/^\/offers(\/|$)/, /^\/orders\/[^/]+\/offers(\/|$)/],
   notifications: [/^\/notifications(\/|$)/],
   clientsData: [/^\/client-accounts(\/|$)/],
   store: [/^\/store(\/|$)/],
