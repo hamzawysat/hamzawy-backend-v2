@@ -9,17 +9,14 @@ const AdminConfig = require('../models/AdminConfig');
 const AdminAuditLog = require('../models/AdminAuditLog');
 const WalletTransaction = require('../models/WalletTransaction');
 const { auth } = require('../middleware/auth');
+const { clientAuth } = require('../middleware/clientAuth');
 const { makeReferralCode } = require('../utils/referralCodes');
 
 const router = express.Router();
-const isAdmin = user => Boolean(user && (user.role === 'admin' || user.adminRole));
 const actorName = req => String(req.user?.name || req.user?.phone || 'الإدارة').slice(0, 120);
 
-router.get('/me', auth(), async (req, res, next) => {
+async function sendMyReferral(req, res, next, kind, accountId) {
   try {
-    const kind = req.user?.role === 'client' ? 'client' : req.user?.role === 'fanni' ? 'fanni' : null;
-    if (!kind) return res.status(403).json({ message: 'الخدمة متاحة للعملاء والفنيين فقط.' });
-    const accountId = req.userId || req.user?._id;
     const config = await AdminConfig.findOne({ key: 'main' }).select('settings').lean();
     const code = makeReferralCode(kind, String(accountId));
     const base = String(process.env.PUBLIC_APP_URL || '').trim().replace(/\/$/, '') ||
@@ -28,11 +25,16 @@ router.get('/me', auth(), async (req, res, next) => {
     const url = base + path + '?ref=' + encodeURIComponent(code);
     const referrals = await Referral.find({ kind, inviter: accountId }).sort({ invitedAt: -1 }).limit(100).lean();
     return res.set('Cache-Control', 'no-store').json({
-      enabled: config?.settings?.referralsEnabled !== false,
-      kind, code, url, referrals,
+      enabled: config?.settings?.referralsEnabled !== false, kind, code, url, referrals,
       totals: { count: referrals.length, completed: referrals.filter(x => x.status === 'completed').length }
     });
   } catch (err) { next(err); }
+}
+
+router.get('/me/client', clientAuth, (req, res, next) => sendMyReferral(req, res, next, 'client', req.clientId));
+router.get('/me/fanni', auth(), (req, res, next) => {
+  if (req.user?.role !== 'fanni') return res.status(403).json({ message: 'الخدمة متاحة للفنيين فقط.' });
+  return sendMyReferral(req, res, next, 'fanni', req.userId || req.user._id);
 });
 
 router.get('/admin/summary', auth('admin'), async (req, res, next) => {
