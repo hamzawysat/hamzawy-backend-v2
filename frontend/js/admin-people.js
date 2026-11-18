@@ -151,7 +151,8 @@ const ADMIN_PERMISSION_SECTIONS=[
   ['notifications','الإشعارات'],
   ['clientsData','بيانات حسابات العملاء'],
   ['commerce','الاشتراكات والباقات'],
-  ['store','المتجر والطلبات']
+  ['store','المتجر والطلبات'],
+  ['website','تصميم وتخطيط صفحات الموقع']
 ];
 function getDefaultAdminPermissions(role){
   const keys=ADMIN_PERMISSION_SECTIONS.map(([key])=>key);
