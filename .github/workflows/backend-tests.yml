@@ -18,7 +18,7 @@ on:
       - 'scripts/**'
       - '.github/workflows/backend-tests.yml'
   push:
-    branches: [main, 'feature/**', 'fix/**', 'refactor/**', 'architecture/**']
+    branches: [main, 'feature/**', 'fix/**', 'refactor/**']
     paths:
       - 'src/**'
       - 'frontend/admin.html'
