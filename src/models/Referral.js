@@ -18,6 +18,7 @@ const referralSchema = new mongoose.Schema({
   invitedAt: { type: Date, default: Date.now, index: true },
   status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected'], default: 'pending', index: true },
   completedCount: { type: Number, default: 0, min: 0 },
+  achievementLog: [{ order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true }, orderSN: { type: String, trim: true, maxlength: 20, default: '' }, completedAt: { type: Date, default: Date.now } }],
   requiredCount: { type: Number, required: true, enum: [1, 3] },
   inviterReward: { type: partyRewardSchema, default: () => ({ amount: 50 }) },
   inviteeReward: { type: partyRewardSchema, default: () => ({ amount: 50 }) },
