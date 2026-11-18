@@ -2228,8 +2228,10 @@ async function run() {
       const technicianOutcome = await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose });
       assert.equal(technicianOutcome.status, 'completed');
       const technicianBalances = await Fanni.find({ _id: { $in: technicians.map(x => x._id) } }).sort({ phone: 1 }).lean();
-      assert.deepEqual(technicianBalances.map(x => x.walletBalance), [50, 50]);
-      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFANNI001', type: 'referral_reward' }), 2);
+      assert.deepEqual(technicianBalances.map(x => x.walletBalance), [150, 150]);
+      const technicianTransactions = await WalletTransaction.find({ referralNumber: 'RFTESTFANNI001', type: 'referral_reward' }).lean();
+      assert.equal(technicianTransactions.length, 2);
+      assert.ok(technicianTransactions.every(x => x.amount === 150));
       assert.equal(await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose }), null);
       const referralRows = await Referral.find({ number: { $in: ['RFTESTCLIENT01', 'RFTESTFANNI001'] } }).lean();
       assert.ok(referralRows.every(x => x.status === 'completed' && x.achievementLog.length === x.requiredCount));
