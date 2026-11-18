@@ -52,8 +52,8 @@ async function run() {
       assert.notEqual(referralStart, -1, 'technician registration should create a referral record when an inviter exists');
       assert.notEqual(referralEnd, -1, 'technician referral creation block should be complete');
       const referralCreation = technicianRoutes.slice(referralStart, referralEnd);
-      assert.match(referralCreation, /inviterReward:\\s*\\{\\s*amount:\\s*150\\s*\\}/, 'technician inviter reward should be initialized to 150 EGP');
-      assert.match(referralCreation, /inviteeReward:\\s*\\{\\s*amount:\\s*150\\s*\\}/, 'technician invitee reward should be initialized to 150 EGP');
+      assert.ok(referralCreation.includes('inviterReward: { amount: 150 }'), 'technician inviter reward should be initialized to 150 EGP');
+      assert.ok(referralCreation.includes('inviteeReward: { amount: 150 }'), 'technician invitee reward should be initialized to 150 EGP');
     });
 
     await test('client and technician logout audit notifications are idempotent and never enter push retry loop', async () => {
