@@ -47,6 +47,7 @@ const PERMISSION_SECTIONS = {
   notifications: [/^\/notifications(\/|$)/],
   clientsData: [/^\/client-accounts(\/|$)/],
   store: [/^\/store(\/|$)/],
+  website: [/^\/ui-layout(\/|$)/],
   commerce: [/^\/commerce(\/|$)/]
 };
 
