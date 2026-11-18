@@ -403,6 +403,8 @@ async function run() {
       assert.ok(enforced.includes('https://www.hamzawy-sat.dynv6.net'));
       assert.ok(reportOnly.includes("script-src 'self' https://cdn.tailwindcss.com"));
       assert.ok(reportOnly.includes('https://www.hamzawy-sat.dynv6.net'));
+      assert.ok(enforced.includes('http://localhost:3000'), 'configured API origins must also be permitted by enforced CSP');
+      assert.ok(reportOnly.includes('http://localhost:3000'), 'configured API origins must also be permitted by report-only CSP');
       assert.ok(reportOnly.includes("script-src-attr 'none'"));
       assert.ok(!reportOnly.includes("script-src 'self' 'unsafe-inline'"));
       const report = await request(app).post('/api/csp-report')
