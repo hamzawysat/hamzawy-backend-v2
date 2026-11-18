@@ -46,7 +46,7 @@ function referencedAssets(file, content) {
   return [...found];
 }
 function copyAndValidateDependencyClosure() {
-  const queue = ['admin.html'], visited = new Set(), missing = new Set();
+  const queue = ['admin.html', 'password.html'], visited = new Set(), missing = new Set();
   while (queue.length) {
     const relative = queue.shift();
     if (visited.has(relative)) continue;
@@ -85,6 +85,7 @@ function main() {
     validatedEntrypoints: dependencies,
     notes: [
       'Static UI artifact only; it does not contain the API or database.',
+      'The shared account page is included for the admin client/technician profile editor and recovery tools.',
       'Preserve root-relative asset paths when hosting this artifact.',
       'Route /api/* to the backend through a same-origin reverse proxy.',
       'The one-time admin bootstrap page and script are intentionally excluded.',
