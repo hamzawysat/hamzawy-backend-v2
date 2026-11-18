@@ -76,6 +76,16 @@ function renderFannis(){
             <div class="rounded-[14px] bg-slate-50 border p-3"><p class="text-[10px] font-black text-slate-400">خدمات حمزاوي سات المعتمدة</p><p class="text-[11.5px] font-black mt-1 leading-6 whitespace-pre-wrap break-words">${escHtml((Array.isArray(f.activeSpecialties)?f.activeSpecialties:[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')}</p></div>
             <div class="rounded-[14px] bg-emerald-50 border border-emerald-100 p-3"><p class="text-[10px] font-black text-emerald-700">الرصيد</p><p class="text-[13px] font-black text-emerald-700 mt-1">${escHtml(String(f.balance??f.walletBalance??0))} ج</p></div>
           </div>
+          <div class="mt-3 rounded-[14px] border border-emerald-100 bg-emerald-50 p-3">
+            <div class="flex items-center justify-between gap-2"><div><p class="text-[10px] font-black text-emerald-800">إدارة محفظة الفني</p><p class="text-[9px] text-emerald-700 mt-1">إضافة وخصم وتسوية ومراجعة سجل الحركات</p></div><strong class="text-[16px] font-black text-emerald-800">${escHtml(String(f.walletBalance??f.balance??0))} ج</strong></div>
+            <div class="mt-3 grid grid-cols-2 gap-2">
+              <button type="button" onclick="state.walletSelectedFanniId='${id}';addWalletBalance()" class="pill-btn soft-btn">إضافة رصيد</button>
+              <button type="button" onclick="state.walletSelectedFanniId='${id}';deductWalletBalance()" class="pill-btn soft-btn">خصم رصيد</button>
+              <button type="button" onclick="state.walletSelectedFanniId='${id}';adjustWallet()" class="pill-btn soft-btn">تسوية الرصيد</button>
+              <button type="button" onclick="state.walletSelectedFanniId='${id}';loadWalletTransactions()" class="pill-btn primary-pill">كشف العمليات</button>
+            </div>
+            ${renderFanniWalletLedger(id)}
+          </div>
           <div class="mt-2 rounded-[14px] border border-blue-100 bg-blue-50/60 p-3">
             <p class="text-[11px] font-black text-blue-900 mb-2">📍 مناطق العمل المسجلة</p>
             <p class="text-[11px] font-bold leading-6 whitespace-pre-wrap break-words">${escHtml(Array.isArray(f.areas)&&f.areas.length?f.areas.join('، '):'لم يحدد مناطق عمل')}</p>
