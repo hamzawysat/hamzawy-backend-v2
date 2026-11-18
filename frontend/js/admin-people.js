@@ -19,8 +19,15 @@ function renderFannis(){
         : '<span class="text-[10px] px-2.5 py-1 rounded-full border border-emerald-200 bg-emerald-50 text-emerald-800 font-black">● يستقبل طلبات جديدة</span>'; 
       return `
         
-<article class="premium-card p-4 animate-fade ${isMenuOpen?'menu-active':''}">
+<article class="premium-card p-3 animate-fade ${isMenuOpen?'menu-active':''}">
           <label class="text-[10px] font-bold"><input type="checkbox" ${((state.selectedBulkFanniIds||[]).includes(id))?'checked':''} onchange="toggleBulkSelection('fannis','${id}',this.checked)"> تحديد</label>
+          <details class="person-accordion" ${isMenuOpen?'open':''}>
+            <summary class="person-accordion-summary">
+              <span class="person-accordion-main"><strong>${escHtml(f.name||'بدون اسم')}</strong><span>${renderPhoneCallLink(f.phone)}</span></span>
+              <span class="person-accordion-status">${f.isDisabled?'معطل':f.isApproved?'معتمد':statusLabel(f.status)}</span>
+              <span class="person-accordion-toggle">عرض التفاصيل <b>＋</b></span>
+            </summary>
+            <div class="person-accordion-body">
           <div class="flex justify-between items-start gap-3">
             <div class="flex items-center gap-3 min-w-0 flex-1">
               <div class="h-10 w-10 rounded-full bg-gradient-to-br from-slate-800 to-slate-600 text-white flex items-center justify-center font-black">${escHtml((f.name||'؟').slice(0,1))}</div>
@@ -90,6 +97,8 @@ function renderFannis(){
               <div class="rounded-[12px] bg-slate-50 border p-3"><p class="text-[10px] font-black text-slate-500">ملاحظات داخلية</p><textarea id="note-${escHtml(id)}" rows="2" placeholder="ملاحظة لا يراها الفني" class="field mt-2">${escHtml(f.adminNote||'')}</textarea><button onclick="saveFanniNote('${escHtml(id)}')" class="mt-2 pill-btn soft-btn w-full">حفظ الملاحظة</button></div>
               <div class="rounded-xl border p-3 space-y-2"><p class="text-[10px] font-black text-slate-700">حدود استقبال العروض (تُطبق فعليًا)</p><label class="block text-[10px] font-bold">أقصى عدد عروض نشطة</label><input id="limit-${escHtml(id)}" type="number" min="0" max="1000" value="${Number(f.limits?.maxOffers??50)}" class="field"><label class="block text-[10px] font-bold">أقصى عدد عروض خلال آخر 24 ساعة</label><input id="daily-limit-${escHtml(id)}" type="number" min="0" max="100" value="${Number(f.limits?.dailyLimit??10)}" class="field"><label class="flex items-center gap-2 text-[10px] font-bold"><input id="limit-block-${escHtml(id)}" type="checkbox" ${f.limits?.isLimited?'checked':''}> إيقاف استقبال العروض بالكامل</label><button onclick="saveFanniLimit('${escHtml(id)}')" class="pill-btn soft-btn w-full">حفظ حدود الاستقبال</button></div>
               <div class="rounded-xl border border-indigo-100 bg-indigo-50/50 p-3 space-y-2"><p class="text-[10px] font-black text-indigo-900">الثقة والتحقق والظهور</p><label class="block text-[10px] font-bold">درجة الثقة الداخلية (0–100)</label><input id="trust-score-${escHtml(id)}" type="number" min="0" max="100" value="${Number(f.trustScore??50)}" class="field"><label class="flex items-center gap-2 text-[10px] font-bold"><input id="verified-${escHtml(id)}" type="checkbox" ${(f.isVerified||Array.isArray(f.badges)&&f.badges.includes('verified'))?'checked':''}> بيانات الفني تم التحقق منها</label><label class="flex items-center gap-2 text-[10px] font-bold"><input id="featured-${escHtml(id)}" type="checkbox" ${f.isFeatured?'checked':''}> إظهار شارة «فني مميز» في العروض الجديدة</label><label class="block text-[10px] font-bold">انتهاء التمييز (اختياري)</label><input id="featured-until-${escHtml(id)}" type="date" value="${f.featuredUntil?String(f.featuredUntil).slice(0,10):''}" class="field"><button onclick="saveFanniProfileControls('${escHtml(id)}')" class="pill-btn primary-pill w-full">حفظ بيانات الثقة والظهور</button></div>
+            </div>
+          </details>
             </div>
           </details>
         </article>
