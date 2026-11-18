@@ -45,6 +45,17 @@ async function run() {
     app = require('../server');
     mongoose = require('mongoose');
 
+    await test('new technician referral records initialize both rewards to 150 EGP', async () => {
+      const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
+      const referralStart = technicianRoutes.indexOf('await Referral.create([');
+      const referralEnd = technicianRoutes.indexOf('}], { session });', referralStart);
+      assert.notEqual(referralStart, -1, 'technician registration should create a referral record when an inviter exists');
+      assert.notEqual(referralEnd, -1, 'technician referral creation block should be complete');
+      const referralCreation = technicianRoutes.slice(referralStart, referralEnd);
+      assert.match(referralCreation, /inviterReward:\\s*\\{\\s*amount:\\s*150\\s*\\}/, 'technician inviter reward should be initialized to 150 EGP');
+      assert.match(referralCreation, /inviteeReward:\\s*\\{\\s*amount:\\s*150\\s*\\}/, 'technician invitee reward should be initialized to 150 EGP');
+    });
+
     await test('client and technician logout audit notifications are idempotent and never enter push retry loop', async () => {
       const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
       const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
