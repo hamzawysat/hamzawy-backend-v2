@@ -271,6 +271,8 @@ async function run() {
       assert.equal(normalizeNotificationPath('https://hamzawy-backend-v2-production.up.railway.app/admin?tab=fannis'), '/admin?tab=fannis');
       assert.equal(normalizeNotificationPath('https://attacker.invalid/admin'), '/');
       assert.match(webPush, /PUSH_TTL_SECONDS = 86400/);
+      assert.match(webPush, /\.lean\(\)\.cursor\(\)/, 'web push must stream every matching subscription instead of truncating recipients');
+      assert.doesNotMatch(webPush, /\.limit\(200\)/, 'web push must not silently omit subscriptions after the first 200');
       assert.match(webPush, /TTL: String\(PUSH_TTL_SECONDS\)/);
       assert.match(delivery, /ttl: 86400/); assert.match(delivery, /ttl: '86400s'/); assert.match(delivery, /TTL: '86400'/);
       assert.match(worker, /www\.hamzawy-sat\.dynv6\.net/);
