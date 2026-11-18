@@ -186,6 +186,7 @@ function renderContent(){
       </article>
      </div>
     </div>
+    ${renderFanniReferralCard()}
     ${!approved?`<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] leading-6 text-amber-900">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
     <div class="panel p-4">
      <h3 class="section-title">اختصارات سريعة</h3>
