@@ -291,7 +291,7 @@ async function loadServices(){
 
 let dashboardSpecialtiesCollapsed=true;
 function toggleDashboardSpecialties(){dashboardSpecialtiesCollapsed=!dashboardSpecialtiesCollapsed;render();}
-let forceTechnicianRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim()==='register';
+let forceTechnicianRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim()==='register'||!!new URLSearchParams(window.location.search).get('ref');
 let state={
  storeProducts:[],myStoreOrders:[],publicContent:{siteName:'حمزاوي سات',announcement:'',faqs:[]},
  tab:forceTechnicianRegistration?'register':'login',myOrdersView:'active',
