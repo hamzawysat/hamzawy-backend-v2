@@ -167,7 +167,8 @@ router.post('/register', async (req, res, next) => {
           const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
           await Referral.create([{
             number, code: number, inviteCodeUsed: usedCode, kind: 'client',
-            inviter: inviterId, invitee: client._id, requiredCount: 1
+            inviter: inviterId, invitee: client._id, requiredCount: 1,
+            inviterReward: { amount: 50 }, inviteeReward: { amount: 50 }
           }], { session });
         }
       });
