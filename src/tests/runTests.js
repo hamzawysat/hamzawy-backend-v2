@@ -481,6 +481,27 @@ async function run() {
       clientId = r.body.client.id;
     });
 
+    await test('disabling referrals blocks new invited registrations but allows ordinary registration', async () => {
+      const AdminConfig = require('../models/AdminConfig');
+      const { makeReferralCode } = require('../utils/referralCodes');
+      await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': false } }, { upsert: true, setDefaultsOnInsert: true });
+      try {
+        const blocked = await request(app).post('/api/client/register').send({
+          name: 'عميل دعوة متوقفة', phone: '01012345679',
+          password: 'TestPass123', confirmPassword: 'TestPass123',
+          referralCode: makeReferralCode('client', clientId)
+        });
+        assert.equal(blocked.status, 403);
+        const ordinary = await request(app).post('/api/client/register').send({
+          name: 'عميل بدون دعوة', phone: '01012345680',
+          password: 'TestPass123', confirmPassword: 'TestPass123'
+        });
+        assert.equal(ordinary.status, 201, 'stopping invitations must not stop ordinary registrations');
+      } finally {
+        await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
+      }
+    });
+
     await test('duplicate client phone is rejected', async () => {
       const r = await request(app).post('/api/client/register').send({
         name: 'عميل مكرر', phone: '01012345678',
@@ -2108,6 +2129,77 @@ async function run() {
         .set('Access-Control-Request-Headers', 'content-type,x-recovery-token');
       assert.equal(r.status, 204);
       assert.match(String(r.headers['access-control-allow-headers'] || ''), /x-recovery-token/i);
+    });
+
+    await test('referral rewards honor completion thresholds, exclude cancellations and credit both parties once', async () => {
+      const Referral = require('../models/Referral');
+      const Client = require('../models/Client');
+      const Fanni = require('../models/Fanni');
+      const Order = require('../models/Order');
+      const WalletTransaction = require('../models/WalletTransaction');
+      const { refreshReferralProgress } = require('../services/referralRewards');
+      const { makeReferralCode, readReferralCode } = require('../utils/referralCodes');
+
+      const clients = await Client.create([
+        { name: 'داعي اختبار', phone: '01000000001', passwordHash: 'test-hash' },
+        { name: 'مدعو اختبار', phone: '01000000002', passwordHash: 'test-hash' }
+      ]);
+      const clientCode = makeReferralCode('client', String(clients[0]._id));
+      assert.equal(readReferralCode(clientCode)?.inviterId, String(clients[0]._id));
+      await Referral.create({
+        number: 'RFTESTCLIENT01', code: 'RFTESTCLIENT01', inviteCodeUsed: clientCode,
+        kind: 'client', inviter: clients[0]._id, invitee: clients[1]._id, requiredCount: 1
+      });
+      await Order.create([
+        { sn: 'SN990000', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'مدعو اختبار', clientPhone: clients[1].phone, clientAccount: clients[1]._id, status: 'ملغي' },
+        { sn: 'SN990001', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'مدعو اختبار', clientPhone: clients[1].phone, clientAccount: clients[1]._id, status: 'تم الانتهاء', completionDeclaredAt: new Date() }
+      ]);
+      const AdminConfig = require('../models/AdminConfig');
+      await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': false } }, { upsert: true, setDefaultsOnInsert: true });
+      const clientOutcome = await refreshReferralProgress({ kind: 'client', inviteeId: clients[1]._id, mongoose });
+      assert.equal(clientOutcome.status, 'completed');
+      const clientBalances = await Client.find({ _id: { $in: clients.map(x => x._id) } }).sort({ phone: 1 }).lean();
+      assert.deepEqual(clientBalances.map(x => x.walletBalance), [50, 50]);
+      const clientTransactions = await WalletTransaction.find({ referralNumber: 'RFTESTCLIENT01', type: 'referral_reward' }).lean();
+      assert.equal(clientTransactions.length, 2);
+      assert.ok(clientTransactions.every(x => String(x.referral) === String(clientOutcome.referralId)));
+      assert.equal(await refreshReferralProgress({ kind: 'client', inviteeId: clients[1]._id, mongoose }), null);
+      const clientBalancesAfterRetry = await Client.find({ _id: { $in: clients.map(x => x._id) } }).sort({ phone: 1 }).lean();
+      assert.deepEqual(clientBalancesAfterRetry.map(x => x.walletBalance), [50, 50]);
+
+      const technicians = await Fanni.create([
+        { name: 'فني داعي اختبار', phone: '01000000003', passwordHash: 'test-hash', specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni' },
+        { name: 'فني مدعو اختبار', phone: '01000000004', passwordHash: 'test-hash', specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni' }
+      ]);
+      const technicianCode = makeReferralCode('fanni', String(technicians[0]._id));
+      assert.equal(readReferralCode(technicianCode)?.kind, 'fanni');
+      await Referral.create({
+        number: 'RFTESTFANNI001', code: 'RFTESTFANNI001', inviteCodeUsed: technicianCode,
+        kind: 'fanni', inviter: technicians[0]._id, invitee: technicians[1]._id, requiredCount: 3
+      });
+      await Order.create([
+        { sn: 'SN990002', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'عميل اختبار', clientPhone: '01000000005', assignedFanni: technicians[1]._id, status: 'تم الانتهاء', completionDeclaredAt: new Date(Date.now() + 1) },
+        { sn: 'SN990003', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'عميل اختبار', clientPhone: '01000000005', assignedFanni: technicians[1]._id, status: 'تم الانتهاء', completionDeclaredAt: new Date(Date.now() + 2) },
+        { sn: 'SN990004', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'عميل اختبار', clientPhone: '01000000005', assignedFanni: technicians[1]._id, status: 'ملغي' }
+      ]);
+      const beforeThird = await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose });
+      assert.equal(beforeThird.status, 'in_progress');
+      const beforeThirdBalances = await Fanni.find({ _id: { $in: technicians.map(x => x._id) } }).sort({ phone: 1 }).lean();
+      assert.deepEqual(beforeThirdBalances.map(x => x.walletBalance), [0, 0]);
+      await Order.create({
+        sn: 'SN990005', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'عميل اختبار',
+        clientPhone: '01000000005', assignedFanni: technicians[1]._id, status: 'تم الانتهاء',
+        completionDeclaredAt: new Date(Date.now() + 3)
+      });
+      const technicianOutcome = await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose });
+      assert.equal(technicianOutcome.status, 'completed');
+      const technicianBalances = await Fanni.find({ _id: { $in: technicians.map(x => x._id) } }).sort({ phone: 1 }).lean();
+      assert.deepEqual(technicianBalances.map(x => x.walletBalance), [50, 50]);
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFANNI001', type: 'referral_reward' }), 2);
+      assert.equal(await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose }), null);
+      const referralRows = await Referral.find({ number: { $in: ['RFTESTCLIENT01', 'RFTESTFANNI001'] } }).lean();
+      assert.ok(referralRows.every(x => x.status === 'completed' && x.achievementLog.length === x.requiredCount));
+      await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
     await test('unknown API route returns JSON 404', async () => {

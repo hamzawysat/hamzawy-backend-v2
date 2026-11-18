@@ -154,6 +154,7 @@ function renderCurrentTab(){
     case 'store': return renderStore();
     case 'storeOrders': return renderStoreOrders();
     case 'clients': return renderClients();
+    case 'referrals': return renderReferralManagement();
     case 'stats': return renderStats();
     default: return renderFannis();
   }

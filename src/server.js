@@ -28,6 +28,7 @@ const adminRouter = require('./routes/admin');
 const storeRouter = require('./routes/store');
 const publicRouter = require('./routes/public');
 const clientRouter = require('./routes/client');
+const referralsRouter = require('./routes/referrals');
 const complaintRouter = require('./routes/Complaint');
 const notificationsRouter = require('./routes/notifications');
 const supportRouter = require('./routes/support');
@@ -426,6 +427,7 @@ app.use('/api/fanni/registration-media', fanniIdentityUploadLimiter);
 
 app.use('/api', publicRouter);
 app.use('/api/client', clientRouter);
+app.use('/api/referrals', referralsRouter);
 app.use('/api/notifications', notificationsRouter);
 app.use('/api/support', supportRouter);
 app.use('/api/password-recovery', passwordRecoveryRouter);

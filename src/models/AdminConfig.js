@@ -31,6 +31,7 @@ const adminConfigSchema = new mongoose.Schema({
   settings: {
     siteName: { type: String, trim: true, maxlength: 100, default: 'حمزاوي سات' },
     maintenance: { type: Boolean, default: false },
+    referralsEnabled: { type: Boolean, default: true },
     maintenanceMessage: { type: String, trim: true, maxlength: 500, default: '' },
     maxFanniSignupAttempts: { type: Number, min: 1, max: 100, default: 5 },
     walletPhone1: { type: String, trim: true, maxlength: 20, default: '' },

@@ -307,7 +307,7 @@ const API={
     return this.request(url,{method:'GET'});
   }
 };
-const forceClientRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim().toLowerCase()==='register';
+const forceClientRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim().toLowerCase()==='register'||!!new URLSearchParams(window.location.search).get('ref');
 let state={
   storeProducts:[],myStoreOrders:[],
   commerceItems:[],commerceSubscriptions:[],commerceLoading:false,commerceError:'',commerceSubmitting:'',walletBalance:0,walletFrozen:false,walletTransactions:[],walletTopupRequests:[],walletTransferNumbers:[],walletLoading:false,walletSubmitting:false,walletFromPhone:'',walletAmount:'',walletMethod:'vodafone_cash',walletReference:'',walletIdempotencyKey:'',walletError:'',walletSuccess:'',

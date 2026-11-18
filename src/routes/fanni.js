@@ -8,6 +8,9 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const Fanni = require('../models/Fanni');
+const AdminConfig = require('../models/AdminConfig');
+const Referral = require('../models/Referral');
+const { readReferralCode } = require('../utils/referralCodes');
 const Service = require('../models/Service');
 const { getActiveServiceNames, normalizeServiceKey } = require('../services/serviceCatalog');
 const Region = require('../models/Region');
@@ -45,7 +48,8 @@ const registerSchema = Joi.object({
     .required(),
   guidelinesAccepted: Joi.boolean().valid(true).optional(),
   identityCardFrontFileId: Joi.string().hex().length(24).required(),
-  identityCardBackFileId: Joi.string().hex().length(24).required()
+  identityCardBackFileId: Joi.string().hex().length(24).required(),
+  referralCode: Joi.string().trim().max(50).allow('').optional()
 });
 
 const profileUpdateSchema = Joi.object({
@@ -196,21 +200,44 @@ router.post(
 
       const passwordHash = await bcrypt.hash(req.body.password, 10);
 
-      const fanni = await Fanni.create({
-        name: req.body.name,
-        phone,
-        passwordHash,
-        specialties,
-        areas: approvedAreas,
-        identityCardFrontFileId: identityIds[0],
-        identityCardBackFileId: identityIds[1],
-        ...(req.body.guidelinesAccepted === true ? {
-          technicianGuidelinesAcceptedAt: new Date(),
-          technicianGuidelinesVersion: TECHNICIAN_GUIDELINES_VERSION
-        } : {}),
-        status: 'قيد المراجعة',
-        role: 'fanni'
-      });
+      let fanni;
+      const session = await mongoose.startSession();
+      try {
+        await session.withTransaction(async () => {
+          let inviterId = null;
+          let usedCode = '';
+          if (req.body.referralCode) {
+            const config = await AdminConfig.findOne({ key: 'main' }).select('settings').session(session).lean();
+            if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
+            const decoded = readReferralCode(req.body.referralCode);
+            if (!decoded || decoded.kind !== 'fanni') throw new Error('INVALID_REFERRAL_CODE');
+            const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id phone').session(session);
+            if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+            if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
+            inviterId = inviter._id;
+            usedCode = decoded.code;
+          }
+          const created = await Fanni.create([{
+            name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
+            identityCardFrontFileId: identityIds[0], identityCardBackFileId: identityIds[1],
+            ...(req.body.guidelinesAccepted === true ? {
+              technicianGuidelinesAcceptedAt: new Date(),
+              technicianGuidelinesVersion: TECHNICIAN_GUIDELINES_VERSION
+            } : {}),
+            status: 'قيد المراجعة', role: 'fanni'
+          }], { session });
+          fanni = created[0];
+          if (inviterId) {
+            const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
+            await Referral.create([{
+              number, code: number, inviteCodeUsed: usedCode, kind: 'fanni',
+              inviter: inviterId, invitee: fanni._id, requiredCount: 3
+            }], { session });
+          }
+        });
+      } finally {
+        await session.endSession();
+      }
 
       await notifyAdmins({ type: 'admin_new_technician', title: 'فني جديد يحتاج مراجعة', message: `سجّل فني جديد باسم ${fanni.name} ورقم ${fanni.phone}.`, link: '/admin?tab=fannis', dedupeKey: 'admin-new-technician:' + String(fanni._id) });
       return res.status(201).json({
@@ -219,6 +246,9 @@ router.post(
         status: fanni.status
       });
     } catch (err) {
+      if (err?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
+      if (err?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للفنيين.' });
+      if (err?.message === 'REFERRER_NOT_FOUND') return res.status(400).json({ message: 'صاحب كود الدعوة غير موجود.' });
       if (err && err.code === 11000) {
         return res.status(409).json({
           message: 'رقم الهاتف مسجل بالفعل. جرّب تسجيل الدخول.'

@@ -3,6 +3,19 @@
 let fanniLoadingSafetyTimer=null;
 let globalRefreshInProgress=false;
 let technicianRefreshInProgress=false;
+let fanniReferralInfo=null;
+async function loadFanniReferralInfo(){if(!getToken())return;try{fanniReferralInfo=await apiGet('/api/referrals/me/fanni');if(state.tab==='home')render();}catch(error){console.warn('تعذر تحميل دعوات الفني:',error.message);}}
+async function copyFanniReferralLink(){const value=fanniReferralInfo?.url||'';if(!value)return;try{await navigator.clipboard.writeText(value);toast('تم نسخ رابط الدعوة','success');}catch(_){toast('تعذر النسخ تلقائيًا؛ انسخ الرابط يدويًا','error');}}
+async function shareFanniReferralLink(){const value=fanniReferralInfo?.url||'';if(!value)return;try{if(navigator.share)await navigator.share({title:'دعوة فني - حمزاوي سات',text:'ادعُ فنيًا إلى حمزاوي سات، وبعد إكماله 3 شغلانات مكتملة يحصل كل منكما على 50 جنيهًا.',url:value});else await copyFanniReferralLink();}catch(error){if(error?.name!=='AbortError')toast('تعذرت مشاركة الرابط','error');}}
+function renderFanniReferralCard(){
+ if(!fanniReferralInfo)return '';
+ const info=fanniReferralInfo;
+ if(info.enabled&&info.url&&window.QRCode)requestAnimationFrame(()=>{const el=document.getElementById('fanniReferralQr');if(el){el.innerHTML='';new QRCode(el,{text:info.url,width:150,height:150,colorDark:'#111827',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});}});
+ const history=Array.isArray(info.referrals)?info.referrals:[];
+ const sharing=info.enabled?'<div class="mt-3 rounded-xl border border-dashed border-amber-300 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">كود دعوتك</p><p class="mt-1 text-center text-lg font-black tracking-wider" dir="ltr">'+esc(fanniReferralInfo.code||'')+'</p><p class="mt-2 break-all text-center text-[10px] text-slate-500" dir="ltr">'+esc(info.url||'')+'</p></div><div class="mt-3 flex justify-center rounded-xl border border-slate-200 bg-white p-2"><div id="fanniReferralQr" aria-label="باركود QR لرابط الدعوة"></div></div><div class="mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="copyFanniReferralLink()" class="rounded-xl bg-slate-900 px-3 py-2.5 text-xs font-extrabold text-white">نسخ الرابط</button><button type="button" onclick="shareFanniReferralLink()" class="rounded-xl border border-amber-300 bg-amber-100 px-3 py-2.5 text-xs font-extrabold text-amber-900">مشاركة الدعوة</button></div>':'<p class="mt-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11px] font-bold text-amber-900">إنشاء دعوات فنيين جديدة متوقف حاليًا. دعواتك المسجلة سابقًا مستمرة في احتساب الشغلانات وصرف المكافآت عند استحقاقها.</p>';
+ const rows=history.length?'<div class="mt-3 space-y-2">'+history.map(x=>'<div class="rounded-xl border border-slate-200 bg-white p-3 text-[10px]"><b>'+esc(x.number||'دعوة')+'</b><span class="float-left">'+esc(({pending:'معلقة',in_progress:'قيد التقدم',eligible:'مستحقة',completed:'مكتملة',rejected:'مرفوضة'})[x.status]||x.status||'—')+'</span><p class="mt-2 text-slate-600">الإنجاز: '+Number(x.completedCount||0)+' / '+Number(x.requiredCount||3)+' • مكافأتك: '+(x.inviterReward?.paidAt?'تم الصرف':'لم تصرف')+' • مكافأة الفني: '+(x.inviteeReward?.paidAt?'تم الصرف':'لم تصرف')+'</p></div>').join('')+'</div>':'<p class="mt-3 text-[10px] text-slate-500">لا توجد دعوات فنيين مسجلة حتى الآن.</p>';
+ return '<section class="rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-4"><div class="flex items-center gap-3"><span class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><div><h3 class="text-sm font-black text-slate-900">ادعُ فنيًا واكسب 50 جنيهًا</h3><p class="mt-1 text-[10px] leading-5 text-slate-600">الفني المدعو يحصل على 50 جنيهًا أيضًا بعد إكمال 3 شغلانات فعلية.</p></div></div>'+sharing+'<div class="mt-3 text-[10px] font-bold text-slate-600">دعواتك: '+Number(info.totals?.count||history.length)+' • المكتملة: '+Number(info.totals?.completed||0)+'</div>'+rows+'</section>';
+}
 function showFanniLoading(message){let overlay=document.getElementById('fanniLoadingOverlay');if(!overlay){overlay=document.createElement('div');overlay.id='fanniLoadingOverlay';overlay.className='fanni-loading-overlay';overlay.setAttribute('role','status');overlay.setAttribute('aria-live','polite');overlay.innerHTML='<main class="account-gate min-h-screen px-4 py-8 flex items-center justify-center"><div class="w-full max-w-[440px] text-center"><div class="account-brand mx-auto mb-5 flex items-center justify-center"><img src="/images/LOGO_UPLOAD_HERE/logo.png" alt="صُنّاع" class="sonaa-logo-svg account-loading-logo"></div><h1 class="text-2xl font-black">صُنّاع</h1><p class="account-slogan mt-1 text-base font-extrabold">كل خدمة تبدأ بخطوة</p><div class="mt-7 inline-flex items-center gap-3 rounded-2xl border border-blue-200 bg-white/90 px-5 py-4 font-extrabold text-blue-900 shadow-xl"><span class="inline-block h-5 w-5 animate-spin rounded-full border-2 border-blue-600 border-t-transparent"></span><span id="fanniLoadingMessage">جاري تحميل البيانات...</span></div></div></main>';document.body.appendChild(overlay);}const label=document.getElementById('fanniLoadingMessage');if(label)label.textContent=message||'جاري تحميل البيانات...';overlay.classList.remove('is-hidden');clearTimeout(fanniLoadingSafetyTimer);fanniLoadingSafetyTimer=setTimeout(hideFanniLoading,9000);}
 function hideFanniLoading(){clearTimeout(fanniLoadingSafetyTimer);const overlay=document.getElementById('fanniLoadingOverlay');if(overlay)overlay.classList.add('is-hidden');}
 async function refreshTechnicianPage(){
@@ -12,7 +25,7 @@ async function refreshTechnicianPage(){
  try{
   const checks=[['الخدمات',loadServices],['مناطق العمل',loadAreas],['إعلانات وأسئلة شائعة',loadFanniPublicContent]];
   if(getToken()){
-   checks.push(['الملف الشخصي',loadProfile],['الطلبات المتاحة',loadOrders],['العروض والمهام',loadMyOffers],['المحفظة',loadWalletHistory],['إشعارات الحساب',loadNotifications],['أرقام التحويل',loadWalletTransferNumbers]);
+   checks.push(['الملف الشخصي',loadProfile],['الطلبات المتاحة',loadOrders],['العروض والمهام',loadMyOffers],['المحفظة',loadWalletHistory],['إشعارات الحساب',loadNotifications],['أرقام التحويل',loadWalletTransferNumbers],['الدعوات',loadFanniReferralInfo]);
   }
   const results=await Promise.all(checks.map(async ([label,loader])=>{
    try{return {label,status:await loader()};}
@@ -39,7 +52,7 @@ async function start(){
   await loadProfile();
   if(!getToken())return;
   if(state.tab==='login'||state.tab==='register')state.tab='home';
-  await Promise.allSettled([loadOrders(),loadMyOffers(),loadWalletHistory(),loadNotifications()]);
+  await Promise.allSettled([loadOrders(),loadMyOffers(),loadWalletHistory(),loadNotifications(),loadFanniReferralInfo()]);
  }catch(error){
   console.error('Technician page initialization failed:',error);
   const detail=String(error?.message||'خطأ غير معروف').slice(0,180);

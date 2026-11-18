@@ -1,6 +1,7 @@
 'use strict';
 
 const express = require('express');
+const { refreshReferralProgress } = require('../../services/referralRewards');
 
 function createOrderLifecycleRouter({
   mongoose,
@@ -496,6 +497,13 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
     order.status = 'تم الانتهاء';
     order.completionDeclaredAt = new Date();
     await order.save({ session });
+
+    // Referral rewards are settled in the same MongoDB transaction as completion,
+    // so the completion and both wallet credits either all commit or all roll back.
+    if (order.clientAccount) {
+      await refreshReferralProgress({ kind: 'client', inviteeId: order.clientAccount, mongoose, session });
+    }
+    await refreshReferralProgress({ kind: 'fanni', inviteeId: fanni._id, mongoose, session });
     await session.commitTransaction();
 
     await autoPromoteFanni(req.userId, 'إكمال المهمة ' + order.sn);
