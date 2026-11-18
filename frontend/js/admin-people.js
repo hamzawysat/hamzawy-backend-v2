@@ -160,7 +160,7 @@ function getDefaultAdminPermissions(role){
     'قراءة فقط':[],
     'مشرف':['orders','complaints','support','offers'],
     'مشرف أول':['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce'],
-    'مدير':keys
+    'مدير':keys.filter(key=>key!=='website')
   };
   const readOnly=role==='قراءة فقط';
   const readAll=role==='مدير'||role==='مشرف أول'||readOnly;
