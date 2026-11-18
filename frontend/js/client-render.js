@@ -48,6 +48,7 @@ function render(){
     }
     renderAccountGate();return;
   }
+  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
   const matching=CATEGORIES.map(c=>({
@@ -100,7 +101,7 @@ function render(){
       const completedCount=orders.length-activeCount;
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
-        <button type="button" onclick="scrollToClientReferralCard()" class="w-full rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-3 text-right shadow-sm"><span class="flex items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><span class="min-w-0 flex-1"><span class="block text-sm font-black text-amber-950">ادعُ صديقك لتحصل على 50 جنيه مكافأة</span><span class="mt-1 block text-[11px] font-extrabold text-amber-800">اضغط هنا لدعوة صديقك</span></span><span class="text-xl font-black text-amber-800">←</span></span></button>
+        <button type="button" onclick="openClientReferralPage()" class="w-full rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-3 text-right shadow-sm"><span class="flex items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><span class="min-w-0 flex-1"><span class="block text-sm font-black text-amber-950">ادعُ صديقك لتحصل على 50 جنيه مكافأة</span><span class="mt-1 block text-[11px] font-extrabold text-amber-800">اضغط هنا لدعوة صديقك</span></span><span class="text-xl font-black text-amber-800">←</span></span></button>
         <div class="panel p-4">
           <div class="flex items-center justify-between gap-3">
             <div><p class="text-[10px] font-bold text-slate-500">نظرة سريعة على حسابك</p><h2 id="clientHomeTitle" class="text-[17px] font-black mt-1">أهلاً ${escHtml(state.account?.name||state.clientName||'بك')}</h2><p class="text-[11px] text-slate-500 mt-1">كل خدمات حمزاوي سات في مكان واحد</p></div>
@@ -114,7 +115,6 @@ function render(){
           </div>
           <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 flex items-center justify-between gap-3"><div><p class="text-[11px] font-extrabold">الإشعارات</p><p class="text-[10px] text-slate-500 mt-1"> ${Number(state.notificationsUnread||0)} إشعار غير مقروء</p></div><button type="button" onclick="toggleNotifications()" class="rounded-lg bg-white border border-slate-200 px-3 py-2 text-[11px] font-extrabold">فتح الإشعارات</button></div>
         </div>
-        ${renderClientReferralCard()}
         <div class="panel p-4">
           <h3 class="text-[14px] font-extrabold">القائمة الرئيسية</h3>
           <p class="mt-1 text-[10px] text-slate-500">اختار القسم اللي عايز تفتحه</p>

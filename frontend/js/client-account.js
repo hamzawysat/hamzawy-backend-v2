@@ -30,8 +30,11 @@ function showLogoutConfirmation(){if(document.getElementById('logoutConfirmOverl
 function performClientLogout(){const token=state.accountToken||(()=>{try{return localStorage.getItem('sonaa_client_account_token')||'';}catch(e){return '';}})();if(token){try{fetch('/api/client/logout',{method:'POST',headers:{Authorization:'Bearer '+token},keepalive:true}).catch(()=>{});}catch(e){}}try{localStorage.removeItem('sonaa_client_account_token');}catch(e){}state.accountToken='';state.account=null;state.notifications=[];state.notificationsUnread=0;state.notificationsOpen=false;state.myOrders=[];state.tracked=null;state.tab='new';state.accountError='';render();}
 function logoutClient(){showLogoutConfirmation();}
 let clientReferralInfo = null;
+let clientReferralPageOpen = false;
+function openClientReferralPage(){clientReferralPageOpen=true;render();}
+function closeClientReferralPage(){clientReferralPageOpen=false;render();}
 function clientReferralCodeFromUrl(){try{return new URLSearchParams(location.search).get('ref')||'';}catch(_){return '';}}
-async function loadClientReferralInfo(){if(!state.accountToken)return;try{clientReferralInfo=await API.request('/api/referrals/me/client',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});if(state.tab==='home')render();}catch(error){console.warn('تعذر تحميل دعوات العميل:',error.message);}}
+async function loadClientReferralInfo(){if(!state.accountToken)return;try{clientReferralInfo=await API.request('/api/referrals/me/client',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});if(state.tab==='home'||clientReferralPageOpen)render();}catch(error){console.warn('تعذر تحميل دعوات العميل:',error.message);}}
 async function copyClientReferralLink(){const value=clientReferralInfo?.url||'';if(!value)return;try{await navigator.clipboard.writeText(value);showToast('تم نسخ رابط الدعوة','success');}catch(_){showToast('تعذر النسخ تلقائيًا؛ انسخ الرابط يدويًا','error');}}
 async function shareClientReferralLink(){const value=clientReferralInfo?.url||'';if(!value)return;const text='ادعُ صديقك لاستخدام حمزاوي سات، وكلانا يحصل على 50 جنيهًا بعد إكمال أول طلب.';try{if(navigator.share)await navigator.share({title:'دعوة حمزاوي سات',text,url:value});else await copyClientReferralLink();}catch(error){if(error?.name!=='AbortError')showToast('تعذرت مشاركة الرابط','error');}}
 function scrollToClientReferralCard(){const card=document.getElementById('clientReferralCard');if(card)card.scrollIntoView({behavior:'smooth',block:'center'});}
