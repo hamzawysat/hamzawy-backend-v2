@@ -70,7 +70,7 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
     if (req.query.from || req.query.to) {
       filter.invitedAt = {};
       if (req.query.from && !Number.isNaN(Date.parse(req.query.from))) filter.invitedAt.$gte = new Date(req.query.from);
-      if (req.query.to && !Number.isNaN(Date.parse(req.query.to))) filter.invitedAt.$lte = new Date(req.query.to);
+      if (req.query.to && !Number.isNaN(Date.parse(req.query.to))) { const exclusiveEnd = new Date(req.query.to); exclusiveEnd.setDate(exclusiveEnd.getDate() + 1); filter.invitedAt.$lt = exclusiveEnd; }
     }
     if (req.query.paid === 'yes') filter.$and = [{ 'inviterReward.paidAt': { $ne: null } }, { 'inviteeReward.paidAt': { $ne: null } }];
     if (req.query.paid === 'no') filter.$or = [{ 'inviterReward.paidAt': null }, { 'inviteeReward.paidAt': null }];
