@@ -49,8 +49,8 @@ router.get('/admin/summary', auth('admin'), async (req, res, next) => {
         _id: '$kind',
         inviterPaid: { $sum: { $cond: [{ $ne: ['$inviterReward.paidAt', null] }, '$inviterReward.amount', 0] } },
         inviteePaid: { $sum: { $cond: [{ $ne: ['$inviteeReward.paidAt', null] }, '$inviteeReward.amount', 0] } },
-        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, { $ifNull: ['$inviterReward.amount', 50] }] }, 0] } },
-        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, { $ifNull: ['$inviteeReward.amount', 50] }] }, 0] } }
+        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } } },
+        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } }
       } }])
     ]);
     return res.set('Cache-Control', 'no-store').json({
