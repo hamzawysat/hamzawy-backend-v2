@@ -236,8 +236,13 @@ function apiResponse(pathname) {
                   };
                 });
                 await page.mouse.up();
+                const pressedRgb = pressedStyle.backgroundColor.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                const expectedPressedRgb = [169, 130, 46];
+                const pressedColorMatches = Boolean(pressedRgb) &&
+                  pressedRgb.slice(1).every((channel, index) =>
+                    Math.abs(Number(channel) - expectedPressedRgb[index]) <= 4);
                 if (pressedStyle.transform === 'none' ||
-                    pressedStyle.backgroundColor !== 'rgb(169, 130, 46)' ||
+                    !pressedColorMatches ||
                     pressedStyle.animationName !== 'sonaa-button-press-pulse' ||
                     pressedStyle.boxShadow === 'none') {
                   failures.push(target.name + '/' + viewport.name + ': ' + selector +

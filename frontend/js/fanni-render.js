@@ -396,8 +396,8 @@ function renderContent(){
  `}
  
  ${state.offerModal?`
- <div class="fixed inset-0 z-50 bg-[#07152e]/55 backdrop-blur-sm flex items-end sm:items-center justify-center p-3">
-  <div class="w-full max-w-[480px] bg-white rounded-[22px] p-5 shadow-2xl">
+ <div class="fixed inset-0 z-50 bg-[#07152e]/55 backdrop-blur-sm flex items-end sm:items-center justify-center p-3 overflow-y-auto">
+  <div class="w-full max-w-[480px] max-h-[calc(100dvh-1.5rem)] overflow-y-auto overscroll-contain bg-white rounded-[22px] p-5 shadow-2xl" style="padding-bottom:max(1.25rem,env(safe-area-inset-bottom))">
    <div class="flex justify-between items-center pb-3 border-b"><div><h3 class="font-extrabold text-[15px]">تقديم عرض</h3><p class="text-[10px] text-slate-500 mt-1">كود الطلب: ${esc(state.offerModal.sn)}</p></div><button onclick="closeOffer()" class="h-9 w-9 rounded-xl bg-slate-100">✕</button></div>
 
    <div class="mt-4 space-y-4">
