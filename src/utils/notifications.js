@@ -158,41 +158,47 @@ async function sendFirebasePushNotifications(devices, payload) {
     destination: destinationFor(type),
     notificationId: String(payload.notificationId || '')
   };
-  const results = await Promise.all(devices.map(async device => {
-    const response = await notificationFetch(endpoint, {
-      method: 'POST',
-      headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: {
-        token: device.token,
-        notification: {
-          title: String(payload.title || 'إشعار من صُنّاع').slice(0, 100),
-          body: String(payload.message || '').slice(0, 300)
-        },
-        data,
-        android: {
-          priority: 'HIGH',
-          collapse_key: payload.notificationId ? 'hamzawy-' + String(payload.notificationId) : undefined,
-          ttl: '86400s',
-          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
-        },
-        webpush: { headers: { TTL: '86400', Urgency: 'high' } },
-        apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
-      } })
-    });
-    if (response.status === 404 || response.status === 410) {
-      await PushToken.deleteOne({ token: device.token }).catch(() => {});
-    }
-    if (!response.ok) {
-      const detail = (await response.text().catch(() => '')).slice(0, 240);
-      const error = 'FCM_HTTP_' + response.status + ': ' + detail;
-      console.error('FCM delivery failed:', response.status, detail);
-      return { ok: false, error };
-    }
-    return { ok: true };
-  }));
-  const accepted = results.filter(result => result?.ok).length;
-  const failed = results.length - accepted;
-  const lastError = results.find(result => !result?.ok)?.error || '';
+  let accepted = 0, failed = 0, lastError = '';
+  // Bound concurrent FCM requests so large recipient groups do not create an
+  // unbounded burst of outbound requests or memory pressure.
+  for (let start = 0; start < devices.length; start += 50) {
+    const batch = devices.slice(start, start + 50);
+    const results = await Promise.all(batch.map(async device => {
+      const response = await notificationFetch(endpoint, {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + accessToken, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: {
+          token: device.token,
+          notification: {
+            title: String(payload.title || 'إشعار من صُنّاع').slice(0, 100),
+            body: String(payload.message || '').slice(0, 300)
+          },
+          data,
+          android: {
+            priority: 'HIGH',
+            collapse_key: payload.notificationId ? 'hamzawy-' + String(payload.notificationId) : undefined,
+            ttl: '86400s',
+            notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
+          },
+          webpush: { headers: { TTL: '86400', Urgency: 'high' } },
+          apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
+        } })
+      });
+      if (response.status === 404 || response.status === 410) {
+        await PushToken.deleteOne({ token: device.token }).catch(() => {});
+      }
+      if (!response.ok) {
+        const detail = (await response.text().catch(() => '')).slice(0, 240);
+        const error = 'FCM_HTTP_' + response.status + ': ' + detail;
+        console.error('FCM delivery failed:', response.status, detail);
+        return { ok: false, error };
+      }
+      return { ok: true };
+    }));
+    accepted += results.filter(result => result?.ok).length;
+    failed += results.length - results.filter(result => result?.ok).length;
+    lastError = results.find(result => !result?.ok)?.error || lastError;
+  }
   return { status: failed === 0 ? 'accepted' : accepted > 0 ? 'partial' : 'failed', accepted, failed, lastError };
 }
 async function sendPushNotification({ recipientRole, recipientId, title, message, type, link = '', notificationId = '', channels = ['expo', 'fcm'] }) {

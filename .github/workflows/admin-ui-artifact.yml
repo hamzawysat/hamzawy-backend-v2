@@ -1,0 +1,36 @@
+name: Build independent admin UI artifact
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - architecture/independent-admin-ui
+    paths:
+      - 'frontend/**'
+      - 'scripts/build-admin.js'
+      - 'package.json'
+      - '.github/workflows/admin-ui-artifact.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build-admin-ui:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Build admin UI
+        run: npm run build:admin
+      - name: Upload admin UI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: hamzawy-admin-ui
+          path: admin-dist/
+          if-no-files-found: error
+          retention-days: 30

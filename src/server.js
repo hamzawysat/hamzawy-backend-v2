@@ -103,6 +103,20 @@ app.use((req, res, next) => {
   return next();
 });
 
+// Use one validated origin allowlist for both CORS and CSP. This lets a separately
+// hosted admin UI connect to the API only when its exact HTTPS/HTTP origin is configured.
+const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(origin => {
+    try {
+      const parsed = new URL(origin);
+      return ['http:', 'https:'].includes(parsed.protocol) && parsed.origin === origin;
+    } catch (_) {
+      return false;
+    }
+  });
+
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -113,7 +127,7 @@ app.use(helmet({
       fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
       imgSrc: ["'self'", 'data:', 'blob:', 'https:'],
       mediaSrc: ["'self'", 'blob:', 'data:'],
-      connectSrc: ["'self'", 'https://www.hamzawy-sat.dynv6.net'],
+      connectSrc: ["'self'", 'https://www.hamzawy-sat.dynv6.net', ...configuredOrigins],
       objectSrc: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
@@ -137,7 +151,7 @@ app.use((req, res, next) => {
     "font-src 'self' https://fonts.gstatic.com data:",
     "img-src 'self' data: blob: https:",
     "media-src 'self' blob: data:",
-    "connect-src 'self' https://www.hamzawy-sat.dynv6.net",
+    "connect-src 'self' https://www.hamzawy-sat.dynv6.net " + configuredOrigins.join(' '),
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",
@@ -164,11 +178,6 @@ app.post('/api/csp-report', cspReportLimiter,
 
 // Restrict browser access to explicitly configured origins. Requests without
 // an Origin header (for example native apps/server-to-server calls) remain valid.
-const configuredOrigins = String(process.env.ALLOWED_ORIGINS || '')
-  .split(',')
-  .map(origin => origin.trim())
-  .filter(Boolean);
-
 const allowedOrigins = new Set([
   ...configuredOrigins,
   'https://www.hamzawy-sat.dynv6.net',

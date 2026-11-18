@@ -1,7 +1,13 @@
 'use strict';
 
-const CURRENT_PUBLIC_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
-const LEGACY_PUBLIC_HOSTS = new Set(['hamzawy-backend-v2-production.up.railway.app', 'hamzawy-sat.vercel.app']);
+// Resolve notification destinations against the origin that actually serves this worker.
+// Retain known historical hosts only as accepted input; never navigate back to them.
+const CURRENT_PUBLIC_ORIGIN = self.location.origin;
+const LEGACY_PUBLIC_HOSTS = new Set([
+  'www.hamzawy-sat.dynv6.net',
+  'hamzawy-backend-v2-production.up.railway.app',
+  'hamzawy-sat.vercel.app'
+]);
 
 function notificationTarget(value) {
   try {

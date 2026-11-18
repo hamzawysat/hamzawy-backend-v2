@@ -56,10 +56,14 @@ jobs:
           node -e "for (const file of ['/tmp/npm-audit-full.json','/tmp/npm-audit-production.json']) { const report = JSON.parse(require('fs').readFileSync(file, 'utf8')); console.log('AUDIT ' + file + ': ' + JSON.stringify(report.metadata?.vulnerabilities || {})); for (const [name, item] of Object.entries(report.vulnerabilities || {})) console.log(JSON.stringify({name, severity:item.severity, direct:item.isDirect, range:item.range, fixAvailable:item.fixAvailable, via:item.via})); }"
       - name: Run backend integration and security tests
         run: npm test
+      - name: Build independent admin UI artifact
+        run: npm run build:admin
       - name: Install isolated browser test runner
         run: |
           npm install --prefix /tmp/sonaa-playwright --no-save --ignore-scripts playwright@1.55.0
           /tmp/sonaa-playwright/node_modules/.bin/playwright install --with-deps chromium
+      - name: Run independent admin artifact browser smoke test
+        run: NODE_PATH=/tmp/sonaa-playwright/node_modules node scripts/admin-artifact-smoke.cjs
       - name: Run frontend browser smoke tests
         run: |
           PORT=4173 node scripts/browser-test-server.cjs >/tmp/sonaa-http.log 2>&1 &
