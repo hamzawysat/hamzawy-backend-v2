@@ -92,7 +92,7 @@ async function initializeClientAccount(){
       state.clientName=state.account.name||'';
       state.phone=state.account.phone||'';
       state.tab='home';
-      await Promise.allSettled([loadMyOrders(false),loadNotifications()]);
+      await Promise.allSettled([loadMyOrders(false),loadNotifications(),loadClientReferralInfo()]);
     }else{
       state.accountToken='';
       try{localStorage.removeItem('sonaa_client_account_token');}catch(e){}
