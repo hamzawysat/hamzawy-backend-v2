@@ -481,6 +481,27 @@ async function run() {
       clientId = r.body.client.id;
     });
 
+    await test('disabling referrals blocks new invited registrations but allows ordinary registration', async () => {
+      const AdminConfig = require('../models/AdminConfig');
+      const { makeReferralCode } = require('../utils/referralCodes');
+      await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': false } }, { upsert: true, setDefaultsOnInsert: true });
+      try {
+        const blocked = await request(app).post('/api/client/register').send({
+          name: 'عميل دعوة متوقفة', phone: '01012345679',
+          password: 'TestPass123', confirmPassword: 'TestPass123',
+          referralCode: makeReferralCode('client', clientId)
+        });
+        assert.equal(blocked.status, 403);
+        const ordinary = await request(app).post('/api/client/register').send({
+          name: 'عميل بدون دعوة', phone: '01012345680',
+          password: 'TestPass123', confirmPassword: 'TestPass123'
+        });
+        assert.equal(ordinary.status, 201, 'stopping invitations must not stop ordinary registrations');
+      } finally {
+        await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
+      }
+    });
+
     await test('duplicate client phone is rejected', async () => {
       const r = await request(app).post('/api/client/register').send({
         name: 'عميل مكرر', phone: '01012345678',
@@ -2133,6 +2154,8 @@ async function run() {
         { sn: 'SN990000', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'مدعو اختبار', clientPhone: clients[1].phone, clientAccount: clients[1]._id, status: 'ملغي' },
         { sn: 'SN990001', service: 'خدمة اختبار', area: 'القاهرة', clientName: 'مدعو اختبار', clientPhone: clients[1].phone, clientAccount: clients[1]._id, status: 'تم الانتهاء', completionDeclaredAt: new Date() }
       ]);
+      const AdminConfig = require('../models/AdminConfig');
+      await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': false } }, { upsert: true, setDefaultsOnInsert: true });
       const clientOutcome = await refreshReferralProgress({ kind: 'client', inviteeId: clients[1]._id, mongoose });
       assert.equal(clientOutcome.status, 'completed');
       const clientBalances = await Client.find({ _id: { $in: clients.map(x => x._id) } }).sort({ phone: 1 }).lean();
@@ -2176,6 +2199,7 @@ async function run() {
       assert.equal(await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose }), null);
       const referralRows = await Referral.find({ number: { $in: ['RFTESTCLIENT01', 'RFTESTFANNI001'] } }).lean();
       assert.ok(referralRows.every(x => x.status === 'completed' && x.achievementLog.length === x.requiredCount));
+      await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
     await test('unknown API route returns JSON 404', async () => {
