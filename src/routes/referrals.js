@@ -7,6 +7,7 @@ const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const AdminConfig = require('../models/AdminConfig');
 const AdminAuditLog = require('../models/AdminAuditLog');
+const WalletTransaction = require('../models/WalletTransaction');
 const { auth } = require('../middleware/auth');
 const { makeReferralCode } = require('../utils/referralCodes');
 
