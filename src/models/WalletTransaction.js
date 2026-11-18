@@ -27,6 +27,9 @@ const walletTransactionSchema = new mongoose.Schema({
     default: ''
   },
 
+  referral: { type: mongoose.Schema.Types.ObjectId, ref: 'Referral', default: null, index: true },
+  referralNumber: { type: String, trim: true, maxlength: 40, default: '', index: true },
+
   type: {
     type: String,
     enum: ['commission', 'topup', 'admin_adjustment', 'refund', 'client_topup', 'client_admin_adjustment', 'client_admin_deduction', 'client_admin_settlement', 'client_service_payment', 'client_subscription_payment', 'client_store_payment', 'fanni_store_payment', 'client_refund', 'client_escrow_hold', 'client_escrow_release', 'technician_settlement', 'referral_reward'],
@@ -87,6 +90,7 @@ walletTransactionSchema.index({
 
 walletTransactionSchema.index({ order: 1, type: 1 });
 walletTransactionSchema.index({ client: 1, createdAt: -1 });
+walletTransactionSchema.index({ referral: 1, createdAt: -1 });
 walletTransactionSchema.pre('validate', function () {
   if (Boolean(this.fanni) === Boolean(this.client)) this.invalidate('client', 'يجب تحديد مالك واحد للحركة المالية');
 });
