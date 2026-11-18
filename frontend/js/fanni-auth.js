@@ -164,7 +164,8 @@ async function doRegister(){
    areas,
    guidelinesAccepted:state.regGuidelinesAccepted,
    identityCardFrontFileId:state.regIdFrontFileId,
-   identityCardBackFileId:state.regIdBackFileId
+   identityCardBackFileId:state.regIdBackFileId,
+   referralCode:(new URLSearchParams(window.location.search).get('ref')||'').slice(0,50)
   });
 
   state.loading=false;
