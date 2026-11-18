@@ -6,18 +6,19 @@ const Fanni = require('../models/Fanni');
 const Order = require('../models/Order');
 const WalletTransaction = require('../models/WalletTransaction');
 
-async function refreshReferralProgress({ kind, inviteeId, mongoose }) {
+async function refreshReferralProgress({ kind, inviteeId, mongoose, session: suppliedSession = null }) {
   if (!inviteeId || !['client', 'fanni'].includes(kind)) return null;
-  const completedCount = await Order.countDocuments(kind === 'client'
+  const countQuery = Order.countDocuments(kind === 'client'
     ? { clientAccount: inviteeId, status: 'تم الانتهاء' }
     : { assignedFanni: inviteeId, status: 'تم الانتهاء' });
+  if (suppliedSession) countQuery.session(suppliedSession);
+  const completedCount = await countQuery;
   const requiredCount = kind === 'client' ? 1 : 3;
   if (!completedCount) return null;
 
-  const session = await mongoose.startSession();
+  const session = suppliedSession || await mongoose.startSession();
   let result = null;
-  try {
-    await session.withTransaction(async () => {
+  const settle = async () => {
       const referral = await Referral.findOne({
         kind, invitee: inviteeId, status: { $in: ['pending', 'in_progress', 'eligible'] }
       }).session(session);
@@ -71,10 +72,13 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose }) {
       referral.status = 'completed';
       await referral.save({ session });
       result = { status: 'completed', completedCount: count, requiredCount, referralId: String(referral._id) };
-    });
+  };
+  try {
+    if (suppliedSession) await settle();
+    else await session.withTransaction(settle);
     return result;
   } finally {
-    await session.endSession();
+    if (!suppliedSession) await session.endSession();
   }
 }
 
