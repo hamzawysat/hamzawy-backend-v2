@@ -61,6 +61,8 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
         if (!updated) throw new Error('REFERRAL_WALLET_CREDIT_FAILED');
         const transaction = await new WalletTransaction({
           [party.owner]: updated._id,
+          referral: referral._id,
+          referralNumber: referral.number,
           type: 'referral_reward',
           amount,
           balanceBefore: before,
