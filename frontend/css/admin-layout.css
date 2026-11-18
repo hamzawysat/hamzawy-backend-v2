@@ -108,10 +108,11 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 /* Keep technician action menus readable and vertically stacked on mobile and desktop. */
 #admin-tab-content .action-wrap{position:relative;display:inline-flex;align-items:center;flex:0 0 auto;min-width:0}
 #admin-tab-content .dropdown-menu{
-  position:absolute;top:calc(100% + 8px);right:0;left:auto;z-index:90;
+  position:absolute;top:calc(100% + 8px);left:0;right:auto;z-index:90;
   display:flex!important;flex-direction:column!important;align-items:stretch!important;
-  gap:6px!important;width:min(300px,calc(100vw - 40px));max-height:min(68vh,560px);
-  overflow-y:auto;overscroll-behavior:contain;padding:10px;
+  gap:6px!important;width:min(280px,calc(100vw - 24px));max-width:calc(100vw - 24px);
+  max-height:min(68vh,560px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  padding:10px;box-sizing:border-box;
   border:1px solid #dbe5f1;border-radius:14px;background:#fff;
   box-shadow:0 14px 34px rgba(11,27,58,.2);direction:rtl;
 }
