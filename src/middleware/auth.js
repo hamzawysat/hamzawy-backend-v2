@@ -33,7 +33,7 @@ const PERMISSION_SECTIONS = {
   publishOrders: [/^\/admin\/[^/]+\/publish$/],
   voiceReview: [/^\/[^/]+\/voice$/, /^\/admin\/[^/]+\/voice-reviewed$/],
   passwordRecovery: [/^\/password-recovery\/admin\/requests(\/|$)/, /^\/password-recovery\/admin\/support-passwords(\/|$)/],
-  orders: [/^\/orders(\/|$)/],
+  orders: [/^\/orders(?!\/[^/]+\/offers(?:\/|$))(\/|$)/],
   complaints: [/^\/complaints(\/|$)/],
   services: [/^\/services(\/|$)/],
   clients: [/^\/clients(\/|$)/],
