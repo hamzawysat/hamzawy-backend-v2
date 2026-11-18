@@ -54,7 +54,8 @@ function render(){
         <span aria-hidden="true">⌕</span>
         <input type="search" value="${escHtml(state.search||'')}" oninput="onSearch(this.value)" placeholder="بحث..." aria-label="بحث في لوحة الإدارة">
       </label>
-      <nav class="admin-header-actions" aria-label="حساب الإدارة">
+      <nav class="admin-header-actions" aria-label="القائمة الرئيسية والإشعارات والحساب">
+        <button type="button" class="admin-icon-btn" onclick="event.preventDefault();state.pageMode='home';state.tab='dashboard';render()" aria-label="القائمة الرئيسية" title="القائمة الرئيسية">⌂</button>
         <button type="button" class="admin-icon-btn" onclick="setTab('notifications')" aria-label="الإشعارات" title="الإشعارات">🔔</button>
         <a class="admin-icon-btn" href="password.html?role=admin&amp;mode=account" aria-label="حسابي" title="حسابي">👤</a>
         <button type="button" class="admin-icon-btn admin-logout-btn" onclick="logout()" aria-label="خروج" title="خروج">⎋</button>
