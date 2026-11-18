@@ -28,7 +28,7 @@ A host for this artifact must:
 
 The build output contains no Railway-specific deployment configuration and does not select a permanent hosting provider. The API and database remain separate from this static UI artifact.
 
-Important: `frontend/service-worker.js` currently contains the production Hamzawy Sat origin for notification click routing. The admin page also loads `web-push.js`, which registers that service worker at the site root. Therefore this artifact must not be activated on a different origin until notification routing and service-worker scope are made origin-neutral and tested. A same-origin `/api/*` reverse proxy is also mandatory for the current relative API calls.
+Notification click routing in `frontend/service-worker.js` now resolves against the origin serving the worker, while accepting the known previous hosts only as incoming legacy links. The admin page loads `web-push.js`, which registers that worker at the site root. This removes one hard-coded production-origin dependency, but it is not proof of a safe migration: service-worker scope, existing subscriptions, push delivery, trusted WebView host configuration, and the same-origin `/api/*` reverse proxy still require staging verification.
 
 The current Kotlin app still validates the existing Hamzawy Sat host and private admin path. This artifact build does not weaken that host allowlist. A host/domain migration requires a separately reviewed, secure app configuration change and matching backend proxy/CORS/CSP setup.
 
