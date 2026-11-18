@@ -37,7 +37,7 @@ function renderFannis(){
             </div>
             <div class="action-wrap">
               <button onclick="event.stopPropagation();toggleMenu('${menuKey}')" class="pill-btn soft-btn flex items-center gap-1.5">
-                <span>${f.isApproved?'معتمد':f.isDisabled?'معطل':'إجراء'}</span>
+                <span>إجراءات</span>
                 <span class="text-[12px]">${isMenuOpen?'▲':'▼'}</span>
               </button>
               ${isMenuOpen?`
