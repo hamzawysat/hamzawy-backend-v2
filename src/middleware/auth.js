@@ -16,7 +16,7 @@ const ROLE_WRITE_SECTIONS = {
 function defaultAdminPermissions(role) {
   const writes = new Set(ROLE_WRITE_SECTIONS[role] || []);
   const reads = role === 'قراءة فقط'
-    ? new Set(ADMIN_PERMISSION_KEYS)
+    ? new Set(ADMIN_PERMISSION_KEYS.filter(key => key !== 'website'))
     : new Set(role === 'مدير' || role === 'مشرف أول'
       ? ADMIN_PERMISSION_KEYS.filter(key => key !== 'website')
       : ['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store']);
