@@ -73,7 +73,7 @@ let state={
   dropdowns:{}, pendingActions:{},
   fannis:[],filtered:[],pendingProfileEdits:[],topups:[],filteredTopups:[],orders:[],filteredOrders:[],complaints:[],filteredComplaints:[],recoveryRequests:[],loadingComplaints:false,
   services:[],filteredServices:[],servicesLoading:false,servicesError:'',openServices:{},
-  clients:[],filteredClients:[],clientsLoading:false,clientTopups:[],filteredClientTopups:[],clientTopupsLoading:false,clientWalletFilter:'الكل',clientWalletAccounts:[],clientWalletAccountsLoading:false,clientWalletAccountId:'',clientWalletTransactions:[],clientWalletSelectedId:'',clientWalletLoading:false,commerceItems:[],clientSubscriptions:[],commerceLoading:false,accountCounts:{technicians:0,verifiedTechnicians:0,clients:0},
+  clients:[],filteredClients:[],clientsLoading:false,clientTopups:[],filteredClientTopups:[],clientTopupsLoading:false,clientWalletFilter:'الكل',clientWalletAccounts:[],clientWalletAccountsLoading:false,clientWalletAccountId:'',clientWalletTransactions:[],clientWalletSelectedId:'',clientWalletLoading:false,clientWalletError:'',commerceItems:[],clientSubscriptions:[],commerceLoading:false,accountCounts:{technicians:0,verifiedTechnicians:0,clients:0},
   adminUsers:[],adminUsersLoading:false,
   
   storeProducts:[],storeProductsLoading:false,storeProductsLoaded:false,storeProductsLoadError:'',storeCategories:[],storeAdRotationSeconds:null,storeAdSettingsLoading:false,storeAdSettingsLoaded:false,storeAdSettingsLoadError:'',storeOrders:[],storeOrdersLoading:false,auditLogs:[],auditDate:'',regions:[],regionsLoading:false,regionsError:'',regionSearch:'',notifications:[],adminInboxNotifications:[],adminInboxUnread:0,adminDeliveryLogs:[],walletTransactions:[],walletSelectedFanniId:'',walletLoading:false,settings:{siteName:'حمزاوي سات',maintenance:false},
@@ -100,6 +100,17 @@ function toggleMenu(key){
   render();
 }
 function closeAllMenus(){ state.dropdowns={}; render(); }
+
+// Dismiss client action dropdowns when tapping outside or choosing an action.
+document.addEventListener('click', function(event){
+  const clickedMenu = event.target && event.target.closest
+    ? event.target.closest('details[data-admin-dropdown]')
+    : null;
+  document.querySelectorAll('details[data-admin-dropdown][open]').forEach(function(menu){
+    const clickedSummary = clickedMenu === menu && event.target.closest('summary');
+    if(menu !== clickedMenu || !clickedSummary) menu.open = false;
+  });
+});
 function setPendingAction(key, action, label){
   state.pendingActions[key]={action,label};
   state.dropdowns={};
