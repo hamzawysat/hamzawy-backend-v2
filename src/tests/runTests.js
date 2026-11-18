@@ -45,6 +45,15 @@ async function run() {
     app = require('../server');
     mongoose = require('mongoose');
 
+    await test('client and technician logout audit notifications are idempotent and never enter push retry loop', async () => {
+      const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
+      const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
+      const notificationUtils = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
+      assert.ok(clientRoutes.includes("dedupeKey: 'client-logout:'"), 'client logout should deduplicate repeated requests for the same session token');
+      assert.ok(technicianRoutes.includes("dedupeKey: 'fanni-logout:'"), 'technician logout should deduplicate repeated requests for the same session token');
+      assert.ok(notificationUtils.includes("type: { $nin: ['admin_client_logout', 'admin_fanni_logout'] }"), 'one-shot logout alerts must not be resent by the background push retry worker');
+    });
+
     await test('admin shows technician order availability and restores the last selected section after refresh', async () => {
       const adminPeople = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-people.js'), 'utf8');
       const adminNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
