@@ -49,7 +49,14 @@ async function run() {
       const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
       const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
       const notificationUtils = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
-      assert.ok(clientRoutes.includes("dedupeKey: 'client-logout:'"), 'client logout should deduplicate repeated requests for the same session token');
+      const clientLogoutStart = clientRoutes.indexOf("router.post('/logout', clientAuth");
+      const clientLogoutEnd = clientRoutes.indexOf("\nrouter.get('/me'", clientLogoutStart);
+      const clientLogoutRoute = clientRoutes.slice(clientLogoutStart, clientLogoutEnd);
+      assert.notEqual(clientLogoutStart, -1, 'client logout route must exist');
+      assert.ok(clientLogoutRoute.includes("dedupeKey: 'client-logout:'"), 'client logout route must deduplicate repeated requests for the same session token');
+      const clientLoginStart = clientRoutes.indexOf("router.post('/login'");
+      const clientLoginEnd = clientRoutes.indexOf("\nrouter.post('/logout'", clientLoginStart);
+      assert.doesNotMatch(clientRoutes.slice(clientLoginStart, clientLoginEnd), /client-logout:/, 'logout dedupe key must not be attached to client login');
       assert.ok(technicianRoutes.includes("dedupeKey: 'fanni-logout:'"), 'technician logout should deduplicate repeated requests for the same session token');
       assert.ok(notificationUtils.includes("type: { $nin: ['admin_client_logout', 'admin_fanni_logout'] }"), 'one-shot logout alerts must not be resent by the background push retry worker');
     });
