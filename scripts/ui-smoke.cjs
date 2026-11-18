@@ -28,7 +28,7 @@ function verifyAdminDashboardSource() {
   if (quickActions !== 4 || !shell.includes('طلبات اليوم') ||
       !shell.includes('عملاء جدد') || !shell.includes('شكاوى جديدة') ||
       !shell.includes('فنيين بانتظار الاعتماد') ||
-      !shell.includes("filter(item=>item.value>0)")) {
+      shell.includes("filter(item=>item.value>0)")) {
     throw new Error('Admin dashboard KPI or quick-action regression');
   }
   const adminContent = read('frontend/js/admin/support-render.js');
