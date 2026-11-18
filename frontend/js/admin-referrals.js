@@ -1,0 +1,72 @@
+'use strict';
+
+async function loadReferralManagement(){
+ state.referralsLoading=true;
+ try{
+  const [summary,list]=await Promise.all([
+   tryApi(['/api/referrals/admin/summary'],{method:'GET'}),
+   tryApi(['/api/referrals/admin/list'],{method:'GET'})
+  ]);
+  state.referralSummary=summary;
+  state.referrals=Array.isArray(list.referrals)?list.referrals:[];
+  state.referralsError='';
+ }catch(error){state.referralsError=error.message||'تعذر تحميل الدعوات';}
+ finally{state.referralsLoading=false;if(state.tab==='referrals')render();}
+}
+async function toggleReferralSystem(enabled){
+ if(!confirm(enabled?'تأكيد تشغيل نظام الدعوات؟':'تأكيد إيقاف إنشاء الدعوات الجديدة؟ الدعوات المسجلة ستواصل الاستحقاق والصرف.'))return;
+ try{
+  const result=await tryApi(['/api/referrals/admin/settings'],{method:'PATCH',body:JSON.stringify({enabled})});
+  if(state.referralSummary)state.referralSummary.enabled=result.enabled;
+  showToast(result.enabled?'تم تشغيل نظام الدعوات':'تم إيقاف الدعوات الجديدة مع استمرار الدعوات القديمة','success');
+  await loadReferralManagement();
+ }catch(error){showToast(error.message||'تعذر تغيير حالة النظام','error');}
+}
+function filteredReferralRows(){
+ const q=String(state.referralSearch||'').trim().toLowerCase();
+ return (state.referrals||[]).filter(x=>{
+  if(state.referralKind!=='all'&&x.kind!==state.referralKind)return false;
+  if(state.referralStatus!=='all'&&x.status!==state.referralStatus)return false;
+  if(state.referralPaid==='yes'&&(!x.inviterReward?.paidAt||!x.inviteeReward?.paidAt))return false;
+  if(state.referralPaid==='no'&&(x.inviterReward?.paidAt&&x.inviteeReward?.paidAt))return false;
+  if(!q)return true;
+  return [x.number,x.inviterData?.name,x.inviterData?.phone,x.inviter,x.inviteeData?.name,x.inviteeData?.phone,x.invitee].some(v=>String(v||'').toLowerCase().includes(q));
+ });
+}
+function referralStatusLabel(s){return ({pending:'معلقة',in_progress:'قيد التقدم',eligible:'مستحقة',completed:'مكتملة',rejected:'مرفوضة'})[s]||s||'—';}
+function renderReferralManagement(){
+ const s=state.referralSummary||{};
+ const rows=filteredReferralRows();
+ const paidClient=(s.rewards||[]).find(x=>x._id==='client')||{};
+ const paidFanni=(s.rewards||[]).find(x=>x._id==='fanni')||{};
+ const paidTotal=Number(paidClient.inviterPaid||0)+Number(paidClient.inviteePaid||0)+Number(paidFanni.inviterPaid||0)+Number(paidFanni.inviteePaid||0);
+ const dueTotal=Number(paidClient.inviterDue||0)+Number(paidClient.inviteeDue||0)+Number(paidFanni.inviterDue||0)+Number(paidFanni.inviteeDue||0);
+ return `<section class="mt-4 space-y-3">
+  <div class="premium-panel p-4">
+   <div class="flex items-center justify-between gap-3"><div><h2 class="text-base font-black">إدارة الدعوات والمكافآت</h2><p class="mt-1 text-[11px] text-slate-500">مراجعة الدعوات ومتابعة استحقاق وصرف المكافآت للطرفين</p></div><span class="rounded-full px-3 py-1 text-[10px] font-extrabold ${s.enabled?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${s.enabled?'النظام يعمل':'الدعوات الجديدة متوقفة'}</span></div>
+   <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border p-3"><div><p class="text-xs font-extrabold">تشغيل نظام الدعوات</p><p class="mt-1 text-[10px] text-slate-500">الإيقاف يمنع الدعوات الجديدة فقط ولا يوقف الدعوات السابقة</p></div><button type="button" onclick="toggleReferralSystem(${!s.enabled})" class="rounded-xl px-4 py-2.5 text-xs font-extrabold text-white ${s.enabled?'bg-rose-700':'bg-emerald-700'}">${s.enabled?'إيقاف':'تشغيل'}</button></div>
+  </div>
+  <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+   ${[['إجمالي الدعوات',s.total||0],['دعوات العملاء',s.clients||0],['دعوات الفنيين',s.technicians||0],['المكافآت المصروفة',paidTotal+' ج'],['المكافآت المستحقة',dueTotal+' ج'],['المكتملة',(s.statuses||{}).completed||0]].map(([label,value])=>'<article class="premium-panel p-3"><p class="text-[10px] font-bold text-slate-500">'+label+'</p><p class="mt-1 text-xl font-black">'+value+'</p></article>').join('')}
+  </div>
+  <div class="premium-panel p-3 space-y-2">
+   <h3 class="text-sm font-black">سجل الدعوات</h3>
+   <input class="field" placeholder="بحث بالاسم أو المعرف أو رقم الدعوة" value="${escHtml(state.referralSearch||'')}" oninput="state.referralSearch=this.value;render()">
+   <div class="grid grid-cols-3 gap-2">
+    <select class="field" onchange="state.referralKind=this.value;render()"><option value="all">كل الأنواع</option><option value="client" ${state.referralKind==='client'?'selected':''}>عملاء</option><option value="fanni" ${state.referralKind==='fanni'?'selected':''}>فنيون</option></select>
+    <select class="field" onchange="state.referralStatus=this.value;render()"><option value="all">كل الحالات</option><option value="pending">معلقة</option><option value="in_progress">قيد التقدم</option><option value="eligible">مستحقة</option><option value="completed">مكتملة</option><option value="rejected">مرفوضة</option></select>
+    <select class="field" onchange="state.referralPaid=this.value;render()"><option value="all">كل عمليات الصرف</option><option value="yes">تم الصرف للطرفين</option><option value="no">لم يكتمل الصرف</option></select>
+   </div>
+   ${state.referralsLoading?'<p class="p-5 text-center text-xs">جاري تحميل الدعوات...</p>':state.referralsError?'<p class="rounded-xl bg-red-50 p-3 text-xs text-red-700">'+escHtml(state.referralsError)+'</p>':rows.length?'<div class="overflow-x-auto"><table class="w-full min-w-[680px] text-right text-[11px]"><thead><tr class="border-b text-slate-500"><th class="p-2">رقم الدعوة</th><th class="p-2">النوع</th><th class="p-2">الداعي</th><th class="p-2">المدعو</th><th class="p-2">الإنجاز</th><th class="p-2">الحالة</th><th class="p-2">مكافأة الداعي</th><th class="p-2">مكافأة المدعو</th><th class="p-2">إجراء</th></tr></thead><tbody>'+rows.map(x=>'<tr class="border-b align-top"><td class="p-2 font-black">'+escHtml(x.number)+'</td><td class="p-2">'+(x.kind==='client'?'عميل':'فني')+'</td><td class="p-2">'+escHtml(x.inviterData?.name||x.inviter)+'</td><td class="p-2">'+escHtml(x.inviteeData?.name||x.invitee)+'</td><td class="p-2">'+Number(x.completedCount||0)+' / '+Number(x.requiredCount||0)+'</td><td class="p-2">'+referralStatusLabel(x.status)+'</td><td class="p-2">'+(x.inviterReward?.paidAt?'تم الصرف':'لم يصرف')+'</td><td class="p-2">'+(x.inviteeReward?.paidAt?'تم الصرف':'لم يصرف')+'</td><td class="p-2">'+(x.status!=='completed'&&x.status!=='rejected'&&!x.inviterReward?.paidAt&&!x.inviteeReward?.paidAt?'<button type="button" onclick="rejectReferral(\''+escHtml(x._id)+'\')" class="rounded-lg bg-rose-50 px-2 py-1.5 font-bold text-rose-700">رفض</button>':'—')+'</td></tr>').join('')+'</tbody></table></div>':'<p class="p-5 text-center text-xs text-slate-500">لا توجد دعوات مطابقة.</p>'}
+   <button type="button" onclick="loadReferralManagement()" class="w-full rounded-xl border bg-white p-2.5 text-xs font-extrabold">تحديث القائمة</button>
+  </div>
+ </section>`;
+}
+async function rejectReferral(id){
+ const reason=prompt('اكتب سبب رفض الدعوة (إجباري):');
+ if(reason===null)return;
+ if(reason.trim().length<3)return showToast('سبب الرفض لازم يكون 3 أحرف على الأقل','error');
+ if(!confirm('تأكيد رفض الدعوة؟ لن يمكن صرف مكافآتها بعد الرفض.'))return;
+ try{await tryApi(['/api/referrals/admin/'+encodeURIComponent(id)+'/reject'],{method:'POST',body:JSON.stringify({reason:reason.trim()})});showToast('تم رفض الدعوة وتسجيل السبب','success');await loadReferralManagement();}
+ catch(error){showToast(error.message||'تعذر رفض الدعوة','error');}
+}
