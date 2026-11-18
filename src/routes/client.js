@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const Client = require('../models/Client');
 const Order = require('../models/Order');
@@ -191,7 +192,8 @@ router.post('/login', async (req, res, next) => {
     await notifyAdmins({
       type: 'admin_client_login', title: 'تسجيل دخول عميل',
       message: 'سجّل العميل ' + client.name + ' (' + client.phone + ') الدخول إلى حسابه.',
-      link: '/admin?tab=clients'
+      link: '/admin?tab=clients',
+      dedupeKey: 'client-logout:' + crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')
     });
     return res.json({
       message: supportLogin ? 'تم الدخول بكلمة دعم مؤقتة. غيّر كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
