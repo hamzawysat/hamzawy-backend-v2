@@ -8,6 +8,9 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const Client = require('../models/Client');
+const AdminConfig = require('../models/AdminConfig');
+const Referral = require('../models/Referral');
+const { readReferralCode } = require('../utils/referralCodes');
 const Order = require('../models/Order');
 const Rating = require('../models/Rating');
 const WalletTransaction = require('../models/WalletTransaction');
@@ -28,7 +31,8 @@ const registerSchema = Joi.object({
   name: Joi.string().trim().min(2).max(50).required(),
   phone: Joi.string().trim().required(),
   password: Joi.string().min(8).max(128).required(),
-  confirmPassword: Joi.string().valid(Joi.ref('password')).required()
+  confirmPassword: Joi.string().valid(Joi.ref('password')).required(),
+  referralCode: Joi.string().trim().max(50).allow('').optional()
 }).unknown(false);
 
 const loginSchema = Joi.object({
@@ -139,7 +143,36 @@ router.post('/register', async (req, res, next) => {
     if (existing) return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل. سجّل الدخول بدل إنشاء حساب جديد.' });
 
     const passwordHash = await bcrypt.hash(value.password, 12);
-    const client = await Client.create({ name: value.name, phone, passwordHash });
+    let client;
+    const session = await mongoose.startSession();
+    try {
+      await session.withTransaction(async () => {
+        let inviterId = null;
+        let usedCode = '';
+        if (value.referralCode) {
+          const config = await AdminConfig.findOne({ key: 'main' }).select('settings').session(session).lean();
+          if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
+          const decoded = readReferralCode(value.referralCode);
+          if (!decoded || decoded.kind !== 'client') throw new Error('INVALID_REFERRAL_CODE');
+          if (decoded.inviterId === String(client?._id || '')) throw new Error('SELF_REFERRAL');
+          const inviter = await Client.findById(decoded.inviterId).select('_id').session(session);
+          if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+          inviterId = inviter._id;
+          usedCode = decoded.code;
+        }
+        const created = await Client.create([{ name: value.name, phone, passwordHash }], { session });
+        client = created[0];
+        if (inviterId) {
+          const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
+          await Referral.create([{
+            number, code: number, inviteCodeUsed: usedCode, kind: 'client',
+            inviter: inviterId, invitee: client._id, requiredCount: 1
+          }], { session });
+        }
+      });
+    } finally {
+      await session.endSession();
+    }
     await notifyAdmins({
       type: 'admin_new_client',
       title: 'عميل جديد',
@@ -155,6 +188,10 @@ router.post('/register', async (req, res, next) => {
       client: { id: String(client._id), name: client.name, phone: client.phone, status: client.status }
     });
   } catch (error) {
+    if (error?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
+    if (error?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للعملاء.' });
+    if (error?.message === 'SELF_REFERRAL') return res.status(400).json({ message: 'لا يمكنك استخدام كود دعوتك على حسابك.' });
+    if (error?.message === 'REFERRER_NOT_FOUND') return res.status(400).json({ message: 'صاحب كود الدعوة غير موجود.' });
     if (error && error.code === 11000) return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل. سجّل الدخول.' });
     return next(error);
   }
