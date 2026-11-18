@@ -1131,6 +1131,7 @@ async function run() {
       assert.equal(legacyOnlyAreas.body.technicianCountByArea?.['المعادي'] || 0, previousMaadiCount,
         'approved technicians with only historical services must not increase the available technician count');
       await test('admin technician wallet deduction is atomic, audited, and visible in transaction history', async () => {
+        const WalletTransaction = require('../models/WalletTransaction');
         await Fanni.updateOne({ _id: fanni._id }, { $set: { walletBalance: 300 } });
         const deduction = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
           .set('Authorization', 'Bearer ' + adminToken)
