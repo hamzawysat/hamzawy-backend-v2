@@ -51,7 +51,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       for (const party of partyFields) {
         const reward = referral[party.key];
         if (reward?.paidAt) continue;
-        const amount = 50;
+        const amount = kind === 'fanni' ? 150 : 50;
         const before = Number(party.account.walletBalance || 0);
         const updated = await Model.findOneAndUpdate(
           { _id: party.account._id },
