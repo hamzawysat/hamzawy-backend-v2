@@ -14,6 +14,7 @@ const referralSchema = new mongoose.Schema({
   inviter: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
   invitee: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
   code: { type: String, required: true, unique: true, index: true },
+  inviteCodeUsed: { type: String, required: true, maxlength: 50 },
   invitedAt: { type: Date, default: Date.now, index: true },
   status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected'], default: 'pending', index: true },
   completedCount: { type: Number, default: 0, min: 0 },
