@@ -155,8 +155,9 @@ router.post('/register', async (req, res, next) => {
           const decoded = readReferralCode(value.referralCode);
           if (!decoded || decoded.kind !== 'client') throw new Error('INVALID_REFERRAL_CODE');
           if (decoded.inviterId === String(client?._id || '')) throw new Error('SELF_REFERRAL');
-          const inviter = await Client.findById(decoded.inviterId).select('_id').session(session);
+          const inviter = await Client.findById(decoded.inviterId).select('_id phone').session(session);
           if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+          if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
           inviterId = inviter._id;
           usedCode = decoded.code;
         }
