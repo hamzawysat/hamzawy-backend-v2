@@ -8,11 +8,15 @@ const WalletTransaction = require('../models/WalletTransaction');
 
 async function refreshReferralProgress({ kind, inviteeId, mongoose, session: suppliedSession = null }) {
   if (!inviteeId || !['client', 'fanni'].includes(kind)) return null;
-  const countQuery = Order.countDocuments(kind === 'client'
+  const completedQuery = Order.find(kind === 'client'
     ? { clientAccount: inviteeId, status: 'تم الانتهاء' }
-    : { assignedFanni: inviteeId, status: 'تم الانتهاء' });
-  if (suppliedSession) countQuery.session(suppliedSession);
-  const completedCount = await countQuery;
+    : { assignedFanni: inviteeId, status: 'تم الانتهاء' })
+    .select('_id sn completionDeclaredAt createdAt')
+    .sort({ completionDeclaredAt: 1, createdAt: 1 })
+    .lean();
+  if (suppliedSession) completedQuery.session(suppliedSession);
+  const completedOrders = await completedQuery;
+  const completedCount = completedOrders.length;
   const requiredCount = kind === 'client' ? 1 : 3;
   if (!completedCount) return null;
 
@@ -26,6 +30,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
 
       const count = Math.min(completedCount, requiredCount);
       referral.completedCount = count;
+      referral.achievementLog = completedOrders.slice(0, requiredCount).map(order => ({ order: order._id, orderSN: order.sn, completedAt: order.completionDeclaredAt || order.createdAt || new Date() }));
       if (count < requiredCount) {
         referral.status = 'in_progress';
         await referral.save({ session });
