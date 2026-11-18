@@ -165,7 +165,7 @@ function getDefaultAdminPermissions(role){
   const readOnly=role==='قراءة فقط';
   const readAll=role==='مدير'||role==='مشرف أول'||readOnly;
   const writeSet=new Set((writes[role]||[]).filter(key=>key!=='website'));
-  const readSet=new Set(readAll?keys:['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store','website']);
+  const readSet=new Set(readAll?keys.filter(key=>key!=='website'):['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store','website']);
   return Object.fromEntries(keys.map(key=>[key,{read:readSet.has(key)||writeSet.has(key),write:writeSet.has(key)}]));
 }
 function getEffectiveAdminPermissions(user){
