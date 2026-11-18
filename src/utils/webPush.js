@@ -169,22 +169,50 @@ async function sendWebPushNotification(notification) {
     return { status: 'not_configured', attempted: 0, accepted: 0, failed: 0 };
   }
   try {
-    const subscriptions = await Sub.find({
+    const subscriptions = Sub.find({
       $or: [
         { recipientRole: notification.recipientRole, recipientId: notification.recipientId },
         { recipients: { $elemMatch: { recipientRole: notification.recipientRole, recipientId: notification.recipientId } } }
       ]
-    }).limit(200).lean();
-    const results = await Promise.all(subscriptions.map(async subscription => {
-      try { return await sendOne(subscription, notification, keys); }
-      catch (error) { console.error('Web Push delivery attempt failed:', error.message); return { status: 'error' }; }
-    }));
-    const accepted = results.filter(result => result.status === 'accepted').length;
-    const failed = results.length - accepted;
+    }).sort({ _id: 1 }).lean().cursor();
+    // Stream subscriptions in bounded batches: a hard query limit silently skipped
+    // every browser after the first 200 registered endpoints.
+    let attempted = 0, accepted = 0, failed = 0;
+    const results = [];
+    let firstFailure = null;
+    let batch = [];
+    const deliverBatch = async items => {
+      const batchResults = await Promise.all(items.map(async subscription => {
+        try { return await sendOne(subscription, notification, keys); }
+        catch (error) {
+          console.error('Web Push delivery attempt failed:', error.message);
+          return { status: 'error' };
+        }
+      }));
+      attempted += batchResults.length;
+      for (const result of batchResults) {
+        if (result.status === 'accepted') accepted += 1;
+        else {
+          failed += 1;
+          if (!firstFailure) firstFailure = result;
+        }
+        // Keep the diagnostic response bounded even when an account has many devices.
+        if (results.length < 20) results.push(result);
+      }
+    };
+    for await (const subscription of subscriptions) {
+      batch.push(subscription);
+      if (batch.length >= 25) {
+        await deliverBatch(batch);
+        batch = [];
+      }
+    }
+    if (batch.length) await deliverBatch(batch);
+    if (firstFailure && !results.some(result => result.status !== 'accepted')) results.push(firstFailure);
     console.info('Web Push delivery summary:', JSON.stringify({
-      role: notification.recipientRole, attempted: results.length, accepted, failed
+      role: notification.recipientRole, attempted, accepted, failed
     }));
-    return { status: 'completed', attempted: results.length, accepted, failed, results };
+    return { status: 'completed', attempted, accepted, failed, results };
   } catch (error) {
     console.error('Web Push delivery failed:', error.message);
     return { status: 'error', attempted: 0, accepted: 0, failed: 1 };
