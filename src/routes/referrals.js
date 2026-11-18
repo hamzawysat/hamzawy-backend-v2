@@ -49,8 +49,8 @@ router.get('/admin/summary', auth('admin'), async (req, res, next) => {
         _id: '$kind',
         inviterPaid: { $sum: { $cond: [{ $ne: ['$inviterReward.paidAt', null] }, '$inviterReward.amount', 0] } },
         inviteePaid: { $sum: { $cond: [{ $ne: ['$inviteeReward.paidAt', null] }, '$inviteeReward.amount', 0] } },
-        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }] }, '$inviterReward.amount', 0] } },
-        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }] }, '$inviteeReward.amount', 0] } }
+        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } },
+        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } }
       } }])
     ]);
     return res.set('Cache-Control', 'no-store').json({
@@ -81,7 +81,10 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
       Fanni.find({ _id: { $in: ids } }).select('name phone role').lean()
     ]);
     const people = new Map([...clients, ...fannis].map(x => [String(x._id), { id: String(x._id), name: x.name, phone: x.phone }]));
-    let result = rows.map(x => ({ ...x, inviterData: people.get(String(x.inviter)) || null, inviteeData: people.get(String(x.invitee)) || null }));
+    let result = rows.map(x => ({ ...x,
+      inviterReward: { ...x.inviterReward, amount: x.inviterReward?.paidAt ? x.inviterReward.amount : (x.kind === 'fanni' ? 150 : 50) },
+      inviteeReward: { ...x.inviteeReward, amount: x.inviteeReward?.paidAt ? x.inviteeReward.amount : (x.kind === 'fanni' ? 150 : 50) },
+      inviterData: people.get(String(x.inviter)) || null, inviteeData: people.get(String(x.invitee)) || null }));
     const q = String(req.query.q || '').trim().toLowerCase();
     if (q) result = result.filter(x => [x.number, x.inviterData?.name, x.inviterData?.phone, x.inviter, x.inviteeData?.name, x.inviteeData?.phone, x.invitee].some(v => String(v || '').toLowerCase().includes(q)));
     return res.set('Cache-Control', 'no-store').json({ referrals: result, data: result });
@@ -91,8 +94,12 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
 router.get('/admin/:id', auth('admin'), async (req, res, next) => {
   try {
     if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
-    const item = await Referral.findById(req.params.id).lean();
-    if (!item) return res.status(404).json({ message: 'الدعوة غير موجودة.' });
+    const storedItem = await Referral.findById(req.params.id).lean();
+    if (!storedItem) return res.status(404).json({ message: 'الدعوة غير موجودة.' });
+    const item = { ...storedItem,
+      inviterReward: { ...storedItem.inviterReward, amount: storedItem.inviterReward?.paidAt ? storedItem.inviterReward.amount : (storedItem.kind === 'fanni' ? 150 : 50) },
+      inviteeReward: { ...storedItem.inviteeReward, amount: storedItem.inviteeReward?.paidAt ? storedItem.inviteeReward.amount : (storedItem.kind === 'fanni' ? 150 : 50) }
+    };
     const Model = item.kind === 'client' ? Client : Fanni;
     const [inviter, invitee, transactions] = await Promise.all([
       Model.findById(item.inviter).select('name phone').lean(),
