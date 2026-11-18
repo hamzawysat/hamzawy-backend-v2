@@ -19,7 +19,7 @@ function defaultAdminPermissions(role) {
     ? new Set(ADMIN_PERMISSION_KEYS)
     : new Set(role === 'مدير' || role === 'مشرف أول'
       ? ADMIN_PERMISSION_KEYS
-      : ['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store']);
+      : ['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store','website']);
   return Object.fromEntries(ADMIN_PERMISSION_KEYS.map(key => [key, {
     read: reads.has(key) || writes.has(key),
     write: writes.has(key)
