@@ -364,8 +364,16 @@ function apiResponse(pathname) {
                 await page.locator('#accountPhone').fill('01012345670');
                 await page.locator('#accountPassword').fill('ClientSmokePass123');
                 await page.locator('.account-submit').click();
-                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), { timeout: 10000 });
-                await page.waitForFunction(() => !!state.account && !!state.accountToken, { timeout: 10000 });
+                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token') || !!state.accountError, null, { timeout: 10000 });
+                const clientLoginState = await page.evaluate(() => ({
+                  token: !!localStorage.getItem('sonaa_client_account_token'),
+                  account: !!state.account,
+                  error: String(state.accountError || '')
+                }));
+                if (!clientLoginState.token) {
+                  throw new Error('browser-test client login did not create a session: ' + (clientLoginState.error || 'no token and no visible account error'));
+                }
+                await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
                 await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
                 const customerTabIds = ['home', 'new', 'orders', 'wallet', 'subscriptions', 'store', 'complaint'];
                 const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
