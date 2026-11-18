@@ -231,7 +231,7 @@ router.post(
             const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
             await Referral.create([{
               number, code: number, inviteCodeUsed: usedCode, kind: 'fanni',
-              inviter: inviterId, invitee: fanni._id, requiredCount: 3
+              inviter: inviterId, invitee: fanni._id, requiredCount: 3,\n              inviterReward: { amount: 150 }, inviteeReward: { amount: 150 }
             }], { session });
           }
         });
