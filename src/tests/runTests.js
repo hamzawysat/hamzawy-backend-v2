@@ -1130,6 +1130,35 @@ async function run() {
       assert.equal(legacyOnlyAreas.status, 200);
       assert.equal(legacyOnlyAreas.body.technicianCountByArea?.['المعادي'] || 0, previousMaadiCount,
         'approved technicians with only historical services must not increase the available technician count');
+      await test('admin technician wallet deduction is atomic, audited, and visible in transaction history', async () => {
+        const WalletTransaction = require('../models/WalletTransaction');
+        await Fanni.updateOne({ _id: fanni._id }, { $set: { walletBalance: 300 } });
+        const deduction = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ amount: 75, reason: 'اختبار خصم إداري موثق' });
+        assert.equal(deduction.status, 200, JSON.stringify(deduction.body));
+        assert.equal(deduction.body.balance, 225);
+        const persisted = await Fanni.findById(fanni._id).lean();
+        assert.equal(persisted.walletBalance, 225);
+        assert.ok(persisted.decisions.some(item => item.action === 'خصم إداري' && String(item.reason || '').includes('اختبار خصم إداري موثق')));
+        const ledger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'admin_adjustment', amount: -75 }).lean();
+        assert.ok(ledger);
+        assert.equal(ledger.balanceBefore, 300);
+        assert.equal(ledger.balanceAfter, 225);
+
+        const insufficient = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ amount: 226, reason: 'اختبار منع الرصيد غير الكافي' });
+        assert.equal(insufficient.status, 409);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 225, 'insufficient balance must not change the wallet');
+        assert.equal(await WalletTransaction.countDocuments({ fanni: fanni._id, type: 'admin_adjustment', amount: -75 }), 1);
+
+        const history = await request(app).get('/api/admin/wallet/transactions/' + fanni._id)
+          .set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(history.status, 200, JSON.stringify(history.body));
+        assert.ok(history.body.transactions.some(item => String(item._id) === String(ledger._id)), 'technician ledger endpoint must return the new deduction');
+      });
+
       const oldFanniToken = jwt.sign({ id: String(fanni._id), role: 'fanni' }, process.env.JWT_SECRET, { expiresIn: '30d' });
       const fanniPasswordReset = await request(app).patch('/api/admin/fannis/' + fanni._id + '/password')
         .set('Authorization', 'Bearer ' + adminToken)
