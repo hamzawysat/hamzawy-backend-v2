@@ -67,7 +67,7 @@ function canAccessAdmin(user, req) {
   // while router-mounted endpoints expose only their local path. Normalize both.
   const path = (String(req.path || '/').replace(/^\/api\/(?:admin|admins|auth\/admin)(?=\/|$)/, '') || '/');
   // لا يمكن تفويض إدارة الحسابات الإدارية أو سجل التدقيق لأي منصب فرعي.
-  if (path.startsWith('/admin-users') || path === '/bootstrap' || path.startsWith('/audit-logs')) return false;
+  if (path.startsWith('/admin-users') || path === '/bootstrap' || path.startsWith('/audit-logs') || /^\/orders\/[^/]+\/assign$/.test(path)) return false;
 
   let section = null;
   for (const [key, patterns] of Object.entries(PERMISSION_SECTIONS)) {
