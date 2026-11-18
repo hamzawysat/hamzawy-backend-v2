@@ -324,7 +324,8 @@ router.post('/logout', auth('fanni'), async (req, res, next) => {
     await notifyAdmins({
       type: 'admin_fanni_logout', title: 'تسجيل خروج فني',
       message: 'سجّل الفني ' + (req.user.name || 'فني') + ' (' + (req.user.phone || '') + ') الخروج من حسابه.',
-      link: '/admin?tab=fannis'
+      link: '/admin?tab=fannis',
+      dedupeKey: 'fanni-logout:' + crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')
     });
     return res.json({ message: 'تم تسجيل الخروج بنجاح.' });
   } catch (error) { return next(error); }

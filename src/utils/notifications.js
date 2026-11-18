@@ -342,6 +342,9 @@ async function retryPendingNotificationDeliveries(limit = 25) {
   const now = new Date();
   const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const pending = await NotificationDelivery.find({
+    // Login/logout audit alerts are one-shot events. Retrying an ambiguous provider
+    // response can create a fresh visible alert every couple of minutes.
+    type: { $nin: ['admin_client_logout', 'admin_fanni_logout'] },
     overallStatus: { $in: ['partial', 'failed'] },
     nextAttemptAt: { $lte: now },
     createdAt: { $gte: cutoff }

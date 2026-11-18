@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const Joi = require('joi');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
 
 const Client = require('../models/Client');
 const Order = require('../models/Order');
@@ -209,7 +210,8 @@ router.post('/logout', clientAuth, async (req, res, next) => {
     await notifyAdmins({
       type: 'admin_client_logout', title: 'تسجيل خروج عميل',
       message: 'سجّل العميل ' + req.client.name + ' (' + req.client.phone + ') الخروج من حسابه.',
-      link: '/admin?tab=clients'
+      link: '/admin?tab=clients',
+      dedupeKey: 'client-logout:' + crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')
     });
     return res.json({ message: 'تم تسجيل الخروج بنجاح.' });
   } catch (error) { return next(error); }
