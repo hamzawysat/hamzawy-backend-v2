@@ -211,8 +211,9 @@ router.post(
             if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
             const decoded = readReferralCode(req.body.referralCode);
             if (!decoded || decoded.kind !== 'fanni') throw new Error('INVALID_REFERRAL_CODE');
-            const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id').session(session);
+            const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id phone').session(session);
             if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+            if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
             inviterId = inviter._id;
             usedCode = decoded.code;
           }
