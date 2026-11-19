@@ -164,27 +164,64 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
   });
   router.post('/commerce/subscriptions/:id/renew', auth('admin'), validate(Joi.object({ note: Joi.string().trim().max(500).allow('').default(''), paymentStatus: Joi.string().valid('paid','pending','unpaid').default('paid'), amount: Joi.number().strict().min(0).max(100000000).optional() })), async (req, res, next) => {
     if (!validId(req.params.id)) return sendBadId(res);
+    let session;
     try {
-      const subscription = await ClientSubscription.findById(req.params.id);
-      if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود.' });
-      const item = subscription.item ? await CommerceItem.findById(subscription.item).lean() : null;
-      const duration = Number(item?.durationDays || subscription.durationDays || 30);
-      const now = new Date(), startsAt = subscription.endsAt && new Date(subscription.endsAt) > now ? new Date(subscription.endsAt) : now;
-      const endsAt = new Date(startsAt.getTime() + duration * 86400000);
-      const amount = req.body.amount === undefined ? Number(item?.price ?? subscription.amount ?? 0) : Number(req.body.amount);
-      subscription.startsAt = subscription.startsAt || startsAt;
-      subscription.endsAt = endsAt; subscription.status = 'active'; subscription.paymentStatus = req.body.paymentStatus;
-      subscription.amount = amount; subscription.updatedBy = adminName(req);
-      const transactionNumber = req.body.paymentStatus === 'paid' && amount > 0
-        ? 'HZW-' + new mongoose.Types.ObjectId().toString().toUpperCase()
-        : '';
-      if (transactionNumber) subscription.transactionNumber = transactionNumber;
-      subscription.history.push({ amount, startsAt, endsAt, renewedBy: adminName(req), note: req.body.note, transactionNumber });
-      await subscription.save();
-      await writeAdminAudit(req, 'تجديد اشتراك عميل', 'client-subscriptions', String(subscription._id), 'endsAt=' + endsAt.toISOString() + '; amount=' + amount);
-      await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_renewed', title: 'تم تجديد اشتراكك', message: 'تم تجديد اشتراك ' + subscription.itemName + '.', link: '/client.html?tab=subscriptions', dedupeKey: 'subscription-renewed:' + String(subscription._id) + ':' + endsAt.getTime() });
-      return res.json({ message: 'تم تجديد الاشتراك.', subscription, transactionNumber: transactionNumber || '' });
-    } catch (error) { next(error); }
+      session = await mongoose.startSession();
+      let result = null;
+      await session.withTransaction(async () => {
+        const subscription = await ClientSubscription.findById(req.params.id).session(session);
+        if (!subscription) { result = { kind: 'missing' }; return; }
+        const item = subscription.item ? await CommerceItem.findById(subscription.item).lean() : null;
+        const duration = Number(item?.durationDays || subscription.durationDays || 30);
+        const now = new Date();
+        const startsAt = subscription.endsAt && new Date(subscription.endsAt) > now ? new Date(subscription.endsAt) : now;
+        const endsAt = new Date(startsAt.getTime() + duration * 86400000);
+        const amount = req.body.amount === undefined ? Number(item?.price ?? subscription.amount ?? 0) : Number(req.body.amount);
+        if (!Number.isFinite(amount) || amount < 0) throw new Error('INVALID_SUBSCRIPTION_RENEWAL_AMOUNT');
+        let transactionNumber = '';
+        if (req.body.paymentStatus === 'paid' && amount > 0) {
+          const client = await Client.findOne({ _id: subscription.client, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
+          if (!client) { result = { kind: 'insufficient' }; return; }
+          const before = Number(client.walletBalance || 0);
+          const updatedClient = await Client.findOneAndUpdate(
+            { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
+            { $inc: { walletBalance: -amount } },
+            { new: true, session, runValidators: true }
+          );
+          if (!updatedClient) { result = { kind: 'insufficient' }; return; }
+          const paymentKey = 'admin-subscription-renewal:' + String(subscription._id) + ':' + String(new mongoose.Types.ObjectId());
+          const paymentTransaction = new WalletTransaction({
+            client: client._id, type: 'client_subscription_payment', amount: -amount,
+            balanceBefore: before, balanceAfter: Number(updatedClient.walletBalance),
+            description: 'تجديد اشتراك ' + subscription.itemName + ' من الإدارة',
+            idempotencyKey: paymentKey
+          });
+          await paymentTransaction.save({ session });
+          transactionNumber = paymentTransaction.transactionNumber;
+        }
+        subscription.startsAt = subscription.startsAt || startsAt;
+        subscription.endsAt = endsAt;
+        subscription.status = 'active';
+        subscription.paymentStatus = req.body.paymentStatus;
+        subscription.amount = amount;
+        subscription.updatedBy = adminName(req);
+        if (transactionNumber) subscription.transactionNumber = transactionNumber;
+        subscription.history.push({
+          amount, startsAt, endsAt, renewedBy: adminName(req), note: req.body.note,
+          transactionNumber
+        });
+        await subscription.save({ session });
+        result = { kind: 'renewed', subscription, transactionNumber };
+      });
+      if (result?.kind === 'missing') return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+      if (result?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد العميل غير كافٍ لتجديد الاشتراك أو المحفظة غير متاحة. لم يتم التجديد أو الخصم.' });
+      await writeAdminAudit(req, 'تجديد اشتراك عميل', 'client-subscriptions', String(result.subscription._id), 'endsAt=' + result.subscription.endsAt.toISOString() + '; amount=' + Number(result.subscription.amount));
+      await createNotification({ recipientRole: 'client', recipientId: result.subscription.client, type: 'subscription_renewed', title: 'تم تجديد اشتراكك', message: 'تم تجديد اشتراك ' + result.subscription.itemName + '.', link: '/client.html?tab=subscriptions', dedupeKey: 'subscription-renewed:' + String(result.subscription._id) + ':' + result.subscription.endsAt.getTime() });
+      return res.json({ message: 'تم تجديد الاشتراك.', subscription: result.subscription, transactionNumber: result.transactionNumber || '' });
+    } catch (error) {
+      if (error?.code === 11000) return res.status(409).json({ message: 'تم تسجيل عملية تجديد الاشتراك بالفعل.' });
+      next(error);
+    } finally { if (session) await session.endSession(); }
   });
   router.patch('/commerce/subscriptions/:id/status', auth('admin'), validate(Joi.object({ status: Joi.string().valid('active','paused','cancelled','expired').required(), reason: Joi.string().trim().max(500).allow('').default('') })), async (req, res, next) => {
     if (!validId(req.params.id)) return sendBadId(res);
