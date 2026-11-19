@@ -213,6 +213,10 @@ min: 0,
 default: null
 },
 
+clientPaymentTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+commissionTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+technicianSettlementTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+refundTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
 clientPaymentStatus: { type: String, enum: ['unpaid', 'held', 'settled', 'refunded'], default: 'unpaid', index: true },
 // Customer acceptance starts the 14-day repair warranty; legacy orders remain unconfirmed.
 completionDeclaredAt: { type: Date, default: null, index: true },
