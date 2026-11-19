@@ -3,6 +3,7 @@
 const express = require('express');
 const FanniCardLedger = require('../../models/FanniCardLedger');
 const { decryptNationalId } = require('../../services/fanniCardOcr');
+const { normalizePhone } = require('../../utils/phone');
 
 function createAdminFanniCardLedgerRouter({ auth, writeAdminAudit, adminName }) {
   const router = express.Router();
@@ -17,12 +18,13 @@ function createAdminFanniCardLedgerRouter({ auth, writeAdminAudit, adminName }) 
         { fanniName: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } },
         { extractedName: { $regex: search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), $options: 'i' } }
       ];
+      const canSeeFullNationalId = (req.user?.role === 'admin' && normalizePhone(req.user?.phone) === normalizePhone(process.env.ADMIN_PHONE || '')) || ['مدير', 'مشرف أول'].includes(String(req.user?.adminRole || ''));
       const rows = await FanniCardLedger.find(query).select('+nationalIdEncrypted')
         .sort({ firstRegisteredAt: -1 }).limit(500).lean();
       return res.set('Cache-Control', 'no-store').json({
         cards: rows.map(row => ({
           id: String(row._id),
-          nationalId: decryptNationalId(row.nationalIdEncrypted),
+          nationalId: (() => { const value = decryptNationalId(row.nationalIdEncrypted); return canSeeFullNationalId ? value : value.replace(/^(\\d{3})\\d{7}(\\d{4})$/, '$1*******$2'); })(),
           fanniName: row.fanniName,
           extractedName: row.extractedName || '',
           fanniId: row.fanniId ? String(row.fanniId) : null,
