@@ -216,7 +216,8 @@ router.post(
         if (['CARD_OCR_UNCLEAR', 'CARD_IMAGE_UNREADABLE'].includes(ocrError?.code)) {
           return res.status(422).json({ code: 'CARD_OCR_UNCLEAR', message: 'مش قادرين نقرأ بيانات البطاقة بوضوح. ارفع صورة أوضح للوجه الأمامي وحاول مرة أخرى.' });
         }
-        throw ocrError;
+        console.error('Technician card OCR unavailable:', ocrError?.message || ocrError);
+        return res.status(503).json({ code: 'CARD_OCR_UNAVAILABLE', message: 'خدمة قراءة البطاقة غير متاحة مؤقتًا. حاول مرة أخرى بعد قليل.' });
       }
 
       const nationalIdHash = cardHash(cardData.nationalId);
