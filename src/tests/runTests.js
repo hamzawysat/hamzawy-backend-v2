@@ -1909,6 +1909,47 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 3);
 
+      const bulkProductA = await StoreProduct.create({ name: 'منتج سلة متعدد أ', price: 20, type: 'product', isActive: true, stock: 5 });
+      const bulkProductB = await StoreProduct.create({ name: 'منتج سلة متعدد ب', price: 30, type: 'product', isActive: true, stock: 10 });
+      const balanceBeforeBulk = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const bulkKey = 'fanni-store-bulk-order-test-0001';
+      const bulkPurchase = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [
+          { productId: String(bulkProductA._id), quantity: 2 },
+          { productId: String(bulkProductB._id), quantity: 3 }
+        ], paymentMethod: 'wallet', idempotencyKey: bulkKey });
+      assert.equal(bulkPurchase.status, 201, JSON.stringify(bulkPurchase.body));
+      assert.equal(bulkPurchase.body.order.items.length, 2);
+      assert.equal(bulkPurchase.body.order.total, 130);
+      assert.equal(bulkPurchase.body.order.quantity, 5);
+      assert.equal(bulkPurchase.body.balance, balanceBeforeBulk - 130);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 3);
+      assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 7);
+      const bulkStoredOrder = await StoreOrder.findById(bulkPurchase.body.order.id).lean();
+      assert.equal(bulkStoredOrder.items.length, 2);
+      assert.equal(bulkStoredOrder.total, 130);
+      const bulkLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'fanni_store_payment', idempotencyKey: 'store-order:' + String(bulkStoredOrder._id) }).lean();
+      assert.ok(bulkLedger);
+      assert.equal(bulkLedger.amount, -130);
+      const duplicateBulk = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [
+          { productId: String(bulkProductA._id), quantity: 2 },
+          { productId: String(bulkProductB._id), quantity: 3 }
+        ], paymentMethod: 'wallet', idempotencyKey: bulkKey });
+      assert.equal(duplicateBulk.status, 200);
+      assert.equal(duplicateBulk.body.duplicate, true);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk - 130);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 3);
+      assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 7);
+      const cancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار إلغاء الطلب المجمع' });
+      assert.equal(cancelBulk.status, 200, JSON.stringify(cancelBulk.body));
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5);
+      assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 10);
+
       const storeSubscription = await StoreProduct.create({
         name: 'اشتراك اختبار الفني', price: 120, type: 'subscription',
         subscriptionDuration: '30 يوم', isActive: true
