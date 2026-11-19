@@ -592,7 +592,13 @@ async function run() {
       });
       assert.equal(missingIdentity.status, 400, 'registration must reject missing identity card images');
 
-      const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      // Use a complete PNG fixture. OCR is stubbed here because this test covers
+      // registration workflow, not OCR accuracy or external language-data downloads.
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=', 'base64');
+      const cardOcr = require('../services/fanniCardOcr');
+      cardOcr.setWorkerFactoryForTests(async () => ({
+        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
+      }));
       const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
         .set('Content-Type', 'image/png').send(png);
       assert.equal(frontUpload.status, 201, JSON.stringify(frontUpload.body));
@@ -610,6 +616,7 @@ async function run() {
         identityCardFrontFileId: frontUpload.body.fileId,
         identityCardBackFileId: backUpload.body.fileId
       });
+      cardOcr.setWorkerFactoryForTests(null);
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
