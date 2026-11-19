@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const Client = require('../models/Client');
+const Fanni = require('../models/Fanni');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -154,12 +155,16 @@ router.post('/register', async (req, res, next) => {
           if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
           const decoded = readReferralCode(value.referralCode);
           if (!decoded || decoded.kind !== 'client') throw new Error('INVALID_REFERRAL_CODE');
-          if (decoded.inviterId === String(client?._id || '')) throw new Error('SELF_REFERRAL');
-          const inviter = await Client.findById(decoded.inviterId).select('_id phone').session(session);
-          if (!inviter) throw new Error('REFERRER_NOT_FOUND');
-          if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
-          inviterId = inviter._id;
-          usedCode = decoded.code;
+          // Cross-role accounts may register normally, but cannot earn a referral reward through the same phone.
+          const existingFanni = await Fanni.findOne({ phone }).select('_id').session(session);
+          if (!existingFanni) {
+            if (decoded.inviterId === String(client?._id || '')) throw new Error('SELF_REFERRAL');
+            const inviter = await Client.findById(decoded.inviterId).select('_id phone').session(session);
+            if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+            if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
+            inviterId = inviter._id;
+            usedCode = decoded.code;
+          }
         }
         const created = await Client.create([{ name: value.name, phone, passwordHash }], { session });
         client = created[0];
