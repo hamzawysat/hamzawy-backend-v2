@@ -1418,6 +1418,10 @@ async function run() {
       const forcedClientBlocked = await request(app).get('/api/client/me')
         .set('Authorization', 'Bearer ' + forcedClientLogin.body.token);
       assert.equal(forcedClientBlocked.status, 403);
+      const forcedClientSamePassword = await request(app).post('/api/password-recovery/change/client')
+        .set('Authorization', 'Bearer ' + forcedClientLogin.body.token)
+        .send({ newPassword: 'ClientAfterSupport123', confirmPassword: 'ClientAfterSupport123' });
+      assert.equal(forcedClientSamePassword.status, 400, 'forced client password change must reject the existing password');
       const forcedClientChanged = await request(app).post('/api/password-recovery/change/client')
         .set('Authorization', 'Bearer ' + forcedClientLogin.body.token)
         .send({ newPassword: 'ClientForcedChange123', confirmPassword: 'ClientForcedChange123' });
@@ -1443,6 +1447,10 @@ async function run() {
       const fanniForcedBlocked = await request(app).get('/api/fanni/me')
         .set('Authorization', 'Bearer ' + fanniForcedLogin.body.token);
       assert.equal(fanniForcedBlocked.status, 403);
+      const fanniForcedSamePassword = await request(app).post('/api/password-recovery/change/fanni')
+        .set('Authorization', 'Bearer ' + fanniForcedLogin.body.token)
+        .send({ newPassword: 'FanniAfterSupport123', confirmPassword: 'FanniAfterSupport123' });
+      assert.equal(fanniForcedSamePassword.status, 400, 'forced technician password change must reject the existing password');
       const fanniForcedChanged = await request(app).post('/api/password-recovery/change/fanni')
         .set('Authorization', 'Bearer ' + fanniForcedLogin.body.token)
         .send({ newPassword: 'FanniForcedChange123', confirmPassword: 'FanniForcedChange123' });
