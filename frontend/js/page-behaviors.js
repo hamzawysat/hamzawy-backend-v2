@@ -19,7 +19,10 @@
         if (typeof window.goBack === 'function') {
           try { handled = window.goBack(true) === true; } catch (_) {}
         }
-        if (!handled && window.history && window.history.pushState) {
+        // Re-arm the in-panel history guard after every Back press. This
+        // prevents the browser from leaving the admin page when its internal
+        // section history is empty.
+        if (window.history && window.history.pushState) {
           window.history.pushState({ sonaaBackRoot: true }, '', location.href);
         }
       });
