@@ -1178,25 +1178,50 @@ async function run() {
       await test('admin technician wallet deduction is atomic, audited, and visible in transaction history', async () => {
         const WalletTransaction = require('../models/WalletTransaction');
         await Fanni.updateOne({ _id: fanni._id }, { $set: { walletBalance: 300 } });
+        const debitPayload = { amount: 75, reason: 'اختبار خصم إداري موثق', idempotencyKey: 'fanni-admin-debit-repeat-key-01' };
         const deduction = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
-          .set('Authorization', 'Bearer ' + adminToken)
-          .send({ amount: 75, reason: 'اختبار خصم إداري موثق' });
+          .set('Authorization', 'Bearer ' + adminToken).send(debitPayload);
         assert.equal(deduction.status, 200, JSON.stringify(deduction.body));
         assert.equal(deduction.body.balance, 225);
+        const repeatedDeduction = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(debitPayload);
+        assert.equal(repeatedDeduction.status, 200, JSON.stringify(repeatedDeduction.body));
+        assert.equal(repeatedDeduction.body.duplicate, true);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 225, 'retrying the same technician debit must not debit twice');
         const persisted = await Fanni.findById(fanni._id).lean();
-        assert.equal(persisted.walletBalance, 225);
         assert.ok(persisted.decisions.some(item => item.action === 'خصم إداري' && String(item.reason || '').includes('اختبار خصم إداري موثق')));
-        const ledger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'admin_adjustment', amount: -75 }).lean();
+        const ledger = await WalletTransaction.findOne({ fanni: fanni._id, idempotencyKey: 'admin-fanni-debit:' + String(fanni._id) + ':' + debitPayload.idempotencyKey }).lean();
         assert.ok(ledger);
         assert.equal(ledger.balanceBefore, 300);
         assert.equal(ledger.balanceAfter, 225);
 
         const insufficient = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
           .set('Authorization', 'Bearer ' + adminToken)
-          .send({ amount: 226, reason: 'اختبار منع الرصيد غير الكافي' });
+          .send({ amount: 226, reason: 'اختبار منع الرصيد غير الكافي', idempotencyKey: 'fanni-admin-insufficient-key-01' });
         assert.equal(insufficient.status, 409);
         assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 225, 'insufficient balance must not change the wallet');
-        assert.equal(await WalletTransaction.countDocuments({ fanni: fanni._id, type: 'admin_adjustment', amount: -75 }), 1);
+
+        const creditPayload = { amount: 40, reason: 'اختبار إضافة إدارية موثقة', idempotencyKey: 'fanni-admin-credit-repeat-key-01' };
+        const credit = await request(app).post('/api/admin/fannis/' + fanni._id + '/add-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(creditPayload);
+        assert.equal(credit.status, 200, JSON.stringify(credit.body));
+        assert.equal(credit.body.balance, 265);
+        const repeatedCredit = await request(app).post('/api/admin/fannis/' + fanni._id + '/add-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(creditPayload);
+        assert.equal(repeatedCredit.status, 200, JSON.stringify(repeatedCredit.body));
+        assert.equal(repeatedCredit.body.duplicate, true);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 265, 'retrying the same technician credit must not credit twice');
+
+        const settlementPayload = { amount: 200, reason: 'اختبار تسوية إدارية موثقة', idempotencyKey: 'fanni-admin-set-repeat-key-01' };
+        const settlement = await request(app).post('/api/admin/fannis/' + fanni._id + '/set-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(settlementPayload);
+        assert.equal(settlement.status, 200, JSON.stringify(settlement.body));
+        assert.equal(settlement.body.balance, 200);
+        const repeatedSettlement = await request(app).post('/api/admin/fannis/' + fanni._id + '/set-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(settlementPayload);
+        assert.equal(repeatedSettlement.status, 200, JSON.stringify(repeatedSettlement.body));
+        assert.equal(repeatedSettlement.body.duplicate, true);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 200, 'retrying the same technician settlement must not repeat it');
 
         const history = await request(app).get('/api/admin/wallet/transactions/' + fanni._id)
           .set('Authorization', 'Bearer ' + adminToken);
