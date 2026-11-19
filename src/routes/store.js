@@ -230,7 +230,7 @@ async function submitBulkOrder(req, res, next, role) {
       total,
       buyerRole: role, buyerId: buyer._id, buyerName: buyer.name || 'مستخدم',
       buyerPhone: buyer.phone || '', buyerNote: value.note,
-      paymentMethod, paymentStatus, requestKey: value.idempotencyKey,
+      paymentMethod, paymentStatus, walletCharged: paymentStatus === 'مدفوع', requestKey: value.idempotencyKey,
       statusHistory: [{ status: 'جديد', note: 'تم استلام طلب متعدد المنتجات', by: buyer.name || 'المستخدم' }]
     });
     await order.save({ session });
@@ -398,7 +398,7 @@ async function submitOrder(req, res, next, role) {
       quantity: value.quantity, stockReserved: Boolean(reservedProductId), total,
       buyerRole: role, buyerId: buyer._id, buyerName: buyer.name || 'مستخدم',
       buyerPhone: buyer.phone || '', buyerNote: value.note,
-      paymentMethod, paymentStatus,
+      paymentMethod, paymentStatus, walletCharged: paymentStatus === 'مدفوع',
       ...(value.idempotencyKey ? { requestKey: value.idempotencyKey } : {}),
       statusHistory: [{ status: 'جديد', note: 'تم استلام طلب الشراء', by: buyer.name || 'المستخدم' }]
     });
