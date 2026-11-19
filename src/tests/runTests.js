@@ -1947,6 +1947,19 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken)
         .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار إلغاء الطلب المجمع' });
       assert.equal(cancelBulk.status, 200, JSON.stringify(cancelBulk.body));
+      assert.equal(cancelBulk.body.refundedAmount, 130);
+      assert.equal(cancelBulk.body.order.paymentStatus, 'مسترد');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk);
+      const bulkRefundLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'refund', idempotencyKey: 'store-order-refund:' + String(bulkStoredOrder._id) }).lean();
+      assert.ok(bulkRefundLedger);
+      assert.equal(bulkRefundLedger.amount, 130);
+      const duplicateCancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد' });
+      assert.equal(duplicateCancelBulk.status, 200, JSON.stringify(duplicateCancelBulk.body));
+      assert.equal(duplicateCancelBulk.body.refundedAmount, 0);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk);
+      assert.equal(await WalletTransaction.countDocuments({ fanni: fanni._id, type: 'refund', idempotencyKey: 'store-order-refund:' + String(bulkStoredOrder._id) }), 1);
       assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5);
       assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 10);
 
@@ -1960,7 +1973,7 @@ async function run() {
       assert.equal(subscriptionRequest.status, 201, JSON.stringify(subscriptionRequest.body));
       assert.equal(subscriptionRequest.body.order.paymentStatus, 'غير مدفوع');
       assert.equal(subscriptionRequest.body.order.paymentMethod, 'غير محدد');
-      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 280);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150);
     });
 
     await test('order chat rejects revoked technician sessions after password changes', async () => {
