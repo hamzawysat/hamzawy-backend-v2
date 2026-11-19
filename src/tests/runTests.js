@@ -1945,7 +1945,7 @@ async function run() {
       assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 7);
       const cancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار إلغاء الطلب المجمع' });
+        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار إلغاء الطلب المجمع' });
       assert.equal(cancelBulk.status, 200, JSON.stringify(cancelBulk.body));
       assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5);
       assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 10);
