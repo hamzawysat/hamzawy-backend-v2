@@ -81,7 +81,7 @@ const topupSchema = Joi.object({
   referenceCode: Joi.string().trim().max(50).allow('').optional(),
   method: Joi.string().valid('vodafone_cash','orange_cash','etisalat_cash','we_cash').default('vodafone_cash'),
   note: Joi.string().max(200).allow('').optional(),
-  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,70}$/).optional()
+  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,69}$/).optional()
 });
 
 /*
