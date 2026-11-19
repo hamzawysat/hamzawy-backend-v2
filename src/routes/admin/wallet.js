@@ -11,10 +11,13 @@ function createAdminWalletRouter({
 }) {
   const router = express.Router();
 
-router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amount: amountSchema, reason: reasonSchema.optional() })), async (req, res, next) => {
+router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amount: amountSchema, reason: reasonSchema.optional(), idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required() })), async (req, res, next) => {
   if (!validId(req.params.id)) return sendBadId(res);
   let session;
+  const operationKey = `admin-fanni-set:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
   try {
+    const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean();
+    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ التسوية مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); }
     session = await mongoose.startSession();
     let outcome = null;
     await session.withTransaction(async () => {
@@ -27,11 +30,9 @@ router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amou
       const updatedFanni = await Fanni.findOneAndUpdate({ _id: fanni._id, role: 'fanni' }, { $set: { walletBalance: amount }, $push: { decisions: decision(req, 'تسوية إدارية', `تعيين الرصيد من ${previous} إلى ${amount}. ${reason}`.trim()) } }, { new: true, session, runValidators: true });
       if (!updatedFanni) { throw new Error('SETTLEMENT_FANNI_NOT_FOUND'); }
       let transactionId = null;
-      if (difference !== 0) {
-        const transaction = new WalletTransaction({ fanni: fanni._id, type: 'admin_adjustment', amount: difference, balanceBefore: previous, balanceAfter: amount, description: `تسوية إدارية: من ${previous} إلى ${amount}. ${reason}`.trim().slice(0, 500), idempotencyKey: `admin-set-balance:${String(fanni._id)}:${crypto.randomBytes(16).toString('hex')}` });
-        await transaction.save({ session });
-        transactionId = transaction._id;
-      }
+      const transaction = new WalletTransaction({ fanni: fanni._id, type: 'admin_adjustment', amount: difference, balanceBefore: previous, balanceAfter: amount, description: `تسوية إدارية: من ${previous} إلى ${amount}. ${reason}`.trim().slice(0, 500), idempotencyKey: operationKey });
+      await transaction.save({ session });
+      transactionId = transaction._id;
       outcome = { fanni: updatedFanni, balance: Number(updatedFanni.walletBalance), previous, difference, reason, transactionId };
     });
     if (!outcome) { return res.status(404).json({ message: 'الفني غير موجود' }); }
@@ -46,13 +47,19 @@ router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amou
       });
     }
     return res.json({ message: 'تم تحديث رصيد المحفظة وتسجيل التسوية', balance: outcome.balance, fanni: publicFanni(outcome.fanni) });
-  } catch (err) { next(err); } finally { if (session) await session.endSession(); }
+  } catch (err) {
+    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ التسوية مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); } }
+    next(err);
+  } finally { if (session) await session.endSession(); }
 });
 
-router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amount: Joi.number().strict().positive().max(100000000).required(), reason: reasonSchema.optional() })), async (req, res, next) => {
+router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amount: Joi.number().strict().positive().max(100000000).required(), reason: reasonSchema.optional(), idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required() })), async (req, res, next) => {
   if (!validId(req.params.id)) return sendBadId(res);
   let session;
+  const operationKey = `admin-fanni-credit:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
   try {
+    const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean();
+    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الإضافة مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); }
     session = await mongoose.startSession();
     let outcome = null;
     const amount = Number(req.body.amount);
@@ -63,7 +70,7 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
       const balanceBefore = Number(beforeFanni.walletBalance || 0);
       const fanni = await Fanni.findOneAndUpdate({ _id: beforeFanni._id, role: 'fanni' }, { $inc: { walletBalance: amount }, $push: { decisions: decision(req, 'تسوية إدارية', `إضافة ${amount} إلى المحفظة. ${reason}`.trim()) } }, { new: true, session, runValidators: true });
       if (!fanni) throw new Error('ADD_BALANCE_FANNI_NOT_FOUND');
-      const transaction = new WalletTransaction({ fanni: fanni._id, type: 'admin_adjustment', amount, balanceBefore, balanceAfter: Number(fanni.walletBalance), description: `إضافة إدارية بمبلغ ${amount}. ${reason}`.trim().slice(0, 500), idempotencyKey: `admin-add-balance:${String(fanni._id)}:${crypto.randomBytes(16).toString('hex')}` });
+      const transaction = new WalletTransaction({ fanni: fanni._id, type: 'admin_adjustment', amount, balanceBefore, balanceAfter: Number(fanni.walletBalance), description: `إضافة إدارية بمبلغ ${amount}. ${reason}`.trim().slice(0, 500), idempotencyKey: operationKey });
       await transaction.save({ session });
       outcome = { fanni, balance: Number(fanni.walletBalance), transactionId: transaction._id };
     });
@@ -76,17 +83,24 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
       link: '/fanni', dedupeKey: 'admin-fanni-wallet-credit:' + String(outcome.transactionId)
     });
     return res.json({ message: 'تمت إضافة الرصيد وتسجيل الحركة المالية', balance: outcome.balance, fanni: publicFanni(outcome.fanni) });
-  } catch (err) { next(err); } finally { if (session) await session.endSession(); }
+  } catch (err) {
+    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الإضافة مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); } }
+    next(err);
+  } finally { if (session) await session.endSession(); }
 });
 
 
 router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
   amount: Joi.number().strict().positive().max(100000000).required(),
-  reason: reasonSchema.required()
+  reason: reasonSchema.required(),
+  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required()
 })), async (req, res, next) => {
   if (!validId(req.params.id)) return sendBadId(res);
   let session;
+  const operationKey = `admin-fanni-debit:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
   try {
+    const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean();
+    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الخصم مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); }
     session = await mongoose.startSession();
     let outcome = null;
     const amount = Number(req.body.amount);
@@ -112,7 +126,7 @@ router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
         balanceBefore,
         balanceAfter,
         description: `خصم إداري بمبلغ ${amount}. السبب: ${reason}`.slice(0, 500),
-        idempotencyKey: `admin-deduct-balance:${String(fanni._id)}:${crypto.randomBytes(16).toString('hex')}`
+        idempotencyKey: operationKey
       });
       await transaction.save({ session });
       outcome = { kind: 'deducted', fanni, balance: balanceAfter, transactionId: transaction._id };
@@ -130,8 +144,10 @@ router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
       dedupeKey: 'admin-fanni-wallet-debit:' + String(outcome.transactionId)
     });
     return res.json({ message: 'تم خصم الرصيد وتسجيل الحركة المالية.', balance: outcome.balance, fanni: publicFanni(outcome.fanni) });
-  } catch (err) { next(err); }
-  finally { if (session) await session.endSession(); }
+  } catch (err) {
+    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الخصم مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); } }
+    next(err);
+  } finally { if (session) await session.endSession(); }
 });
 
 router.get('/topup-requests', auth('admin'), async (req, res, next) => {
