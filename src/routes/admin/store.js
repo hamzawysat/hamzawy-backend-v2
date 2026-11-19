@@ -365,9 +365,9 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
           }
           order.stockReserved = false;
         }
-        const walletPayment = order.paymentStatus === 'مدفوع' &&
-          ((order.buyerRole === 'client' && order.paymentMethod === 'محفظة العميل') ||
-           (order.buyerRole === 'fanni' && order.paymentMethod === 'محفظة الفني'));
+        const walletPayment = order.paymentStatus === 'مدفوع' && (order.walletCharged === true ||
+          (order.buyerRole === 'client' && order.paymentMethod === 'محفظة العميل') ||
+          (order.buyerRole === 'fanni' && order.paymentMethod === 'محفظة الفني'));
         if (walletPayment) {
           refundAmount = Math.max(0, Number(order.total) || 0);
           if (refundAmount > 0) {
