@@ -11,7 +11,7 @@ function createAdminWalletRouter({
 }) {
   const router = express.Router();
 
-router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amount: amountSchema, reason: reasonSchema.optional(), idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required() })), async (req, res, next) => {
+router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amount: amountSchema, reason: reasonSchema.optional(), idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,100}$/).required() })), async (req, res, next) => {
   if (!validId(req.params.id)) return sendBadId(res);
   let session;
   const operationKey = `admin-fanni-set:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
@@ -53,7 +53,7 @@ router.post('/fannis/:id/set-balance', auth('admin'), validate(Joi.object({ amou
   } finally { if (session) await session.endSession(); }
 });
 
-router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amount: Joi.number().strict().positive().max(100000000).required(), reason: reasonSchema.optional(), idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required() })), async (req, res, next) => {
+router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amount: Joi.number().strict().positive().max(100000000).required(), reason: reasonSchema.optional(), idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,100}$/).required() })), async (req, res, next) => {
   if (!validId(req.params.id)) return sendBadId(res);
   let session;
   const operationKey = `admin-fanni-credit:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
@@ -93,7 +93,7 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
 router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
   amount: Joi.number().strict().positive().max(100000000).required(),
   reason: reasonSchema.required(),
-  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required()
+  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,100}$/).required()
 })), async (req, res, next) => {
   if (!validId(req.params.id)) return sendBadId(res);
   let session;
