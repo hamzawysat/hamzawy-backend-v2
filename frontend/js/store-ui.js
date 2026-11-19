@@ -73,13 +73,62 @@ function openStoreCartReview(role){
     +'<p style="font-size:12px;color:#64748b;margin:8px 0 14px">راجع المنتجات والكميات والأسعار قبل الانتقال لتأكيد الطلب.</p>'
     +'<div style="display:grid;gap:8px">'+cart.map(item=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #e2e8f0;padding:10px 0"><div style="min-width:0"><b style="display:block;font-size:13px;color:#1e293b">'+storeEsc(item.name)+'</b><span style="font-size:11px;color:#64748b">الكمية: '+Number(item.quantity||1)+' × '+Number(item.price||0).toLocaleString('ar-EG')+' جنيه</span></div><b style="white-space:nowrap;font-size:13px;color:#0f766e">'+(Number(item.price||0)*Number(item.quantity||1)).toLocaleString('ar-EG')+' جنيه</b></div>').join('')+'</div>'
     +'<div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;font-weight:900;color:#0f172a"><span>إجمالي القطع: '+itemCount+'</span><span>الإجمالي: '+total.toLocaleString('ar-EG')+' جنيه</span></div>'
-    +'<p style="font-size:11px;color:#64748b;background:#f8fafc;border-radius:10px;padding:10px">هذه مراجعة فقط؛ لم يتم إرسال الطلب أو خصم أي مبلغ.</p>'
-    +'<button type="button" id="storeCartReviewDone" style="width:100%;margin-top:12px;background:#087f9c;color:#fff;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:14px">العودة إلى السلة</button></section>';
+    +'<fieldset style="border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-top:12px"><legend style="font-size:12px;font-weight:900;color:#334155;padding:0 5px">طريقة الدفع</legend><label style="display:flex;align-items:center;gap:8px;padding:8px;font-size:12px"><input type="radio" name="storeCartPaymentMethod" value="wallet" checked> من المحفظة (الرصيد: '+Number(role==='client'?state.walletBalance||0:getUser()?.walletBalance||getUser()?.balance||0).toLocaleString('ar-EG')+' جنيه)</label><label style="display:flex;align-items:center;gap:8px;padding:8px;font-size:12px"><input type="radio" name="storeCartPaymentMethod" value="cash_on_delivery"> الدفع عند الاستلام</label></fieldset>'
+    +'<p style="font-size:11px;color:#64748b;background:#f8fafc;border-radius:10px;padding:10px">لن يتم خصم أي مبلغ أو إرسال الطلب إلا بعد ضغط «تأكيد الطلب المجمع».</p>'
+    +'<button type="button" id="storeCartReviewSubmit" style="width:100%;margin-top:10px;background:#087f9c;color:#fff;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:14px">تأكيد الطلب المجمع</button>'
+    +'<button type="button" id="storeCartReviewDone" style="width:100%;margin-top:8px;background:#f1f5f9;color:#334155;border:0;border-radius:12px;padding:12px;font-weight:800">العودة إلى السلة</button></section>';
+  modal.dataset.role=role;
+  modal.dataset.requestKey=storeRequestKey();
   document.body.appendChild(modal);
   const close=()=>{const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();closeStoreCartReview();};
   modal.querySelector('#storeCartReviewClose').addEventListener('click',close);
   modal.querySelector('#storeCartReviewDone').addEventListener('click',close);
+  modal.querySelector('#storeCartReviewSubmit').addEventListener('click',()=>submitStoreCartOrder(role));
   modal.addEventListener('click',event=>{if(event.target===modal)close();});
+}
+async function submitStoreCartOrder(role){
+  const modal=document.getElementById('storeCartReviewModal');
+  if(!modal||modal.dataset.submitting==='true')return;
+  const cart=getStoreCart(role);
+  if(!cart.length){closeStoreCartReview();return;}
+  const button=modal.querySelector('#storeCartReviewSubmit');
+  const paymentMethod=modal.querySelector('input[name="storeCartPaymentMethod"]:checked')?.value||'wallet';
+  const items=cart.map(item=>({productId:String(item.productId),quantity:Number(item.quantity||1)}));
+  const payload={items,paymentMethod,note:'',idempotencyKey:modal.dataset.requestKey||storeRequestKey()};
+  modal.dataset.requestKey=payload.idempotencyKey;
+  modal.dataset.submitting='true';
+  button.disabled=true;button.textContent='جاري إرسال الطلب المجمع...';button.style.opacity='.65';
+  async function send(method){
+    const response=await fetch('/api/store/'+role+'/orders/bulk',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({...payload,paymentMethod:method})});
+    const data=await response.json().catch(()=>({}));
+    return {response,data};
+  }
+  try{
+    let result=await send(paymentMethod);
+    if(!result.response.ok&&paymentMethod==='wallet'&&result.response.status===409&&result.data.canUseCashOnDelivery===true){
+      const useCod=confirm((result.data.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب المجمع والدفع عند الاستلام؟');
+      if(!useCod){modal.dataset.submitting='false';button.disabled=false;button.textContent='تأكيد الطلب المجمع';button.style.opacity='1';return;}
+      result=await send('cash_on_delivery');
+    }
+    if(!result.response.ok)throw new Error(result.data.message||'تعذر إرسال الطلب المجمع.');
+    state.storeCartByRole={...(state.storeCartByRole||{}),[role]:[]};
+    persistStoreCart();
+    if(result.data.balance!==undefined){
+      state.walletBalance=Number(result.data.balance);
+      if(role==='fanni'&&typeof setAuth==='function')setAuth(getToken(),{...(getUser()||{}),walletBalance:Number(result.data.balance)});
+    }
+    closeStoreCartReview();
+    if(role==='client')showToast(result.data.message||'تم إرسال الطلب المجمع بنجاح');
+    else toast(result.data.message||'تم إرسال الطلب المجمع بنجاح');
+    await loadStoreForRole(role);
+    if(role==='client'&&typeof loadClientWallet==='function')await loadClientWallet();
+  }catch(error){
+    modal.dataset.submitting='false';
+    button.disabled=false;button.textContent='إعادة المحاولة بنفس رقم الطلب';button.style.opacity='1';
+    let errorBox=modal.querySelector('#storeCartReviewError');
+    if(!errorBox){errorBox=document.createElement('p');errorBox.id='storeCartReviewError';errorBox.setAttribute('role','alert');errorBox.style.cssText='color:#b91c1c;font-size:12px;margin-top:10px';button.before(errorBox);}
+    errorBox.textContent=error.message||'تعذر إرسال الطلب، حاول مرة أخرى.';
+  }
 }
 function renderStoreCart(role){
   const cart=getStoreCart(role);
