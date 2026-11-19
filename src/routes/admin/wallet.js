@@ -59,7 +59,7 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
   const operationKey = `admin-fanni-credit:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
   try {
     const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean();
-    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الإضافة مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); }
+    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الإضافة مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, transactionNumber: prior.transactionNumber || '', duplicate: true }); }
     session = await mongoose.startSession();
     let outcome = null;
     const amount = Number(req.body.amount);
@@ -100,7 +100,7 @@ router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
   const operationKey = `admin-fanni-debit:${String(req.params.id)}:${String(req.body.idempotencyKey)}`;
   try {
     const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean();
-    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الخصم مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); }
+    if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الخصم مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, transactionNumber: prior.transactionNumber || '', duplicate: true }); }
     session = await mongoose.startSession();
     let outcome = null;
     const amount = Number(req.body.amount);
