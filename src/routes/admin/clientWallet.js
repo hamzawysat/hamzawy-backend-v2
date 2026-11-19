@@ -142,7 +142,7 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
     });
     await refundTransaction.save({session});
     order.refundTransactionNumber=refundTransaction.transactionNumber;await order.save({session});
-    outcome={kind:'refunded',orderId:order._id,clientId:clientAfter._id,amount,balance:Number(clientAfter.walletBalance),fanniId:order.assignedFanni};
+    outcome={kind:'refunded',orderId:order._id,clientId:clientAfter._id,amount,balance:Number(clientAfter.walletBalance),fanniId:order.assignedFanni,transactionNumber:refundTransaction.transactionNumber};
    });
    if(outcome?.kind==='not-refundable')return res.status(409).json({message:'الطلب غير قابل للاسترداد؛ يجب أن يكون المبلغ محجوزًا والطلب جاريًا، ولم يسبق استرداده.'});
    if(outcome?.kind==='missing-client')return res.status(409).json({message:'الطلب غير مرتبط بحساب عميل مسجل؛ لم يتم تنفيذ الاسترداد.'});
