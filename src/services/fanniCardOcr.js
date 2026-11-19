@@ -76,7 +76,7 @@ async function readFanniCard(imageBuffer) {
   const result = await worker.recognize(imageBuffer);
   const text = String(result?.data?.text || '');
   const normalized = normalizeDigits(text);
-  const matches = normalized.match(/(?:\d[\s-]*){14}/g) || [];
+  const matches = normalized.match(/(?<!\d)(?:\d[\s-]*){13}\d(?!\d)/g) || [];
   const ids = [...new Set(matches.map(normalizeNationalId).filter(Boolean))];
   if (ids.length !== 1) {
     const error = new Error('CARD_OCR_UNCLEAR');
