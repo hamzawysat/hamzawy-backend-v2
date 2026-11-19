@@ -666,7 +666,7 @@ router.get(
         fanni: req.user._id
       })
         .select(
-          'amount senderNumber method referenceNumber status isCredited reviewReason reviewedAt createdAt updatedAt'
+          'amount senderNumber method referenceNumber status isCredited reviewReason reviewedAt transactionNumber createdAt updatedAt'
         )
         .sort({ createdAt: -1 })
         .limit(100)
