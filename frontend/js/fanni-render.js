@@ -346,6 +346,7 @@ function renderContent(){
        <div class="flex justify-between gap-2"><b class="text-[12px]">${esc(h.amount??'')} جنيه</b><span class="text-[10px] text-slate-500">${esc(h.senderNumber||h.fromPhone||h.phone||'')}</span></div>
        <p class="text-[10px] text-slate-500 mt-2">الكود: ${esc(h.referenceNumber||h.reference||h.referenceCode||'بدون')}</p>
        <p class="text-[10px] mt-1 text-[#5A4520] 700 font-bold">الحالة: ${esc(h.status||'قيد المراجعة')}</p>
+       ${h.transactionNumber?`<p class="text-[10px] font-bold text-blue-700 mt-1" dir="ltr">رقم العملية: ${esc(h.transactionNumber)}</p>`:''}
        ${h.createdAt?`<p class="text-[10px] text-slate-400 mt-1">${esc(new Date(h.createdAt).toLocaleString('ar-EG'))}</p>`:''}
       </div>`).join('')}
      </div>
