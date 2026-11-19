@@ -36,13 +36,16 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       order.clientPaymentAmount = amount;
       order.clientPaymentAt = new Date();
       await order.save({ session });
-      await new WalletTransaction({
+      const paymentTransaction = new WalletTransaction({
         client: client._id, order: order._id, orderSN: order.sn,
         type: 'client_escrow_hold', amount: -amount, balanceBefore: before,
         balanceAfter: Number(updatedClient.walletBalance),
         description: 'حجز قيمة الخدمة للطلب ' + order.sn + ' لحين إتمام الفني للمهمة',
         idempotencyKey: 'client-service-hold:' + String(order._id)
-      }).save({ session });
+      });
+      await paymentTransaction.save({ session });
+      order.clientPaymentTransactionNumber = paymentTransaction.transactionNumber;
+      await order.save({ session });
       await session.commitTransaction();
       notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount };
       return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount });
