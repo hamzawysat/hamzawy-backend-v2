@@ -1925,6 +1925,14 @@ async function run() {
       assert.equal(storeLedger.balanceBefore, fanniBalanceBeforeStore);
       assert.equal(storeLedger.balanceAfter, fanniBalanceBeforeStore - 150);
 
+      const staleSinglePrice = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(storeProduct._id), quantity: 1, paymentMethod: 'wallet', expectedPrice: 70, idempotencyKey: 'fanni-store-stale-price-test-0001' });
+      assert.equal(staleSinglePrice.status, 409);
+      assert.equal(staleSinglePrice.body.priceChanged, true);
+      assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 3, 'stale-price rejection must not reserve stock');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150, 'stale-price rejection must not charge the wallet');
+
       const duplicateStorePurchase = await request(app).post('/api/store/fanni/orders')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ productId: String(storeProduct._id), quantity: 2, paymentMethod: 'wallet', idempotencyKey: storeKey });
@@ -1933,8 +1941,55 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 3);
 
+      const codProduct = await StoreProduct.create({ name: 'منتج دفع عند الاستلام للفني', price: 40, type: 'product', isActive: true, stock: 4 });
+      const balanceBeforeCod = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const codPurchase = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(codProduct._id), quantity: 2, paymentMethod: 'cash_on_delivery', expectedPrice: 40, idempotencyKey: 'fanni-store-cod-order-test-0001' });
+      assert.equal(codPurchase.status, 201, JSON.stringify(codPurchase.body));
+      assert.equal(codPurchase.body.order.paymentStatus, 'غير مدفوع');
+      assert.equal(codPurchase.body.order.paymentMethod, 'عند الاستلام');
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 2);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeCod, 'cash-on-delivery must not debit the wallet');
+      const duplicateCodPurchase = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(codProduct._id), quantity: 2, paymentMethod: 'cash_on_delivery', expectedPrice: 40, idempotencyKey: 'fanni-store-cod-order-test-0001' });
+      assert.equal(duplicateCodPurchase.status, 200);
+      assert.equal(duplicateCodPurchase.body.duplicate, true);
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 2, 'duplicate COD request must not reserve stock twice');
+
+      const clientStoreProduct = await StoreProduct.create({ name: 'منتج اختبار شراء العميل', price: 35, type: 'product', isActive: true, stock: 3 });
+      const clientBalanceBeforeStore = Number((await Client.findById(clientId).lean()).walletBalance);
+      const clientStorePurchase = await request(app).post('/api/store/client/orders')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ productId: String(clientStoreProduct._id), quantity: 1, paymentMethod: 'cash_on_delivery', expectedPrice: 35, idempotencyKey: 'client-store-cod-order-test-0001' });
+      assert.equal(clientStorePurchase.status, 201, JSON.stringify(clientStorePurchase.body));
+      assert.equal(clientStorePurchase.body.order.paymentStatus, 'غير مدفوع');
+      assert.equal((await StoreProduct.findById(clientStoreProduct._id).lean()).stock, 2);
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), clientBalanceBeforeStore, 'client COD order must not debit the wallet');
+
+      const staleClientProduct = await StoreProduct.create({ name: 'منتج سعره اتغير للعميل', price: 50, type: 'product', isActive: true, stock: 3 });
+      const staleClientPrice = await request(app).post('/api/store/client/orders')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ productId: String(staleClientProduct._id), quantity: 1, paymentMethod: 'cash_on_delivery', expectedPrice: 45, idempotencyKey: 'client-store-stale-price-test-0001' });
+      assert.equal(staleClientPrice.status, 409);
+      assert.equal(staleClientPrice.body.priceChanged, true);
+      assert.equal((await StoreProduct.findById(staleClientProduct._id).lean()).stock, 3, 'client stale-price rejection must leave stock untouched');
+
+      const paymentMethodPreservation = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'تم التواصل', adminNote: 'اختبار الحفاظ على طريقة الدفع عند عدم إرسالها' });
+      assert.equal(paymentMethodPreservation.status, 200, JSON.stringify(paymentMethodPreservation.body));
+      assert.equal(paymentMethodPreservation.body.order.paymentMethod, 'محفظة الفني', 'omitting paymentMethod must not erase the original wallet payment method');
+
       const bulkProductA = await StoreProduct.create({ name: 'منتج سلة متعدد أ', price: 20, type: 'product', isActive: true, stock: 5 });
       const bulkProductB = await StoreProduct.create({ name: 'منتج سلة متعدد ب', price: 30, type: 'product', isActive: true, stock: 10 });
+      const staleBulkPrice = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [{ productId: String(bulkProductA._id), quantity: 1, expectedPrice: 19 }], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-stale-price-0001' });
+      assert.equal(staleBulkPrice.status, 409);
+      assert.equal(staleBulkPrice.body.priceChanged, true);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5, 'stale bulk price must not reserve stock');
       const balanceBeforeBulk = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
       const bulkKey = 'fanni-store-bulk-order-test-0001';
       const bulkPurchase = await request(app).post('/api/store/fanni/orders/bulk')
