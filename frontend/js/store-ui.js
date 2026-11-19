@@ -8,6 +8,16 @@ function renderStoreProductCard(p,role){
   const detailsKey='store-details-'+role+'-'+productId.replace(/[^a-zA-Z0-9_-]/g,'');
   return '<article class="panel p-3 flex gap-3 items-start"><div class="w-24 h-24 rounded-xl bg-slate-100 overflow-hidden shrink-0">'+(p.imageUrl?'<img src="'+storeEsc(p.imageUrl)+'" loading="lazy" class="w-full h-full object-cover" alt="'+storeEsc(p.name)+'">':'<div class="h-full flex items-center justify-center text-3xl">📦</div>')+'</div><div class="min-w-0 flex-1"><b class="block text-[13px]">'+storeEsc(p.name)+'</b><p class="text-[12px] font-black text-blue-700 mt-2">'+Number(p.price||0).toLocaleString('ar-EG')+' جنيه</p><div class="mt-3 flex items-center justify-between gap-2" dir="ltr"><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(productId)+'" aria-controls="'+detailsKey+'" aria-expanded="'+(expanded?'true':'false')+'" onclick="toggleStoreProductDetails(this.dataset.role,this.dataset.productId)" class="text-[11px] font-extrabold text-teal-700 whitespace-nowrap">تفاصيل المنتج <span aria-hidden="true">'+(expanded?'⌃':'⌄')+'</span></button><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(productId)+'" onclick="addStoreProductToCart(this.dataset.role,this.dataset.productId)" class="primary-btn rounded-lg px-4 py-2 text-[11px] font-black">أضف للسلة</button></div>'+(expanded?'<div id="'+detailsKey+'" class="mt-3 rounded-xl bg-slate-50 border border-slate-100 p-3 text-right space-y-2"><p class="text-[11px] text-slate-600">النوع: '+(p.type==='subscription'?'اشتراك / تجديد اشتراك':'منتج وبضاعة')+(p.subscriptionDuration?' • '+storeEsc(p.subscriptionDuration):'')+'</p><p class="text-[11px] text-slate-600">الوصف: '+storeEsc(String(p.description||'').trim()||'لا يوجد وصف')+'</p>'+(String(p.details||'').trim()?'<p class="text-[11px] text-slate-600">المواصفات: '+storeEsc(p.details)+'</p>':'')+(p.originalPrice!=null&&Number(p.originalPrice)>Number(p.price)?'<p class="text-[11px] text-slate-500 line-through">السعر السابق: '+Number(p.originalPrice).toLocaleString('ar-EG')+' جنيه</p>':'')+(p.offerText?'<p class="text-[11px] text-emerald-700 font-bold">'+storeEsc(p.offerText)+'</p>':'')+'</div>':'')+'</div></article>';
 }
+function persistStoreCart(){
+  try{
+    if(window.IS_EDITOR_PREVIEW)return true;
+    localStorage.setItem('sonaa_store_cart_v1',JSON.stringify(state.storeCartByRole||{}));
+    return true;
+  }catch(error){
+    console.warn('تعذر حفظ سلة المتجر:',error);
+    return false;
+  }
+}
 function getStoreCart(role){const carts=state.storeCartByRole&&typeof state.storeCartByRole==='object'?state.storeCartByRole:{};return Array.isArray(carts[role])?carts[role]:[];}
 function changeStoreCartQuantity(role,id,delta){
   const cart=getStoreCart(role);
@@ -16,6 +26,7 @@ function changeStoreCartQuantity(role,id,delta){
   const next=Math.max(0,Math.min(1000,Number(item.quantity||1)+Number(delta||0)));
   const updatedCart=next===0?cart.filter(entry=>String(entry.productId)!==String(id)):cart.map(entry=>String(entry.productId)===String(id)?{...entry,quantity:next}:entry);
   state.storeCartByRole={...(state.storeCartByRole||{}),[role]:updatedCart};
+  persistStoreCart();
   if(next===0){const message='تم حذف المنتج من السلة.';if(role==='client')showToast(message);else toast(message);}
   render();
 }
@@ -25,6 +36,7 @@ function clearStoreCart(role){
   const confirmed=confirm('هل تريد تفريغ سلة المشتريات بالكامل؟');
   if(!confirmed)return;
   state.storeCartByRole={...(state.storeCartByRole||{}),[role]:[]};
+  persistStoreCart();
   const message='تم تفريغ سلة المشتريات.';
   if(role==='client')showToast(message);else toast(message);
   render();
@@ -35,6 +47,7 @@ function addStoreProductToCart(role,id){
   const cart=getStoreCart(role);
   if(cart.some(item=>String(item.productId)===String(id))){const message='المنتج موجود بالفعل في السلة.';if(role==='client')showToast(message);else toast(message);return;}
   state.storeCartByRole={...(state.storeCartByRole||{}),[role]:[...cart,{productId:String(product._id),name:String(product.name||''),price:Number(product.price||0),type:String(product.type||'product'),quantity:1}]};
+  persistStoreCart();
   const message='تمت إضافة '+String(product.name||'المنتج')+' إلى السلة.';
   if(role==='client')showToast(message);else toast(message);
   render();
