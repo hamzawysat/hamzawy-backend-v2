@@ -88,6 +88,9 @@ async function readFanniCard(imageBuffer) {
 }
 
 function setWorkerFactoryForTests(factory) {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('OCR_TEST_HOOK_DISABLED');
+  }
   workerPromise = null;
   workerFactory = typeof factory === 'function' ? factory : createWorker;
 }
