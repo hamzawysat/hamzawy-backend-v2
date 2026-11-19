@@ -80,7 +80,8 @@ const topupSchema = Joi.object({
   reference: Joi.string().trim().max(50).allow('').optional(),
   referenceCode: Joi.string().trim().max(50).allow('').optional(),
   method: Joi.string().valid('vodafone_cash','orange_cash','etisalat_cash','we_cash').default('vodafone_cash'),
-  note: Joi.string().max(200).allow('').optional()
+  note: Joi.string().max(200).allow('').optional(),
+  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,70}$/).optional()
 });
 
 /*
@@ -582,11 +583,19 @@ router.post(
 
       const amount = Number(req.body.amount);
 
-      /*
-       * مفتاح فريد لكل طلب حتى لا تتكرر قيمة المفتاح
-       * داخل قاعدة البيانات.
-       */
-      const idempotencyKey = crypto.randomUUID();
+      // Keep a stable per-technician key across client retries. Older app versions
+      // that do not send one retain the previous one-shot behavior.
+      const idempotencyKey = req.body.idempotencyKey
+        ? 'fanni:' + String(req.user._id) + ':' + String(req.body.idempotencyKey)
+        : crypto.randomUUID();
+      const existingRequest = await TopupRequest.findOne({ fanni: req.user._id, idempotencyKey }).lean();
+      if (existingRequest) {
+        return res.status(200).json({
+          message: 'طلب الشحن مسجل بالفعل وبانتظار مراجعة الإدارة.',
+          request: { id: String(existingRequest._id), amount: existingRequest.amount, senderNumber: existingRequest.senderNumber, method: existingRequest.method || 'vodafone_cash', referenceNumber: existingRequest.referenceNumber || '', status: existingRequest.status, createdAt: existingRequest.createdAt },
+          balance: Number(req.user.walletBalance || 0), walletBalance: Number(req.user.walletBalance || 0), duplicate: true
+        });
+      }
 
       const request = await TopupRequest.create({
         fanni: req.user._id,
@@ -625,9 +634,16 @@ router.post(
       });
     } catch (err) {
       if (err && err.code === 11000) {
-        return res.status(409).json({
-          message: 'تعذر إنشاء طلب الشحن بسبب تكرار بيانات الطلب. حاول مرة أخرى.'
+        const key = req.body?.idempotencyKey
+          ? 'fanni:' + String(req.user?._id || '') + ':' + String(req.body.idempotencyKey)
+          : '';
+        const existing = key ? await TopupRequest.findOne({ fanni: req.user._id, idempotencyKey: key }).lean().catch(() => null) : null;
+        if (existing) return res.status(200).json({
+          message: 'طلب الشحن مسجل بالفعل وبانتظار مراجعة الإدارة.',
+          request: { id: String(existing._id), amount: existing.amount, senderNumber: existing.senderNumber, method: existing.method || 'vodafone_cash', referenceNumber: existing.referenceNumber || '', status: existing.status, createdAt: existing.createdAt },
+          balance: Number(req.user.walletBalance || 0), walletBalance: Number(req.user.walletBalance || 0), duplicate: true
         });
+        return res.status(409).json({ message: 'تعذر إنشاء طلب الشحن بسبب تكرار بيانات الطلب. حاول مرة أخرى.' });
       }
 
       next(err);
