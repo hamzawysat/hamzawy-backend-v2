@@ -121,12 +121,21 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         history: [{ amount, startsAt, endsAt, renewedBy: adminName(req), note: amount > 0 ? 'تفعيل يدوي من الإدارة مع الخصم من المحفظة' : 'تفعيل يدوي من الإدارة بدون خصم', paymentKey: amount > 0 ? paymentKey : '' }]
       });
       await subscription.save({ session });
-      if (amount > 0) await new WalletTransaction({
-        client: client._id, type: 'client_subscription_payment', amount: -amount,
-        balanceBefore: before, balanceAfter: Number(updatedClient.walletBalance),
-        description: 'تفعيل اشتراك ' + item.name + ' من الإدارة',
-        idempotencyKey: paymentKey
-      }).save({ session });
+      let transactionNumber = '';
+      if (amount > 0) {
+        const paymentTransaction = new WalletTransaction({
+          client: client._id, type: 'client_subscription_payment', amount: -amount,
+          balanceBefore: before, balanceAfter: Number(updatedClient.walletBalance),
+          description: 'تفعيل اشتراك ' + item.name + ' من الإدارة',
+          idempotencyKey: paymentKey
+        });
+        await paymentTransaction.save({ session });
+        transactionNumber = paymentTransaction.transactionNumber;
+        subscription.transactionNumber = transactionNumber;
+        const latestPayment = subscription.history[subscription.history.length - 1];
+        if (latestPayment) latestPayment.transactionNumber = transactionNumber;
+        await subscription.save({ session });
+      }
       await session.commitTransaction();
 
       await writeAdminAudit(req, 'تفعيل اشتراك عميل وخصم قيمته', 'client-subscriptions', String(subscription._id), 'client=' + String(client._id) + '; item=' + item.name + '; amount=' + amount).catch(() => {});
@@ -137,7 +146,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         link: '/client.html?tab=subscriptions',
         dedupeKey: 'admin-client-subscription-activated:' + String(subscription._id)
       }).catch(() => {});
-      return res.status(201).json({ message: amount > 0 ? 'تم تفعيل الاشتراك وخصم المبلغ المحدد من محفظة العميل.' : 'تم تفعيل الاشتراك بدون خصم من محفظة العميل.', subscription, walletBalance: Number(updatedClient.walletBalance) });
+      return res.status(201).json({ message: amount > 0 ? 'تم تفعيل الاشتراك وخصم المبلغ المحدد من محفظة العميل.' : 'تم تفعيل الاشتراك بدون خصم من محفظة العميل.', subscription, walletBalance: Number(updatedClient.walletBalance), transactionNumber });
     } catch (error) {
       if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
       if (error?.code === 11000) return res.status(409).json({ message: 'تم تسجيل خصم هذا الاشتراك بالفعل.' });
@@ -183,6 +192,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       if (!subscription) { await session.abortTransaction(); return res.status(404).json({ message: 'الاشتراك غير موجود.' }); }
 
       // Charge client-originated requests only after explicit admin approval.
+      let approvalTransactionNumber = subscription.transactionNumber || '';
       if (req.body.status === 'active' && subscription.status === 'pending' && subscription.createdBy === 'العميل' && subscription.paymentStatus !== 'paid') {
         const paymentKey = 'client-subscription-approval:' + String(subscription._id);
         const priorPayment = await WalletTransaction.findOne({ client: subscription.client, idempotencyKey: paymentKey }).session(session).lean();
@@ -196,19 +206,22 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
             { $inc: { walletBalance: -amount } }, { new: true, session, runValidators: true }
           );
           if (!updatedClient) { await session.abortTransaction(); return res.status(409).json({ message: 'تغير رصيد العميل أثناء التفعيل. حدّث الصفحة وحاول مرة أخرى.' }); }
-          await new WalletTransaction({
+          const paymentTransaction = new WalletTransaction({
             client: client._id, type: 'client_subscription_payment', amount: -amount,
             balanceBefore: before, balanceAfter: Number(updatedClient.walletBalance),
             description: 'تفعيل اشتراك ' + subscription.itemName + ' بعد موافقة الإدارة',
             idempotencyKey: paymentKey
-          }).save({ session });
-        }
+          });
+          await paymentTransaction.save({ session });
+          approvalTransactionNumber = paymentTransaction.transactionNumber;
+        } else { approvalTransactionNumber = priorPayment.transactionNumber || ''; }
         const startsAt = new Date();
         subscription.startsAt = startsAt;
         subscription.endsAt = new Date(startsAt.getTime() + Number(subscription.durationDays || 30) * 86400000);
         subscription.paymentStatus = 'paid';
         subscription.paymentMethod = 'محفظة العميل';
-        subscription.history.push({ amount: Number(subscription.amount || 0), startsAt, endsAt: subscription.endsAt, renewedBy: adminName(req), note: 'خصم وتفعيل بعد موافقة الإدارة', paymentKey });
+        subscription.transactionNumber = approvalTransactionNumber;
+        subscription.history.push({ amount: Number(subscription.amount || 0), startsAt, endsAt: subscription.endsAt, renewedBy: adminName(req), note: 'خصم وتفعيل بعد موافقة الإدارة', paymentKey, transactionNumber: approvalTransactionNumber });
       }
 
       subscription.status = req.body.status; subscription.updatedBy = adminName(req);
@@ -224,7 +237,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       if (subscription.status === 'active' && subscription.paymentStatus === 'paid') {
         await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_activated', title: 'تم تفعيل اشتراكك', message: 'وافقت الإدارة وتم تفعيل اشتراك ' + subscription.itemName + ' وخصم قيمته من محفظتك.', link: '/client.html?tab=subscriptions', dedupeKey: 'client-subscription-approved:' + String(subscription._id) });
       }
-      return res.json({ message: 'تم تحديث حالة الاشتراك.', subscription });
+      return res.json({ message: 'تم تحديث حالة الاشتراك.', subscription, transactionNumber: subscription.transactionNumber || '' });
     } catch (error) {
       if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
       if (error?.code === 11000) return res.status(409).json({ message: 'تم تسجيل خصم هذا الاشتراك بالفعل.' });
