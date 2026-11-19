@@ -69,7 +69,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
   }
 
   const statusSchema = Joi.object({
-    status: Joi.string().valid('تم التواصل', 'قيد التجهيز', 'مكتمل', 'ملغي').required(),
+    status: Joi.string().valid('تم التواصل', 'قيد التجهيز', 'مكتمل', 'مرفوض', 'ملغي').required(),
     adminNote: Joi.string().trim().max(1000).allow('').default(''),
     paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل').default('غير محدد')
   }).unknown(false);
@@ -345,11 +345,11 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         await session.abortTransaction();
         return res.status(404).json({ message: 'المعاملة غير موجودة.' });
       }
-      if (order.status === 'ملغي' && checked.value.status !== 'ملغي') {
+      if (['ملغي', 'مرفوض'].includes(order.status) && !['ملغي', 'مرفوض'].includes(checked.value.status)) {
         await session.abortTransaction();
         return res.status(409).json({ message: 'الطلب الملغي لا يمكن إعادة فتحه؛ سجّل طلبًا جديدًا عند الحاجة.' });
       }
-      const isFirstCancellation = checked.value.status === 'ملغي' && order.status !== 'ملغي';
+      const isFirstCancellation = ['ملغي', 'مرفوض'].includes(checked.value.status) && !['ملغي', 'مرفوض'].includes(order.status);
       let refundAmount = 0;
       if (isFirstCancellation) {
         if (order.stockReserved) {
@@ -404,7 +404,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       await createNotification({
         recipientRole: order.buyerRole, recipientId: order.buyerId,
         type: refundAmount > 0 ? (order.buyerRole === 'client' ? 'client_wallet_credit' : 'wallet_credit') : 'store_order_update',
-        title: refundAmount > 0 ? 'تم رفض/إلغاء الطلب واسترداد المبلغ' : 'تحديث طلب المتجر',
+        title: refundAmount > 0 ? (order.status === 'مرفوض' ? 'تم رفض الطلب واسترداد المبلغ' : 'تم إلغاء الطلب واسترداد المبلغ') : 'تحديث طلب المتجر',
         message: 'طلب ' + order.productName + ': ' + order.status + '، الدفع: ' + order.paymentMethod + refundMessage + (order.adminNote ? ' — ' + order.adminNote : ''),
         link: order.buyerRole === 'client' ? '/client?tab=store' : '/fanni?tab=store'
       });
