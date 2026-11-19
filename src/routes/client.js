@@ -393,7 +393,7 @@ router.get('/wallet',clientAuth,async(req,res,next)=>{
  try{
   const [transactions,topups]=await Promise.all([
    WalletTransaction.find({client:req.clientId}).sort({createdAt:-1}).limit(100).lean(),
-   ClientTopupRequest.find({client:req.clientId}).select('amount senderNumber method referenceNumber status isCredited reviewReason reviewedAt createdAt updatedAt').sort({createdAt:-1}).limit(50).lean()
+   ClientTopupRequest.find({client:req.clientId}).select('amount senderNumber method referenceNumber status isCredited reviewReason reviewedAt transactionNumber createdAt updatedAt').sort({createdAt:-1}).limit(50).lean()
   ]);
   return res.set('Cache-Control','no-store').json({
    balance:Number(req.client.walletBalance||0),walletBalance:Number(req.client.walletBalance||0),frozen:Boolean(req.client.walletFrozen),
