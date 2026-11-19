@@ -116,7 +116,7 @@ function createOrderCreationRouter({
       let order = value.idempotencyKey
         ? await Order.findOne({ clientAccount: req.clientId, requestKey: value.idempotencyKey })
         : null;
-      const duplicateRequest = Boolean(order);
+      let duplicateRequest = Boolean(order);
   
       for (let attempt = 0; !order && attempt < 3; attempt++) {
         try {
@@ -143,7 +143,7 @@ function createOrderCreationRouter({
           // A concurrent retry may have won the unique per-client request key.
           if (value.idempotencyKey) {
             order = await Order.findOne({ clientAccount: req.clientId, requestKey: value.idempotencyKey });
-            if (order) break;
+            if (order) { duplicateRequest = true; break; }
           }
           // Otherwise this was a generated serial-number collision; retry safely.
           if (attempt === 2) throw err;
