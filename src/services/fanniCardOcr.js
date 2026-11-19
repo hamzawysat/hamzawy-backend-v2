@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const { createWorker } = require('tesseract.js');
 
 let workerPromise = null;
+let workerFactory = createWorker;
 
 function getLedgerSecret() {
   const secret = String(process.env.CARD_LEDGER_SECRET || '');
@@ -49,7 +50,7 @@ function decryptNationalId(value) {
 
 async function getWorker() {
   if (!workerPromise) {
-    workerPromise = createWorker('ara+eng', 1, {
+    workerPromise = workerFactory('ara+eng', 1, {
       langPath: 'https://tessdata.projectnaptha.com/4.0.0',
       logger: () => {}
     }).catch(error => {
@@ -86,4 +87,16 @@ async function readFanniCard(imageBuffer) {
   return { nationalId: ids[0], extractedName: extractArabicName(text) };
 }
 
-module.exports = { readFanniCard, normalizeNationalId, cardHash, encryptNationalId, decryptNationalId };
+function setWorkerFactoryForTests(factory) {
+  workerPromise = null;
+  workerFactory = typeof factory === 'function' ? factory : createWorker;
+}
+
+module.exports = {
+  readFanniCard,
+  normalizeNationalId,
+  cardHash,
+  encryptNationalId,
+  decryptNationalId,
+  setWorkerFactoryForTests
+};
