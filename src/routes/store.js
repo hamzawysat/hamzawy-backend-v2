@@ -143,7 +143,7 @@ async function submitBulkOrder(req, res, next, role) {
     if (duplicate) return res.status(200).json({
       message: 'طلب الشراء مسجل بالفعل.',
       balance: Number(buyer.walletBalance || 0),
-      order: { id: String(duplicate._id), productName: duplicate.productName, items: duplicate.items || [], quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt },
+      order: { id: String(duplicate._id), productName: duplicate.productName, items: duplicate.items || [], quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, transactionNumber: duplicate.transactionNumber || '', refundTransactionNumber: duplicate.refundTransactionNumber || '', createdAt: duplicate.createdAt },
       duplicate: true
     });
 
@@ -258,12 +258,15 @@ async function submitBulkOrder(req, res, next, role) {
     await order.save({ session });
 
     if (paymentStatus === 'مدفوع') {
-      await new WalletTransaction({
+      const transaction = new WalletTransaction({
         ...(role === 'client' ? { client: buyer._id, type: 'client_store_payment' } : { fanni: buyer._id, type: 'fanni_store_payment' }),
         amount: -total, balanceBefore, balanceAfter: Number(updatedBuyer.walletBalance),
         description: 'شراء ' + orderItems.length + ' منتجات من متجر حمزاوي سات',
         idempotencyKey: 'store-order:' + String(order._id)
-      }).save({ session });
+      });
+      await transaction.save({ session });
+      order.transactionNumber = transaction.transactionNumber;
+      await order.save({ session });
     }
     await session.commitTransaction();
 
@@ -277,14 +280,14 @@ async function submitBulkOrder(req, res, next, role) {
         ? 'تم تأكيد طلبك وخصم إجمالي المبلغ من محفظتك بنجاح. الإدارة هتتواصل معاك لتجهيز الطلب.'
         : 'تم إرسال طلبك المجمع بنجاح. الدفع هيكون عند الاستلام، والإدارة هتتواصل معاك لتأكيد التفاصيل.',
       balance: updatedBuyer ? Number(updatedBuyer.walletBalance) : undefined,
-      order: { id: String(order._id), productName: order.productName, items: order.items, quantity: order.quantity, total: order.total, status: order.status, paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus, createdAt: order.createdAt }
+      order: { id: String(order._id), productName: order.productName, items: order.items, quantity: order.quantity, total: order.total, status: order.status, paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus, transactionNumber: order.transactionNumber || '', refundTransactionNumber: order.refundTransactionNumber || '', createdAt: order.createdAt }
     });
   } catch (error) {
     if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
     if (error?.code === 11000) {
       const buyer = role === 'client' ? req.client : req.user;
       const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer?._id, requestKey: req.body?.idempotencyKey }).lean().catch(() => null);
-      if (duplicate) return res.status(200).json({ message: 'طلب الشراء مسجل بالفعل.', order: { id: String(duplicate._id), productName: duplicate.productName, items: duplicate.items || [], quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt }, duplicate: true });
+      if (duplicate) return res.status(200).json({ message: 'طلب الشراء مسجل بالفعل.', order: { id: String(duplicate._id), productName: duplicate.productName, items: duplicate.items || [], quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, transactionNumber: duplicate.transactionNumber || '', refundTransactionNumber: duplicate.refundTransactionNumber || '', createdAt: duplicate.createdAt }, duplicate: true });
     }
     return next(error);
   } finally {
@@ -434,12 +437,15 @@ async function submitOrder(req, res, next, role) {
     await order.save({ session });
 
     if (session && ['محفظة العميل', 'محفظة الفني'].includes(paymentMethod)) {
-      await new WalletTransaction({
+      const transaction = new WalletTransaction({
         ...(role === 'client' ? { client: buyer._id, type: 'client_store_payment' } : { fanni: buyer._id, type: 'fanni_store_payment' }), amount: -total,
         balanceBefore, balanceAfter: Number(updatedClient.walletBalance),
         description: 'شراء ' + order.productName + ' من متجر حمزاوي سات',
         idempotencyKey: 'store-order:' + String(order._id)
-      }).save({ session });
+      });
+      await transaction.save({ session });
+      order.transactionNumber = transaction.transactionNumber;
+      await order.save({ session });
     }
 
     await session.commitTransaction();
@@ -460,7 +466,7 @@ async function submitOrder(req, res, next, role) {
       order: {
         id: String(order._id), productName: order.productName, quantity: order.quantity,
         total: order.total, status: order.status, paymentMethod: order.paymentMethod,
-        paymentStatus: order.paymentStatus, createdAt: order.createdAt
+        paymentStatus: order.paymentStatus, transactionNumber: order.transactionNumber || '', refundTransactionNumber: order.refundTransactionNumber || '', createdAt: order.createdAt
       }
     });
   } catch (error) {
