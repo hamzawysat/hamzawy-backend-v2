@@ -200,7 +200,8 @@ router.post('/topup-requests/:id/reject', auth('admin'), validate(Joi.object({ r
 router.get('/wallet/transactions/:fanniId', auth('admin'), async (req,res,next)=>{
   try{
     if(!validId(req.params.fanniId)) return sendBadId(res);
-    const list = await WalletTransaction.find({fanni:req.params.fanniId}).sort({createdAt:-1}).limit(100).lean();
+    const rows = await WalletTransaction.find({fanni:req.params.fanniId}).sort({createdAt:-1}).limit(100).lean();
+    const list = rows.map(item => ({ ...item, transactionNumber: item.transactionNumber || ('HZW-' + String(item._id).toUpperCase()) }));
     return res.json({transactions:list, data:list});
   }catch(e){next(e);}
 });
