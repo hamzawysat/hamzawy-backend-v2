@@ -84,7 +84,7 @@ router.post('/fannis/:id/add-balance', auth('admin'), validate(Joi.object({ amou
     });
     return res.json({ message: 'تمت إضافة الرصيد وتسجيل الحركة المالية', balance: outcome.balance, fanni: publicFanni(outcome.fanni), transactionNumber: outcome.transactionNumber });
   } catch (err) {
-    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الإضافة مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); } }
+    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الإضافة مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, transactionNumber: prior.transactionNumber || '', duplicate: true }); } }
     next(err);
   } finally { if (session) await session.endSession(); }
 });
@@ -145,7 +145,7 @@ router.post('/fannis/:id/deduct-balance', auth('admin'), validate(Joi.object({
     });
     return res.json({ message: 'تم خصم الرصيد وتسجيل الحركة المالية.', balance: outcome.balance, fanni: publicFanni(outcome.fanni), transactionNumber: outcome.transactionNumber });
   } catch (err) {
-    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الخصم مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, duplicate: true }); } }
+    if (err?.code === 11000) { const prior = await WalletTransaction.findOne({ fanni: req.params.id, idempotencyKey: operationKey }).lean(); if (prior) { const current = await Fanni.findById(req.params.id); return res.json({ message: 'تم تنفيذ الخصم مسبقًا.', balance: Number(current?.walletBalance ?? prior.balanceAfter), fanni: current ? publicFanni(current) : undefined, transactionNumber: prior.transactionNumber || '', duplicate: true }); } }
     next(err);
   } finally { if (session) await session.endSession(); }
 });
