@@ -5,6 +5,7 @@ process.env.NODE_ENV = 'test';
 process.env.ALLOWED_ORIGINS = 'https://www.hamzawy-sat.dynv6.net,http://localhost:3000';
 process.env.JWT_SECRET = 'sonaa-test-only-secret-change-me';
 process.env.ADMIN_PHONE = '01012345678';
+process.env.CARD_LEDGER_SECRET = 'test-only-card-ledger-secret-at-least-32-chars';
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -44,6 +45,27 @@ async function run() {
     process.env.MONGO_URI = mongo.getUri('sonaa_test');
     app = require('../server');
     mongoose = require('mongoose');
+
+    await test('technician card ledger normalizes Egyptian national-ID digits and encrypts the stored number', async () => {
+      const cardOcr = require('../services/fanniCardOcr');
+      const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
+      assert.equal(cardOcr.normalizeNationalId(nationalId), '29001012345678');
+      const encrypted = cardOcr.encryptNationalId(nationalId);
+      assert.notEqual(encrypted, '29001012345678');
+      assert.equal(cardOcr.decryptNationalId(encrypted), '29001012345678');
+      assert.equal(cardOcr.cardHash(nationalId), cardOcr.cardHash('29001012345678'));
+    });
+
+    await test('technician card ledger is a separate unique national-ID collection and cross-role referrals are skipped', async () => {
+      const FanniCardLedger = require('../models/FanniCardLedger');
+      const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
+      const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
+      assert.equal(FanniCardLedger.schema.path('nationalIdHash').options.unique, true);
+      assert.ok(technicianRoutes.includes("FanniCardLedger.create(["));
+      assert.ok(technicianRoutes.includes("existingClient = await Client.findOne({ phone })"));
+      assert.ok(clientRoutes.includes("existingFanni = await Fanni.findOne({ phone })"));
+      assert.ok(technicianRoutes.includes('DUPLICATE_FANNI_CARD_REVIEW'));
+    });
 
     await test('client and technician logout audit notifications are idempotent and never enter push retry loop', async () => {
       const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
