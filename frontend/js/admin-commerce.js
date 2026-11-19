@@ -81,6 +81,8 @@ function renderCommerceSubscriptions(){
     return '<article class="premium-card p-4 space-y-2"><div class="flex items-start justify-between gap-2"><div><h3 class="font-black text-sm">'+escHtml(client.name||'عميل')+'</h3><p class="text-xs text-slate-500" dir="ltr">'+escHtml(client.phone||'')+'</p></div><span class="text-xs font-black">'+escHtml(status)+'</span></div>'+
       '<p class="text-sm font-bold">'+escHtml(sub.itemName||'اشتراك')+' · '+Number(sub.amount||0).toLocaleString('ar-EG')+' جنيه</p>'+
       '<p class="text-xs text-slate-500">ينتهي: '+end+' · الدفع: '+escHtml(sub.paymentStatus||'')+'</p>'+
+      (sub.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+escHtml(sub.transactionNumber)+'</p>':'')+
+      (Array.isArray(sub.history)&&sub.history.length?'<div class="space-y-1">'+sub.history.filter(item=>item.transactionNumber).map(item=>'<p class="text-[10px] text-slate-600" dir="ltr">تجديد · رقم العملية: '+escHtml(item.transactionNumber)+'</p>').join('')+'</div>':'')+
       (sub.subscriptionDetails?'<div class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[11px] leading-6 whitespace-pre-wrap break-words"><b class="block mb-1">تفاصيل الاشتراك</b>'+escHtml(sub.subscriptionDetails)+'</div>':'')+
       '<div class="flex flex-wrap gap-2"><button class="pill-btn soft-btn" onclick="editClientSubscriptionDetails(\''+escHtml(sub._id)+'\')">'+(sub.subscriptionDetails?'تعديل التفاصيل':'إضافة تفاصيل الاشتراك')+'</button>'+
       '<button class="pill-btn soft-btn" onclick="renewClientSubscription(\''+escHtml(sub._id)+'\')">تجديد</button>'+
