@@ -726,11 +726,18 @@ async function run() {
 
       const submitted = await request(app).post('/api/fanni/wallet/topup')
         .set('Authorization', 'Bearer ' + token)
-        .send({ fromPhone: '01012345682', amount: 100, method: 'vodafone_cash', reference: 'PHASE2-TEST' });
+        .send({ fromPhone: '01012345682', amount: 100, method: 'vodafone_cash', reference: 'PHASE2-TEST', idempotencyKey: 'fanni-topup-test-key-001' });
       assert.equal(submitted.status, 201);
       assert.equal(submitted.body.request.status, 'قيد المراجعة');
       assert.equal(submitted.body.request.isCredited, undefined);
       assert.equal(submitted.body.walletBalance, beforeBalance);
+      const duplicateTopup = await request(app).post('/api/fanni/wallet/topup')
+        .set('Authorization', 'Bearer ' + token)
+        .send({ fromPhone: '01012345682', amount: 100, method: 'vodafone_cash', reference: 'PHASE2-TEST', idempotencyKey: 'fanni-topup-test-key-001' });
+      assert.equal(duplicateTopup.status, 200, JSON.stringify(duplicateTopup.body));
+      assert.equal(duplicateTopup.body.duplicate, true);
+      assert.equal(duplicateTopup.body.request.id, submitted.body.request.id, 'retries must reuse the original technician top-up request');
+
 
       const storedRequest = await TopupRequest.findById(submitted.body.request.id).lean();
       assert.ok(storedRequest);
