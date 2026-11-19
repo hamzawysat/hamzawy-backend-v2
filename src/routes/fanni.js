@@ -685,6 +685,7 @@ router.get(
         isCredited: Boolean(request.isCredited),
         reviewReason: request.reviewReason || '',
         reviewedAt: request.reviewedAt || null,
+        transactionNumber: request.transactionNumber || '',
         createdAt: request.createdAt,
         updatedAt: request.updatedAt
       }));
