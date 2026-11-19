@@ -2039,11 +2039,11 @@ async function run() {
       const pendingAdminBalance = Number((await Client.findById(clientId).lean()).walletBalance);
       const pendingAdminSubscription = await request(app).post('/api/admin/commerce/subscriptions')
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ clientPhone: client.phone, itemId: String(plan._id), status: 'pending', paymentStatus: 'paid' });
+        .send({ clientPhone: '01012345678', itemId: String(plan._id), status: 'pending', paymentStatus: 'paid' });
       assert.equal(pendingAdminSubscription.status, 201, JSON.stringify(pendingAdminSubscription.body));
       assert.equal(pendingAdminSubscription.body.subscription.paymentStatus, 'pending', 'admin-created pending subscription must never be marked paid before a real debit');
       assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), pendingAdminBalance, 'creating a pending admin subscription must not debit the wallet');
-      assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: { $regex: '^admin-client-subscription:' } }), 1, 'only the prior paid activation should have a wallet transaction');
+      assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: { $regex: '^admin-client-subscription:' } }), 0, 'pending admin subscription must not create a wallet transaction');
 
       const StoreProduct = require('../models/StoreProduct');
       const StoreOrder = require('../models/StoreOrder');
