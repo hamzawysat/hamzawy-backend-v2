@@ -1989,9 +1989,36 @@ async function run() {
         .send({ status: 'تم التواصل', adminNote: 'اختبار الحفاظ على طريقة الدفع عند عدم إرسالها' });
       assert.equal(paymentMethodPreservation.status, 200, JSON.stringify(paymentMethodPreservation.body));
       assert.equal(paymentMethodPreservation.body.order.paymentMethod, 'محفظة الفني', 'omitting paymentMethod must not erase the original wallet payment method');
+      const singleCancelAfterMethodChange = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار الاسترداد بعد تعديل طريقة الدفع' });
+      assert.equal(singleCancelAfterMethodChange.status, 200, JSON.stringify(singleCancelAfterMethodChange.body));
+      assert.equal(singleCancelAfterMethodChange.body.refundedAmount, 150, 'changing the displayed payment method must not remove wallet refund eligibility');
+      assert.equal(singleCancelAfterMethodChange.body.order.paymentStatus, 'مسترد');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore);
+      assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 5, 'cancelling a single wallet order must restore reserved stock');
+      const codCancel = await request(app).patch('/api/admin/store/orders/' + codPurchase.body.order.id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'عند الاستلام', adminNote: 'اختبار استعادة مخزون الدفع عند الاستلام' });
+      assert.equal(codCancel.status, 200, JSON.stringify(codCancel.body));
+      assert.equal(codCancel.body.refundedAmount, 0, 'cash-on-delivery cancellation must not credit the wallet');
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'cancelling a single COD order must restore stock');
 
       const bulkProductA = await StoreProduct.create({ name: 'منتج سلة متعدد أ', price: 20, type: 'product', isActive: true, stock: 5 });
       const bulkProductB = await StoreProduct.create({ name: 'منتج سلة متعدد ب', price: 30, type: 'product', isActive: true, stock: 10 });
+      const limitedBulkProduct = await StoreProduct.create({ name: 'منتج مخزون محدود لاختبار السلة', price: 40, type: 'product', isActive: true, stock: 1 });
+      const balanceBeforeInsufficientBulk = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const insufficientBulk = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [
+          { productId: String(bulkProductA._id), quantity: 2, expectedPrice: 20 },
+          { productId: String(limitedBulkProduct._id), quantity: 2, expectedPrice: 40 }
+        ], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-insufficient-stock-0001' });
+      assert.equal(insufficientBulk.status, 409);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5, 'failed bulk reservation must roll back stock reserved for earlier items');
+      assert.equal((await StoreProduct.findById(limitedBulkProduct._id).lean()).stock, 1);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeInsufficientBulk, 'insufficient bulk stock must not debit the wallet');
+
       const staleBulkPrice = await request(app).post('/api/store/fanni/orders/bulk')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ items: [{ productId: String(bulkProductA._id), quantity: 1, expectedPrice: 19 }], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-stale-price-0001' });
