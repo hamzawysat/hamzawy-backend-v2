@@ -71,7 +71,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
   const statusSchema = Joi.object({
     status: Joi.string().valid('تم التواصل', 'قيد التجهيز', 'مكتمل', 'مرفوض', 'ملغي').required(),
     adminNote: Joi.string().trim().max(1000).allow('').default(''),
-    paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل').default('غير محدد')
+    paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل').optional()
   }).unknown(false);
 
   router.post('/store/media', auth('admin'), async (req, res, next) => {
@@ -393,7 +393,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       }
       order.status = checked.value.status;
       order.adminNote = checked.value.adminNote;
-      order.paymentMethod = checked.value.paymentMethod;
+      if (checked.value.paymentMethod !== undefined) order.paymentMethod = checked.value.paymentMethod;
       order.statusHistory.push({ status: order.status, note: order.adminNote, by: req.user?.name || 'الإدارة', at: new Date() });
       await order.save({ session });
       await session.commitTransaction();
