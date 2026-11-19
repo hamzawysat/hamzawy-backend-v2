@@ -20,6 +20,7 @@ const orderSchema = Joi.object({
   quantity: Joi.number().integer().min(1).max(1000).default(1),
   note: Joi.string().trim().max(1000).allow('').default(''),
   paymentMethod: Joi.string().valid('wallet', 'cash_on_delivery').optional(),
+  expectedPrice: Joi.number().min(0).max(100000000).optional(),
   idempotencyKey: Joi.string().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).optional()
 }).unknown(false);
 
@@ -106,7 +107,8 @@ router.get('/products', async (req, res, next) => {
 const bulkOrderSchema = Joi.object({
   items: Joi.array().items(Joi.object({
     productId: Joi.string().hex().length(24).required(),
-    quantity: Joi.number().integer().min(1).max(1000).required()
+    quantity: Joi.number().integer().min(1).max(1000).required(),
+    expectedPrice: Joi.number().min(0).max(100000000).optional()
   }).unknown(false)).min(1).max(50).required(),
   note: Joi.string().trim().max(1000).allow('').default(''),
   paymentMethod: Joi.string().valid('wallet', 'cash_on_delivery').required(),
@@ -144,6 +146,14 @@ async function submitBulkOrder(req, res, next, role) {
       if (!product) {
         await session.abortTransaction();
         return res.status(409).json({ message: 'أحد المنتجات لم يعد متاحًا. حدّث السلة وراجعها قبل الإرسال.' });
+      }
+      if (item.expectedPrice !== undefined && Number(item.expectedPrice) !== Number(product.price)) {
+        await session.abortTransaction();
+        return res.status(409).json({
+          priceChanged: true,
+          changedItems: [{ productId: String(product._id), productName: product.name, previousPrice: Number(item.expectedPrice), currentPrice: Number(product.price) }],
+          message: 'تغير سعر المنتج "' + product.name + '" منذ إضافته للسلة. راجع السعر الجديد قبل تأكيد الطلب.'
+        });
       }
       if (product.type === 'subscription') {
         await session.abortTransaction();
@@ -283,26 +293,32 @@ async function submitOrder(req, res, next, role) {
     const buyer = role === 'client' ? req.client : req.user;
     if (!buyer || !buyer._id) return res.status(401).json({ message: 'سجّل الدخول لإرسال طلب الشراء.' });
 
-    if (role === 'client' || (role === 'fanni' && value.paymentMethod === 'wallet')) {
-      if (!value.idempotencyKey) return res.status(400).json({ message: 'حدّث الصفحة وحاول إرسال الطلب مرة أخرى.' });
-      const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer._id, requestKey: value.idempotencyKey }).lean();
-      if (duplicate) {
-        return res.status(200).json({
-          message: 'طلب الشراء مسجل بالفعل.',
-          balance: Number(buyer.walletBalance || 0),
-          order: { id: String(duplicate._id), productName: duplicate.productName, quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt },
-          duplicate: true
-        });
-      }
-      session = await mongoose.startSession();
-      session.startTransaction();
+    if (!value.idempotencyKey) return res.status(400).json({ message: 'حدّث الصفحة وحاول إرسال الطلب مرة أخرى.' });
+    const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer._id, requestKey: value.idempotencyKey }).lean();
+    if (duplicate) {
+      return res.status(200).json({
+        message: 'طلب الشراء مسجل بالفعل.',
+        balance: Number(buyer.walletBalance || 0),
+        order: { id: String(duplicate._id), productName: duplicate.productName, quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt },
+        duplicate: true
+      });
     }
+    session = await mongoose.startSession();
+    session.startTransaction();
 
-    const query = StoreProduct.findOne({ _id: value.productId, isActive: true });
-    const product = session ? await query.session(session) : await query;
+    const product = await StoreProduct.findOne({ _id: value.productId, isActive: true }).session(session);
     if (!product) {
       if (session?.inTransaction()) await session.abortTransaction();
       return res.status(404).json({ message: 'المنتج غير متاح حاليًا.' });
+    }
+    if (value.expectedPrice !== undefined && Number(value.expectedPrice) !== Number(product.price)) {
+      await session.abortTransaction();
+      return res.status(409).json({
+        priceChanged: true,
+        currentPrice: Number(product.price),
+        productName: product.name,
+        message: 'تغير سعر المنتج منذ فتح نافذة الشراء. راجع السعر الجديد قبل تأكيد الطلب.'
+      });
     }
     const isSubscription = product.type === 'subscription';
     if (!isSubscription && !['wallet', 'cash_on_delivery'].includes(value.paymentMethod)) {
@@ -310,7 +326,7 @@ async function submitOrder(req, res, next, role) {
       return res.status(400).json({ message: 'اختار طريقة الدفع: من المحفظة أو عند الاستلام.' });
     }
 
-    if (product.stock !== null) {
+    if (product.stock !== null && product.stock !== undefined) {
       const reserved = await StoreProduct.findOneAndUpdate(
         { _id: product._id, isActive: true, stock: { $gte: value.quantity } },
         { $inc: { stock: -value.quantity } },
@@ -402,8 +418,7 @@ async function submitOrder(req, res, next, role) {
       ...(value.idempotencyKey ? { requestKey: value.idempotencyKey } : {}),
       statusHistory: [{ status: 'جديد', note: 'تم استلام طلب الشراء', by: buyer.name || 'المستخدم' }]
     });
-    if (session) await order.save({ session });
-    else await order.save();
+    await order.save({ session });
 
     if (session && ['محفظة العميل', 'محفظة الفني'].includes(paymentMethod)) {
       await new WalletTransaction({
@@ -414,7 +429,7 @@ async function submitOrder(req, res, next, role) {
       }).save({ session });
     }
 
-    if (session) await session.commitTransaction();
+    await session.commitTransaction();
 
     await notifyAdmins({
       type: 'admin_store_order', title: 'طلب شراء جديد',
