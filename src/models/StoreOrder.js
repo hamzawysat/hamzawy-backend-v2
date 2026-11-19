@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 
 const storeOrderSchema = new mongoose.Schema({
   product: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreProduct', required: true, index: true },
+  items: [{ product: { type: mongoose.Schema.Types.ObjectId, ref: 'StoreProduct', required: true }, productName: { type: String, required: true, trim: true, maxlength: 120 }, productType: { type: String, enum: ['product', 'subscription'], default: 'product' }, subscriptionDuration: { type: String, trim: true, maxlength: 60, default: '' }, unitPrice: { type: Number, required: true, min: 0 }, quantity: { type: Number, required: true, min: 1, max: 1000 }, stockReserved: { type: Boolean, default: false }, total: { type: Number, required: true, min: 0 } }],
   productName: { type: String, required: true, trim: true, maxlength: 120 },
   productType: { type: String, enum: ['product', 'subscription'], default: 'product' },
   subscriptionDuration: { type: String, trim: true, maxlength: 60, default: '' },
