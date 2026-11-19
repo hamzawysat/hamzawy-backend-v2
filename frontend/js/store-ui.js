@@ -19,6 +19,16 @@ function changeStoreCartQuantity(role,id,delta){
   if(next===0){const message='تم حذف المنتج من السلة.';if(role==='client')showToast(message);else toast(message);}
   render();
 }
+function clearStoreCart(role){
+  const cart=getStoreCart(role);
+  if(!cart.length)return;
+  const confirmed=confirm('هل تريد تفريغ سلة المشتريات بالكامل؟');
+  if(!confirmed)return;
+  state.storeCartByRole={...(state.storeCartByRole||{}),[role]:[]};
+  const message='تم تفريغ سلة المشتريات.';
+  if(role==='client')showToast(message);else toast(message);
+  render();
+}
 function addStoreProductToCart(role,id){
   const product=(state.storeProducts||[]).find(item=>String(item._id)===String(id));
   if(!product){const message='المنتج غير متاح حاليًا، حدّث قائمة المنتجات وحاول مرة أخرى.';if(role==='client')showToast(message,'error');else toast(message,'error');return;}
@@ -33,7 +43,7 @@ function renderStoreCart(role){
   const cart=getStoreCart(role);
   if(!cart.length)return '<div class="panel p-3 text-center text-[12px] text-slate-500"><b class="text-slate-700">سلة المشتريات (0)</b><p class="mt-1">أضف المنتجات التي تريد شراءها من الأقسام.</p></div>';
   const total=cart.reduce((sum,item)=>sum+Number(item.price||0)*Number(item.quantity||1),0);
-  return '<div class="panel p-3 space-y-2"><div class="flex items-center justify-between"><b class="text-[13px]">سلة المشتريات</b><span class="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-teal-800">'+cart.length+' منتجات</span></div>'+cart.map(item=>'<div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><div class="min-w-0"><span class="block text-[12px] font-bold">'+storeEsc(item.name)+'</span><span class="text-[10px] text-slate-500">'+Number(item.price||0).toLocaleString('ar-EG')+' جنيه للقطعة</span></div><div class="flex shrink-0 items-center gap-2"><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,-1)" aria-label="تقليل الكمية" class="rounded-lg border px-3 py-1 font-black">−</button><span class="min-w-5 text-center text-[12px] font-black">'+Number(item.quantity||1)+'</span><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,1)" aria-label="زيادة الكمية" class="rounded-lg border px-3 py-1 font-black">+</button></div></div>').join('')+'<div class="flex items-center justify-between border-t border-slate-200 pt-2"><b class="text-[12px]">الإجمالي الحالي</b><b class="text-[13px] text-teal-700">'+total.toLocaleString('ar-EG')+' جنيه</b></div><p class="text-[10px] text-slate-500">إضافة المنتجات للسلة لا ترسل الطلب ولا تخصم أي مبلغ.</p></div>';
+  return '<div class="panel p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[13px]">سلة المشتريات</b><div class="flex items-center gap-2"><span class="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-teal-800">'+cart.length+' منتجات</span><button type="button" data-role="'+storeEsc(role)+'" onclick="clearStoreCart(this.dataset.role)" class="rounded-lg border border-red-200 px-2 py-1 text-[10px] font-bold text-red-700">تفريغ السلة</button></div></div>'+cart.map(item=>'<div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><div class="min-w-0"><span class="block text-[12px] font-bold">'+storeEsc(item.name)+'</span><span class="text-[10px] text-slate-500">'+Number(item.price||0).toLocaleString('ar-EG')+' جنيه للقطعة</span></div><div class="flex shrink-0 items-center gap-2"><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,-1)" aria-label="تقليل الكمية" class="rounded-lg border px-3 py-1 font-black">−</button><span class="min-w-5 text-center text-[12px] font-black">'+Number(item.quantity||1)+'</span><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,1)" aria-label="زيادة الكمية" class="rounded-lg border px-3 py-1 font-black">+</button></div></div>').join('')+'<div class="flex items-center justify-between border-t border-slate-200 pt-2"><b class="text-[12px]">الإجمالي الحالي</b><b class="text-[13px] text-teal-700">'+total.toLocaleString('ar-EG')+' جنيه</b></div><p class="text-[10px] text-slate-500">إضافة المنتجات للسلة لا ترسل الطلب ولا تخصم أي مبلغ.</p></div>';
 }
 function toggleStoreProductDetails(role,id){
   const byRole=state.storeExpandedProductDetailsByRole&&typeof state.storeExpandedProductDetailsByRole==='object'?state.storeExpandedProductDetailsByRole:{};
