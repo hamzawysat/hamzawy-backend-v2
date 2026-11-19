@@ -24,7 +24,7 @@ function createAdminFanniCardLedgerRouter({ auth, writeAdminAudit, adminName }) 
       return res.set('Cache-Control', 'no-store').json({
         cards: rows.map(row => ({
           id: String(row._id),
-          nationalId: (() => { const value = decryptNationalId(row.nationalIdEncrypted); return canSeeFullNationalId ? value : value.replace(/^(\\d{3})\\d{7}(\\d{4})$/, '$1*******$2'); })(),
+          nationalId: (() => { const value = decryptNationalId(row.nationalIdEncrypted); return canSeeFullNationalId ? value : value.replace(/^(\d{3})\d{7}(\d{4})$/, '$1*******$2'); })(),
           fanniName: row.fanniName,
           extractedName: row.extractedName || '',
           fanniId: row.fanniId ? String(row.fanniId) : null,
