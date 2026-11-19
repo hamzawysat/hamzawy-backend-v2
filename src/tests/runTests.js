@@ -61,6 +61,8 @@ async function run() {
       const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
       const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
       assert.equal(FanniCardLedger.schema.path('nationalIdHash').options.unique, true);
+      assert.ok(FanniCardLedger.schema.path('duplicateAttempts').schema.path('consumedAt'));
+      assert.ok(technicianRoutes.includes('CARD_APPROVAL_ALREADY_USED'));
       assert.ok(technicianRoutes.includes("FanniCardLedger.create(["));
       assert.ok(technicianRoutes.includes("existingClient = await Client.findOne({ phone })"));
       assert.ok(clientRoutes.includes("existingFanni = await Fanni.findOne({ phone })"));
