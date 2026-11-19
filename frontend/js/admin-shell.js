@@ -56,6 +56,8 @@ function render(){
       </label>
       <nav class="admin-header-actions" aria-label="حساب الإدارة">
         <button type="button" class="admin-icon-btn" onclick="setTab('notifications')" aria-label="الإشعارات" title="الإشعارات">🔔</button>
+        <button type="button" class="admin-icon-btn" onclick="goAdminHome()" aria-label="القائمة الرئيسية" title="القائمة الرئيسية">⌂</button>
+        <button type="button" class="admin-icon-btn" onclick="goBack()" aria-label="رجوع داخل لوحة الإدارة" title="رجوع">↩</button>
         <a class="admin-icon-btn" href="password.html?role=admin&amp;mode=account" aria-label="حسابي" title="حسابي">👤</a>
         <button type="button" class="admin-icon-btn admin-logout-btn" onclick="logout()" aria-label="خروج" title="خروج">⎋</button>
       </nav>
