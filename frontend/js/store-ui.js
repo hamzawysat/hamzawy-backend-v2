@@ -162,7 +162,9 @@ function renderStoreCatalog(role){
   let h='<section class="mt-4 space-y-3"><div class="panel p-4"><h3 class="font-black text-[15px]">متجر حمزاوي سات</h3><p class="text-[11px] text-slate-500 mt-1">اختار القسم اللي محتاجه، وبعدها هتظهر لك المنتجات الموجودة بداخله.</p></div><details class="panel p-4"><summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-extrabold text-[13px]"><span>طلبات المتجر السابقة</span><span class="text-slate-500 transition-transform" aria-hidden="true">⌄</span></summary><div class="mt-3">';
   if(!orders.length)h+='<p class="text-[11px] text-slate-500">لسه مفيش طلبات شراء.</p>';
   orders.forEach(o=>{
-    h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p><p class="text-[11px] text-slate-500">الكمية: '+o.quantity+' • '+o.total+' جنيه • الحالة: '+storeEsc(o.status)+'</p></div>';
+    const items=Array.isArray(o.items)&&o.items.length?o.items:[{productName:o.productName,quantity:o.quantity,total:o.total}];
+    const itemSummary=items.map(item=>'<p class="text-[10px] text-slate-600">'+storeEsc(item.productName||'منتج')+' × '+Number(item.quantity||0)+' — '+Number(item.total||0).toLocaleString('ar-EG')+' جنيه</p>').join('');
+    h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p>'+itemSummary+'<p class="text-[11px] text-slate-500 mt-1">إجمالي الكمية: '+Number(o.quantity||0)+' • '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • الحالة: '+storeEsc(o.status)+'</p></div>';
   });
   h+='</div></details>';
   h+=renderStoreCart(role);
