@@ -94,7 +94,7 @@ async function submitStoreCartOrder(role){
   if(!cart.length){closeStoreCartReview();return;}
   const button=modal.querySelector('#storeCartReviewSubmit');
   const paymentMethod=modal.querySelector('input[name="storeCartPaymentMethod"]:checked')?.value||'wallet';
-  const items=cart.map(item=>({productId:String(item.productId),quantity:Number(item.quantity||1)}));
+  const items=cart.map(item=>({productId:String(item.productId),quantity:Number(item.quantity||1),expectedPrice:Number(item.price||0)}));
   const payload={items,paymentMethod,note:'',idempotencyKey:modal.dataset.requestKey||storeRequestKey()};
   modal.dataset.requestKey=payload.idempotencyKey;
   modal.dataset.submitting='true';
@@ -110,6 +110,16 @@ async function submitStoreCartOrder(role){
       const useCod=confirm((result.data.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب المجمع والدفع عند الاستلام؟');
       if(!useCod){modal.dataset.submitting='false';button.disabled=false;button.textContent='تأكيد الطلب المجمع';button.style.opacity='1';return;}
       result=await send('cash_on_delivery');
+    }
+    if(!result.response.ok&&result.data.priceChanged===true){
+      const changedById=new Map((Array.isArray(result.data.changedItems)?result.data.changedItems:[]).map(item=>[String(item.productId),item]));
+      state.storeCartByRole={...(state.storeCartByRole||{}),[role]:cart.map(item=>{const changed=changedById.get(String(item.productId));return changed?{...item,name:String(changed.productName||item.name),price:Number(changed.currentPrice)}:item;})};
+      persistStoreCart();
+      closeStoreCartReview();
+      openStoreCartReview(role);
+      const message=result.data.message||'تغير سعر منتج في السلة. راجع الأسعار الجديدة قبل التأكيد.';
+      if(role==='client')showToast(message,'error');else toast(message,'error');
+      return;
     }
     if(!result.response.ok)throw new Error(result.data.message||'تعذر إرسال الطلب المجمع.');
     state.storeCartByRole={...(state.storeCartByRole||{}),[role]:[]};
@@ -230,13 +240,23 @@ function submitStorePurchase(role,id){
     const note=String(noteInput.value||'').trim().slice(0,500);
     const idempotencyKey=storeRequestKey();
     async function send(method){
-      const r=await fetch('/api/store/'+role+'/orders',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({productId:id,quantity,note,...(!isSubscription?{paymentMethod:method}:{}),idempotencyKey})});
+      const r=await fetch('/api/store/'+role+'/orders',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({productId:id,quantity,note,expectedPrice:Number(product.price||0),...(!isSubscription?{paymentMethod:method}:{}),idempotencyKey})});
       const d=await r.json().catch(()=>({}));
       return {r,d};
     }
     submitButton.disabled=true;submitButton.textContent='جاري إرسال الطلب...';submitButton.style.opacity='.65';errorBox.style.display='none';
     try{
       let result=await send(paymentMethod);
+      if(!result.r.ok&&result.d.priceChanged===true){
+        const catalog=await fetch('/api/store/products',{cache:'no-store'});
+        const catalogData=await catalog.json().catch(()=>({}));
+        if(catalog.ok)state.storeProducts=Array.isArray(catalogData.products)?catalogData.products:state.storeProducts;
+        closeStorePurchaseModal();
+        const message=result.d.message||'تغير سعر المنتج. راجع السعر الجديد قبل تأكيد الطلب.';
+        if(role==='client')showToast(message,'error');else toast(message,'error');
+        submitStorePurchase(role,id);
+        return;
+      }
       if(!result.r.ok&&paymentMethod==='wallet'&&result.r.status===409&&result.d.canUseCashOnDelivery===true){
         const useCod=confirm((result.d.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب والدفع عند الاستلام؟');
         if(!useCod){submitButton.disabled=false;submitButton.textContent='تأكيد طلب الشراء';submitButton.style.opacity='1';return;}
