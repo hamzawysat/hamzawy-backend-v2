@@ -112,12 +112,14 @@ function ownerAuth(req, res, next) {
 router.post('/change/client', clientAuth, async (req, res, next) => {
   try {
     const { currentPassword, newPassword, confirmPassword } = req.body || {};
-    if (!req.mustChangePassword && (typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, await Client.findById(req.client._id).select('+passwordHash').then(x => x?.passwordHash || ''))))) {
+    const user = await Client.findById(req.client._id).select('+passwordHash');
+    if (!user) return res.status(404).json({ message: 'الحساب غير موجود.' });
+    if (!req.mustChangePassword && (typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, user.passwordHash || '')))) {
       return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة.' });
     }
+    const matchesExistingPassword = await bcrypt.compare(newPassword || '', user.passwordHash || '');
     const valid = passwordSchema.validate(newPassword);
-    if (valid.error || newPassword !== confirmPassword || newPassword === currentPassword) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل، والتأكيد مطابقًا، وألا تكون هي القديمة.' });
-    const user = await Client.findById(req.client._id).select('+passwordHash');
+    if (valid.error || newPassword !== confirmPassword || matchesExistingPassword) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل، والتأكيد مطابقًا، وألا تكون هي كلمة المرور الحالية.' });
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.mustChangePassword = false;
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
@@ -136,9 +138,11 @@ router.post('/change/fanni', auth('fanni'), async (req, res, next) => {
     if (req.user.role !== 'fanni') return res.status(403).json({ message: 'هذا المسار مخصص لحساب الفني فقط.' });
     const user = await Fanni.findById(req.user._id).select('+passwordHash');
     const { currentPassword, newPassword, confirmPassword } = req.body || {};
-    if (!user || (!req.mustChangePassword && (typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, user.passwordHash || ''))))) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة.' });
+    if (!user) return res.status(404).json({ message: 'الحساب غير موجود.' });
+    if (!req.mustChangePassword && (typeof currentPassword !== 'string' || !(await bcrypt.compare(currentPassword, user.passwordHash || '')))) return res.status(400).json({ message: 'كلمة المرور الحالية غير صحيحة.' });
+    const matchesExistingPassword = await bcrypt.compare(newPassword || '', user.passwordHash || '');
     const valid = passwordSchema.validate(newPassword);
-    if (valid.error || newPassword !== confirmPassword || newPassword === currentPassword) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل، والتأكيد مطابقًا، وألا تكون هي القديمة.' });
+    if (valid.error || newPassword !== confirmPassword || matchesExistingPassword) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل، والتأكيد مطابقًا، وألا تكون هي كلمة المرور الحالية.' });
     user.passwordHash = await bcrypt.hash(newPassword, 12);
     user.mustChangePassword = false;
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
