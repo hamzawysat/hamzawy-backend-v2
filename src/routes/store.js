@@ -102,6 +102,174 @@ router.get('/products', async (req, res, next) => {
   } catch (error) { return next(error); }
 });
 
+
+const bulkOrderSchema = Joi.object({
+  items: Joi.array().items(Joi.object({
+    productId: Joi.string().hex().length(24).required(),
+    quantity: Joi.number().integer().min(1).max(1000).required()
+  }).unknown(false)).min(1).max(50).required(),
+  note: Joi.string().trim().max(1000).allow('').default(''),
+  paymentMethod: Joi.string().valid('wallet', 'cash_on_delivery').required(),
+  idempotencyKey: Joi.string().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).required()
+}).unknown(false);
+
+async function submitBulkOrder(req, res, next, role) {
+  let session = null;
+  try {
+    const { error, value } = bulkOrderSchema.validate(req.body || {}, { abortEarly: false });
+    if (error) return res.status(400).json({ message: 'راجع المنتجات والكميات وطريقة الدفع.' });
+    if (role === 'fanni' && req.user?.role !== 'fanni') return res.status(403).json({ message: 'الشراء متاح لحسابات الفنيين فقط.' });
+    const buyer = role === 'client' ? req.client : req.user;
+    if (!buyer?._id) return res.status(401).json({ message: 'سجّل الدخول لإرسال طلب الشراء.' });
+
+    const quantities = new Map();
+    for (const item of value.items) quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
+    if ([...quantities.values()].some(quantity => quantity > 1000)) return res.status(400).json({ message: 'الحد الأقصى لكمية المنتج الواحد هو 1000.' });
+
+    const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer._id, requestKey: value.idempotencyKey }).lean();
+    if (duplicate) return res.status(200).json({
+      message: 'طلب الشراء مسجل بالفعل.',
+      balance: Number(buyer.walletBalance || 0),
+      order: { id: String(duplicate._id), productName: duplicate.productName, items: duplicate.items || [], quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt },
+      duplicate: true
+    });
+
+    session = await mongoose.startSession();
+    session.startTransaction();
+    const orderItems = [];
+    let total = 0;
+    let totalQuantity = 0;
+    for (const [productId, quantity] of quantities) {
+      const product = await StoreProduct.findOne({ _id: productId, isActive: true }).session(session);
+      if (!product) {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'أحد المنتجات لم يعد متاحًا. حدّث السلة وراجعها قبل الإرسال.' });
+      }
+      if (product.type === 'subscription') {
+        await session.abortTransaction();
+        return res.status(400).json({ message: 'طلبات الاشتراكات تُرسل منفردة ولا يمكن دمجها مع سلة المنتجات.' });
+      }
+      let stockReserved = false;
+      if (product.stock !== null && product.stock !== undefined) {
+        const reserved = await StoreProduct.findOneAndUpdate(
+          { _id: product._id, isActive: true, stock: { $gte: quantity } },
+          { $inc: { stock: -quantity } },
+          { new: true, session }
+        );
+        if (!reserved) {
+          await session.abortTransaction();
+          return res.status(409).json({ message: 'الكمية المطلوبة من "' + product.name + '" غير متاحة حاليًا.' });
+        }
+        stockReserved = true;
+      }
+      const unitPrice = Number(product.price);
+      const lineTotal = Math.round((unitPrice * quantity + Number.EPSILON) * 100) / 100;
+      total += lineTotal;
+      totalQuantity += quantity;
+      orderItems.push({
+        product: product._id, productName: product.name, productType: product.type || 'product',
+        subscriptionDuration: product.subscriptionDuration || '', unitPrice, quantity, stockReserved, total: lineTotal
+      });
+    }
+    total = Math.round((total + Number.EPSILON) * 100) / 100;
+
+    let paymentMethod = 'عند الاستلام';
+    let paymentStatus = 'غير مدفوع';
+    let updatedBuyer = null;
+    let balanceBefore = 0;
+    if (value.paymentMethod === 'wallet') {
+      if (role === 'client') {
+        const client = await Client.findOne({ _id: buyer._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: total } }).session(session);
+        if (!client) {
+          await session.abortTransaction();
+          const current = await Client.findById(buyer._id).select('walletBalance walletFrozen').lean();
+          return res.status(409).json({
+            message: current?.walletFrozen ? 'محفظتك مجمدة حاليًا. تقدر تختار الدفع عند الاستلام.' : 'رصيد محفظتك غير كافٍ لهذا الطلب. تقدر تختار الدفع عند الاستلام أو تشحن محفظتك.',
+            required: total, balance: Number(current?.walletBalance || 0), canUseCashOnDelivery: true
+          });
+        }
+        balanceBefore = Number(client.walletBalance || 0);
+        updatedBuyer = await Client.findOneAndUpdate(
+          { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: total } },
+          { $inc: { walletBalance: -total } }, { new: true, session, runValidators: true }
+        );
+        paymentMethod = 'محفظة العميل';
+      } else {
+        const fanni = await Fanni.findOne({ _id: buyer._id, status: 'معتمد', isFrozen: { $ne: true }, walletBalance: { $gte: total } }).session(session);
+        if (!fanni) {
+          await session.abortTransaction();
+          const current = await Fanni.findById(buyer._id).select('walletBalance isFrozen status').lean();
+          return res.status(409).json({
+            message: current?.isFrozen ? 'محفظتك مجمدة حاليًا. تقدر تختار الدفع عند الاستلام.' : 'رصيد محفظتك غير كافٍ لهذا الطلب. تقدر تكمل والدفع يكون عند الاستلام.',
+            required: total, balance: Number(current?.walletBalance || 0), canUseCashOnDelivery: true
+          });
+        }
+        balanceBefore = Number(fanni.walletBalance || 0);
+        updatedBuyer = await Fanni.findOneAndUpdate(
+          { _id: fanni._id, status: 'معتمد', isFrozen: { $ne: true }, walletBalance: { $gte: total } },
+          { $inc: { walletBalance: -total } }, { new: true, session, runValidators: true }
+        );
+        paymentMethod = 'محفظة الفني';
+      }
+      if (!updatedBuyer) {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'الرصيد اتغير أثناء تنفيذ الطلب. حدّث الصفحة وحاول مرة تانية، أو اختار الدفع عند الاستلام.', canUseCashOnDelivery: true });
+      }
+      paymentStatus = 'مدفوع';
+    }
+
+    const first = orderItems[0];
+    const order = new StoreOrder({
+      product: first.product,
+      items: orderItems,
+      productName: orderItems.length === 1 ? first.productName : 'طلب متعدد المنتجات (' + orderItems.length + ' منتجات)',
+      productType: 'product',
+      unitPrice: total,
+      quantity: totalQuantity,
+      stockReserved: orderItems.some(item => item.stockReserved),
+      total,
+      buyerRole: role, buyerId: buyer._id, buyerName: buyer.name || 'مستخدم',
+      buyerPhone: buyer.phone || '', buyerNote: value.note,
+      paymentMethod, paymentStatus, requestKey: value.idempotencyKey,
+      statusHistory: [{ status: 'جديد', note: 'تم استلام طلب متعدد المنتجات', by: buyer.name || 'المستخدم' }]
+    });
+    await order.save({ session });
+
+    if (paymentStatus === 'مدفوع') {
+      await new WalletTransaction({
+        ...(role === 'client' ? { client: buyer._id, type: 'client_store_payment' } : { fanni: buyer._id, type: 'fanni_store_payment' }),
+        amount: -total, balanceBefore, balanceAfter: Number(updatedBuyer.walletBalance),
+        description: 'شراء ' + orderItems.length + ' منتجات من متجر حمزاوي سات',
+        idempotencyKey: 'store-order:' + String(order._id)
+      }).save({ session });
+    }
+    await session.commitTransaction();
+
+    await notifyAdmins({
+      type: 'admin_store_order', title: 'طلب شراء جديد',
+      message: 'طلب متعدد المنتجات (' + orderItems.length + ') من ' + order.buyerName + ' بإجمالي ' + total + ' جنيه — الدفع: ' + paymentMethod + '.',
+      link: '/admin.html?tab=storeOrders', dedupeKey: 'store-order:' + String(order._id)
+    });
+    return res.status(201).json({
+      message: paymentStatus === 'مدفوع'
+        ? 'تم تأكيد طلبك وخصم إجمالي المبلغ من محفظتك بنجاح. الإدارة هتتواصل معاك لتجهيز الطلب.'
+        : 'تم إرسال طلبك المجمع بنجاح. الدفع هيكون عند الاستلام، والإدارة هتتواصل معاك لتأكيد التفاصيل.',
+      balance: updatedBuyer ? Number(updatedBuyer.walletBalance) : undefined,
+      order: { id: String(order._id), productName: order.productName, items: order.items, quantity: order.quantity, total: order.total, status: order.status, paymentMethod: order.paymentMethod, paymentStatus: order.paymentStatus, createdAt: order.createdAt }
+    });
+  } catch (error) {
+    if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
+    if (error?.code === 11000) {
+      const buyer = role === 'client' ? req.client : req.user;
+      const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer?._id, requestKey: req.body?.idempotencyKey }).lean().catch(() => null);
+      if (duplicate) return res.status(200).json({ message: 'طلب الشراء مسجل بالفعل.', order: { id: String(duplicate._id), productName: duplicate.productName, items: duplicate.items || [], quantity: duplicate.quantity, total: duplicate.total, status: duplicate.status, paymentMethod: duplicate.paymentMethod, paymentStatus: duplicate.paymentStatus, createdAt: duplicate.createdAt }, duplicate: true });
+    }
+    return next(error);
+  } finally {
+    if (session) await session.endSession().catch(() => {});
+  }
+}
+
 async function submitOrder(req, res, next, role) {
   let session = null;
   let requestValue = null;
@@ -282,6 +450,8 @@ async function submitOrder(req, res, next, role) {
   }
 }
 
+router.post('/client/orders/bulk', clientAuth, (req, res, next) => submitBulkOrder(req, res, next, 'client'));
+router.post('/fanni/orders/bulk', auth('fanni'), (req, res, next) => submitBulkOrder(req, res, next, 'fanni'));
 router.post('/client/orders', clientAuth, (req, res, next) => submitOrder(req, res, next, 'client'));
 router.post('/fanni/orders', auth('fanni'), (req, res, next) => submitOrder(req, res, next, 'fanni'));
 
