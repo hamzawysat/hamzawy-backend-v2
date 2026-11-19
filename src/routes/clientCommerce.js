@@ -20,7 +20,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       if (!order) { await session.abortTransaction(); return res.status(404).json({ message: 'الطلب غير موجود بحسابك أو لم يتم تعيين فني عليه بعد.' }); }
       if (order.clientPaymentStatus === 'held' || order.clientPaymentStatus === 'settled') {
         await session.abortTransaction();
-        return res.status(200).json({ message: order.clientPaymentStatus === 'settled' ? 'تم سداد الطلب وتسوية مستحقات الفني بالفعل.' : 'تم حجز قيمة الخدمة بالفعل من محفظتك.', paymentStatus: order.clientPaymentStatus, balance: Number(req.client.walletBalance || 0) });
+        return res.status(200).json({ message: order.clientPaymentStatus === 'settled' ? 'تم سداد الطلب وتسوية مستحقات الفني بالفعل.' : 'تم حجز قيمة الخدمة بالفعل من محفظتك.', paymentStatus: order.clientPaymentStatus, balance: Number(req.client.walletBalance || 0), transactionNumber: order.clientPaymentTransactionNumber || '' });
       }
       const amount = Number(order.acceptedOfferPrice);
       if (!Number.isFinite(amount) || amount <= 0) { await session.abortTransaction(); return res.status(409).json({ message: 'سعر الخدمة غير صالح؛ تواصل مع خدمة العملاء.' }); }
@@ -47,8 +47,8 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       order.clientPaymentTransactionNumber = paymentTransaction.transactionNumber;
       await order.save({ session });
       await session.commitTransaction();
-      notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount };
-      return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount });
+      notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount, transactionNumber: paymentTransaction.transactionNumber };
+      return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount, transactionNumber: paymentTransaction.transactionNumber });
     } catch (error) {
       if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
       if (error && error.code === 11000) return res.status(409).json({ message: 'عملية دفع هذا الطلب مسجلة بالفعل.' });
