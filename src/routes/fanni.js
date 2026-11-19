@@ -222,7 +222,7 @@ router.post(
 
       const nationalIdHash = cardHash(cardData.nationalId);
       const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
-      const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة');
+      const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة' && !attempt.consumedAt);
       if (existingCard && !approvedDuplicateAttempt) {
         existingCard.status = 'تحت مراجعة التكرار';
         existingCard.duplicateAttempts.push({
@@ -271,11 +271,25 @@ router.post(
           }], { session });
           fanni = created[0];
           if (existingCard && approvedDuplicateAttempt) {
-            await FanniCardLedger.updateOne(
-              { _id: existingCard._id, 'duplicateAttempts._id': approvedDuplicateAttempt._id },
-              { $push: { linkedTechnicians: { fanniId: fanni._id, name: fanni.name, phone, linkedAt: new Date() } }, $set: { status: 'مسجلة' } },
+            const approvalUse = await FanniCardLedger.updateOne(
+              {
+                _id: existingCard._id,
+                duplicateAttempts: {
+                  $elemMatch: {
+                    _id: approvedDuplicateAttempt._id,
+                    applicantPhone: phone,
+                    status: 'تم السماح بعد المراجعة',
+                    consumedAt: { $exists: false }
+                  }
+                }
+              },
+              {
+                $set: { 'duplicateAttempts.$.consumedAt': new Date(), status: 'مسجلة' },
+                $push: { linkedTechnicians: { fanniId: fanni._id, name: fanni.name, phone, linkedAt: new Date() } }
+              },
               { session }
             );
+            if (approvalUse.modifiedCount !== 1) throw new Error('CARD_APPROVAL_ALREADY_USED');
           } else {
             await FanniCardLedger.create([{
               nationalIdHash,
