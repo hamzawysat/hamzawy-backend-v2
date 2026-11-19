@@ -175,11 +175,15 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       subscription.startsAt = subscription.startsAt || startsAt;
       subscription.endsAt = endsAt; subscription.status = 'active'; subscription.paymentStatus = req.body.paymentStatus;
       subscription.amount = amount; subscription.updatedBy = adminName(req);
-      subscription.history.push({ amount, startsAt, endsAt, renewedBy: adminName(req), note: req.body.note });
+      const transactionNumber = req.body.paymentStatus === 'paid' && amount > 0
+        ? 'HZW-' + new mongoose.Types.ObjectId().toString().toUpperCase()
+        : '';
+      if (transactionNumber) subscription.transactionNumber = transactionNumber;
+      subscription.history.push({ amount, startsAt, endsAt, renewedBy: adminName(req), note: req.body.note, transactionNumber });
       await subscription.save();
       await writeAdminAudit(req, 'تجديد اشتراك عميل', 'client-subscriptions', String(subscription._id), 'endsAt=' + endsAt.toISOString() + '; amount=' + amount);
       await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_renewed', title: 'تم تجديد اشتراكك', message: 'تم تجديد اشتراك ' + subscription.itemName + '.', link: '/client.html?tab=subscriptions', dedupeKey: 'subscription-renewed:' + String(subscription._id) + ':' + endsAt.getTime() });
-      return res.json({ message: 'تم تجديد الاشتراك.', subscription });
+      return res.json({ message: 'تم تجديد الاشتراك.', subscription, transactionNumber: transactionNumber || '' });
     } catch (error) { next(error); }
   });
   router.patch('/commerce/subscriptions/:id/status', auth('admin'), validate(Joi.object({ status: Joi.string().valid('active','paused','cancelled','expired').required(), reason: Joi.string().trim().max(500).allow('').default('') })), async (req, res, next) => {
