@@ -1426,7 +1426,6 @@ async function run() {
         .send({ currentPassword: 'ClientForcedChange123', newPassword: 'ClientSelfChange123', confirmPassword: 'ClientSelfChange123' });
       assert.equal(clientSelfChangeWithOld.status, 200);
 
-      const Fanni = require('../models/Fanni');
       const targetFanni = await Fanni.findOne({ phone: '01012345680', role: 'fanni' });
       assert.ok(targetFanni);
       const forceFanni = await request(app).post('/api/admin/fannis/' + targetFanni._id + '/force-password-change')
