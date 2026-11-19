@@ -333,40 +333,88 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
     } catch (error) { return next(error); }
   });
   router.patch('/store/orders/:id', auth('admin'), async (req, res, next) => {
+    let session = null;
     try {
       if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ message: 'معرّف المعاملة غير صالح.' });
       const checked = statusSchema.validate(req.body || {}, { abortEarly: false });
-      if (checked.error) return res.status(400).json({ message: 'حالة المعاملة غير صالحة.' });
-      const order = await StoreOrder.findById(req.params.id);
-      if (!order) return res.status(404).json({ message: 'المعاملة غير موجودة.' });
-      if (order.status === 'ملغي' && checked.value.status !== 'ملغي') return res.status(409).json({ message: 'الطلب الملغي لا يمكن إعادة فتحه؛ سجّل طلبًا جديدًا عند الحاجة.' });
-      if (checked.value.status === 'ملغي' && order.status !== 'ملغي' && order.stockReserved) {
-        if (Array.isArray(order.items) && order.items.length) {
-          for (const item of order.items) {
-            if (item.stockReserved) {
-              await StoreProduct.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } });
-              item.stockReserved = false;
+      if (checked.error) return res.status(400).json({ message: 'حالة المعاملة أو طريقة الدفع غير صالحة.' });
+      session = await mongoose.startSession();
+      session.startTransaction();
+      const order = await StoreOrder.findById(req.params.id).session(session);
+      if (!order) {
+        await session.abortTransaction();
+        return res.status(404).json({ message: 'المعاملة غير موجودة.' });
+      }
+      if (order.status === 'ملغي' && checked.value.status !== 'ملغي') {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'الطلب الملغي لا يمكن إعادة فتحه؛ سجّل طلبًا جديدًا عند الحاجة.' });
+      }
+      const isFirstCancellation = checked.value.status === 'ملغي' && order.status !== 'ملغي';
+      let refundAmount = 0;
+      if (isFirstCancellation) {
+        if (order.stockReserved) {
+          if (Array.isArray(order.items) && order.items.length) {
+            for (const item of order.items) {
+              if (item.stockReserved) {
+                await StoreProduct.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } }, { session });
+                item.stockReserved = false;
+              }
             }
+          } else if (order.product) {
+            await StoreProduct.updateOne({ _id: order.product }, { $inc: { stock: order.quantity } }, { session });
           }
-        } else if (order.product) {
-          await StoreProduct.updateOne({ _id: order.product }, { $inc: { stock: order.quantity } });
+          order.stockReserved = false;
         }
-        order.stockReserved = false;
+        const walletPayment = order.paymentStatus === 'مدفوع' &&
+          ((order.buyerRole === 'client' && order.paymentMethod === 'محفظة العميل') ||
+           (order.buyerRole === 'fanni' && order.paymentMethod === 'محفظة الفني'));
+        if (walletPayment) {
+          refundAmount = Math.max(0, Number(order.total) || 0);
+          if (refundAmount > 0) {
+            const BuyerModel = order.buyerRole === 'client' ? Client : Fanni;
+            const buyer = await BuyerModel.findById(order.buyerId).session(session);
+            if (!buyer) throw new Error('تعذر العثور على صاحب المحفظة لاسترداد المبلغ.');
+            const balanceBefore = Number(buyer.walletBalance || 0);
+            buyer.walletBalance = balanceBefore + refundAmount;
+            await buyer.save({ session });
+            await new WalletTransaction({
+              ...(order.buyerRole === 'client'
+                ? { client: order.buyerId, type: 'client_refund' }
+                : { fanni: order.buyerId, type: 'refund' }),
+              amount: refundAmount,
+              balanceBefore,
+              balanceAfter: Number(buyer.walletBalance),
+              description: 'استرداد قيمة طلب متجر ملغي رقم ' + String(order._id),
+              idempotencyKey: 'store-order-refund:' + String(order._id)
+            }).save({ session });
+            order.paymentStatus = 'مسترد';
+          }
+        }
       }
       order.status = checked.value.status;
       order.adminNote = checked.value.adminNote;
       order.paymentMethod = checked.value.paymentMethod;
       order.statusHistory.push({ status: order.status, note: order.adminNote, by: req.user?.name || 'الإدارة', at: new Date() });
-      await order.save();
+      await order.save({ session });
+      await session.commitTransaction();
       await writeAdminAudit(req, 'تحديث حالة طلب متجر', 'store-orders', String(order._id), order.status);
+      const refundMessage = refundAmount > 0
+        ? ' وتم استرداد مبلغ ' + refundAmount.toLocaleString('ar-EG') + ' جنيه إلى محفظتك.'
+        : '';
       await createNotification({
         recipientRole: order.buyerRole, recipientId: order.buyerId,
-        type: 'store_order_update', title: 'تحديث طلب المتجر',
-        message: 'طلب ' + order.productName + ': ' + order.status + '، الدفع: ' + order.paymentMethod + (order.adminNote ? ' — ' + order.adminNote : ''),
+        type: refundAmount > 0 ? (order.buyerRole === 'client' ? 'client_wallet_credit' : 'wallet_credit') : 'store_order_update',
+        title: refundAmount > 0 ? 'تم رفض/إلغاء الطلب واسترداد المبلغ' : 'تحديث طلب المتجر',
+        message: 'طلب ' + order.productName + ': ' + order.status + '، الدفع: ' + order.paymentMethod + refundMessage + (order.adminNote ? ' — ' + order.adminNote : ''),
         link: order.buyerRole === 'client' ? '/client?tab=store' : '/fanni?tab=store'
       });
-      return res.json({ message: 'تم تحديث حالة الطلب وإرسال إشعار لصاحبه.', order });
-    } catch (error) { return next(error); }
+      return res.json({ message: refundAmount > 0 ? 'تم إلغاء الطلب واسترداد المبلغ إلى المحفظة وإرسال الإشعار.' : 'تم تحديث حالة الطلب وإرسال إشعار لصاحبه.', order, refundedAmount: refundAmount });
+    } catch (error) {
+      if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
+      return next(error);
+    } finally {
+      if (session) await session.endSession().catch(() => {});
+    }
   });
   return router;
 }
