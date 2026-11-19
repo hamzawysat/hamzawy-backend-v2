@@ -113,13 +113,17 @@ function createOrderCreationRouter({
         String(value.clientName || 'عميل').trim()
       );
   
-      let order = null;
+      let order = value.idempotencyKey
+        ? await Order.findOne({ clientAccount: req.clientId, requestKey: value.idempotencyKey })
+        : null;
+      const duplicateRequest = Boolean(order);
   
-      for (let attempt = 0; attempt < 3; attempt++) {
+      for (let attempt = 0; !order && attempt < 3; attempt++) {
         try {
           order = await Order.create({
             sn: generateSN(),
             clientAccount: req.clientId,
+            ...(value.idempotencyKey ? { requestKey: value.idempotencyKey } : {}),
             clientAccountLinkedAt: new Date(),
             service: value.service,
             area,
@@ -135,7 +139,14 @@ function createOrderCreationRouter({
   
           break;
         } catch (err) {
-          if (err.code !== 11000 || attempt === 2) throw err;
+          if (err.code !== 11000) throw err;
+          // A concurrent retry may have won the unique per-client request key.
+          if (value.idempotencyKey) {
+            order = await Order.findOne({ clientAccount: req.clientId, requestKey: value.idempotencyKey });
+            if (order) break;
+          }
+          // Otherwise this was a generated serial-number collision; retry safely.
+          if (attempt === 2) throw err;
         }
       }
   
@@ -165,11 +176,12 @@ function createOrderCreationRouter({
   
       const safeOrder = publicOrder(order);
   
-      return res.status(201).json({
-        message: 'تم إنشاء الطلب بنجاح، وسيتم مراجعته من الإدارة',
+      return res.status(duplicateRequest ? 200 : 201).json({
+        message: duplicateRequest ? 'طلبك مسجل بالفعل، ولم يتم إنشاء طلب مكرر.' : 'تم إنشاء الطلب بنجاح، وسيتم مراجعته من الإدارة',
         sn: order.sn,
         id: order._id,
         clientToken,
+        duplicate: duplicateRequest,
         order: safeOrder,
         data: safeOrder
       });
