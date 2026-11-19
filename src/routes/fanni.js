@@ -673,7 +673,7 @@ router.get(
         .lean();
 
       const transactions = await WalletTransaction.find({ fanni: req.user._id }).sort({ createdAt: -1 }).limit(100).lean();
-      const safeTransactions = transactions.map(item => ({ id: String(item._id), type: item.type, amount: item.amount, balanceBefore: item.balanceBefore, balanceAfter: item.balanceAfter, description: item.description, orderSN: item.orderSN || '', createdAt: item.createdAt }));
+      const safeTransactions = transactions.map(item => ({ id: String(item._id), transactionNumber: item.transactionNumber || ('HZW-' + String(item._id).toUpperCase()), type: item.type, amount: item.amount, balanceBefore: item.balanceBefore, balanceAfter: item.balanceAfter, description: item.description, orderSN: item.orderSN || '', createdAt: item.createdAt }));
 
       const safeRequests = requests.map(request => ({
         id: String(request._id),
