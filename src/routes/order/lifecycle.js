@@ -436,7 +436,7 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
         return res.status(409).json({ message: 'تعذر تحديث محفظة الفني؛ لم يتم تأكيد الاستلام أو صرف المبلغ.' });
       }
 
-      await new WalletTransaction({
+      const settlementTransaction = new WalletTransaction({
         fanni: fanni._id,
         order: order._id,
         orderSN: order.sn,
@@ -446,7 +446,9 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
         balanceAfter: Number(updatedFanni.walletBalance),
         description: 'صرف مستحقات تنفيذ الطلب ' + order.sn + ' بعد تأكيد العميل استلام الخدمة',
         idempotencyKey: 'technician-settlement:' + String(order._id)
-      }).save({ session });
+      });
+      await settlementTransaction.save({ session });
+      order.technicianSettlementTransactionNumber = settlementTransaction.transactionNumber;
 
       order.clientPaymentStatus = 'settled';
       order.technicianSettledAt = new Date();
