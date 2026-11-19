@@ -46,7 +46,7 @@ function render(){
   document.getElementById('app').innerHTML=`
   <header class="admin-topbar sticky top-0 z-50" role="banner">
     <div class="admin-topbar-inner">
-      <a href="#" onclick="event.preventDefault();state.pageMode='home';render()" class="admin-brand" aria-label="حمزاوي سات - لوحة الإدارة">
+      <a href="#" onclick="event.preventDefault();goAdminHome()" class="admin-brand" aria-label="حمزاوي سات - لوحة الإدارة">
         <span class="admin-logo-frame"><img class="admin-header-logo" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="48" height="48" decoding="async"></span>
         <span class="admin-brand-name">حمزاوي سات</span>
       </a>
