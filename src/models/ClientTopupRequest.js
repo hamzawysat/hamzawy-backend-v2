@@ -13,6 +13,7 @@ const schema=new mongoose.Schema({
  reviewReason:{type:String,trim:true,maxlength:500,default:''},
  reviewedAt:{type:Date,default:null},
  reviewedBy:{type:String,trim:true,maxlength:50,default:''},
+ transactionNumber:{type:String,trim:true,uppercase:true,maxlength:40,default:''},
  idempotencyKey:{type:String,required:true,unique:true,index:true,maxlength:100}
 },{timestamps:true});
 schema.index({client:1,createdAt:-1});
