@@ -21,6 +21,9 @@ const storeOrderSchema = new mongoose.Schema({
   paymentMethod: { type: String, enum: ['غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل'], default: 'غير محدد' },
   paymentStatus: { type: String, enum: ['غير مدفوع', 'مدفوع', 'مسترد'], default: 'غير مدفوع' },
   walletCharged: { type: Boolean, default: undefined, index: true },
+  // The exact WalletTransaction reference for a wallet-paid purchase/refund.
+  transactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+  refundTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
   requestKey: { type: String, trim: true, maxlength: 150, default: undefined },
   adminNote: { type: String, trim: true, maxlength: 1000, default: '' },
   statusHistory: [{ status: String, note: String, by: String, at: { type: Date, default: Date.now } }]
