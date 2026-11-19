@@ -226,7 +226,7 @@ function startStoreOrderCountPolling(){if(window.__sonaaStoreOrderCountTimer||!g
 async function saveStoreAdRotationSeconds(){const seconds=Number(document.getElementById('store-ad-rotation-seconds')?.value);if(![5,10,15,20,30,45,60].includes(seconds))return showToast('اختار مدة صحيحة لعرض الصورة','error');try{const result=await tryApi(['/api/admin/store/ad-settings'],{method:'PUT',body:JSON.stringify({rotationSeconds:seconds})});state.storeAdRotationSeconds=Number(result.rotationSeconds)||seconds;state.storeAdSettingsLoaded=true;state.storeAdSettingsLoadError='';showToast('تم حفظ مدة عرض صور الإعلان');render();}catch(error){showToast(error.message||'تعذر حفظ مدة الإعلان','error');}}
 function toggleStoreProductForm(){state.storeProductEditingId=null;state.storeProductFormOpen=state.storeProductFormOpen!==true;render();}
 function cancelStoreProductEdit(){state.storeProductEditingId=null;state.storeProductFormOpen=false;state.storeNewProductAsAdvertisement=false;render();}
-function setStoreOrderStatusTab(status){if(!['جديد','تم التواصل','قيد التجهيز','ملغي','مكتمل'].includes(status))return;state.storeOrderStatusTab=status;render();}
+function setStoreOrderStatusTab(status){if(!['جديد','تم التواصل','قيد التجهيز','مرفوض','ملغي','مكتمل'].includes(status))return;state.storeOrderStatusTab=status;render();}
 
 function toggleStoreCategoryManager(){state.storeCategoryManagerOpen=state.storeCategoryManagerOpen!==true;render();}
 function toggleStoreAdRotationSettings(){state.storeAdRotationSettingsOpen=state.storeAdRotationSettingsOpen!==true;render();}
@@ -321,7 +321,7 @@ function renderStore(){
 }
 function renderStoreOrders(){
   if(typeof state.storeOrderStatusTab!=='string')state.storeOrderStatusTab='جديد';
-  const statuses=[{value:'جديد',label:'طلب جديد'},{value:'تم التواصل',label:'تم التواصل'},{value:'قيد التجهيز',label:'جاري التجهيز'},{value:'ملغي',label:'ملغي'},{value:'مكتمل',label:'مكتمل'}];
+  const statuses=[{value:'جديد',label:'طلب جديد'},{value:'تم التواصل',label:'تم التواصل'},{value:'قيد التجهيز',label:'جاري التجهيز'},{value:'مرفوض',label:'مرفوض'},{value:'ملغي',label:'ملغي'},{value:'مكتمل',label:'مكتمل'}];
   const rows=state.storeOrders||[];
   const selected=statuses.some(item=>item.value===state.storeOrderStatusTab)?state.storeOrderStatusTab:'جديد';
   state.storeOrderStatusTab=selected;
