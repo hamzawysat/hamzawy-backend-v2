@@ -17,6 +17,7 @@ const fanniCardLedgerSchema = new mongoose.Schema({
   nationalIdEncrypted: { type: String, required: true, select: false },
   fanniId: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null, index: true },
   fanniName: { type: String, required: true, trim: true, maxlength: 100, index: true },
+  linkedTechnicians: [{ fanniId: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni' }, name: { type: String, trim: true, maxlength: 100 }, phone: { type: String, trim: true, maxlength: 20 }, linkedAt: { type: Date, default: Date.now } }],
   extractedName: { type: String, trim: true, maxlength: 100, default: '' },
   firstRegisteredAt: { type: Date, default: Date.now, index: true },
   status: { type: String, enum: ['مسجلة', 'تحت مراجعة التكرار'], default: 'مسجلة', index: true },
