@@ -1942,6 +1942,14 @@ async function run() {
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 3);
 
       const codProduct = await StoreProduct.create({ name: 'منتج دفع عند الاستلام للفني', price: 40, type: 'product', isActive: true, stock: 4 });
+      const originalFanniStatus = fanni.status;
+      await Fanni.updateOne({ _id: fanni._id }, { $set: { status: 'قيد المراجعة' } });
+      const pendingFanniPurchase = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(codProduct._id), quantity: 1, paymentMethod: 'cash_on_delivery', expectedPrice: 40, idempotencyKey: 'pending-fanni-store-cod-test-0001' });
+      assert.equal(pendingFanniPurchase.status, 403, 'unapproved technicians must not place store orders with cash on delivery');
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'unapproved technician rejection must not reserve stock');
+      await Fanni.updateOne({ _id: fanni._id }, { $set: { status: originalFanniStatus } });
       const balanceBeforeCod = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
       const codPurchase = await request(app).post('/api/store/fanni/orders')
         .set('Authorization', 'Bearer ' + fanniToken)
