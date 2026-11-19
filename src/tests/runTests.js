@@ -1882,6 +1882,7 @@ async function run() {
       const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold' }).lean();
       assert.ok(holdLedger);
       assert.equal(holdLedger.amount, -650);
+      assert.equal((await Order.findById(order._id).lean()).clientPaymentTransactionNumber, holdLedger.transactionNumber, 'service order must retain the exact escrow transaction reference');
       assert.match(holdLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
       const clientWalletHistory = await request(app).get('/api/client/wallet')
         .set('Authorization', 'Bearer ' + clientToken);
@@ -1913,6 +1914,7 @@ async function run() {
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(confirmedAtResponse.status, 200, JSON.stringify(confirmedAtResponse.body));
       assert.equal(confirmedAtResponse.body.settlement.amount, 650);
+      assert.match(confirmedAtResponse.body.settlement.transactionNumber, /^HZW-[0-9A-F]{24}$/);
       const confirmedOrder = await Order.findById(order._id).lean();
       assert.ok(confirmedOrder.clientConfirmedAt);
       assert.equal(confirmedOrder.clientPaymentStatus, 'settled');
@@ -1930,6 +1932,7 @@ async function run() {
       assert.ok(settlementLedger);
       assert.equal(settlementLedger.amount, 650);
       assert.match(settlementLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(confirmedOrder.technicianSettlementTransactionNumber, settlementLedger.transactionNumber);
       const fanniWalletHistory = await request(app).get('/api/fanni/wallet/history')
         .set('Authorization', 'Bearer ' + fanniToken);
       assert.equal(fanniWalletHistory.status, 200, JSON.stringify(fanniWalletHistory.body));
@@ -2016,6 +2019,21 @@ async function run() {
       assert.equal(duplicateRenewal.body.duplicate, true);
       assert.equal((await ClientSubscription.findById(subscriptionId).lean()).history.length, 2);
       assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), afterApproval - 50);
+
+      const adminRenewal = await request(app).post('/api/admin/commerce/subscriptions/' + subscriptionId + '/renew')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ paymentStatus: 'paid', note: 'تجديد إداري للاختبار' });
+      assert.equal(adminRenewal.status, 200, JSON.stringify(adminRenewal.body));
+      assert.match(adminRenewal.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      const adminRenewed = await ClientSubscription.findById(subscriptionId).lean();
+      assert.equal(adminRenewed.history.length, 3);
+      assert.equal(adminRenewed.history.at(-1).transactionNumber, adminRenewal.body.transactionNumber);
+      assert.equal(adminRenewed.transactionNumber, adminRenewal.body.transactionNumber);
+      const adminRenewalLedger = await WalletTransaction.findOne({ client: clientId, transactionNumber: adminRenewal.body.transactionNumber }).lean();
+      assert.ok(adminRenewalLedger, 'admin renewal reference must resolve to a real wallet ledger transaction');
+      assert.equal(adminRenewalLedger.type, 'client_subscription_payment');
+      assert.equal(adminRenewalLedger.amount, -50);
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), afterApproval - 100);
 
       const StoreProduct = require('../models/StoreProduct');
       const StoreOrder = require('../models/StoreOrder');
