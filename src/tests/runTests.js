@@ -2019,6 +2019,15 @@ async function run() {
       assert.equal((await StoreProduct.findById(limitedBulkProduct._id).lean()).stock, 1);
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeInsufficientBulk, 'insufficient bulk stock must not debit the wallet');
 
+      const conflictingBulkPrices = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 20 },
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 21 }
+        ], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-conflicting-prices-0001' });
+      assert.equal(conflictingBulkPrices.status, 400);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5, 'conflicting expected prices must not reserve stock');
+
       const staleBulkPrice = await request(app).post('/api/store/fanni/orders/bulk')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ items: [{ productId: String(bulkProductA._id), quantity: 1, expectedPrice: 19 }], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-stale-price-0001' });
@@ -2030,8 +2039,9 @@ async function run() {
       const bulkPurchase = await request(app).post('/api/store/fanni/orders/bulk')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ items: [
-          { productId: String(bulkProductA._id), quantity: 2 },
-          { productId: String(bulkProductB._id), quantity: 3 }
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 20 },
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 20 },
+          { productId: String(bulkProductB._id), quantity: 3, expectedPrice: 30 }
         ], paymentMethod: 'wallet', idempotencyKey: bulkKey });
       assert.equal(bulkPurchase.status, 201, JSON.stringify(bulkPurchase.body));
       assert.equal(bulkPurchase.body.order.items.length, 2);
