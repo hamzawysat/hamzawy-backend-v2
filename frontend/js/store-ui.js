@@ -175,7 +175,7 @@ function renderStoreCatalog(role){
   orders.forEach(o=>{
     const items=Array.isArray(o.items)&&o.items.length?o.items:[{productName:o.productName,quantity:o.quantity,total:o.total}];
     const itemSummary=items.map(item=>'<p class="text-[10px] text-slate-600">'+storeEsc(item.productName||'منتج')+' × '+Number(item.quantity||0)+' — '+Number(item.total||0).toLocaleString('ar-EG')+' جنيه</p>').join('');
-    h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p>'+itemSummary+'<p class="text-[11px] text-slate-500 mt-1">إجمالي الكمية: '+Number(o.quantity||0)+' • '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • الحالة: '+storeEsc(o.status)+'</p></div>';
+    h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p>'+itemSummary+'<p class="text-[11px] text-slate-500 mt-1">إجمالي الكمية: '+Number(o.quantity||0)+' • '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • الحالة: '+storeEsc(o.status)+'</p>'+(o.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+storeEsc(o.transactionNumber)+'</p>':'<p class="text-[10px] text-slate-500" dir="ltr">رقم الطلب: '+storeEsc(o.id||'')+'</p>')+(o.refundTransactionNumber?'<p class="text-[10px] font-bold text-emerald-700" dir="ltr">رقم الاسترداد: '+storeEsc(o.refundTransactionNumber)+'</p>':'')+'</div>';
   });
   h+='</div></details>';
   h+=renderStoreCart(role);
@@ -266,10 +266,10 @@ function submitStorePurchase(role,id){
       closeStorePurchaseModal();
       if(role==='client'){
         if(result.d.balance!==undefined)state.walletBalance=Number(result.d.balance);
-        showToast(result.d.message||'تم إرسال طلب الشراء');
+        showToast((result.d.message||'تم إرسال طلب الشراء')+(result.d.transactionNumber?' · رقم العملية: '+result.d.transactionNumber:''));
       }else{
         if(result.d.balance!==undefined){state.walletBalance=Number(result.d.balance);if(typeof setAuth==='function')setAuth(getToken(),{...(getUser()||{}),walletBalance:Number(result.d.balance)});}
-        toast(result.d.message||'تم إرسال طلب الشراء');
+        toast((result.d.message||'تم إرسال طلب الشراء')+(result.d.transactionNumber?' · رقم العملية: '+result.d.transactionNumber:''));
       }
       await loadStoreForRole(role);
       if(role==='client'&&typeof loadClientWallet==='function')await loadClientWallet();
