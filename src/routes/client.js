@@ -229,7 +229,8 @@ router.post('/login', async (req, res, next) => {
       if (!consumed) return res.status(401).json({ message: 'كلمة دعم الحساب استُخدمت بالفعل. اطلب إصدار كلمة جديدة من الإدارة.' });
       supportLogin = true;
     }
-    const token = supportLogin
+    const mustChangePassword = supportLogin || client.mustChangePassword === true;
+    const token = mustChangePassword
       ? jwt.sign({ id: String(client._id), role: 'client', tokenVersion: Number(client.tokenVersion || 0), mustChangePassword: true }, process.env.JWT_SECRET, { expiresIn: '15m', issuer: 'sonaa-backend-v2', audience: 'sonaa-client' })
       : issueToken(client);
     await notifyAdmins({
@@ -238,9 +239,9 @@ router.post('/login', async (req, res, next) => {
       link: '/admin?tab=clients'
     });
     return res.json({
-      message: supportLogin ? 'تم الدخول بكلمة دعم مؤقتة. غيّر كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
+      message: mustChangePassword ? 'يجب تغيير كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
       token,
-      mustChangePassword: supportLogin,
+      mustChangePassword,
       client: { id: String(client._id), name: client.name, phone: client.phone, status: client.status }
     });
   } catch (error) {
