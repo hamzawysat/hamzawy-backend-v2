@@ -8,6 +8,7 @@ const duplicateAttemptSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now },
   status: { type: String, enum: ['قيد مراجعة الأدمن', 'تكرار مؤكد', 'تم السماح بعد المراجعة'], default: 'قيد مراجعة الأدمن' },
   reviewedAt: Date,
+  consumedAt: Date,
   reviewedBy: { type: String, maxlength: 100 },
   reviewNote: { type: String, maxlength: 500 }
 }, { _id: true });
