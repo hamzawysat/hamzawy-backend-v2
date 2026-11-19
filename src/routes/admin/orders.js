@@ -223,17 +223,19 @@ router.post('/orders/:sn/assign', auth('admin'), async (req, res, next) => {
       { session, runValidators: true }
     );
     if (update.modifiedCount !== 1) { await session.abortTransaction(); return res.status(409).json({ message: 'تغيرت حالة الطلب؛ لم يتم تثبيت الخصم' }); }
-    await new WalletTransaction({
+    const commissionTransaction = new WalletTransaction({
       fanni: before._id, order: order._id, orderSN: order.sn, type: 'commission', amount: -commission,
       balanceBefore, balanceAfter: Number(after.walletBalance),
       description: 'عمولة منصة صُنّاع للتعيين الإداري على الطلب ' + order.sn,
       idempotencyKey: 'commission:' + String(order._id)
-    }).save({ session });
+    });
+    await commissionTransaction.save({ session });
+    await Order.updateOne({ _id: order._id }, { $set: { commissionTransactionNumber: commissionTransaction.transactionNumber } }, { session });
     await session.commitTransaction();
     committed = true;
     notification = { fanniId: before._id, clientId: order.clientAccount, sn: order.sn, name: before.name };
     await writeAdminAudit(req, 'تعيين فني وخصم العمولة', 'orders', sn, reason + '؛ الفني: ' + before.name + '؛ العمولة: ' + commission);
-    return res.json({ message: 'تم تعيين الفني وتسجيل خصم العمولة', orderSN: sn, fanniName: before.name, commission: { rate, amount: commission } });
+    return res.json({ message: 'تم تعيين الفني وتسجيل خصم العمولة', orderSN: sn, fanniName: before.name, commission: { rate, amount: commission, transactionNumber: commissionTransaction.transactionNumber } });
   } catch (err) {
     if (session && session.inTransaction()) { try { await session.abortTransaction(); } catch (_) {} }
     return next(err);
