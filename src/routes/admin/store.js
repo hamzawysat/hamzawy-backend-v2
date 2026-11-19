@@ -341,7 +341,16 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
       if (!order) return res.status(404).json({ message: 'المعاملة غير موجودة.' });
       if (order.status === 'ملغي' && checked.value.status !== 'ملغي') return res.status(409).json({ message: 'الطلب الملغي لا يمكن إعادة فتحه؛ سجّل طلبًا جديدًا عند الحاجة.' });
       if (checked.value.status === 'ملغي' && order.status !== 'ملغي' && order.stockReserved) {
-        await StoreProduct.updateOne({ _id: order.product }, { $inc: { stock: order.quantity } });
+        if (Array.isArray(order.items) && order.items.length) {
+          for (const item of order.items) {
+            if (item.stockReserved) {
+              await StoreProduct.updateOne({ _id: item.product }, { $inc: { stock: item.quantity } });
+              item.stockReserved = false;
+            }
+          }
+        } else if (order.product) {
+          await StoreProduct.updateOne({ _id: order.product }, { $inc: { stock: order.quantity } });
+        }
         order.stockReserved = false;
       }
       order.status = checked.value.status;
