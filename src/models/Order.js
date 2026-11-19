@@ -84,6 +84,8 @@ index: true
 },
 // Marks the moment a legacy tracking token was invalidated by linking the order.
 clientAccountLinkedAt: { type: Date, default: null },
+// Client-generated request key prevents duplicate order creation after retries.
+requestKey: { type: String, trim: true, maxlength: 150, default: undefined },
 
 service: {
 type: String,
@@ -211,6 +213,11 @@ min: 0,
 default: null
 },
 
+clientPaymentTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+commissionTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+commissionAdjustmentTransactionNumbers: { type: [String], default: [] },
+technicianSettlementTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
+refundTransactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
 clientPaymentStatus: { type: String, enum: ['unpaid', 'held', 'settled', 'refunded'], default: 'unpaid', index: true },
 // Customer acceptance starts the 14-day repair warranty; legacy orders remain unconfirmed.
 completionDeclaredAt: { type: Date, default: null, index: true },
@@ -289,5 +296,6 @@ status: 1
 });
 
 orderSchema.index({ clientAccount: 1, createdAt: -1 });
+orderSchema.index({ clientAccount: 1, requestKey: 1 }, { unique: true, partialFilterExpression: { requestKey: { $type: 'string' } } });
 
 module.exports = mongoose.model('Order', orderSchema);

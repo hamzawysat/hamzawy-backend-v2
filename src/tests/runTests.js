@@ -5,6 +5,7 @@ process.env.NODE_ENV = 'test';
 process.env.ALLOWED_ORIGINS = 'https://www.hamzawy-sat.dynv6.net,http://localhost:3000';
 process.env.JWT_SECRET = 'sonaa-test-only-secret-change-me';
 process.env.ADMIN_PHONE = '01012345678';
+process.env.CARD_LEDGER_SECRET = 'test-only-card-ledger-secret-at-least-32-chars';
 
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -44,6 +45,55 @@ async function run() {
     process.env.MONGO_URI = mongo.getUri('sonaa_test');
     app = require('../server');
     mongoose = require('mongoose');
+
+    await test('Arabic store search normalizes spelling variants and tolerates simple typos', async () => {
+      const search = require('../../frontend/js/store-search');
+      assert.equal(search.normalizeArabicStoreSearch('إشــتراك مُميّز'), 'اشتراك مميز');
+      assert.equal(search.normalizeArabicStoreSearch('أجهزة آيفون ١٢'), 'اجهزه ايفون 12');
+      const product = { name: 'اشتراك مميز', category: 'الباقات', description: 'تجديد اشتراك القنوات', details: 'رسيفر HD' };
+      assert.equal(search.matchesArabicStoreSearch(product, 'اشتراك'), true);
+      assert.equal(search.matchesArabicStoreSearch(product, 'اشترك مميز'), true, 'minor spelling differences should still match');
+      assert.equal(search.matchesArabicStoreSearch(product, 'تجديد قنوات'), true, 'all query terms may match across product fields');
+      assert.equal(search.matchesArabicStoreSearch(product, 'رسيفر'), true, 'product details should be searchable');
+      assert.equal(search.matchesArabicStoreSearch(product, 'منتج غير موجود'), false);
+      assert.equal(search.matchesArabicStoreSearch(product, '   '), true, 'an empty query should not filter products');
+    });
+
+    await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
+      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
+      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
+      const storeUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/store-ui.js'), 'utf8');
+      for (const page of [clientPage, technicianPage]) {
+        assert.ok(page.indexOf('/js/store-search.js') !== -1);
+        assert.ok(page.indexOf('/js/store-search.js') < page.indexOf('/js/store-ui.js'));
+      }
+      assert.ok(storeUi.includes('matchesArabicStoreSearch'));
+      assert.ok(storeUi.includes('storeSearchQueryByRole'));
+      assert.ok(storeUi.includes('ملقيناش منتجات مطابقة للبحث'));
+    });
+
+    await test('technician card ledger normalizes Egyptian national-ID digits and encrypts the stored number', async () => {
+      const cardOcr = require('../services/fanniCardOcr');
+      const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
+      assert.equal(cardOcr.normalizeNationalId(nationalId), '29001012345678');
+      const encrypted = cardOcr.encryptNationalId(nationalId);
+      assert.notEqual(encrypted, '29001012345678');
+      assert.equal(cardOcr.decryptNationalId(encrypted), '29001012345678');
+      assert.equal(cardOcr.cardHash(nationalId), cardOcr.cardHash('29001012345678'));
+    });
+
+    await test('technician card ledger is a separate unique national-ID collection and cross-role referrals are skipped', async () => {
+      const FanniCardLedger = require('../models/FanniCardLedger');
+      const technicianRoutes = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
+      const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
+      assert.equal(FanniCardLedger.schema.path('nationalIdHash').options.unique, true);
+      assert.ok(FanniCardLedger.schema.path('duplicateAttempts').schema.path('consumedAt'));
+      assert.ok(technicianRoutes.includes('CARD_APPROVAL_ALREADY_USED'));
+      assert.ok(technicianRoutes.includes("FanniCardLedger.create(["));
+      assert.ok(technicianRoutes.includes("existingClient = await Client.findOne({ phone })"));
+      assert.ok(clientRoutes.includes("existingFanni = await Fanni.findOne({ phone })"));
+      assert.ok(technicianRoutes.includes('DUPLICATE_FANNI_CARD_REVIEW'));
+    });
 
     await test('client and technician logout audit notifications are idempotent and never enter push retry loop', async () => {
       const clientRoutes = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
@@ -568,7 +618,13 @@ async function run() {
       });
       assert.equal(missingIdentity.status, 400, 'registration must reject missing identity card images');
 
-      const png = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
+      // Use a complete PNG fixture. OCR is stubbed here because this test covers
+      // registration workflow, not OCR accuracy or external language-data downloads.
+      const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=', 'base64');
+      const cardOcr = require('../services/fanniCardOcr');
+      cardOcr.setWorkerFactoryForTests(async () => ({
+        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
+      }));
       const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
         .set('Content-Type', 'image/png').send(png);
       assert.equal(frontUpload.status, 201, JSON.stringify(frontUpload.body));
@@ -577,15 +633,23 @@ async function run() {
       assert.equal(backUpload.status, 201, JSON.stringify(backUpload.body));
       const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
-      const registration = await request(app).post('/api/fanni/register').send({
-        name: 'فني اختبار التسجيل',
-        phone,
-        password: 'FanniTestPass123',
-        specialties: ['صيانة دش'],
-        areas: ['المعادي'],
-        identityCardFrontFileId: frontUpload.body.fileId,
-        identityCardBackFileId: backUpload.body.fileId
-      });
+      cardOcr.setWorkerFactoryForTests(async () => ({
+        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
+      }));
+      let registration;
+      try {
+        registration = await request(app).post('/api/fanni/register').send({
+          name: 'فني اختبار التسجيل',
+          phone,
+          password: 'FanniTestPass123',
+          specialties: ['صيانة دش'],
+          areas: ['المعادي'],
+          identityCardFrontFileId: frontUpload.body.fileId,
+          identityCardBackFileId: backUpload.body.fileId
+        });
+      } finally {
+        cardOcr.setWorkerFactoryForTests(null);
+      }
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
@@ -688,11 +752,18 @@ async function run() {
 
       const submitted = await request(app).post('/api/fanni/wallet/topup')
         .set('Authorization', 'Bearer ' + token)
-        .send({ fromPhone: '01012345682', amount: 100, method: 'vodafone_cash', reference: 'PHASE2-TEST' });
+        .send({ fromPhone: '01012345682', amount: 100, method: 'vodafone_cash', reference: 'PHASE2-TEST', idempotencyKey: 'fanni-topup-test-key-001' });
       assert.equal(submitted.status, 201);
       assert.equal(submitted.body.request.status, 'قيد المراجعة');
       assert.equal(submitted.body.request.isCredited, undefined);
       assert.equal(submitted.body.walletBalance, beforeBalance);
+      const duplicateTopup = await request(app).post('/api/fanni/wallet/topup')
+        .set('Authorization', 'Bearer ' + token)
+        .send({ fromPhone: '01012345682', amount: 100, method: 'vodafone_cash', reference: 'PHASE2-TEST', idempotencyKey: 'fanni-topup-test-key-001' });
+      assert.equal(duplicateTopup.status, 200, JSON.stringify(duplicateTopup.body));
+      assert.equal(duplicateTopup.body.duplicate, true);
+      assert.equal(duplicateTopup.body.request.id, submitted.body.request.id, 'retries must reuse the original technician top-up request');
+
 
       const storedRequest = await TopupRequest.findById(submitted.body.request.id).lean();
       assert.ok(storedRequest);
@@ -985,6 +1056,9 @@ async function run() {
           .set('Authorization', 'Bearer ' + adminToken).send(payload);
         assert.equal(credit.status, 200, JSON.stringify(credit.body));
         assert.equal(Number(credit.body.balance), 150);
+        assert.match(credit.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        const creditLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: 'client-admin-credit:' + String(clientId) + ':wallet-credit-test-unique-key' }).lean();
+        assert.equal(creditLedger.transactionNumber, credit.body.transactionNumber);
         const repeated = await request(app).post('/api/admin/clients/' + clientId + '/wallet/add-balance')
           .set('Authorization', 'Bearer ' + adminToken).send(payload);
         assert.equal(repeated.status, 409);
@@ -1006,6 +1080,8 @@ async function run() {
         assert.equal(Number(debitLedger.amount), -150);
         assert.equal(Number(debitLedger.balanceBefore), 500);
         assert.equal(Number(debitLedger.balanceAfter), 350);
+        assert.match(debit.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        assert.equal(debit.body.transactionNumber, debitLedger.transactionNumber);
         const repeatedDebit = await request(app).post('/api/admin/clients/' + clientId + '/wallet/deduct-balance')
           .set('Authorization', 'Bearer ' + adminToken)
           .send({ amount: 150, reason: 'خصم اختبار موثق', idempotencyKey: 'wallet-debit-test-unique-key' });
@@ -1030,6 +1106,8 @@ async function run() {
         assert.equal(Number(settlementLedger.amount), -150);
         assert.equal(Number(settlementLedger.balanceBefore), 350);
         assert.equal(Number(settlementLedger.balanceAfter), 200);
+        assert.match(settlement.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        assert.equal(settlement.body.transactionNumber, settlementLedger.transactionNumber);
 
         const invalidNegativeSettlement = await request(app).post('/api/admin/clients/' + clientId + '/wallet/set-balance')
           .set('Authorization', 'Bearer ' + adminToken)
@@ -1133,25 +1211,59 @@ async function run() {
       await test('admin technician wallet deduction is atomic, audited, and visible in transaction history', async () => {
         const WalletTransaction = require('../models/WalletTransaction');
         await Fanni.updateOne({ _id: fanni._id }, { $set: { walletBalance: 300 } });
+        const debitPayload = { amount: 75, reason: 'اختبار خصم إداري موثق', idempotencyKey: 'fanni-admin-debit-repeat-key-01' };
         const deduction = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
-          .set('Authorization', 'Bearer ' + adminToken)
-          .send({ amount: 75, reason: 'اختبار خصم إداري موثق' });
+          .set('Authorization', 'Bearer ' + adminToken).send(debitPayload);
         assert.equal(deduction.status, 200, JSON.stringify(deduction.body));
         assert.equal(deduction.body.balance, 225);
+        const repeatedDeduction = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(debitPayload);
+        assert.equal(repeatedDeduction.status, 200, JSON.stringify(repeatedDeduction.body));
+        assert.equal(repeatedDeduction.body.duplicate, true);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 225, 'retrying the same technician debit must not debit twice');
         const persisted = await Fanni.findById(fanni._id).lean();
-        assert.equal(persisted.walletBalance, 225);
         assert.ok(persisted.decisions.some(item => item.action === 'خصم إداري' && String(item.reason || '').includes('اختبار خصم إداري موثق')));
-        const ledger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'admin_adjustment', amount: -75 }).lean();
+        const ledger = await WalletTransaction.findOne({ fanni: fanni._id, idempotencyKey: 'admin-fanni-debit:' + String(fanni._id) + ':' + debitPayload.idempotencyKey }).lean();
         assert.ok(ledger);
         assert.equal(ledger.balanceBefore, 300);
         assert.equal(ledger.balanceAfter, 225);
+        assert.match(deduction.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        assert.equal(deduction.body.transactionNumber, ledger.transactionNumber);
+        assert.equal(repeatedDeduction.body.transactionNumber, ledger.transactionNumber);
 
         const insufficient = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
           .set('Authorization', 'Bearer ' + adminToken)
-          .send({ amount: 226, reason: 'اختبار منع الرصيد غير الكافي' });
+          .send({ amount: 226, reason: 'اختبار منع الرصيد غير الكافي', idempotencyKey: 'fanni-admin-insufficient-key-01' });
         assert.equal(insufficient.status, 409);
         assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 225, 'insufficient balance must not change the wallet');
-        assert.equal(await WalletTransaction.countDocuments({ fanni: fanni._id, type: 'admin_adjustment', amount: -75 }), 1);
+
+        const creditPayload = { amount: 40, reason: 'اختبار إضافة إدارية موثقة', idempotencyKey: 'fanni-admin-credit-repeat-key-01' };
+        const credit = await request(app).post('/api/admin/fannis/' + fanni._id + '/add-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(creditPayload);
+        assert.equal(credit.status, 200, JSON.stringify(credit.body));
+        assert.equal(credit.body.balance, 265);
+        const creditLedger = await WalletTransaction.findOne({ fanni: fanni._id, idempotencyKey: 'admin-fanni-credit:' + String(fanni._id) + ':' + creditPayload.idempotencyKey }).lean();
+        assert.ok(creditLedger);
+        assert.equal(credit.body.transactionNumber, creditLedger.transactionNumber);
+        const repeatedCredit = await request(app).post('/api/admin/fannis/' + fanni._id + '/add-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(creditPayload);
+        assert.equal(repeatedCredit.status, 200, JSON.stringify(repeatedCredit.body));
+        assert.equal(repeatedCredit.body.duplicate, true);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 265, 'retrying the same technician credit must not credit twice');
+
+        const settlementPayload = { amount: 200, reason: 'اختبار تسوية إدارية موثقة', idempotencyKey: 'fanni-admin-set-repeat-key-01' };
+        const settlement = await request(app).post('/api/admin/fannis/' + fanni._id + '/set-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(settlementPayload);
+        assert.equal(settlement.status, 200, JSON.stringify(settlement.body));
+        assert.equal(settlement.body.balance, 200);
+        const settlementLedger = await WalletTransaction.findOne({ fanni: fanni._id, idempotencyKey: 'admin-fanni-set:' + String(fanni._id) + ':' + settlementPayload.idempotencyKey }).lean();
+        assert.ok(settlementLedger);
+        assert.equal(settlement.body.transactionNumber, settlementLedger.transactionNumber);
+        const repeatedSettlement = await request(app).post('/api/admin/fannis/' + fanni._id + '/set-balance')
+          .set('Authorization', 'Bearer ' + adminToken).send(settlementPayload);
+        assert.equal(repeatedSettlement.status, 200, JSON.stringify(repeatedSettlement.body));
+        assert.equal(repeatedSettlement.body.duplicate, true);
+        assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 200, 'retrying the same technician settlement must not repeat it');
 
         const history = await request(app).get('/api/admin/wallet/transactions/' + fanni._id)
           .set('Authorization', 'Bearer ' + adminToken);
@@ -1634,6 +1746,30 @@ async function run() {
       orderClientToken = r.body.clientToken;
     });
 
+    await test('order creation reuses the original order for repeated idempotency keys', async () => {
+      const { ALL_SERVICES } = require('../config/professions');
+      const Order = require('../models/Order');
+      const idempotencyKey = 'order-create-retry-test-0001';
+      const payload = {
+        service: ALL_SERVICES[0], area: 'المعادي', address: 'شارع اختبار التكرار 15',
+        description: 'اختبار منع إنشاء طلبين عند إعادة إرسال نفس الطلب', idempotencyKey
+      };
+      const before = await Order.countDocuments({ clientAccount: clientId });
+      const first = await request(app).post('/api/orders')
+        .set('Authorization', 'Bearer ' + clientToken).send(payload);
+      assert.equal(first.status, 201, JSON.stringify(first.body));
+      const second = await request(app).post('/api/orders')
+        .set('Authorization', 'Bearer ' + clientToken).send(payload);
+      assert.equal(second.status, 200, JSON.stringify(second.body));
+      assert.equal(second.body.duplicate, true);
+      assert.equal(second.body.sn, first.body.sn);
+      assert.ok(second.body.clientToken);
+      assert.equal(await Order.countDocuments({ clientAccount: clientId }), before + 1);
+      const stored = await Order.findOne({ clientAccount: clientId, requestKey: idempotencyKey }).lean();
+      assert.ok(stored);
+      assert.equal(stored.sn, first.body.sn);
+    });
+
     await test('published order offer, client acceptance, wallet commission ledger, and accepted chat work end to end', async () => {
       const { ALL_SERVICES } = require('../config/professions');
       const Fanni = require('../models/Fanni');
@@ -1754,6 +1890,7 @@ async function run() {
       }).lean();
       assert.ok(adjustmentLedger);
       assert.equal(adjustmentLedger.amount, -15);
+      assert.ok((await Order.findById(order._id).lean()).commissionAdjustmentTransactionNumbers.includes(adjustmentLedger.transactionNumber), 'each price-change commission adjustment must be linked to the order');
       const duplicateDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + approvedRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true });
@@ -1772,6 +1909,18 @@ async function run() {
       const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold' }).lean();
       assert.ok(holdLedger);
       assert.equal(holdLedger.amount, -650);
+      assert.equal((await Order.findById(order._id).lean()).clientPaymentTransactionNumber, holdLedger.transactionNumber, 'service order must retain the exact escrow transaction reference');
+      assert.match(holdLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      const clientWalletHistory = await request(app).get('/api/client/wallet')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(clientWalletHistory.status, 200, JSON.stringify(clientWalletHistory.body));
+      const clientLedgerEntry = clientWalletHistory.body.transactions.find(item => item.id === String(holdLedger._id));
+      assert.equal(clientLedgerEntry.transactionNumber, holdLedger.transactionNumber, 'client wallet must display the exact stored transaction reference');
+      const adminClientLedger = await request(app).get('/api/admin/client-wallet/transactions/' + String(clientId))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(adminClientLedger.status, 200, JSON.stringify(adminClientLedger.body));
+      const adminClientLedgerEntry = adminClientLedger.body.transactions.find(item => String(item._id) === String(holdLedger._id));
+      assert.equal(adminClientLedgerEntry.transactionNumber, holdLedger.transactionNumber, 'admin client ledger must show the same transaction reference');
 
       const completed = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
@@ -1792,6 +1941,7 @@ async function run() {
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(confirmedAtResponse.status, 200, JSON.stringify(confirmedAtResponse.body));
       assert.equal(confirmedAtResponse.body.settlement.amount, 650);
+      assert.match(confirmedAtResponse.body.settlement.transactionNumber, /^HZW-[0-9A-F]{24}$/);
       const confirmedOrder = await Order.findById(order._id).lean();
       assert.ok(confirmedOrder.clientConfirmedAt);
       assert.equal(confirmedOrder.clientPaymentStatus, 'settled');
@@ -1808,6 +1958,18 @@ async function run() {
       const settlementLedger = await WalletTransaction.findOne({ order: order._id, type: 'technician_settlement' }).lean();
       assert.ok(settlementLedger);
       assert.equal(settlementLedger.amount, 650);
+      assert.match(settlementLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(confirmedOrder.technicianSettlementTransactionNumber, settlementLedger.transactionNumber);
+      const fanniWalletHistory = await request(app).get('/api/fanni/wallet/history')
+        .set('Authorization', 'Bearer ' + fanniToken);
+      assert.equal(fanniWalletHistory.status, 200, JSON.stringify(fanniWalletHistory.body));
+      const fanniLedgerEntry = fanniWalletHistory.body.transactions.find(item => item.id === String(settlementLedger._id));
+      assert.equal(fanniLedgerEntry.transactionNumber, settlementLedger.transactionNumber, 'technician wallet must display the exact stored transaction reference');
+      const adminFanniLedger = await request(app).get('/api/admin/wallet/transactions/' + String(fanni._id))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(adminFanniLedger.status, 200, JSON.stringify(adminFanniLedger.body));
+      const adminFanniLedgerEntry = adminFanniLedger.body.transactions.find(item => String(item._id) === String(settlementLedger._id));
+      assert.equal(adminFanniLedgerEntry.transactionNumber, settlementLedger.transactionNumber, 'admin technician ledger must show the same transaction reference');
       const duplicateCompletion = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
       assert.equal(duplicateCompletion.status, 409, 'completed orders must not be completed twice');
@@ -1860,6 +2022,9 @@ async function run() {
       const approvalLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: 'client-subscription-approval:' + subscriptionId }).lean();
       assert.ok(approvalLedger);
       assert.equal(approvalLedger.amount, -50);
+      assert.match(approvalLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(approval.body.subscription.transactionNumber, approvalLedger.transactionNumber);
+      assert.equal(approval.body.subscription.history.at(-1).transactionNumber, approvalLedger.transactionNumber);
 
       const renewalKey = 'test-client-subscription-renew-0001';
       const renewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
@@ -1869,6 +2034,11 @@ async function run() {
       assert.equal(renewal.body.balance, afterApproval - 50);
       const renewed = await ClientSubscription.findById(subscriptionId).lean();
       assert.equal(renewed.history.length, 2);
+      const renewalLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: renewalKey }).lean();
+      assert.ok(renewalLedger);
+      assert.equal(renewal.body.transactionNumber, renewalLedger.transactionNumber);
+      assert.equal(renewed.transactionNumber, renewalLedger.transactionNumber);
+      assert.equal(renewed.history.at(-1).transactionNumber, renewalLedger.transactionNumber);
       const duplicateRenewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ idempotencyKey: renewalKey });
@@ -1876,6 +2046,30 @@ async function run() {
       assert.equal(duplicateRenewal.body.duplicate, true);
       assert.equal((await ClientSubscription.findById(subscriptionId).lean()).history.length, 2);
       assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), afterApproval - 50);
+
+      const adminRenewal = await request(app).post('/api/admin/commerce/subscriptions/' + subscriptionId + '/renew')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ paymentStatus: 'paid', note: 'تجديد إداري للاختبار' });
+      assert.equal(adminRenewal.status, 200, JSON.stringify(adminRenewal.body));
+      assert.match(adminRenewal.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      const adminRenewed = await ClientSubscription.findById(subscriptionId).lean();
+      assert.equal(adminRenewed.history.length, 3);
+      assert.equal(adminRenewed.history.at(-1).transactionNumber, adminRenewal.body.transactionNumber);
+      assert.equal(adminRenewed.transactionNumber, adminRenewal.body.transactionNumber);
+      const adminRenewalLedger = await WalletTransaction.findOne({ client: clientId, transactionNumber: adminRenewal.body.transactionNumber }).lean();
+      assert.ok(adminRenewalLedger, 'admin renewal reference must resolve to a real wallet ledger transaction');
+      assert.equal(adminRenewalLedger.type, 'client_subscription_payment');
+      assert.equal(adminRenewalLedger.amount, -50);
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), afterApproval - 100);
+
+      const pendingAdminBalance = Number((await Client.findById(clientId).lean()).walletBalance);
+      const pendingAdminSubscription = await request(app).post('/api/admin/commerce/subscriptions')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ clientPhone: '01012345678', itemId: String(plan._id), status: 'pending', paymentStatus: 'paid' });
+      assert.equal(pendingAdminSubscription.status, 201, JSON.stringify(pendingAdminSubscription.body));
+      assert.equal(pendingAdminSubscription.body.subscription.paymentStatus, 'pending', 'admin-created pending subscription must never be marked paid before a real debit');
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), pendingAdminBalance, 'creating a pending admin subscription must not debit the wallet');
+      assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: { $regex: '^admin-client-subscription:' } }), 0, 'pending admin subscription must not create a wallet transaction');
 
       const StoreProduct = require('../models/StoreProduct');
       const StoreOrder = require('../models/StoreOrder');
@@ -1895,11 +2089,22 @@ async function run() {
       const storedOrder = await StoreOrder.findById(storePurchase.body.order.id).lean();
       assert.equal(storedOrder.buyerRole, 'fanni');
       assert.equal(storedOrder.total, 150);
+      assert.match(storedOrder.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(storePurchase.body.order.transactionNumber, storedOrder.transactionNumber);
       const storeLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'fanni_store_payment', idempotencyKey: 'store-order:' + String(storedOrder._id) }).lean();
       assert.ok(storeLedger);
       assert.equal(storeLedger.amount, -150);
       assert.equal(storeLedger.balanceBefore, fanniBalanceBeforeStore);
       assert.equal(storeLedger.balanceAfter, fanniBalanceBeforeStore - 150);
+      assert.equal(storeLedger.transactionNumber, storedOrder.transactionNumber);
+
+      const staleSinglePrice = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(storeProduct._id), quantity: 1, paymentMethod: 'wallet', expectedPrice: 70, idempotencyKey: 'fanni-store-stale-price-test-0001' });
+      assert.equal(staleSinglePrice.status, 409);
+      assert.equal(staleSinglePrice.body.priceChanged, true);
+      assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 3, 'stale-price rejection must not reserve stock');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150, 'stale-price rejection must not charge the wallet');
 
       const duplicateStorePurchase = await request(app).post('/api/store/fanni/orders')
         .set('Authorization', 'Bearer ' + fanniToken)
@@ -1909,15 +2114,110 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 3);
 
+      const codProduct = await StoreProduct.create({ name: 'منتج دفع عند الاستلام للفني', price: 40, type: 'product', isActive: true, stock: 4 });
+      const originalFanniStatus = fanni.status;
+      await Fanni.updateOne({ _id: fanni._id }, { $set: { status: 'قيد المراجعة' } });
+      const pendingFanniPurchase = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(codProduct._id), quantity: 1, paymentMethod: 'cash_on_delivery', expectedPrice: 40, idempotencyKey: 'pending-fanni-store-cod-test-0001' });
+      assert.equal(pendingFanniPurchase.status, 403, 'unapproved technicians must not place store orders with cash on delivery');
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'unapproved technician rejection must not reserve stock');
+      await Fanni.updateOne({ _id: fanni._id }, { $set: { status: originalFanniStatus } });
+      const balanceBeforeCod = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const codPurchase = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(codProduct._id), quantity: 2, paymentMethod: 'cash_on_delivery', expectedPrice: 40, idempotencyKey: 'fanni-store-cod-order-test-0001' });
+      assert.equal(codPurchase.status, 201, JSON.stringify(codPurchase.body));
+      assert.equal(codPurchase.body.order.paymentStatus, 'غير مدفوع');
+      assert.equal(codPurchase.body.order.paymentMethod, 'عند الاستلام');
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 2);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeCod, 'cash-on-delivery must not debit the wallet');
+      const duplicateCodPurchase = await request(app).post('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ productId: String(codProduct._id), quantity: 2, paymentMethod: 'cash_on_delivery', expectedPrice: 40, idempotencyKey: 'fanni-store-cod-order-test-0001' });
+      assert.equal(duplicateCodPurchase.status, 200);
+      assert.equal(duplicateCodPurchase.body.duplicate, true);
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 2, 'duplicate COD request must not reserve stock twice');
+
+      const clientStoreProduct = await StoreProduct.create({ name: 'منتج اختبار شراء العميل', price: 35, type: 'product', isActive: true, stock: 3 });
+      const clientBalanceBeforeStore = Number((await Client.findById(clientId).lean()).walletBalance);
+      const clientStorePurchase = await request(app).post('/api/store/client/orders')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ productId: String(clientStoreProduct._id), quantity: 1, paymentMethod: 'cash_on_delivery', expectedPrice: 35, idempotencyKey: 'client-store-cod-order-test-0001' });
+      assert.equal(clientStorePurchase.status, 201, JSON.stringify(clientStorePurchase.body));
+      assert.equal(clientStorePurchase.body.order.paymentStatus, 'غير مدفوع');
+      assert.equal((await StoreProduct.findById(clientStoreProduct._id).lean()).stock, 2);
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), clientBalanceBeforeStore, 'client COD order must not debit the wallet');
+
+      const staleClientProduct = await StoreProduct.create({ name: 'منتج سعره اتغير للعميل', price: 50, type: 'product', isActive: true, stock: 3 });
+      const staleClientPrice = await request(app).post('/api/store/client/orders')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ productId: String(staleClientProduct._id), quantity: 1, paymentMethod: 'cash_on_delivery', expectedPrice: 45, idempotencyKey: 'client-store-stale-price-test-0001' });
+      assert.equal(staleClientPrice.status, 409);
+      assert.equal(staleClientPrice.body.priceChanged, true);
+      assert.equal((await StoreProduct.findById(staleClientProduct._id).lean()).stock, 3, 'client stale-price rejection must leave stock untouched');
+
+      const paymentMethodPreservation = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'تم التواصل', adminNote: 'اختبار الحفاظ على طريقة الدفع عند عدم إرسالها' });
+      assert.equal(paymentMethodPreservation.status, 200, JSON.stringify(paymentMethodPreservation.body));
+      assert.equal(paymentMethodPreservation.body.order.paymentMethod, 'محفظة الفني', 'omitting paymentMethod must not erase the original wallet payment method');
+      const singleCancelAfterMethodChange = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار الاسترداد بعد تعديل طريقة الدفع' });
+      assert.equal(singleCancelAfterMethodChange.status, 200, JSON.stringify(singleCancelAfterMethodChange.body));
+      assert.equal(singleCancelAfterMethodChange.body.refundedAmount, 150, 'changing the displayed payment method must not remove wallet refund eligibility');
+      assert.equal(singleCancelAfterMethodChange.body.order.paymentStatus, 'مسترد');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore);
+      assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 5, 'cancelling a single wallet order must restore reserved stock');
+      const fanniBalanceBeforeCodCancel = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const codCancel = await request(app).patch('/api/admin/store/orders/' + codPurchase.body.order.id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار منع استرداد طلب عند الاستلام بعد تغيير طريقة الدفع إداريًا' });
+      assert.equal(codCancel.status, 200, JSON.stringify(codCancel.body));
+      assert.equal(codCancel.body.refundedAmount, 0, 'changing a COD order payment label to wallet must not create a wallet refund');
+      assert.equal(codCancel.body.order.paymentStatus, 'غير مدفوع');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeCodCancel, 'COD cancellation must not credit the wallet even if its payment label is changed');
+      assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'cancelling a single COD order must restore stock');
+
       const bulkProductA = await StoreProduct.create({ name: 'منتج سلة متعدد أ', price: 20, type: 'product', isActive: true, stock: 5 });
       const bulkProductB = await StoreProduct.create({ name: 'منتج سلة متعدد ب', price: 30, type: 'product', isActive: true, stock: 10 });
+      const limitedBulkProduct = await StoreProduct.create({ name: 'منتج مخزون محدود لاختبار السلة', price: 40, type: 'product', isActive: true, stock: 1 });
+      const balanceBeforeInsufficientBulk = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const insufficientBulk = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [
+          { productId: String(bulkProductA._id), quantity: 2, expectedPrice: 20 },
+          { productId: String(limitedBulkProduct._id), quantity: 2, expectedPrice: 40 }
+        ], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-insufficient-stock-0001' });
+      assert.equal(insufficientBulk.status, 409);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5, 'failed bulk reservation must roll back stock reserved for earlier items');
+      assert.equal((await StoreProduct.findById(limitedBulkProduct._id).lean()).stock, 1);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeInsufficientBulk, 'insufficient bulk stock must not debit the wallet');
+
+      const conflictingBulkPrices = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 20 },
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 21 }
+        ], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-conflicting-prices-0001' });
+      assert.equal(conflictingBulkPrices.status, 400);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5, 'conflicting expected prices must not reserve stock');
+
+      const staleBulkPrice = await request(app).post('/api/store/fanni/orders/bulk')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ items: [{ productId: String(bulkProductA._id), quantity: 1, expectedPrice: 19 }], paymentMethod: 'wallet', idempotencyKey: 'fanni-store-bulk-stale-price-0001' });
+      assert.equal(staleBulkPrice.status, 409);
+      assert.equal(staleBulkPrice.body.priceChanged, true);
+      assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 5, 'stale bulk price must not reserve stock');
       const balanceBeforeBulk = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
       const bulkKey = 'fanni-store-bulk-order-test-0001';
       const bulkPurchase = await request(app).post('/api/store/fanni/orders/bulk')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ items: [
-          { productId: String(bulkProductA._id), quantity: 2 },
-          { productId: String(bulkProductB._id), quantity: 3 }
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 20 },
+          { productId: String(bulkProductA._id), quantity: 1, expectedPrice: 20 },
+          { productId: String(bulkProductB._id), quantity: 3, expectedPrice: 30 }
         ], paymentMethod: 'wallet', idempotencyKey: bulkKey });
       assert.equal(bulkPurchase.status, 201, JSON.stringify(bulkPurchase.body));
       assert.equal(bulkPurchase.body.order.items.length, 2);
@@ -1929,9 +2229,12 @@ async function run() {
       const bulkStoredOrder = await StoreOrder.findById(bulkPurchase.body.order.id).lean();
       assert.equal(bulkStoredOrder.items.length, 2);
       assert.equal(bulkStoredOrder.total, 130);
+      assert.match(bulkStoredOrder.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(bulkPurchase.body.order.transactionNumber, bulkStoredOrder.transactionNumber);
       const bulkLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'fanni_store_payment', idempotencyKey: 'store-order:' + String(bulkStoredOrder._id) }).lean();
       assert.ok(bulkLedger);
       assert.equal(bulkLedger.amount, -130);
+      assert.equal(bulkLedger.transactionNumber, bulkStoredOrder.transactionNumber);
       const duplicateBulk = await request(app).post('/api/store/fanni/orders/bulk')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ items: [
@@ -1953,6 +2256,8 @@ async function run() {
       const bulkRefundLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'refund', idempotencyKey: 'store-order-refund:' + String(bulkStoredOrder._id) }).lean();
       assert.ok(bulkRefundLedger);
       assert.equal(bulkRefundLedger.amount, 130);
+      assert.match(bulkRefundLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal((await StoreOrder.findById(bulkStoredOrder._id).lean()).refundTransactionNumber, bulkRefundLedger.transactionNumber);
       const duplicateCancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
         .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد' });
@@ -1973,7 +2278,7 @@ async function run() {
       assert.equal(subscriptionRequest.status, 201, JSON.stringify(subscriptionRequest.body));
       assert.equal(subscriptionRequest.body.order.paymentStatus, 'غير مدفوع');
       assert.equal(subscriptionRequest.body.order.paymentMethod, 'غير محدد');
-      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore, 'an unpaid subscription request must not debit the technician wallet');
     });
 
     await test('order chat rejects revoked technician sessions after password changes', async () => {

@@ -198,6 +198,8 @@ function createOrderChatRouter({
             idempotencyKey: 'commission-adjustment:' + String(order._id) + ':' + String(request._id)
           });
           await transaction.save({ session });
+          if (!Array.isArray(order.commissionAdjustmentTransactionNumbers)) order.commissionAdjustmentTransactionNumbers = [];
+          order.commissionAdjustmentTransactionNumbers.push(transaction.transactionNumber);
         }
         order.acceptedOfferPrice = Number(request.newPrice);
         order.commissionAmount = newCommission;

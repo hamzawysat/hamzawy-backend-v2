@@ -20,7 +20,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       if (!order) { await session.abortTransaction(); return res.status(404).json({ message: 'الطلب غير موجود بحسابك أو لم يتم تعيين فني عليه بعد.' }); }
       if (order.clientPaymentStatus === 'held' || order.clientPaymentStatus === 'settled') {
         await session.abortTransaction();
-        return res.status(200).json({ message: order.clientPaymentStatus === 'settled' ? 'تم سداد الطلب وتسوية مستحقات الفني بالفعل.' : 'تم حجز قيمة الخدمة بالفعل من محفظتك.', paymentStatus: order.clientPaymentStatus, balance: Number(req.client.walletBalance || 0) });
+        return res.status(200).json({ message: order.clientPaymentStatus === 'settled' ? 'تم سداد الطلب وتسوية مستحقات الفني بالفعل.' : 'تم حجز قيمة الخدمة بالفعل من محفظتك.', paymentStatus: order.clientPaymentStatus, balance: Number(req.client.walletBalance || 0), transactionNumber: order.clientPaymentTransactionNumber || '' });
       }
       const amount = Number(order.acceptedOfferPrice);
       if (!Number.isFinite(amount) || amount <= 0) { await session.abortTransaction(); return res.status(409).json({ message: 'سعر الخدمة غير صالح؛ تواصل مع خدمة العملاء.' }); }
@@ -36,16 +36,19 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       order.clientPaymentAmount = amount;
       order.clientPaymentAt = new Date();
       await order.save({ session });
-      await new WalletTransaction({
+      const paymentTransaction = new WalletTransaction({
         client: client._id, order: order._id, orderSN: order.sn,
         type: 'client_escrow_hold', amount: -amount, balanceBefore: before,
         balanceAfter: Number(updatedClient.walletBalance),
         description: 'حجز قيمة الخدمة للطلب ' + order.sn + ' لحين إتمام الفني للمهمة',
         idempotencyKey: 'client-service-hold:' + String(order._id)
-      }).save({ session });
+      });
+      await paymentTransaction.save({ session });
+      order.clientPaymentTransactionNumber = paymentTransaction.transactionNumber;
+      await order.save({ session });
       await session.commitTransaction();
-      notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount };
-      return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount });
+      notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount, transactionNumber: paymentTransaction.transactionNumber };
+      return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount, transactionNumber: paymentTransaction.transactionNumber });
     } catch (error) {
       if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
       if (error && error.code === 11000) return res.status(409).json({ message: 'عملية دفع هذا الطلب مسجلة بالفعل.' });
@@ -104,7 +107,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         const existingSubscription = existingTransaction.order
           ? null
           : await ClientSubscription.findOne({ client: req.clientId, 'history.paymentKey': idempotencyKey }).lean();
-        return res.json({ message: 'عملية الدفع مسجلة بالفعل.', balance: Number(req.client.walletBalance || 0), subscription: existingSubscription || null, duplicate: true });
+        return res.json({ message: 'عملية الدفع مسجلة بالفعل.', balance: Number(req.client.walletBalance || 0), subscription: existingSubscription || null, transactionNumber: existingTransaction.transactionNumber || '', duplicate: true });
       }
 
       session = await mongoose.startSession();
@@ -193,17 +196,22 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         subscription.history.push({ amount, startsAt, endsAt, renewedBy: 'العميل', note: 'تجديد من محفظة العميل', paymentKey: idempotencyKey });
       }
       await subscription.save({ session });
-      await new WalletTransaction({
+      const paymentTransaction = new WalletTransaction({
         client: client._id, type: 'client_subscription_payment', amount: -amount,
         balanceBefore: before, balanceAfter: Number(updatedClient.walletBalance),
         description: (mode === 'purchase' ? 'شراء اشتراك ' : 'تجديد اشتراك ') + subscription.itemName,
         idempotencyKey
-      }).save({ session });
+      });
+      await paymentTransaction.save({ session });
+      subscription.transactionNumber = paymentTransaction.transactionNumber;
+      const latestPayment = subscription.history[subscription.history.length - 1];
+      if (latestPayment) latestPayment.transactionNumber = paymentTransaction.transactionNumber;
+      await subscription.save({ session });
       await session.commitTransaction();
       notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName, mode, endsAt: subscription.endsAt };
       return res.status(mode === 'purchase' ? 201 : 200).json({
         message: mode === 'purchase' ? 'تم شراء الاشتراك وتفعيله بنجاح.' : 'تم تجديد الاشتراك بنجاح.',
-        balance: Number(updatedClient.walletBalance), subscription
+        balance: Number(updatedClient.walletBalance), subscription, transactionNumber: paymentTransaction.transactionNumber
       });
     } catch (error) {
       if (session?.inTransaction()) await session.abortTransaction().catch(() => {});

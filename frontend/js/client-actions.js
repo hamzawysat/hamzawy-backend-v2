@@ -184,6 +184,8 @@ function onComplaintText(value){
   if(status)status.textContent=VALIDATORS.text(state.complaintText,10,1000)?'✓ تفاصيل الشكوى مكتملة':'';
 }
 function resetForm(){
+  state.pendingOrderKey='';state.pendingOrderFingerprint='';
+  try{sessionStorage.removeItem('sonaa_pending_order_request');}catch(_){}
   state.sn=null;state.clientName='';state.area='';state.address='';state.phone='';state.budget='';state.desc='';state.service='';state.showService=false;state.openCategory='';state.searchService='';state.tab='new';state.loading=false;render();
 }
 function trackNow(){setTab('orders');loadMyOrders();}
@@ -237,7 +239,22 @@ async function createOrder(){
   }catch(error){showToast(error.message);return;}
   state.loading=true;render();
   try{
-    const data=await API.createOrder({clientName:state.clientName,service:state.service,area:state.area,address:state.address,phone:state.phone,budget:state.budget,description:state.desc,voiceRecordingData:state.voiceRecordingData});
+    const submission={clientName:state.clientName,service:state.service,area:state.area,address:state.address,phone:state.phone,budget:state.budget,description:state.desc,voiceRecordingData:state.voiceRecordingData};
+    const fingerprint=JSON.stringify(submission);
+    if(state.pendingOrderFingerprint!==fingerprint){
+      let saved=null;
+      try{saved=JSON.parse(sessionStorage.getItem('sonaa_pending_order_request')||'null');}catch(_){}
+      if(saved&&saved.fingerprint===fingerprint&&typeof saved.key==='string'){
+        state.pendingOrderKey=saved.key;
+      }else{
+        state.pendingOrderKey=(window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():'order-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+      }
+      state.pendingOrderFingerprint=fingerprint;
+      try{sessionStorage.setItem('sonaa_pending_order_request',JSON.stringify({fingerprint,key:state.pendingOrderKey}));}catch(_){}
+    }
+    const data=await API.createOrder({...submission,idempotencyKey:state.pendingOrderKey});
+    state.pendingOrderKey='';state.pendingOrderFingerprint='';
+    try{sessionStorage.removeItem('sonaa_pending_order_request');}catch(_){}
     state.sn=data.sn;state.loading=false;showToast('تم إنشاء الطلب: '+state.sn,'success');render();
   }catch(error){state.loading=false;showToast(error.message||'تعذر إنشاء الطلب حاليًا.');render();}
 }

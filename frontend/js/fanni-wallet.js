@@ -71,6 +71,13 @@ async function submitWallet(){
  try{
   const phone=state.walletFromPhone.replace(/\D/g,'');
   const reference=clean(state.walletRef,50);
+  const fingerprint=JSON.stringify({phone,amount:Number(state.walletAmount),reference,method:state.walletMethod});
+  if(state.walletPendingFingerprint!==fingerprint){
+   let saved=null;try{saved=JSON.parse(sessionStorage.getItem('sonaa_fanni_pending_topup')||'null');}catch(_){}
+   state.walletPendingKey=saved&&saved.fingerprint===fingerprint&&typeof saved.key==='string'?saved.key:((window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():'fanni-topup-'+Date.now()+'-'+Math.random().toString(36).slice(2));
+   state.walletPendingFingerprint=fingerprint;
+   try{sessionStorage.setItem('sonaa_fanni_pending_topup',JSON.stringify({fingerprint,key:state.walletPendingKey}));}catch(_){}
+  }
 
   await API.topup({
    fromPhone:phone,
@@ -79,10 +86,12 @@ async function submitWallet(){
    reference,
    referenceCode:reference,
    method:state.walletMethod,
+   idempotencyKey:state.walletPendingKey,
    note:`تحويل من ${phone} بقيمة ${Number(state.walletAmount)} - كود: ${reference||'بدون'}`.slice(0,200)
   });
 
   state.walletLoading=false;
+  state.walletPendingKey='';state.walletPendingFingerprint='';try{sessionStorage.removeItem('sonaa_fanni_pending_topup');}catch(_){}
   state.success='تم إرسال طلب الشحن للمراجعة.';
   state.walletFromPhone='';
   state.walletAmount='';

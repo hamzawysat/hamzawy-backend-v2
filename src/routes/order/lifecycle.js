@@ -236,6 +236,8 @@ router.post('/:sn/accept', async (req, res, next) => {
     if (!updatedOrder) {
       throw new Error('ORDER_NOT_FOUND_AFTER_UPDATE');
     }
+    updatedOrder.commissionTransactionNumber = transaction.transactionNumber;
+    await updatedOrder.save({ session });
 
     notificationFanniId = fanniId;
     notificationClientId = updatedOrder.clientAccount || null;
@@ -401,6 +403,8 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
         message: 'تم تأكيد استلام الخدمة بالفعل.',
         order: {
           sn: order.sn,
+          clientPaymentTransactionNumber: order.clientPaymentTransactionNumber || '',
+          technicianSettlementTransactionNumber: order.technicianSettlementTransactionNumber || '',
           clientConfirmedAt: order.clientConfirmedAt,
           warrantyStartsAt: order.warrantyStartsAt,
           warrantyExpiresAt: order.warrantyExpiresAt,
@@ -436,7 +440,7 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
         return res.status(409).json({ message: 'تعذر تحديث محفظة الفني؛ لم يتم تأكيد الاستلام أو صرف المبلغ.' });
       }
 
-      await new WalletTransaction({
+      const settlementTransaction = new WalletTransaction({
         fanni: fanni._id,
         order: order._id,
         orderSN: order.sn,
@@ -446,7 +450,9 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
         balanceAfter: Number(updatedFanni.walletBalance),
         description: 'صرف مستحقات تنفيذ الطلب ' + order.sn + ' بعد تأكيد العميل استلام الخدمة',
         idempotencyKey: 'technician-settlement:' + String(order._id)
-      }).save({ session });
+      });
+      await settlementTransaction.save({ session });
+      order.technicianSettlementTransactionNumber = settlementTransaction.transactionNumber;
 
       order.clientPaymentStatus = 'settled';
       order.technicianSettledAt = new Date();
@@ -496,13 +502,15 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
       : 'تم تأكيد استلام الخدمة وبدأ ضمان الإصلاح لمدة 14 يومًا.',
     order: {
       sn: confirmedOrder.sn,
+      clientPaymentTransactionNumber: confirmedOrder.clientPaymentTransactionNumber || '',
+      technicianSettlementTransactionNumber: confirmedOrder.technicianSettlementTransactionNumber || '',
       clientConfirmedAt: confirmedOrder.clientConfirmedAt,
       warrantyStartsAt: confirmedOrder.warrantyStartsAt,
       warrantyExpiresAt: confirmedOrder.warrantyExpiresAt,
       warrantyStatus: confirmedOrder.warrantyStatus,
       clientPaymentStatus: confirmedOrder.clientPaymentStatus
     },
-    settlement: settlement ? { amount: settlement.amount } : null
+    settlement: settlement ? { amount: settlement.amount, transactionNumber: confirmedOrder.technicianSettlementTransactionNumber || '' } : null
   });
 });
 

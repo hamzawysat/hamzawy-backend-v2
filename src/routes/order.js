@@ -94,7 +94,8 @@ const createSchema = Joi.object({
   budget: Joi.string().trim().max(50).allow('').optional(),
   description: Joi.string().trim().max(1000).allow('').optional(),
   desc: Joi.string().trim().max(1000).allow('').optional(),
-  voiceRecordingData: Joi.string().max(520000).pattern(/^data:audio\/(?:webm|ogg|mp4|mpeg|wav)(?:;codecs=[a-zA-Z0-9.-]+)?;base64,[A-Za-z0-9+/]+={0,2}$/).allow('').optional()
+  voiceRecordingData: Joi.string().max(520000).pattern(/^data:audio\/(?:webm|ogg|mp4|mpeg|wav)(?:;codecs=[a-zA-Z0-9.-]+)?;base64,[A-Za-z0-9+/]+={0,2}$/).allow('').optional(),
+  idempotencyKey: Joi.string().trim().pattern(/^[a-zA-Z0-9:_-]{16,150}$/).optional()
 }).unknown(false);
 
 function validSN(sn) {

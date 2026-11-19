@@ -71,7 +71,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
   const statusSchema = Joi.object({
     status: Joi.string().valid('تم التواصل', 'قيد التجهيز', 'مكتمل', 'مرفوض', 'ملغي').required(),
     adminNote: Joi.string().trim().max(1000).allow('').default(''),
-    paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل').default('غير محدد')
+    paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل').optional()
   }).unknown(false);
 
   router.post('/store/media', auth('admin'), async (req, res, next) => {
@@ -365,9 +365,13 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
           }
           order.stockReserved = false;
         }
-        const walletPayment = order.paymentStatus === 'مدفوع' && (order.walletCharged === true ||
-          (order.buyerRole === 'client' && order.paymentMethod === 'محفظة العميل') ||
-          (order.buyerRole === 'fanni' && order.paymentMethod === 'محفظة الفني'));
+        const walletPayment = order.paymentStatus === 'مدفوع' && (
+          order.walletCharged === true ||
+          (order.walletCharged === undefined && (
+            (order.buyerRole === 'client' && order.paymentMethod === 'محفظة العميل') ||
+            (order.buyerRole === 'fanni' && order.paymentMethod === 'محفظة الفني')
+          ))
+        );
         if (walletPayment) {
           refundAmount = Math.max(0, Number(order.total) || 0);
           if (refundAmount > 0) {
@@ -377,7 +381,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
             const balanceBefore = Number(buyer.walletBalance || 0);
             buyer.walletBalance = balanceBefore + refundAmount;
             await buyer.save({ session });
-            await new WalletTransaction({
+            const refundTransaction = new WalletTransaction({
               ...(order.buyerRole === 'client'
                 ? { client: order.buyerId, type: 'client_refund' }
                 : { fanni: order.buyerId, type: 'refund' }),
@@ -386,14 +390,16 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
               balanceAfter: Number(buyer.walletBalance),
               description: 'استرداد قيمة طلب متجر ملغي رقم ' + String(order._id),
               idempotencyKey: 'store-order-refund:' + String(order._id)
-            }).save({ session });
+            });
+            await refundTransaction.save({ session });
+            order.refundTransactionNumber = refundTransaction.transactionNumber;
             order.paymentStatus = 'مسترد';
           }
         }
       }
       order.status = checked.value.status;
       order.adminNote = checked.value.adminNote;
-      order.paymentMethod = checked.value.paymentMethod;
+      if (checked.value.paymentMethod !== undefined) order.paymentMethod = checked.value.paymentMethod;
       order.statusHistory.push({ status: order.status, note: order.adminNote, by: req.user?.name || 'الإدارة', at: new Date() });
       await order.save({ session });
       await session.commitTransaction();

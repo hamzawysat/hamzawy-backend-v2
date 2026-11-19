@@ -223,7 +223,8 @@ const API={
         phone:normalizeDigits(String(payload.phone)).replace(/\D/g,''),
         description:sanitizeInput(payload.description||'',1000),
         ...(voiceRecordingData?{voiceRecordingData}:{}),
-        budget:sanitizeInput(payload.budget||'',50)
+        budget:sanitizeInput(payload.budget||'',50),
+        ...(payload.idempotencyKey?{idempotencyKey:String(payload.idempotencyKey)}:{})
       })
     });
     const order=data.order||data.data||{};

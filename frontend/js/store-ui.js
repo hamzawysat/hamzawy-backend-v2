@@ -94,7 +94,7 @@ async function submitStoreCartOrder(role){
   if(!cart.length){closeStoreCartReview();return;}
   const button=modal.querySelector('#storeCartReviewSubmit');
   const paymentMethod=modal.querySelector('input[name="storeCartPaymentMethod"]:checked')?.value||'wallet';
-  const items=cart.map(item=>({productId:String(item.productId),quantity:Number(item.quantity||1)}));
+  const items=cart.map(item=>({productId:String(item.productId),quantity:Number(item.quantity||1),expectedPrice:Number(item.price||0)}));
   const payload={items,paymentMethod,note:'',idempotencyKey:modal.dataset.requestKey||storeRequestKey()};
   modal.dataset.requestKey=payload.idempotencyKey;
   modal.dataset.submitting='true';
@@ -110,6 +110,16 @@ async function submitStoreCartOrder(role){
       const useCod=confirm((result.data.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب المجمع والدفع عند الاستلام؟');
       if(!useCod){modal.dataset.submitting='false';button.disabled=false;button.textContent='تأكيد الطلب المجمع';button.style.opacity='1';return;}
       result=await send('cash_on_delivery');
+    }
+    if(!result.response.ok&&result.data.priceChanged===true){
+      const changedById=new Map((Array.isArray(result.data.changedItems)?result.data.changedItems:[]).map(item=>[String(item.productId),item]));
+      state.storeCartByRole={...(state.storeCartByRole||{}),[role]:cart.map(item=>{const changed=changedById.get(String(item.productId));return changed?{...item,name:String(changed.productName||item.name),price:Number(changed.currentPrice)}:item;})};
+      persistStoreCart();
+      closeStoreCartReview();
+      openStoreCartReview(role);
+      const message=result.data.message||'تغير سعر منتج في السلة. راجع الأسعار الجديدة قبل التأكيد.';
+      if(role==='client')showToast(message,'error');else toast(message,'error');
+      return;
     }
     if(!result.response.ok)throw new Error(result.data.message||'تعذر إرسال الطلب المجمع.');
     state.storeCartByRole={...(state.storeCartByRole||{}),[role]:[]};
@@ -149,6 +159,13 @@ function setStoreCategory(role,category){
   state.storeSelectedCategoryByRole={...current,[role]:String(category||'')};
   render();
 }
+function setStoreSearchQuery(role,query){
+  const current=state.storeSearchQueryByRole&&typeof state.storeSearchQueryByRole==='object'?state.storeSearchQueryByRole:{};
+  state.storeSearchQueryByRole={...current,[role]:String(query||'')};
+  render();
+  const input=document.getElementById('storeSearchInput-'+role);
+  if(input){input.focus();const cursor=input.value.length;try{input.setSelectionRange(cursor,cursor);}catch(_){}}
+}
 function renderStoreCatalog(role){
   const products=Array.isArray(state.storeProducts)?state.storeProducts:[];
   const orders=Array.isArray(state.myStoreOrders)?state.myStoreOrders:[];
@@ -159,18 +176,29 @@ function renderStoreCatalog(role){
     groups.get(category).push(product);
   });
   const selectedCategory=String(state.storeSelectedCategoryByRole?.[role]||'');
+  const searchQuery=String(state.storeSearchQueryByRole?.[role]||'');
+  const normalizedQuery=typeof normalizeArabicStoreSearch==='function'?normalizeArabicStoreSearch(searchQuery):searchQuery.trim().toLowerCase();
   const selectedItems=selectedCategory?groups.get(selectedCategory):null;
-  let h='<section class="mt-4 space-y-3"><div class="panel p-4"><h3 class="font-black text-[15px]">متجر حمزاوي سات</h3><p class="text-[11px] text-slate-500 mt-1">اختار القسم اللي محتاجه، وبعدها هتظهر لك المنتجات الموجودة بداخله.</p></div><details class="panel p-4"><summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-extrabold text-[13px]"><span>طلبات المتجر السابقة</span><span class="text-slate-500 transition-transform" aria-hidden="true">⌄</span></summary><div class="mt-3">';
+  const searchMatches=normalizedQuery?products.filter(product=>
+    (!selectedCategory||String(product.category||'عام').trim()===selectedCategory) &&
+    (typeof matchesArabicStoreSearch==='function'?matchesArabicStoreSearch(product,searchQuery):
+      [product.name,product.category,product.description,product.details,product.offerText].join(' ').toLowerCase().includes(searchQuery.toLowerCase()))
+  ):null;
+  let h='<section class="mt-4 space-y-3"><div class="panel p-4"><h3 class="font-black text-[15px]">متجر حمزاوي سات</h3><p class="text-[11px] text-slate-500 mt-1">ابحث باسم المنتج أو القسم أو الوصف، حتى لو اختلفت كتابة بعض الحروف.</p><label for="storeSearchInput-'+storeEsc(role)+'" class="sr-only">ابحث في منتجات المتجر</label><input id="storeSearchInput-'+storeEsc(role)+'" type="search" dir="rtl" autocomplete="off" value="'+storeEsc(searchQuery)+'" oninput="setStoreSearchQuery(\''+storeEsc(role)+'\',this.value)" placeholder="ابحث عن منتج... مثال: رسيفر، دش، اشتراك" class="mt-3 w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-[13px] outline-none focus:border-teal-600 focus:ring-2 focus:ring-teal-100"><p class="mt-2 text-[10px] text-slate-500">البحث يتجاهل التشكيل واختلافات الهمزة والألف، ويتحمل الأخطاء الإملائية البسيطة.</p></div><details class="panel p-4"><summary class="flex cursor-pointer list-none items-center justify-between gap-3 font-extrabold text-[13px]"><span>طلبات المتجر السابقة</span><span class="text-slate-500 transition-transform" aria-hidden="true">⌄</span></summary><div class="mt-3">';
   if(!orders.length)h+='<p class="text-[11px] text-slate-500">لسه مفيش طلبات شراء.</p>';
   orders.forEach(o=>{
     const items=Array.isArray(o.items)&&o.items.length?o.items:[{productName:o.productName,quantity:o.quantity,total:o.total}];
     const itemSummary=items.map(item=>'<p class="text-[10px] text-slate-600">'+storeEsc(item.productName||'منتج')+' × '+Number(item.quantity||0)+' — '+Number(item.total||0).toLocaleString('ar-EG')+' جنيه</p>').join('');
-    h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p>'+itemSummary+'<p class="text-[11px] text-slate-500 mt-1">إجمالي الكمية: '+Number(o.quantity||0)+' • '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • الحالة: '+storeEsc(o.status)+'</p></div>';
+    h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p>'+itemSummary+'<p class="text-[11px] text-slate-500 mt-1">إجمالي الكمية: '+Number(o.quantity||0)+' • '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • الحالة: '+storeEsc(o.status)+'</p>'+(o.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+storeEsc(o.transactionNumber)+'</p>':'<p class="text-[10px] text-slate-500" dir="ltr">رقم الطلب: '+storeEsc(o.id||'')+'</p>')+(o.refundTransactionNumber?'<p class="text-[10px] font-bold text-emerald-700" dir="ltr">رقم الاسترداد: '+storeEsc(o.refundTransactionNumber)+'</p>':'')+'</div>';
   });
   h+='</div></details>';
   h+=renderStoreCart(role);
   if(!products.length){
     h+='<div class="panel p-5 text-center text-sm">لا توجد منتجات متاحة حاليًا.</div>';
+  }else if(normalizedQuery){
+    h+='<div class="flex items-center justify-between gap-2"><p class="text-[12px] font-bold text-slate-700">نتائج البحث: '+searchMatches.length+' منتج</p>'+(selectedCategory?'<button type="button" onclick="setStoreCategory(\''+storeEsc(role)+'\',\'\')" class="text-[11px] font-bold text-teal-700">البحث في كل الأقسام</button>':'')+'</div>';
+    if(!searchMatches.length)h+='<div class="panel p-5 text-center"><p class="text-[13px] font-bold text-slate-700">ملقيناش منتجات مطابقة للبحث.</p><p class="mt-1 text-[11px] text-slate-500">جرّب كلمة أقصر أو كتابة مختلفة.</p></div>';
+    else searchMatches.forEach(product=>{h+=renderStoreProductCard(product,role);});
   }else if(selectedItems){
     h+='<div class="flex items-center justify-between gap-2"><button type="button" onclick="setStoreCategory(\''+storeEsc(role)+'\',\'\')" class="rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-black text-teal-700">← كل الأقسام</button><div class="text-right"><b class="text-[13px]">'+storeEsc(selectedCategory)+'</b><p class="text-[10px] text-slate-500">'+selectedItems.length+' منتج</p></div></div>';
     selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);});
@@ -230,13 +258,23 @@ function submitStorePurchase(role,id){
     const note=String(noteInput.value||'').trim().slice(0,500);
     const idempotencyKey=storeRequestKey();
     async function send(method){
-      const r=await fetch('/api/store/'+role+'/orders',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({productId:id,quantity,note,...(!isSubscription?{paymentMethod:method}:{}),idempotencyKey})});
+      const r=await fetch('/api/store/'+role+'/orders',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({productId:id,quantity,note,expectedPrice:Number(product.price||0),...(!isSubscription?{paymentMethod:method}:{}),idempotencyKey})});
       const d=await r.json().catch(()=>({}));
       return {r,d};
     }
     submitButton.disabled=true;submitButton.textContent='جاري إرسال الطلب...';submitButton.style.opacity='.65';errorBox.style.display='none';
     try{
       let result=await send(paymentMethod);
+      if(!result.r.ok&&result.d.priceChanged===true){
+        const catalog=await fetch('/api/store/products',{cache:'no-store'});
+        const catalogData=await catalog.json().catch(()=>({}));
+        if(catalog.ok)state.storeProducts=Array.isArray(catalogData.products)?catalogData.products:state.storeProducts;
+        closeStorePurchaseModal();
+        const message=result.d.message||'تغير سعر المنتج. راجع السعر الجديد قبل تأكيد الطلب.';
+        if(role==='client')showToast(message,'error');else toast(message,'error');
+        submitStorePurchase(role,id);
+        return;
+      }
       if(!result.r.ok&&paymentMethod==='wallet'&&result.r.status===409&&result.d.canUseCashOnDelivery===true){
         const useCod=confirm((result.d.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب والدفع عند الاستلام؟');
         if(!useCod){submitButton.disabled=false;submitButton.textContent='تأكيد طلب الشراء';submitButton.style.opacity='1';return;}
@@ -246,10 +284,10 @@ function submitStorePurchase(role,id){
       closeStorePurchaseModal();
       if(role==='client'){
         if(result.d.balance!==undefined)state.walletBalance=Number(result.d.balance);
-        showToast(result.d.message||'تم إرسال طلب الشراء');
+        showToast((result.d.message||'تم إرسال طلب الشراء')+(result.d.transactionNumber?' · رقم العملية: '+result.d.transactionNumber:''));
       }else{
         if(result.d.balance!==undefined){state.walletBalance=Number(result.d.balance);if(typeof setAuth==='function')setAuth(getToken(),{...(getUser()||{}),walletBalance:Number(result.d.balance)});}
-        toast(result.d.message||'تم إرسال طلب الشراء');
+        toast((result.d.message||'تم إرسال طلب الشراء')+(result.d.transactionNumber?' · رقم العملية: '+result.d.transactionNumber:''));
       }
       await loadStoreForRole(role);
       if(role==='client'&&typeof loadClientWallet==='function')await loadClientWallet();

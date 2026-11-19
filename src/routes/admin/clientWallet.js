@@ -23,13 +23,15 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
     const client=await Client.findOneAndUpdate({_id:request.client,status:'نشط',walletFrozen:{$ne:true}},{$inc:{walletBalance:Number(request.amount)}},{new:true,session,runValidators:true});
     if(!client)throw new Error('CLIENT_WALLET_UNAVAILABLE');
     const after=Number(client.walletBalance),before=after-Number(request.amount);
-    await new WalletTransaction({client:client._id,type:'client_topup',amount:Number(request.amount),balanceBefore:before,balanceAfter:after,description:'اعتماد شحن محفظة العميل لطلب '+String(request._id),idempotencyKey:'client-topup:'+String(request._id)}).save({session});
-    outcome={kind:'approved',request,client,balance:after};
+    const transaction=new WalletTransaction({client:client._id,type:'client_topup',amount:Number(request.amount),balanceBefore:before,balanceAfter:after,description:'اعتماد شحن محفظة العميل لطلب '+String(request._id),idempotencyKey:'client-topup:'+String(request._id)});
+    await transaction.save({session});
+    request.transactionNumber=transaction.transactionNumber;await request.save({session});
+    outcome={kind:'approved',request,client,balance:after,transactionNumber:transaction.transactionNumber};
    });
    if(outcome?.kind!=='approved'){const current=await ClientTopupRequest.findById(req.params.id).lean();if(!current)return res.status(404).json({message:'طلب الشحن غير موجود.'});return res.status(409).json({message:'تمت معالجة طلب الشحن بالفعل أو أنه غير متاح للمراجعة.',status:current.status,isCredited:Boolean(current.isCredited)});}
    await writeAdminAudit(req,'اعتماد شحن محفظة عميل','client-wallet',String(outcome.client._id),'topupRequest='+String(outcome.request._id)+'; amount='+Number(outcome.request.amount)+'; balance='+outcome.balance);
    await createNotification({recipientRole:'client',recipientId:outcome.client._id,type:'client_wallet_topup_approved',title:'تم شحن محفظتك',message:'تم اعتماد التحويل وإضافة '+outcome.request.amount+' جنيه إلى محفظتك.',link:'/client.html?tab=wallet',dedupeKey:'client-topup-approved:'+String(outcome.request._id)});
-   return res.json({message:'تم اعتماد الشحن وإضافة الرصيد مرة واحدة.',request:outcome.request,balance:outcome.balance});
+   return res.json({message:'تم اعتماد الشحن وإضافة الرصيد مرة واحدة.',request:outcome.request,balance:outcome.balance,transactionNumber:outcome.transactionNumber});
   }catch(e){if(e.message==='CLIENT_WALLET_UNAVAILABLE')return res.status(409).json({message:'حساب العميل غير نشط أو محفظته مجمدة؛ لم يتم اعتماد الشحن.'});return next(e);}finally{if(session)await session.endSession();}
  });
  router.post('/client-wallet/topup-requests/:id/reject',auth('admin'),validate(Joi.object({reason:Joi.string().trim().max(500).allow('').default('')})),async(req,res,next)=>{
@@ -52,13 +54,14 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
     const balanceBefore=Number(before.walletBalance||0);
     const client=await Client.findByIdAndUpdate(before._id,{$inc:{walletBalance:Number(req.body.amount)}},{new:true,session,runValidators:true});
     if(!client)throw new Error('CLIENT_WALLET_CLIENT_NOT_FOUND');
-    await new WalletTransaction({client:client._id,type:'client_admin_adjustment',amount:Number(req.body.amount),balanceBefore,balanceAfter:Number(client.walletBalance),description:('إضافة إدارية: '+String(req.body.reason||'بدون سبب')).slice(0,500),idempotencyKey:'client-admin-credit:'+String(client._id)+':'+String(req.body.idempotencyKey)}).save({session});
-    outcome={client,balance:Number(client.walletBalance)};
+    const transaction=new WalletTransaction({client:client._id,type:'client_admin_adjustment',amount:Number(req.body.amount),balanceBefore,balanceAfter:Number(client.walletBalance),description:('إضافة إدارية: '+String(req.body.reason||'بدون سبب')).slice(0,500),idempotencyKey:'client-admin-credit:'+String(client._id)+':'+String(req.body.idempotencyKey)});
+    await transaction.save({session});
+    outcome={client,balance:Number(client.walletBalance),transactionNumber:transaction.transactionNumber};
    });
    if(!outcome)return res.status(404).json({message:'العميل غير موجود.'});
    await writeAdminAudit(req,'إضافة رصيد لمحفظة عميل','client-wallet',String(outcome.client._id),'amount='+Number(req.body.amount)+'; balance='+outcome.balance+'; reason='+String(req.body.reason||''));
    await createNotification({recipientRole:'client',recipientId:outcome.client._id,type:'client_wallet_credit',title:'تم إضافة رصيد لمحفظتك',message:'أضافت الإدارة '+Number(req.body.amount)+' جنيه إلى محفظتك.',link:'/client.html?tab=wallet',dedupeKey:'client-wallet-admin-credit:'+String(outcome.client._id)+':'+String(Date.now())});
-   return res.json({message:'تمت إضافة الرصيد وتسجيل الحركة المالية.',balance:outcome.balance});
+   return res.json({message:'تمت إضافة الرصيد وتسجيل الحركة المالية.',balance:outcome.balance,transactionNumber:outcome.transactionNumber});
   }catch(e){if(e.code===11000)return res.status(409).json({message:'تم تسجيل عملية الإضافة بالفعل؛ لم يتم تكرارها.'});next(e);}finally{if(session)await session.endSession();}
  });
 
@@ -72,14 +75,15 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
     const client=await Client.findOneAndUpdate({_id:req.params.id,walletBalance:{$gte:amount}},{$inc:{walletBalance:-amount}},{new:true,session,runValidators:true});
     if(!client){const exists=await Client.exists({_id:req.params.id}).session(session);outcome={kind:exists?'insufficient':'missing'};return;}
     const balanceAfter=Number(client.walletBalance),balanceBefore=balanceAfter+amount;
-    await new WalletTransaction({client:client._id,type:'client_admin_deduction',amount:-amount,balanceBefore,balanceAfter,description:('خصم إداري: '+String(req.body.reason)).slice(0,500),idempotencyKey:'client-admin-debit:'+String(client._id)+':'+String(req.body.idempotencyKey)}).save({session});
-    outcome={client,balance:balanceAfter,amount};
+    const transaction=new WalletTransaction({client:client._id,type:'client_admin_deduction',amount:-amount,balanceBefore,balanceAfter,description:('خصم إداري: '+String(req.body.reason)).slice(0,500),idempotencyKey:'client-admin-debit:'+String(client._id)+':'+String(req.body.idempotencyKey)});
+    await transaction.save({session});
+    outcome={client,balance:balanceAfter,amount,transactionNumber:transaction.transactionNumber};
    });
    if(outcome?.kind==='missing')return res.status(404).json({message:'العميل غير موجود.'});
    if(outcome?.kind==='insufficient')return res.status(409).json({message:'الرصيد الحالي غير كافٍ لإتمام الخصم. لم يتغير الرصيد.'});
    await writeAdminAudit(req,'خصم رصيد من محفظة عميل','client-wallet',String(outcome.client._id),'amount='+outcome.amount+'; balance='+outcome.balance+'; reason='+String(req.body.reason));
    try{await createNotification({recipientRole:'client',recipientId:outcome.client._id,type:'client_wallet_debit',title:'تم خصم مبلغ من محفظتك',message:'تم خصم '+outcome.amount+' جنيه من محفظتك بواسطة الإدارة. الرصيد الحالي '+outcome.balance+' جنيه.',link:'/client.html?tab=wallet',dedupeKey:'client-wallet-admin-debit:'+String(outcome.client._id)+':'+String(Date.now())});}catch(_){}
-   return res.json({message:'تم خصم الرصيد وتسجيل الحركة المالية.',balance:outcome.balance,amount:outcome.amount});
+   return res.json({message:'تم خصم الرصيد وتسجيل الحركة المالية.',balance:outcome.balance,amount:outcome.amount,transactionNumber:outcome.transactionNumber});
   }catch(e){if(e.code===11000)return res.status(409).json({message:'تم تسجيل عملية الخصم بالفعل؛ لم يتم تكرارها.'});next(e);}finally{if(session)await session.endSession();}
  });
  router.post('/clients/:id/wallet/set-balance',auth('admin'),validate(Joi.object({balance:Joi.number().strict().integer().min(0).max(100000000).required(),reason:Joi.string().trim().min(2).max(500).required(),idempotencyKey:Joi.string().trim().min(16).max(150).required()})),async(req,res,next)=>{
@@ -94,15 +98,16 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
     if(delta===0){outcome={kind:'unchanged',clientId:before._id,balance:balanceAfter};return;}
     const client=await Client.findOneAndUpdate({_id:before._id,walletBalance:balanceBefore},{$set:{walletBalance:balanceAfter}},{new:true,session,runValidators:true});
     if(!client){outcome={kind:'conflict'};return;}
-    await new WalletTransaction({client:client._id,type:'client_admin_settlement',amount:delta,balanceBefore,balanceAfter,description:('تسوية إدارية: '+String(req.body.reason)).slice(0,500),idempotencyKey:'client-admin-settlement:'+String(client._id)+':'+String(req.body.idempotencyKey)}).save({session});
-    outcome={kind:'updated',client,balance:balanceAfter,delta};
+    const transaction=new WalletTransaction({client:client._id,type:'client_admin_settlement',amount:delta,balanceBefore,balanceAfter,description:('تسوية إدارية: '+String(req.body.reason)).slice(0,500),idempotencyKey:'client-admin-settlement:'+String(client._id)+':'+String(req.body.idempotencyKey)});
+    await transaction.save({session});
+    outcome={kind:'updated',client,balance:balanceAfter,delta,transactionNumber:transaction.transactionNumber};
    });
    if(outcome?.kind==='missing')return res.status(404).json({message:'العميل غير موجود.'});
    if(outcome?.kind==='conflict')return res.status(409).json({message:'تغير الرصيد أثناء التسوية. حدّث البيانات ثم أعد المحاولة.'});
    if(outcome?.kind==='unchanged')return res.json({message:'الرصيد مطابق للقيمة المحددة؛ لم تكن هناك حاجة لتغيير.',balance:outcome.balance,changed:false});
    await writeAdminAudit(req,'تسوية رصيد محفظة عميل','client-wallet',String(outcome.client._id),'balanceBefore='+(outcome.balance-outcome.delta)+'; balanceAfter='+outcome.balance+'; delta='+outcome.delta+'; reason='+String(req.body.reason));
    try{await createNotification({recipientRole:'client',recipientId:outcome.client._id,type:'client_wallet_settlement',title:'تمت تسوية محفظتك',message:'تم تحديث رصيد محفظتك إداريًا. الرصيد الحالي '+outcome.balance+' جنيه.',link:'/client.html?tab=wallet',dedupeKey:'client-wallet-settlement:'+String(outcome.client._id)+':'+String(Date.now())});}catch(_){}
-   return res.json({message:'تمت تسوية الرصيد وتسجيل فرق التسوية في كشف الحساب.',balance:outcome.balance,delta:outcome.delta,changed:true});
+   return res.json({message:'تمت تسوية الرصيد وتسجيل فرق التسوية في كشف الحساب.',balance:outcome.balance,delta:outcome.delta,changed:true,transactionNumber:outcome.transactionNumber});
   }catch(e){if(e.code===11000)return res.status(409).json({message:'تم تسجيل عملية التسوية بالفعل؛ لم يتم تكرارها.'});next(e);}finally{if(session)await session.endSession();}
  });
  router.post('/client-wallet/orders/:sn/refund',auth('admin'),validate(Joi.object({reason:Joi.string().trim().min(3).max(500).required()})),async(req,res,next)=>{
@@ -129,26 +134,28 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
     order.adminActionAt=new Date();
     order.adminActionBy=String(adminName(req)||'الإدارة').slice(0,120);
     await order.save({session});
-    await new WalletTransaction({
+    const refundTransaction=new WalletTransaction({
      client:clientAfter._id,order:order._id,orderSN:order.sn,type:'client_refund',
      amount,balanceBefore,balanceAfter:Number(clientAfter.walletBalance),
      description:('استرداد قيمة الخدمة للطلب '+order.sn+'؛ السبب: '+String(req.body.reason)).slice(0,500),
      idempotencyKey:'client-service-refund:'+String(order._id)
-    }).save({session});
-    outcome={kind:'refunded',orderId:order._id,clientId:clientAfter._id,amount,balance:Number(clientAfter.walletBalance),fanniId:order.assignedFanni};
+    });
+    await refundTransaction.save({session});
+    order.refundTransactionNumber=refundTransaction.transactionNumber;await order.save({session});
+    outcome={kind:'refunded',orderId:order._id,clientId:clientAfter._id,amount,balance:Number(clientAfter.walletBalance),fanniId:order.assignedFanni,transactionNumber:refundTransaction.transactionNumber};
    });
    if(outcome?.kind==='not-refundable')return res.status(409).json({message:'الطلب غير قابل للاسترداد؛ يجب أن يكون المبلغ محجوزًا والطلب جاريًا، ولم يسبق استرداده.'});
    if(outcome?.kind==='missing-client')return res.status(409).json({message:'الطلب غير مرتبط بحساب عميل مسجل؛ لم يتم تنفيذ الاسترداد.'});
    await writeAdminAudit(req,'استرداد قيمة خدمة إلى محفظة العميل','client-wallet',String(outcome.clientId),'order='+sn+'; amount='+outcome.amount+'; reason='+String(req.body.reason));
    try{await createNotification({recipientRole:'client',recipientId:outcome.clientId,type:'client_service_refunded',title:'تم استرداد قيمة الخدمة',message:'تم إعادة '+outcome.amount+' جنيه إلى محفظتك عن الطلب '+sn+'.',link:'/client.html?tab=wallet',dedupeKey:'client-service-refund-notice:'+String(outcome.orderId)});}catch(_){}
    if(outcome.fanniId){try{await createNotification({recipientRole:'fanni',recipientId:outcome.fanniId,type:'client_service_refunded',title:'تم إلغاء الطلب واسترداد قيمته',message:'قامت الإدارة بإلغاء الطلب '+sn+' واسترداد قيمته للعميل.',link:'/fanni',dedupeKey:'client-service-refund-fanni:'+String(outcome.orderId)});}catch(_){}}
-   return res.json({message:'تم إلغاء الطلب واسترداد المبلغ إلى محفظة العميل بنجاح.',orderSN:sn,amount:outcome.amount,balance:outcome.balance,paymentStatus:'refunded'});
+   return res.json({message:'تم إلغاء الطلب واسترداد المبلغ إلى محفظة العميل بنجاح.',orderSN:sn,amount:outcome.amount,balance:outcome.balance,paymentStatus:'refunded',transactionNumber:outcome.transactionNumber||''});
   }catch(e){if(e.code===11000)return res.status(409).json({message:'تم تسجيل استرداد هذا الطلب بالفعل؛ لم يتم تكرار إضافة الرصيد.'});return next(e);}
   finally{if(session)await session.endSession();}
  });
  router.get('/client-wallet/transactions/:clientId',auth('admin'),async(req,res,next)=>{
   if(!validId(req.params.clientId))return sendBadId(res);
-  try{const transactions=await WalletTransaction.find({client:req.params.clientId}).sort({createdAt:-1}).limit(100).lean();return res.json({transactions,data:transactions});}catch(e){next(e);}
+  try{const rows=await WalletTransaction.find({client:req.params.clientId}).sort({createdAt:-1}).limit(100).lean();const transactions=rows.map(x=>({...x,transactionNumber:x.transactionNumber||('HZW-'+String(x._id).toUpperCase())}));return res.json({transactions,data:transactions});}catch(e){next(e);}
  });
  return router;
 }

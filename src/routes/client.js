@@ -8,6 +8,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const Client = require('../models/Client');
+const Fanni = require('../models/Fanni');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -154,12 +155,16 @@ router.post('/register', async (req, res, next) => {
           if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
           const decoded = readReferralCode(value.referralCode);
           if (!decoded || decoded.kind !== 'client') throw new Error('INVALID_REFERRAL_CODE');
-          if (decoded.inviterId === String(client?._id || '')) throw new Error('SELF_REFERRAL');
-          const inviter = await Client.findById(decoded.inviterId).select('_id phone').session(session);
-          if (!inviter) throw new Error('REFERRER_NOT_FOUND');
-          if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
-          inviterId = inviter._id;
-          usedCode = decoded.code;
+          // Cross-role accounts may register normally, but cannot earn a referral reward through the same phone.
+          const existingFanni = await Fanni.findOne({ phone }).select('_id').session(session);
+          if (!existingFanni) {
+            if (decoded.inviterId === String(client?._id || '')) throw new Error('SELF_REFERRAL');
+            const inviter = await Client.findById(decoded.inviterId).select('_id phone').session(session);
+            if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+            if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
+            inviterId = inviter._id;
+            usedCode = decoded.code;
+          }
         }
         const created = await Client.create([{ name: value.name, phone, passwordHash }], { session });
         client = created[0];
@@ -388,12 +393,12 @@ router.get('/wallet',clientAuth,async(req,res,next)=>{
  try{
   const [transactions,topups]=await Promise.all([
    WalletTransaction.find({client:req.clientId}).sort({createdAt:-1}).limit(100).lean(),
-   ClientTopupRequest.find({client:req.clientId}).select('amount senderNumber method referenceNumber status isCredited reviewReason reviewedAt createdAt updatedAt').sort({createdAt:-1}).limit(50).lean()
+   ClientTopupRequest.find({client:req.clientId}).select('amount senderNumber method referenceNumber status isCredited reviewReason reviewedAt transactionNumber createdAt updatedAt').sort({createdAt:-1}).limit(50).lean()
   ]);
   return res.set('Cache-Control','no-store').json({
    balance:Number(req.client.walletBalance||0),walletBalance:Number(req.client.walletBalance||0),frozen:Boolean(req.client.walletFrozen),
-   transactions:transactions.map(x=>({id:String(x._id),type:x.type,amount:x.amount,balanceBefore:x.balanceBefore,balanceAfter:x.balanceAfter,description:x.description,orderSN:x.orderSN||'',createdAt:x.createdAt})),
-   topupRequests:topups.map(x=>({id:String(x._id),amount:x.amount,senderNumber:x.senderNumber,method:x.method,referenceNumber:x.referenceNumber||'',status:x.status,isCredited:Boolean(x.isCredited),reviewReason:x.reviewReason||'',reviewedAt:x.reviewedAt||null,createdAt:x.createdAt,updatedAt:x.updatedAt}))
+   transactions:transactions.map(x=>({id:String(x._id),transactionNumber:x.transactionNumber||('HZW-'+String(x._id).toUpperCase()),type:x.type,amount:x.amount,balanceBefore:x.balanceBefore,balanceAfter:x.balanceAfter,description:x.description,orderSN:x.orderSN||'',createdAt:x.createdAt})),
+   topupRequests:topups.map(x=>({id:String(x._id),amount:x.amount,senderNumber:x.senderNumber,method:x.method,referenceNumber:x.referenceNumber||'',status:x.status,isCredited:Boolean(x.isCredited),reviewReason:x.reviewReason||'',reviewedAt:x.reviewedAt||null,transactionNumber:x.transactionNumber||'',createdAt:x.createdAt,updatedAt:x.updatedAt}))
   });
  }catch(error){return next(error);}
 });

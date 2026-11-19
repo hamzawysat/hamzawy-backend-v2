@@ -11,6 +11,7 @@ const topupSchema = new mongoose.Schema({
   isCredited: { type: Boolean, default: false, index: true },
   reviewReason: { type: String, maxlength: 500 },
   reviewedAt: Date, reviewedBy: String,
+  transactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
   idempotencyKey: { type: String, unique: true, sparse: true }
 }, { timestamps: true });
 module.exports = mongoose.model('TopupRequest', topupSchema);

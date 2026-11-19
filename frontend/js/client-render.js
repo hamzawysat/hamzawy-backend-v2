@@ -341,6 +341,9 @@ function render(){
             ${state.tracked.status==='تم اختيار فني' && state.accountToken && !['held','settled'].includes(state.tracked.clientPaymentStatus)?'<button type="button" onclick="payForClientOrder(\''+escAttr(state.tracked.sn)+'\')" class="mt-3 w-full rounded-xl bg-emerald-700 p-3 text-[12px] font-extrabold text-white">ادفع قيمة الخدمة من محفظتك</button>':''}
             ${state.tracked.clientPaymentStatus==='held'?'<p class="mt-2 rounded-lg bg-blue-50 p-2 text-[11px] font-bold text-blue-800">تم حجز قيمة الخدمة من محفظتك، وسيتم تحويلها للفني بعد إتمام المهمة.</p>':''}
             ${state.tracked.clientPaymentStatus==='settled'?'<p class="mt-2 rounded-lg bg-emerald-100 p-2 text-[11px] font-bold text-emerald-800">تم سداد قيمة الخدمة وتحويل مستحقات الفني.</p>':''}
+            ${state.tracked.clientPaymentTransactionNumber?'<p class="mt-2 text-[10px] font-bold text-blue-700" dir="ltr">رقم دفع الخدمة: '+escHtml(state.tracked.clientPaymentTransactionNumber)+'</p>':''}
+            ${state.tracked.technicianSettlementTransactionNumber?'<p class="mt-1 text-[10px] font-bold text-emerald-700" dir="ltr">رقم تسوية مستحقات الفني: '+escHtml(state.tracked.technicianSettlementTransactionNumber)+'</p>':''}
+            ${state.tracked.refundTransactionNumber?'<p class="mt-1 text-[10px] font-bold text-emerald-700" dir="ltr">رقم استرداد المبلغ: '+escHtml(state.tracked.refundTransactionNumber)+'</p>':''}
             ${state.tracked.status==='تم اختيار فني' && state.tracked.assignedFanniPhone?`
               <p class="mt-2 text-[12px] text-emerald-800">رقم تليفون الفني:</p>
               <a href="tel:${escAttr(String(state.tracked.assignedFanniPhone).replace(/[^0-9+]/g,''))}" class="mt-2 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 text-white font-extrabold p-3" dir="ltr">

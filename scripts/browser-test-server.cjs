@@ -7,6 +7,7 @@ process.env.ADMIN_EMAIL = 'admin.smoke@example.com';
 process.env.ADMIN_PASSWORD = 'AdminSmokePass123';
 process.env.ADMIN_NAME = 'إدارة اختبار المتصفح';
 process.env.ADMIN_SETUP_SECRET = 'sonaa-browser-setup-secret-at-least-32-chars';
+process.env.CARD_LEDGER_SECRET = process.env.JWT_SECRET + '-card-ledger-test-secret';
 process.env.ADMIN_PANEL_PATH = '/admin-smoke-panel-20261105';
 process.env.ALLOWED_ORIGINS = 'http://127.0.0.1:4173';
 process.env.PORT = process.env.PORT || '4173';
@@ -14,6 +15,13 @@ process.env.PORT = process.env.PORT || '4173';
 const { MongoMemoryReplSet } = require('mongodb-memory-server');
 const request = require('supertest');
 const { ALL_SERVICES } = require('../src/config/professions');
+
+// Browser smoke covers registration behavior, not OCR accuracy or remote model downloads.
+const cardOcr = require('../src/services/fanniCardOcr');
+cardOcr.setWorkerFactoryForTests(async () => ({
+  recognize: async () => ({ data: { text: '2'.repeat(14) } })
+}));
+const identityPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=', 'base64');
 
 (async () => {
   const mongo = await MongoMemoryReplSet.create({
@@ -33,7 +41,6 @@ const { ALL_SERVICES } = require('../src/config/professions');
   });
   if (client.status !== 201) throw new Error('Unable to seed browser-test client: HTTP ' + client.status);
 
-  const identityPng = Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]);
   const identityFront = await request(app).post('/api/fanni/registration-media?side=front')
     .set('Content-Type', 'image/png').send(identityPng);
   if (identityFront.status !== 201) throw new Error('Unable to upload browser-test technician front ID: HTTP ' + identityFront.status);

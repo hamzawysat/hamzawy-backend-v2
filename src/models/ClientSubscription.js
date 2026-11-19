@@ -7,7 +7,8 @@ const renewalSchema = new mongoose.Schema({
   renewedAt: { type: Date, default: Date.now },
   renewedBy: { type: String, trim: true, maxlength: 50, default: 'الإدارة' },
   note: { type: String, trim: true, maxlength: 500, default: '' },
-  paymentKey: { type: String, trim: true, maxlength: 150, default: '' }
+  paymentKey: { type: String, trim: true, maxlength: 150, default: '' },
+  transactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' }
 }, { _id: false });
 const clientSubscriptionSchema = new mongoose.Schema({
   client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
@@ -20,6 +21,7 @@ const clientSubscriptionSchema = new mongoose.Schema({
   endsAt: { type: Date, default: null, index: true },
   paymentStatus: { type: String, enum: ['unpaid', 'pending', 'paid', 'refunded'], default: 'pending', index: true },
   paymentMethod: { type: String, trim: true, maxlength: 40, default: '' },
+  transactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
   requestKey: { type: String, trim: true, maxlength: 150, default: undefined },
   notes: { type: String, trim: true, maxlength: 1000, default: '' },
   subscriptionDetails: { type: String, trim: true, maxlength: 2000, default: '' },
