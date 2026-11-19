@@ -17,7 +17,7 @@ const storeOrderSchema = new mongoose.Schema({
   buyerName: { type: String, required: true, trim: true, maxlength: 100 },
   buyerPhone: { type: String, required: true, trim: true, maxlength: 20 },
   buyerNote: { type: String, trim: true, maxlength: 1000, default: '' },
-  status: { type: String, enum: ['جديد', 'تم التواصل', 'قيد التجهيز', 'مكتمل', 'ملغي'], default: 'جديد', index: true },
+  status: { type: String, enum: ['جديد', 'تم التواصل', 'قيد التجهيز', 'مكتمل', 'مرفوض', 'ملغي'], default: 'جديد', index: true },
   paymentMethod: { type: String, enum: ['غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل'], default: 'غير محدد' },
   paymentStatus: { type: String, enum: ['غير مدفوع', 'مدفوع', 'مسترد'], default: 'غير مدفوع' },
   requestKey: { type: String, trim: true, maxlength: 150, default: undefined },
