@@ -398,7 +398,7 @@ router.get('/wallet',clientAuth,async(req,res,next)=>{
   return res.set('Cache-Control','no-store').json({
    balance:Number(req.client.walletBalance||0),walletBalance:Number(req.client.walletBalance||0),frozen:Boolean(req.client.walletFrozen),
    transactions:transactions.map(x=>({id:String(x._id),transactionNumber:x.transactionNumber||('HZW-'+String(x._id).toUpperCase()),type:x.type,amount:x.amount,balanceBefore:x.balanceBefore,balanceAfter:x.balanceAfter,description:x.description,orderSN:x.orderSN||'',createdAt:x.createdAt})),
-   topupRequests:topups.map(x=>({id:String(x._id),amount:x.amount,senderNumber:x.senderNumber,method:x.method,referenceNumber:x.referenceNumber||'',status:x.status,isCredited:Boolean(x.isCredited),reviewReason:x.reviewReason||'',reviewedAt:x.reviewedAt||null,createdAt:x.createdAt,updatedAt:x.updatedAt}))
+   topupRequests:topups.map(x=>({id:String(x._id),amount:x.amount,senderNumber:x.senderNumber,method:x.method,referenceNumber:x.referenceNumber||'',status:x.status,isCredited:Boolean(x.isCredited),reviewReason:x.reviewReason||'',reviewedAt:x.reviewedAt||null,transactionNumber:x.transactionNumber||'',createdAt:x.createdAt,updatedAt:x.updatedAt}))
   });
  }catch(error){return next(error);}
 });
