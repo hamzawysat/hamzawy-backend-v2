@@ -236,6 +236,8 @@ router.post('/:sn/accept', async (req, res, next) => {
     if (!updatedOrder) {
       throw new Error('ORDER_NOT_FOUND_AFTER_UPDATE');
     }
+    updatedOrder.commissionTransactionNumber = transaction.transactionNumber;
+    await updatedOrder.save({ session });
 
     notificationFanniId = fanniId;
     notificationClientId = updatedOrder.clientAccount || null;
