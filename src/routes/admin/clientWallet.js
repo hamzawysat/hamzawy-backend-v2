@@ -148,7 +148,7 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
  });
  router.get('/client-wallet/transactions/:clientId',auth('admin'),async(req,res,next)=>{
   if(!validId(req.params.clientId))return sendBadId(res);
-  try{const transactions=await WalletTransaction.find({client:req.params.clientId}).sort({createdAt:-1}).limit(100).lean();return res.json({transactions,data:transactions});}catch(e){next(e);}
+  try{const rows=await WalletTransaction.find({client:req.params.clientId}).sort({createdAt:-1}).limit(100).lean();const transactions=rows.map(x=>({...x,transactionNumber:x.transactionNumber||('HZW-'+String(x._id).toUpperCase())}));return res.json({transactions,data:transactions});}catch(e){next(e);}
  });
  return router;
 }
