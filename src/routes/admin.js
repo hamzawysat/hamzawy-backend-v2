@@ -88,6 +88,7 @@ const ClientSubscription = require('../models/ClientSubscription');
 const createAdminCommerceRouter = require('./admin/commerce');
 const createAdminFanniManagementRouter = require('./admin/fanniManagement');
 const createAdminStoreRouter = require('./admin/store');
+const createAdminFanniCardLedgerRouter = require('./admin/fanniCardLedger');
 
 const ADMIN_TOKEN_EXPIRY = '1d';
 const CON_ADMIN_TOKEN_EXPIRY = '30d';
@@ -491,5 +492,7 @@ router.use(createAdminOperationsRouter({
   Client,
   Notification
 }));
+
+router.use(createAdminFanniCardLedgerRouter({ auth, writeAdminAudit, adminName }));
 
 module.exports = router;

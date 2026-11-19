@@ -131,6 +131,7 @@ function renderCurrentTab(){
   switch(state.tab){
     case 'dashboard': return renderDashboard();
     case 'profileEdits': return renderFanniProfileEdits();
+    case 'fanniCardLedger': return renderFanniCardLedger();
     case 'fannis': case 'pending': case 'disabled': return renderFannis();
     case 'levels': return renderLevels();
     case 'roles': return renderRoles();
