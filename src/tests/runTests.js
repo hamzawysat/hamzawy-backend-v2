@@ -111,7 +111,7 @@ async function run() {
       assert.ok(notificationUtils.includes("type: { $nin: ['admin_client_logout', 'admin_fanni_logout'] }"), 'one-shot logout alerts must not be resent by the background push retry worker');
     });
 
-    await test('admin shows technician order availability and restores the last selected section after refresh', async () => {
+    await test('admin shows technician availability and restores the main menu after refresh', async () => {
       const adminPeople = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-people.js'), 'utf8');
       const adminNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
       const adminAuth = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-auth.js'), 'utf8');
@@ -123,10 +123,15 @@ async function run() {
       assert.ok(adminRoutes.includes('...item'), 'admin technician serialization should retain acceptingOrders from the technician record');
       assert.ok(adminNavigation.includes("sonaaAdminLastView"), 'selected admin section should be saved for refresh restoration');
       assert.ok(adminNavigation.includes("sessionStorage.setItem"), 'tab navigation should persist the last selected section in the current browser session');
-      assert.ok(adminAuth.includes("sessionStorage?.getItem('sonaaAdminLastView')"), 'admin startup should restore the last selected section after refresh');
-      assert.ok(adminAuth.includes('Notification links open their target once'), 'notification deep links should open once and then preserve the selected section');
-      assert.ok(adminAuth.includes('return refreshCurrentTab()'), 'restored sections should reload their own data after startup');
-      assert.ok(adminShell.includes("pageMode==='home'"), 'the dashboard home view should also remain the selected view after refresh');
+      assert.doesNotMatch(adminAuth, /sessionStorage\?\.getItem\('sonaaAdminLastView'\)/, 'normal refresh should not restore a stale section such as Store Management');
+      assert.ok(adminAuth.includes("state.pageMode='home'"), 'admin startup without a notification deep link should open the main menu');
+      assert.ok(adminAuth.includes('Notification links open their target once'), 'notification deep links should still open their requested section once');
+      assert.ok(adminAuth.includes('return refreshCurrentTab()'), 'notification deep-linked sections should reload their own data after startup');
+      assert.ok(adminShell.includes('goAdminHome()'), 'admin header should expose a main-menu action');
+      assert.ok(adminShell.includes('goBack()'), 'admin header should expose an in-panel back action');
+      assert.ok(adminShell.includes('القائمة الرئيسية'), 'main-menu action should be accessible beside the notification bell');
+      assert.ok(adminShell.includes('رجوع داخل لوحة الإدارة'), 'back action should be labeled as internal admin navigation');
+      assert.ok(adminNavigation.includes("previous==='__home__'"), 'Back from the first section should return to the main menu');
     });
     await test('store admin reuses saved product categories and browser catalogs open image-backed category cards', async () => {
       const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');

@@ -22,8 +22,11 @@ function verifyAdminDashboardSource() {
       !shell.includes('onclick="logout()"') ||
       shell.includes('قنوات حمزاوي سات الرسمية') ||
       shell.includes('visualEditorLink') ||
-      shell.includes('goBack()')) {
-    throw new Error('Admin dashboard header or removed channels section regression');
+      !shell.includes('goBack()') ||
+      !shell.includes('goAdminHome()') ||
+      !shell.includes('القائمة الرئيسية') ||
+      !shell.includes('رجوع داخل لوحة الإدارة')) {
+    throw new Error('Admin dashboard header, navigation controls, or removed channels section regression');
   }
   if (quickActions !== 4 || !shell.includes('طلبات اليوم') ||
       !shell.includes('عملاء جدد') || !shell.includes('شكاوى جديدة') ||

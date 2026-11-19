@@ -46,7 +46,7 @@ function render(){
   document.getElementById('app').innerHTML=`
   <header class="admin-topbar sticky top-0 z-50" role="banner">
     <div class="admin-topbar-inner">
-      <a href="#" onclick="event.preventDefault();state.pageMode='home';render()" class="admin-brand" aria-label="حمزاوي سات - لوحة الإدارة">
+      <a href="#" onclick="event.preventDefault();goAdminHome()" class="admin-brand" aria-label="حمزاوي سات - لوحة الإدارة">
         <span class="admin-logo-frame"><img class="admin-header-logo" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="48" height="48" decoding="async"></span>
         <span class="admin-brand-name">حمزاوي سات</span>
       </a>
@@ -56,6 +56,8 @@ function render(){
       </label>
       <nav class="admin-header-actions" aria-label="حساب الإدارة">
         <button type="button" class="admin-icon-btn" onclick="setTab('notifications')" aria-label="الإشعارات" title="الإشعارات">🔔</button>
+        <button type="button" class="admin-icon-btn" onclick="goAdminHome()" aria-label="القائمة الرئيسية" title="القائمة الرئيسية">⌂</button>
+        <button type="button" class="admin-icon-btn" onclick="goBack()" aria-label="رجوع داخل لوحة الإدارة" title="رجوع">↩</button>
         <a class="admin-icon-btn" href="password.html?role=admin&amp;mode=account" aria-label="حسابي" title="حسابي">👤</a>
         <button type="button" class="admin-icon-btn admin-logout-btn" onclick="logout()" aria-label="خروج" title="خروج">⎋</button>
       </nav>

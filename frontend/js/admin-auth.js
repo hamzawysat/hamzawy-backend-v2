@@ -31,13 +31,10 @@ function restoreAdminTabFromNotification(){
     if(window.history&&window.history.replaceState)window.history.replaceState(window.history.state||{},'',location.pathname+location.search);
     return;
   }
-  try{
-    const saved=JSON.parse(window.sessionStorage?.getItem('sonaaAdminLastView')||'null');
-    if(saved&&knownTab(saved.tab)){
-      state.tab=saved.tab;
-      state.pageMode=saved.pageMode==='home'?'home':'section';
-    }
-  }catch(_){}
+  // A normal page reload always opens the admin home menu.
+  // Only an explicit notification hash may deep-link into a section.
+  state.pageMode='home';
+  try{window.sessionStorage?.removeItem('sonaaAdminLastView');}catch(_){}
 }
 restoreAdminTabFromNotification();
 if(getToken()){ loadAll().then(()=>{if(state.pageMode==='section'&&typeof refreshCurrentTab==='function'){if(!canReadTab(state.tab)){state.tab='dashboard';state.pageMode='home';try{window.sessionStorage?.removeItem('sonaaAdminLastView');}catch(_){}}else return refreshCurrentTab();}}); if(typeof startStoreOrderCountPolling==='function')startStoreOrderCountPolling(); } else { renderLogin(); }
