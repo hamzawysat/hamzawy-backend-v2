@@ -78,7 +78,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         const amount = Number(item.price);
         const subscription = await ClientSubscription.create({
           client: client._id, item: item._id, itemName: item.name, amount, durationDays: Number(item.durationDays || 30),
-          status: 'pending', paymentStatus: req.body.paymentStatus || 'pending', paymentMethod: req.body.paymentMethod,
+          status: 'pending', paymentStatus: 'pending', paymentMethod: req.body.paymentMethod,
           startsAt: null, endsAt: null, notes: req.body.notes, createdBy: adminName(req), updatedBy: adminName(req), history: []
         });
         await writeAdminAudit(req, 'إنشاء اشتراك عميل', 'client-subscriptions', String(subscription._id), 'client=' + String(client._id) + '; item=' + item.name + '; status=pending');
