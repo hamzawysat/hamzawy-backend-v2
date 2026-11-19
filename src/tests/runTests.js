@@ -1841,6 +1841,17 @@ async function run() {
       const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold' }).lean();
       assert.ok(holdLedger);
       assert.equal(holdLedger.amount, -650);
+      assert.match(holdLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      const clientWalletHistory = await request(app).get('/api/client/wallet')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(clientWalletHistory.status, 200, JSON.stringify(clientWalletHistory.body));
+      const clientLedgerEntry = clientWalletHistory.body.transactions.find(item => item.id === String(holdLedger._id));
+      assert.equal(clientLedgerEntry.transactionNumber, holdLedger.transactionNumber, 'client wallet must display the exact stored transaction reference');
+      const adminClientLedger = await request(app).get('/api/admin/client-wallet/transactions/' + String(clientId))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(adminClientLedger.status, 200, JSON.stringify(adminClientLedger.body));
+      const adminClientLedgerEntry = adminClientLedger.body.transactions.find(item => String(item._id) === String(holdLedger._id));
+      assert.equal(adminClientLedgerEntry.transactionNumber, holdLedger.transactionNumber, 'admin client ledger must show the same transaction reference');
 
       const completed = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
@@ -1877,6 +1888,17 @@ async function run() {
       const settlementLedger = await WalletTransaction.findOne({ order: order._id, type: 'technician_settlement' }).lean();
       assert.ok(settlementLedger);
       assert.equal(settlementLedger.amount, 650);
+      assert.match(settlementLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      const fanniWalletHistory = await request(app).get('/api/fanni/wallet/history')
+        .set('Authorization', 'Bearer ' + fanniToken);
+      assert.equal(fanniWalletHistory.status, 200, JSON.stringify(fanniWalletHistory.body));
+      const fanniLedgerEntry = fanniWalletHistory.body.transactions.find(item => item.id === String(settlementLedger._id));
+      assert.equal(fanniLedgerEntry.transactionNumber, settlementLedger.transactionNumber, 'technician wallet must display the exact stored transaction reference');
+      const adminFanniLedger = await request(app).get('/api/admin/wallet/transactions/' + String(fanni._id))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(adminFanniLedger.status, 200, JSON.stringify(adminFanniLedger.body));
+      const adminFanniLedgerEntry = adminFanniLedger.body.transactions.find(item => String(item._id) === String(settlementLedger._id));
+      assert.equal(adminFanniLedgerEntry.transactionNumber, settlementLedger.transactionNumber, 'admin technician ledger must show the same transaction reference');
       const duplicateCompletion = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
       assert.equal(duplicateCompletion.status, 409, 'completed orders must not be completed twice');
