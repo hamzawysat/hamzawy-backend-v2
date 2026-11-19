@@ -308,8 +308,31 @@ const API={
   }
 };
 const forceClientRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim().toLowerCase()==='register'||!!new URLSearchParams(window.location.search).get('ref');
+function loadStoreCartState(){
+  if(window.IS_EDITOR_PREVIEW)return {};
+  try{
+    const raw=localStorage.getItem('sonaa_store_cart_v1');
+    const parsed=raw?JSON.parse(raw):{};
+    if(!parsed||typeof parsed!=='object'||Array.isArray(parsed))return {};
+    const restored={};
+    for(const [role,items] of Object.entries(parsed)){
+      if(!/^[a-z][a-z0-9_-]{0,30}$/i.test(role)||!Array.isArray(items))continue;
+      restored[role]=items.slice(0,100).map(item=>{
+        const productId=String(item?.productId||'').trim();
+        const quantity=Number(item?.quantity);
+        const price=Number(item?.price);
+        if(!productId||productId.length>120||!Number.isInteger(quantity)||quantity<1||quantity>1000||!Number.isFinite(price)||price<0)return null;
+        return {productId,name:String(item?.name||'').slice(0,200),price,type:String(item?.type||'product').slice(0,40),quantity};
+      }).filter(Boolean);
+    }
+    return restored;
+  }catch(error){
+    console.warn('تعذر استعادة سلة المتجر المحفوظة:',error);
+    return {};
+  }
+}
 let state={
-  storeProducts:[],myStoreOrders:[],
+  storeCartByRole:loadStoreCartState(),storeProducts:[],myStoreOrders:[],
   commerceItems:[],commerceSubscriptions:[],commerceLoading:false,commerceError:'',commerceSubmitting:'',walletBalance:0,walletFrozen:false,walletTransactions:[],walletTopupRequests:[],walletTransferNumbers:[],walletLoading:false,walletSubmitting:false,walletFromPhone:'',walletAmount:'',walletMethod:'vodafone_cash',walletReference:'',walletIdempotencyKey:'',walletError:'',walletSuccess:'',
   account:null,accountInitializing:false,accountToken:(()=>{if(window.IS_EDITOR_PREVIEW)return '';try{return localStorage.getItem('sonaa_client_account_token')||'';}catch{return '';}})(),accountAuthMode:forceClientRegistration?'register':'login',accountLoading:false,accountError:'',myOrders:[],accountOrdersLoading:false,accountOrdersTab:'current',notifications:[],notificationsUnread:0,notificationsOpen:false,
   tab:'home',clientNewRequestChoice:'',service:'',clientName:'',area:'',areaSearch:'',address:'',phone:'',budget:'',desc:'',voiceBlob:null,voiceUrl:'',voiceRecordingData:'',voiceRecorder:null,voiceChunks:[],voiceRecording:false,loading:false,sn:null,
