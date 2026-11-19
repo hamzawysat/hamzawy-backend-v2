@@ -23,6 +23,7 @@ const clientSchema = new mongoose.Schema({
     select: false
   },
   tokenVersion: { type: Number, default: 0, min: 0 },
+  mustChangePassword: { type: Boolean, default: false, index: true },
   walletBalance: { type: Number, default: 0, min: 0 },
   walletFrozen: { type: Boolean, default: false, index: true },
   walletFrozenAt: { type: Date, default: null },
