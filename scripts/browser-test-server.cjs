@@ -19,7 +19,7 @@ const { ALL_SERVICES } = require('../src/config/professions');
 // Browser smoke covers registration behavior, not OCR accuracy or remote model downloads.
 const cardOcr = require('../src/services/fanniCardOcr');
 cardOcr.setWorkerFactoryForTests(async () => ({
-  recognize: async () => ({ data: { text: ['29001012', '345678', 'اسم فني اختبار المتصفح'].join('\\n') } })
+  recognize: async () => ({ data: { text: '2'.repeat(14) } })
 }));
 const identityPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=', 'base64');
 
