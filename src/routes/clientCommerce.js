@@ -107,7 +107,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         const existingSubscription = existingTransaction.order
           ? null
           : await ClientSubscription.findOne({ client: req.clientId, 'history.paymentKey': idempotencyKey }).lean();
-        return res.json({ message: 'عملية الدفع مسجلة بالفعل.', balance: Number(req.client.walletBalance || 0), subscription: existingSubscription || null, duplicate: true });
+        return res.json({ message: 'عملية الدفع مسجلة بالفعل.', balance: Number(req.client.walletBalance || 0), subscription: existingSubscription || null, transactionNumber: existingTransaction.transactionNumber || '', duplicate: true });
       }
 
       session = await mongoose.startSession();
@@ -196,12 +196,17 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         subscription.history.push({ amount, startsAt, endsAt, renewedBy: 'العميل', note: 'تجديد من محفظة العميل', paymentKey: idempotencyKey });
       }
       await subscription.save({ session });
-      await new WalletTransaction({
+      const paymentTransaction = new WalletTransaction({
         client: client._id, type: 'client_subscription_payment', amount: -amount,
         balanceBefore: before, balanceAfter: Number(updatedClient.walletBalance),
         description: (mode === 'purchase' ? 'شراء اشتراك ' : 'تجديد اشتراك ') + subscription.itemName,
         idempotencyKey
-      }).save({ session });
+      });
+      await paymentTransaction.save({ session });
+      subscription.transactionNumber = paymentTransaction.transactionNumber;
+      const latestPayment = subscription.history[subscription.history.length - 1];
+      if (latestPayment) latestPayment.transactionNumber = paymentTransaction.transactionNumber;
+      await subscription.save({ session });
       await session.commitTransaction();
       notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName, mode, endsAt: subscription.endsAt };
       return res.status(mode === 'purchase' ? 201 : 200).json({
