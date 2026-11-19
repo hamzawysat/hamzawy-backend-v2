@@ -4,7 +4,7 @@ const express = require('express');
 const mongoose = require('mongoose');
 const { normalizeStoreCategoryName, buildStoreCategories } = require('../../utils/storeCategories');
 
-function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
+function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTransaction, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
   const categorySchema = Joi.object({
     name: Joi.string().trim().min(2).max(80).required(),
@@ -71,7 +71,7 @@ function createAdminStoreRouter({ auth, Joi, StoreProduct, StoreOrder, AdminConf
   const statusSchema = Joi.object({
     status: Joi.string().valid('تم التواصل', 'قيد التجهيز', 'مكتمل', 'ملغي').required(),
     adminNote: Joi.string().trim().max(1000).allow('').default(''),
-    paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'عند الاستلام', 'تحويل').default('غير محدد')
+    paymentMethod: Joi.string().valid('غير محدد', 'محفظة العميل', 'محفظة الفني', 'عند الاستلام', 'تحويل').default('غير محدد')
   }).unknown(false);
 
   router.post('/store/media', auth('admin'), async (req, res, next) => {
