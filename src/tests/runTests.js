@@ -1864,6 +1864,7 @@ async function run() {
       }).lean();
       assert.ok(adjustmentLedger);
       assert.equal(adjustmentLedger.amount, -15);
+      assert.ok((await Order.findById(order._id).lean()).commissionAdjustmentTransactionNumbers.includes(adjustmentLedger.transactionNumber), 'each price-change commission adjustment must be linked to the order');
       const duplicateDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + approvedRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true });
