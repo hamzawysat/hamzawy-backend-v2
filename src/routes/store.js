@@ -123,6 +123,7 @@ async function submitBulkOrder(req, res, next, role) {
     if (role === 'fanni' && req.user?.role !== 'fanni') return res.status(403).json({ message: 'الشراء متاح لحسابات الفنيين فقط.' });
     const buyer = role === 'client' ? req.client : req.user;
     if (!buyer?._id) return res.status(401).json({ message: 'سجّل الدخول لإرسال طلب الشراء.' });
+    if (role === 'fanni' && buyer.status !== 'معتمد') return res.status(403).json({ message: 'الشراء من المتجر متاح للفنيين المعتمدين فقط.' });
 
     const quantities = new Map();
     for (const item of value.items) quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
@@ -292,6 +293,7 @@ async function submitOrder(req, res, next, role) {
     if (role === 'fanni' && req.user?.role !== 'fanni') return res.status(403).json({ message: 'الشراء متاح لحسابات الفنيين فقط.' });
     const buyer = role === 'client' ? req.client : req.user;
     if (!buyer || !buyer._id) return res.status(401).json({ message: 'سجّل الدخول لإرسال طلب الشراء.' });
+    if (role === 'fanni' && buyer.status !== 'معتمد') return res.status(403).json({ message: 'الشراء من المتجر متاح للفنيين المعتمدين فقط.' });
 
     if (!value.idempotencyKey) return res.status(400).json({ message: 'حدّث الصفحة وحاول إرسال الطلب مرة أخرى.' });
     const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer._id, requestKey: value.idempotencyKey }).lean();
