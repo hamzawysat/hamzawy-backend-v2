@@ -65,15 +65,29 @@ jobs:
           PORT=4173 node scripts/browser-test-server.cjs >/tmp/sonaa-http.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 30); do
-            if curl -fsS http://127.0.0.1:4173/index.html >/dev/null; then break; fi
+          for attempt in $(seq 1 90); do
+            if curl --silent --show-error --fail --max-time 2 http://127.0.0.1:4173/index.html >/dev/null 2>&1; then break; fi
             sleep 1
           done
-          if ! curl -fsS http://127.0.0.1:4173/index.html >/dev/null; then
+          if ! curl --silent --show-error --fail --max-time 2 http://127.0.0.1:4173/index.html >/dev/null 2>&1; then
             cat /tmp/sonaa-http.log
             exit 1
           fi
           SONAA_SMOKE_REAL_API=1 NODE_PATH=/tmp/sonaa-playwright/node_modules node scripts/ui-smoke.cjs
 
+
+  dependency-audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
       - name: Enforce high-severity dependency audit
         run: npm audit --audit-level=high
