@@ -221,7 +221,8 @@ router.post(
 
       const nationalIdHash = cardHash(cardData.nationalId);
       const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
-      if (existingCard) {
+      const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة');
+      if (existingCard && !approvedDuplicateAttempt) {
         existingCard.status = 'تحت مراجعة التكرار';
         existingCard.duplicateAttempts.push({
           applicantName: String(req.body.name || '').trim(),
@@ -268,14 +269,23 @@ router.post(
             status: 'قيد المراجعة', role: 'fanni'
           }], { session });
           fanni = created[0];
-          await FanniCardLedger.create([{
-            nationalIdHash,
-            nationalIdEncrypted: encryptNationalId(cardData.nationalId),
-            fanniId: fanni._id,
-            fanniName: fanni.name,
-            extractedName: cardData.extractedName,
-            status: 'مسجلة'
-          }], { session });
+          if (existingCard && approvedDuplicateAttempt) {
+            await FanniCardLedger.updateOne(
+              { _id: existingCard._id, 'duplicateAttempts._id': approvedDuplicateAttempt._id },
+              { $push: { linkedTechnicians: { fanniId: fanni._id, name: fanni.name, phone, linkedAt: new Date() } }, $set: { status: 'مسجلة' } },
+              { session }
+            );
+          } else {
+            await FanniCardLedger.create([{
+              nationalIdHash,
+              nationalIdEncrypted: encryptNationalId(cardData.nationalId),
+              fanniId: fanni._id,
+              fanniName: fanni.name,
+              linkedTechnicians: [{ fanniId: fanni._id, name: fanni.name, phone }],
+              extractedName: cardData.extractedName,
+              status: 'مسجلة'
+            }], { session });
+          }
           if (inviterId) {
             const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
             await Referral.create([{
