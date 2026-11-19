@@ -73,6 +73,7 @@ const fanniSchema = new mongoose.Schema({
     select: false
   },
   tokenVersion: { type: Number, default: 0, min: 0 },
+  mustChangePassword: { type: Boolean, default: false, index: true },
   specialties: {
     type: [String],
     validate: [arr => arr.length > 0, 'التخصص مطلوب']
