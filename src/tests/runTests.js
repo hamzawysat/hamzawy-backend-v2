@@ -1030,6 +1030,9 @@ async function run() {
           .set('Authorization', 'Bearer ' + adminToken).send(payload);
         assert.equal(credit.status, 200, JSON.stringify(credit.body));
         assert.equal(Number(credit.body.balance), 150);
+        assert.match(credit.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        const creditLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: 'client-admin-credit:' + String(clientId) + ':wallet-credit-test-unique-key' }).lean();
+        assert.equal(creditLedger.transactionNumber, credit.body.transactionNumber);
         const repeated = await request(app).post('/api/admin/clients/' + clientId + '/wallet/add-balance')
           .set('Authorization', 'Bearer ' + adminToken).send(payload);
         assert.equal(repeated.status, 409);
@@ -1051,6 +1054,8 @@ async function run() {
         assert.equal(Number(debitLedger.amount), -150);
         assert.equal(Number(debitLedger.balanceBefore), 500);
         assert.equal(Number(debitLedger.balanceAfter), 350);
+        assert.match(debit.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        assert.equal(debit.body.transactionNumber, debitLedger.transactionNumber);
         const repeatedDebit = await request(app).post('/api/admin/clients/' + clientId + '/wallet/deduct-balance')
           .set('Authorization', 'Bearer ' + adminToken)
           .send({ amount: 150, reason: 'خصم اختبار موثق', idempotencyKey: 'wallet-debit-test-unique-key' });
@@ -1075,6 +1080,8 @@ async function run() {
         assert.equal(Number(settlementLedger.amount), -150);
         assert.equal(Number(settlementLedger.balanceBefore), 350);
         assert.equal(Number(settlementLedger.balanceAfter), 200);
+        assert.match(settlement.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        assert.equal(settlement.body.transactionNumber, settlementLedger.transactionNumber);
 
         const invalidNegativeSettlement = await request(app).post('/api/admin/clients/' + clientId + '/wallet/set-balance')
           .set('Authorization', 'Bearer ' + adminToken)
@@ -1194,6 +1201,9 @@ async function run() {
         assert.ok(ledger);
         assert.equal(ledger.balanceBefore, 300);
         assert.equal(ledger.balanceAfter, 225);
+        assert.match(deduction.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+        assert.equal(deduction.body.transactionNumber, ledger.transactionNumber);
+        assert.equal(repeatedDeduction.body.transactionNumber, ledger.transactionNumber);
 
         const insufficient = await request(app).post('/api/admin/fannis/' + fanni._id + '/deduct-balance')
           .set('Authorization', 'Bearer ' + adminToken)
@@ -1206,6 +1216,9 @@ async function run() {
           .set('Authorization', 'Bearer ' + adminToken).send(creditPayload);
         assert.equal(credit.status, 200, JSON.stringify(credit.body));
         assert.equal(credit.body.balance, 265);
+        const creditLedger = await WalletTransaction.findOne({ fanni: fanni._id, idempotencyKey: 'admin-fanni-credit:' + String(fanni._id) + ':' + creditPayload.idempotencyKey }).lean();
+        assert.ok(creditLedger);
+        assert.equal(credit.body.transactionNumber, creditLedger.transactionNumber);
         const repeatedCredit = await request(app).post('/api/admin/fannis/' + fanni._id + '/add-balance')
           .set('Authorization', 'Bearer ' + adminToken).send(creditPayload);
         assert.equal(repeatedCredit.status, 200, JSON.stringify(repeatedCredit.body));
@@ -1217,6 +1230,9 @@ async function run() {
           .set('Authorization', 'Bearer ' + adminToken).send(settlementPayload);
         assert.equal(settlement.status, 200, JSON.stringify(settlement.body));
         assert.equal(settlement.body.balance, 200);
+        const settlementLedger = await WalletTransaction.findOne({ fanni: fanni._id, idempotencyKey: 'admin-fanni-set:' + String(fanni._id) + ':' + settlementPayload.idempotencyKey }).lean();
+        assert.ok(settlementLedger);
+        assert.equal(settlement.body.transactionNumber, settlementLedger.transactionNumber);
         const repeatedSettlement = await request(app).post('/api/admin/fannis/' + fanni._id + '/set-balance')
           .set('Authorization', 'Bearer ' + adminToken).send(settlementPayload);
         assert.equal(repeatedSettlement.status, 200, JSON.stringify(repeatedSettlement.body));
@@ -1976,6 +1992,9 @@ async function run() {
       const approvalLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: 'client-subscription-approval:' + subscriptionId }).lean();
       assert.ok(approvalLedger);
       assert.equal(approvalLedger.amount, -50);
+      assert.match(approvalLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(approval.body.subscription.transactionNumber, approvalLedger.transactionNumber);
+      assert.equal(approval.body.subscription.history.at(-1).transactionNumber, approvalLedger.transactionNumber);
 
       const renewalKey = 'test-client-subscription-renew-0001';
       const renewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
@@ -1985,6 +2004,11 @@ async function run() {
       assert.equal(renewal.body.balance, afterApproval - 50);
       const renewed = await ClientSubscription.findById(subscriptionId).lean();
       assert.equal(renewed.history.length, 2);
+      const renewalLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: renewalKey }).lean();
+      assert.ok(renewalLedger);
+      assert.equal(renewal.body.transactionNumber, renewalLedger.transactionNumber);
+      assert.equal(renewed.transactionNumber, renewalLedger.transactionNumber);
+      assert.equal(renewed.history.at(-1).transactionNumber, renewalLedger.transactionNumber);
       const duplicateRenewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ idempotencyKey: renewalKey });
@@ -2011,11 +2035,14 @@ async function run() {
       const storedOrder = await StoreOrder.findById(storePurchase.body.order.id).lean();
       assert.equal(storedOrder.buyerRole, 'fanni');
       assert.equal(storedOrder.total, 150);
+      assert.match(storedOrder.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(storePurchase.body.order.transactionNumber, storedOrder.transactionNumber);
       const storeLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'fanni_store_payment', idempotencyKey: 'store-order:' + String(storedOrder._id) }).lean();
       assert.ok(storeLedger);
       assert.equal(storeLedger.amount, -150);
       assert.equal(storeLedger.balanceBefore, fanniBalanceBeforeStore);
       assert.equal(storeLedger.balanceAfter, fanniBalanceBeforeStore - 150);
+      assert.equal(storeLedger.transactionNumber, storedOrder.transactionNumber);
 
       const staleSinglePrice = await request(app).post('/api/store/fanni/orders')
         .set('Authorization', 'Bearer ' + fanniToken)
@@ -2148,9 +2175,12 @@ async function run() {
       const bulkStoredOrder = await StoreOrder.findById(bulkPurchase.body.order.id).lean();
       assert.equal(bulkStoredOrder.items.length, 2);
       assert.equal(bulkStoredOrder.total, 130);
+      assert.match(bulkStoredOrder.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal(bulkPurchase.body.order.transactionNumber, bulkStoredOrder.transactionNumber);
       const bulkLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'fanni_store_payment', idempotencyKey: 'store-order:' + String(bulkStoredOrder._id) }).lean();
       assert.ok(bulkLedger);
       assert.equal(bulkLedger.amount, -130);
+      assert.equal(bulkLedger.transactionNumber, bulkStoredOrder.transactionNumber);
       const duplicateBulk = await request(app).post('/api/store/fanni/orders/bulk')
         .set('Authorization', 'Bearer ' + fanniToken)
         .send({ items: [
@@ -2172,6 +2202,8 @@ async function run() {
       const bulkRefundLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'refund', idempotencyKey: 'store-order-refund:' + String(bulkStoredOrder._id) }).lean();
       assert.ok(bulkRefundLedger);
       assert.equal(bulkRefundLedger.amount, 130);
+      assert.match(bulkRefundLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
+      assert.equal((await StoreOrder.findById(bulkStoredOrder._id).lean()).refundTransactionNumber, bulkRefundLedger.transactionNumber);
       const duplicateCancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
         .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد' });
