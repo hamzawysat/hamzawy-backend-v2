@@ -13,8 +13,10 @@ function changeStoreCartQuantity(role,id,delta){
   const cart=getStoreCart(role);
   const item=cart.find(entry=>String(entry.productId)===String(id));
   if(!item)return;
-  const next=Math.max(1,Math.min(1000,Number(item.quantity||1)+Number(delta||0)));
-  state.storeCartByRole={...(state.storeCartByRole||{}),[role]:cart.map(entry=>String(entry.productId)===String(id)?{...entry,quantity:next}:entry)};
+  const next=Math.max(0,Math.min(1000,Number(item.quantity||1)+Number(delta||0)));
+  const updatedCart=next===0?cart.filter(entry=>String(entry.productId)!==String(id)):cart.map(entry=>String(entry.productId)===String(id)?{...entry,quantity:next}:entry);
+  state.storeCartByRole={...(state.storeCartByRole||{}),[role]:updatedCart};
+  if(next===0){const message='تم حذف المنتج من السلة.';if(role==='client')showToast(message);else toast(message);}
   render();
 }
 function addStoreProductToCart(role,id){
