@@ -55,45 +55,75 @@ function renderStoreCatalog(role){
   return h+'</section>';
 }
 function storeRequestKey(){return (window.crypto&&typeof window.crypto.randomUUID==='function')?window.crypto.randomUUID():'store-'+Date.now()+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);}
-async function submitStorePurchase(role,id){
-  const qtyRaw=prompt('اكتب الكمية المطلوبة:','1');
-  if(qtyRaw===null)return;
-  const quantity=Number(qtyRaw);
-  if(!Number.isInteger(quantity)||quantity<1||quantity>1000){if(role==='client')showToast('الكمية غير صحيحة','error');else toast('الكمية غير صحيحة','error');return;}
-  const note=prompt('أي تفاصيل أو ملاحظات للإدارة؟','')||'';
-  let paymentMethod;
+function closeStorePurchaseModal(){const modal=document.getElementById('storePurchaseModal');if(modal)modal.remove();}
+function submitStorePurchase(role,id){
   const product=(state.storeProducts||[]).find(item=>String(item._id)===String(id));
-  const isSubscription=product?.type==='subscription';
-  if(!isSubscription){
-    const balance=role==='client'?Number(state.walletBalance||0):Number(getUser()?.walletBalance||getUser()?.balance||0);
-    const choice=prompt('اختار طريقة الدفع:\n1 - الدفع من محفظتي (الرصيد الحالي: '+balance.toLocaleString('ar-EG')+' جنيه)\n2 - الدفع عند الاستلام','1');
-    if(choice===null)return;
-    if(!['1','2'].includes(String(choice).trim())){const message='اختار 1 للمحفظة أو 2 للدفع عند الاستلام.';if(role==='client')showToast(message,'error');else toast(message,'error');return;}
-    paymentMethod=String(choice).trim()==='1'?'wallet':'cash_on_delivery';
-  }
-  const idempotencyKey=storeRequestKey();
-  async function send(method){
-    const r=await fetch('/api/store/'+role+'/orders',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({productId:id,quantity,note,...(!isSubscription?{paymentMethod:method,idempotencyKey}:{idempotencyKey})})});
-    const d=await r.json().catch(()=>({}));
-    return {r,d};
-  }
-  try{
-    let result=await send(paymentMethod);
-    if(!result.r.ok&&paymentMethod==='wallet'&&result.r.status===409&&result.d.canUseCashOnDelivery===true){
-      const useCod=confirm((result.d.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب والدفع عند الاستلام؟');
-      if(!useCod)return;
-      paymentMethod='cash_on_delivery';
-      result=await send(paymentMethod);
+  if(!product){const message='المنتج غير متاح حاليًا، حدّث قائمة المنتجات وحاول مرة أخرى.';if(role==='client')showToast(message,'error');else toast(message,'error');return;}
+  closeStorePurchaseModal();
+  const isSubscription=product.type==='subscription';
+  const balance=role==='client'?Number(state.walletBalance||0):Number(getUser()?.walletBalance||getUser()?.balance||0);
+  const modal=document.createElement('div');
+  modal.id='storePurchaseModal';
+  modal.setAttribute('role','dialog');
+  modal.setAttribute('aria-modal','true');
+  modal.setAttribute('aria-labelledby','storePurchaseTitle');
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:flex-end;justify-content:center;background:rgba(15,23,42,.58);padding:12px;';
+  modal.innerHTML='<form id="storePurchaseForm" dir="rtl" style="width:100%;max-width:520px;max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px"><h2 id="storePurchaseTitle" style="font-weight:900;font-size:17px;color:#172554">'+storeEsc(product.name||'طلب المنتج')+'</h2><button type="button" id="storePurchaseClose" aria-label="إغلاق" style="font-size:25px;line-height:1;color:#64748b;padding:4px 8px">×</button></div>'
+    +'<p style="font-size:13px;color:#475569;margin-bottom:14px">السعر: <b style="color:#1d4ed8">'+Number(product.price||0).toLocaleString('ar-EG')+' جنيه</b></p>'
+    +'<label for="storePurchaseQuantity" style="display:block;font-size:12px;font-weight:800;margin:12px 0 6px;color:#334155">الكمية</label><input id="storePurchaseQuantity" name="quantity" type="number" inputmode="numeric" min="1" max="1000" step="1" value="1" required style="width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font-size:16px;outline-color:#0f9f9a">'
+    +'<label for="storePurchaseNote" style="display:block;font-size:12px;font-weight:800;margin:12px 0 6px;color:#334155">ملاحظات للطلب (اختياري)</label><textarea id="storePurchaseNote" name="note" rows="3" maxlength="500" style="width:100%;border:1px solid #cbd5e1;border-radius:12px;padding:12px;font-size:16px;resize:vertical;outline-color:#0f9f9a"></textarea>'
+    +(isSubscription?'<p style="font-size:12px;color:#475569;margin-top:12px">طلب الاشتراك لا يخصم أي مبلغ الآن؛ يتم تأكيده وفق إجراءات المتجر.</p>':'<fieldset style="margin-top:14px"><legend style="font-size:12px;font-weight:800;color:#334155;margin-bottom:8px">طريقة الدفع</legend><label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #dbeafe;border-radius:10px;margin-bottom:7px"><input type="radio" name="paymentMethod" value="wallet" checked><span style="font-size:13px">من المحفظة (الرصيد: '+balance.toLocaleString('ar-EG')+' جنيه)</span></label><label style="display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #e2e8f0;border-radius:10px"><input type="radio" name="paymentMethod" value="cash_on_delivery"><span style="font-size:13px">الدفع عند الاستلام</span></label></fieldset>')
+    +'<p id="storePurchaseError" role="alert" style="display:none;color:#b91c1c;font-size:12px;margin-top:10px"></p>'
+    +'<button id="storePurchaseSubmit" type="submit" style="width:100%;margin-top:16px;background:#087f9c;color:#fff;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:14px">تأكيد طلب الشراء</button>'
+    +'<button type="button" id="storePurchaseCancel" style="width:100%;margin-top:8px;background:#f1f5f9;color:#334155;border:0;border-radius:12px;padding:12px;font-weight:800">إلغاء</button></form>';
+  document.body.appendChild(modal);
+  const form=modal.querySelector('#storePurchaseForm');
+  const quantityInput=modal.querySelector('#storePurchaseQuantity');
+  const noteInput=modal.querySelector('#storePurchaseNote');
+  const submitButton=modal.querySelector('#storePurchaseSubmit');
+  const errorBox=modal.querySelector('#storePurchaseError');
+  const close=()=>{const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();closeStorePurchaseModal();};
+  modal.querySelector('#storePurchaseClose').addEventListener('click',close);
+  modal.querySelector('#storePurchaseCancel').addEventListener('click',close);
+  modal.addEventListener('click',event=>{if(event.target===modal)close();});
+  quantityInput.focus();
+  form.addEventListener('submit',async event=>{
+    event.preventDefault();
+    const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
+    const quantity=Number(quantityInput.value);
+    if(!Number.isInteger(quantity)||quantity<1||quantity>1000){errorBox.textContent='اكتب كمية صحيحة من 1 إلى 1000.';errorBox.style.display='block';quantityInput.focus();return;}
+    const paymentMethod=isSubscription?undefined:(form.querySelector('input[name="paymentMethod"]:checked')?.value||'wallet');
+    const note=String(noteInput.value||'').trim().slice(0,500);
+    const idempotencyKey=storeRequestKey();
+    async function send(method){
+      const r=await fetch('/api/store/'+role+'/orders',{method:'POST',headers:storeHeaders(role),body:JSON.stringify({productId:id,quantity,note,...(!isSubscription?{paymentMethod:method}:{}),idempotencyKey})});
+      const d=await r.json().catch(()=>({}));
+      return {r,d};
     }
-    if(!result.r.ok)throw Error(result.d.message||'تعذر إرسال الطلب');
-    if(role==='client'){
-      if(result.d.balance!==undefined)state.walletBalance=Number(result.d.balance);
-      showToast(result.d.message||'تم إرسال طلب الشراء');
-    }else{
-      if(result.d.balance!==undefined){state.walletBalance=Number(result.d.balance);if(typeof setAuth==='function')setAuth(getToken(),{...(getUser()||{}),walletBalance:Number(result.d.balance)});}
-      toast(result.d.message||'تم إرسال طلب الشراء');
+    submitButton.disabled=true;submitButton.textContent='جاري إرسال الطلب...';submitButton.style.opacity='.65';errorBox.style.display='none';
+    try{
+      let result=await send(paymentMethod);
+      if(!result.r.ok&&paymentMethod==='wallet'&&result.r.status===409&&result.d.canUseCashOnDelivery===true){
+        const useCod=confirm((result.d.message||'رصيد المحفظة غير كافٍ.')+'\n\nهل تريد إكمال الطلب والدفع عند الاستلام؟');
+        if(!useCod){submitButton.disabled=false;submitButton.textContent='تأكيد طلب الشراء';submitButton.style.opacity='1';return;}
+        result=await send('cash_on_delivery');
+      }
+      if(!result.r.ok)throw Error(result.d.message||'تعذر إرسال الطلب');
+      closeStorePurchaseModal();
+      if(role==='client'){
+        if(result.d.balance!==undefined)state.walletBalance=Number(result.d.balance);
+        showToast(result.d.message||'تم إرسال طلب الشراء');
+      }else{
+        if(result.d.balance!==undefined){state.walletBalance=Number(result.d.balance);if(typeof setAuth==='function')setAuth(getToken(),{...(getUser()||{}),walletBalance:Number(result.d.balance)});}
+        toast(result.d.message||'تم إرسال طلب الشراء');
+      }
+      await loadStoreForRole(role);
+      if(role==='client'&&typeof loadClientWallet==='function')await loadClientWallet();
+    }catch(e){
+      errorBox.textContent=e.message||'تعذر إرسال الطلب، حاول مرة أخرى.';
+      errorBox.style.display='block';
+      submitButton.disabled=false;submitButton.textContent='تأكيد طلب الشراء';submitButton.style.opacity='1';
     }
-    await loadStoreForRole(role);
-    if(role==='client'&&typeof loadClientWallet==='function')await loadClientWallet();
-  }catch(e){if(role==='client')showToast(e.message,'error');else toast(e.message,'error');}
+  });
 }
