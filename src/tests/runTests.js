@@ -2114,7 +2114,7 @@ async function run() {
       assert.equal(subscriptionRequest.status, 201, JSON.stringify(subscriptionRequest.body));
       assert.equal(subscriptionRequest.body.order.paymentStatus, 'غير مدفوع');
       assert.equal(subscriptionRequest.body.order.paymentMethod, 'غير محدد');
-      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore - 150);
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore, 'an unpaid subscription request must not debit the technician wallet');
     });
 
     await test('order chat rejects revoked technician sessions after password changes', async () => {
