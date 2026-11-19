@@ -211,7 +211,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName, mode, endsAt: subscription.endsAt };
       return res.status(mode === 'purchase' ? 201 : 200).json({
         message: mode === 'purchase' ? 'تم شراء الاشتراك وتفعيله بنجاح.' : 'تم تجديد الاشتراك بنجاح.',
-        balance: Number(updatedClient.walletBalance), subscription
+        balance: Number(updatedClient.walletBalance), subscription, transactionNumber: paymentTransaction.transactionNumber
       });
     } catch (error) {
       if (session?.inTransaction()) await session.abortTransaction().catch(() => {});
