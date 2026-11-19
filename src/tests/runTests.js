@@ -607,16 +607,23 @@ async function run() {
       assert.equal(backUpload.status, 201, JSON.stringify(backUpload.body));
       const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
-      const registration = await request(app).post('/api/fanni/register').send({
-        name: 'فني اختبار التسجيل',
-        phone,
-        password: 'FanniTestPass123',
-        specialties: ['صيانة دش'],
-        areas: ['المعادي'],
-        identityCardFrontFileId: frontUpload.body.fileId,
-        identityCardBackFileId: backUpload.body.fileId
-      });
-      cardOcr.setWorkerFactoryForTests(null);
+      cardOcr.setWorkerFactoryForTests(async () => ({
+        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
+      }));
+      let registration;
+      try {
+        registration = await request(app).post('/api/fanni/register').send({
+          name: 'فني اختبار التسجيل',
+          phone,
+          password: 'FanniTestPass123',
+          specialties: ['صيانة دش'],
+          areas: ['المعادي'],
+          identityCardFrontFileId: frontUpload.body.fileId,
+          identityCardBackFileId: backUpload.body.fileId
+        });
+      } finally {
+        cardOcr.setWorkerFactoryForTests(null);
+      }
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
