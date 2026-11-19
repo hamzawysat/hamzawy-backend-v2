@@ -126,7 +126,17 @@ async function submitBulkOrder(req, res, next, role) {
     if (role === 'fanni' && buyer.status !== 'معتمد') return res.status(403).json({ message: 'الشراء من المتجر متاح للفنيين المعتمدين فقط.' });
 
     const quantities = new Map();
-    for (const item of value.items) quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
+    const expectedPrices = new Map();
+    for (const item of value.items) {
+      quantities.set(item.productId, (quantities.get(item.productId) || 0) + item.quantity);
+      if (item.expectedPrice !== undefined) {
+        const previousExpectedPrice = expectedPrices.get(item.productId);
+        if (previousExpectedPrice !== undefined && Number(previousExpectedPrice) !== Number(item.expectedPrice)) {
+          return res.status(400).json({ message: 'يوجد اختلاف في السعر المتوقع لنفس المنتج داخل السلة. راجع السلة وحاول مرة أخرى.' });
+        }
+        expectedPrices.set(item.productId, item.expectedPrice);
+      }
+    }
     if ([...quantities.values()].some(quantity => quantity > 1000)) return res.status(400).json({ message: 'الحد الأقصى لكمية المنتج الواحد هو 1000.' });
 
     const duplicate = await StoreOrder.findOne({ buyerRole: role, buyerId: buyer._id, requestKey: value.idempotencyKey }).lean();
@@ -148,11 +158,12 @@ async function submitBulkOrder(req, res, next, role) {
         await session.abortTransaction();
         return res.status(409).json({ message: 'أحد المنتجات لم يعد متاحًا. حدّث السلة وراجعها قبل الإرسال.' });
       }
-      if (item.expectedPrice !== undefined && Number(item.expectedPrice) !== Number(product.price)) {
+      const expectedPrice = expectedPrices.get(productId);
+      if (expectedPrice !== undefined && Number(expectedPrice) !== Number(product.price)) {
         await session.abortTransaction();
         return res.status(409).json({
           priceChanged: true,
-          changedItems: [{ productId: String(product._id), productName: product.name, previousPrice: Number(item.expectedPrice), currentPrice: Number(product.price) }],
+          changedItems: [{ productId: String(product._id), productName: product.name, previousPrice: Number(expectedPrice), currentPrice: Number(product.price) }],
           message: 'تغير سعر المنتج "' + product.name + '" منذ إضافته للسلة. راجع السعر الجديد قبل تأكيد الطلب.'
         });
       }
