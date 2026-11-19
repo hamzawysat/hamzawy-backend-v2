@@ -8,6 +8,9 @@ const crypto = require('crypto');
 const mongoose = require('mongoose');
 
 const Fanni = require('../models/Fanni');
+const Client = require('../models/Client');
+const FanniCardLedger = require('../models/FanniCardLedger');
+const { readFanniCard, cardHash, encryptNationalId } = require('../services/fanniCardOcr');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -198,6 +201,40 @@ router.post(
       const approvedAreas = await validateApprovedAreas(req.body.areas);
       if (!approvedAreas) return res.status(400).json({ message: 'اختار مناطق العمل من قائمة المناطق المعتمدة فقط. لا يمكن تسجيل منطقة غير موجودة بالقائمة.' });
 
+      // Read the national ID locally from the private front-side GridFS image.
+      const frontImage = await new Promise((resolve, reject) => {
+        const chunks = [];
+        identityBucket.openDownloadStream(identityIds[0])
+          .on('data', chunk => chunks.push(chunk))
+          .on('error', reject)
+          .on('end', () => resolve(Buffer.concat(chunks)));
+      });
+      let cardData;
+      try {
+        cardData = await readFanniCard(frontImage);
+      } catch (ocrError) {
+        if (['CARD_OCR_UNCLEAR', 'CARD_IMAGE_UNREADABLE'].includes(ocrError?.code)) {
+          return res.status(422).json({ code: 'CARD_OCR_UNCLEAR', message: 'مش قادرين نقرأ بيانات البطاقة بوضوح. ارفع صورة أوضح للوجه الأمامي وحاول مرة أخرى.' });
+        }
+        throw ocrError;
+      }
+
+      const nationalIdHash = cardHash(cardData.nationalId);
+      const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
+      if (existingCard) {
+        existingCard.status = 'تحت مراجعة التكرار';
+        existingCard.duplicateAttempts.push({
+          applicantName: String(req.body.name || '').trim(),
+          applicantPhone: phone,
+          status: 'قيد مراجعة الأدمن'
+        });
+        await existingCard.save();
+        return res.status(409).json({
+          code: 'DUPLICATE_FANNI_CARD_REVIEW',
+          message: 'البطاقة مسجلة من قبل. تم إيقاف التسجيل وتحويل الحالة إلى الإدارة للمراجعة.'
+        });
+      }
+
       const passwordHash = await bcrypt.hash(req.body.password, 10);
 
       let fanni;
@@ -211,11 +248,15 @@ router.post(
             if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
             const decoded = readReferralCode(req.body.referralCode);
             if (!decoded || decoded.kind !== 'fanni') throw new Error('INVALID_REFERRAL_CODE');
-            const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id phone').session(session);
-            if (!inviter) throw new Error('REFERRER_NOT_FOUND');
-            if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
-            inviterId = inviter._id;
-            usedCode = decoded.code;
+            // Cross-role accounts may register normally, but cannot earn a referral reward through the same phone.
+            const existingClient = await Client.findOne({ phone }).select('_id').session(session);
+            if (!existingClient) {
+              const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id phone').session(session);
+              if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+              if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
+              inviterId = inviter._id;
+              usedCode = decoded.code;
+            }
           }
           const created = await Fanni.create([{
             name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
@@ -227,6 +268,14 @@ router.post(
             status: 'قيد المراجعة', role: 'fanni'
           }], { session });
           fanni = created[0];
+          await FanniCardLedger.create([{
+            nationalIdHash,
+            nationalIdEncrypted: encryptNationalId(cardData.nationalId),
+            fanniId: fanni._id,
+            fanniName: fanni.name,
+            extractedName: cardData.extractedName,
+            status: 'مسجلة'
+          }], { session });
           if (inviterId) {
             const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
             await Referral.create([{
@@ -246,6 +295,7 @@ router.post(
         status: fanni.status
       });
     } catch (err) {
+      if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ message: 'سجل البطاقات غير مهيأ على الخادم. تواصل مع الإدارة.' });
       if (err?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
       if (err?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للفنيين.' });
       if (err?.message === 'REFERRER_NOT_FOUND') return res.status(400).json({ message: 'صاحب كود الدعوة غير موجود.' });
