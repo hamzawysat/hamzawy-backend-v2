@@ -1400,6 +1400,64 @@ async function run() {
       assert.equal(activeClientAfterSupport.status, 200);
       clientToken = changedClientSupportPassword.body.token;
 
+      const forceClient = await request(app).post('/api/admin/clients/01012345678/force-password-change')
+        .set('Authorization', 'Bearer ' + adminToken).send({});
+      assert.equal(forceClient.status, 200, JSON.stringify(forceClient.body));
+      const revokedClientSession = await request(app).get('/api/client/me')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(revokedClientSession.status, 401);
+      const forcedClientLogin = await request(app).post('/api/client/login')
+        .send({ phone: '01012345678', password: 'ClientAfterSupport123' });
+      assert.equal(forcedClientLogin.status, 200);
+      assert.equal(forcedClientLogin.body.mustChangePassword, true);
+      const forcedClientBlocked = await request(app).get('/api/client/me')
+        .set('Authorization', 'Bearer ' + forcedClientLogin.body.token);
+      assert.equal(forcedClientBlocked.status, 403);
+      const forcedClientChanged = await request(app).post('/api/password-recovery/change/client')
+        .set('Authorization', 'Bearer ' + forcedClientLogin.body.token)
+        .send({ newPassword: 'ClientForcedChange123', confirmPassword: 'ClientForcedChange123' });
+      assert.equal(forcedClientChanged.status, 200, 'admin-forced client change must not require current password');
+      const clientSelfChangeWithoutOld = await request(app).post('/api/password-recovery/change/client')
+        .set('Authorization', 'Bearer ' + forcedClientChanged.body.token)
+        .send({ newPassword: 'ClientSelfChange123', confirmPassword: 'ClientSelfChange123' });
+      assert.equal(clientSelfChangeWithoutOld.status, 400, 'self-initiated client password change must still require current password');
+      const clientSelfChangeWithOld = await request(app).post('/api/password-recovery/change/client')
+        .set('Authorization', 'Bearer ' + forcedClientChanged.body.token)
+        .send({ currentPassword: 'ClientForcedChange123', newPassword: 'ClientSelfChange123', confirmPassword: 'ClientSelfChange123' });
+      assert.equal(clientSelfChangeWithOld.status, 200);
+
+      const targetFanni = await Fanni.findOne({ phone: '01012345680', role: 'fanni' });
+      assert.ok(targetFanni);
+      const forceFanni = await request(app).post('/api/admin/fannis/' + targetFanni._id + '/force-password-change')
+        .set('Authorization', 'Bearer ' + adminToken).send({});
+      assert.equal(forceFanni.status, 200, JSON.stringify(forceFanni.body));
+      const fanniForcedLogin = await request(app).post('/api/fanni/login')
+        .send({ phone: '01012345680', password: 'FanniAfterSupport123' });
+      assert.equal(fanniForcedLogin.status, 200);
+      assert.equal(fanniForcedLogin.body.mustChangePassword, true);
+      const fanniForcedBlocked = await request(app).get('/api/fanni/me')
+        .set('Authorization', 'Bearer ' + fanniForcedLogin.body.token);
+      assert.equal(fanniForcedBlocked.status, 403);
+      const fanniForcedChanged = await request(app).post('/api/password-recovery/change/fanni')
+        .set('Authorization', 'Bearer ' + fanniForcedLogin.body.token)
+        .send({ newPassword: 'FanniForcedChange123', confirmPassword: 'FanniForcedChange123' });
+      assert.equal(fanniForcedChanged.status, 200, 'admin-forced technician change must not require current password');
+      const fanniSelfChangeWithoutOld = await request(app).post('/api/password-recovery/change/fanni')
+        .set('Authorization', 'Bearer ' + fanniForcedChanged.body.token)
+        .send({ newPassword: 'FanniSelfChange123', confirmPassword: 'FanniSelfChange123' });
+      assert.equal(fanniSelfChangeWithoutOld.status, 400, 'self-initiated technician password change must still require current password');
+      const fanniSelfChangeWithOld = await request(app).post('/api/password-recovery/change/fanni')
+        .set('Authorization', 'Bearer ' + fanniForcedChanged.body.token)
+        .send({ currentPassword: 'FanniForcedChange123', newPassword: 'FanniSelfChange123', confirmPassword: 'FanniSelfChange123' });
+      assert.equal(fanniSelfChangeWithOld.status, 200);
+
+      const cancelClientForce = await request(app).delete('/api/admin/clients/01012345678/force-password-change')
+        .set('Authorization', 'Bearer ' + adminToken).send({});
+      assert.equal(cancelClientForce.status, 200);
+      const cancelFanniForce = await request(app).delete('/api/admin/fannis/' + targetFanni._id + '/force-password-change')
+        .set('Authorization', 'Bearer ' + adminToken).send({});
+      assert.equal(cancelFanniForce.status, 200);
+
       const opened = await request(app).post('/api/password-recovery/request')
         .send({ role: 'client', phone: '01012345678' });
       assert.equal(opened.status, 201);

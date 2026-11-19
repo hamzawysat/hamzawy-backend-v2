@@ -13,6 +13,7 @@ const SupportPassword = require('../models/SupportPassword');
 const { auth, isRootAdmin, canAccessAdmin } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
 const { notifyAdmins } = require('../utils/notifications');
+const AdminAuditLog = require('../models/AdminAuditLog');
 
 const router = express.Router();
 const adminSelfAuth = (req, res, next) => auth()(req, res, () => {
@@ -118,6 +119,7 @@ router.post('/change/client', clientAuth, async (req, res, next) => {
     if (valid.error || newPassword !== confirmPassword || newPassword === currentPassword) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل، والتأكيد مطابقًا، وألا تكون هي القديمة.' });
     const user = await Client.findById(req.client._id).select('+passwordHash');
     user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.mustChangePassword = false;
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
     await SupportPassword.updateMany({ ownerRole: 'client', accountId: user._id, usedAt: null, revokedAt: null }, { $set: { revokedAt: new Date() } });
@@ -138,6 +140,7 @@ router.post('/change/fanni', auth('fanni'), async (req, res, next) => {
     const valid = passwordSchema.validate(newPassword);
     if (valid.error || newPassword !== confirmPassword || newPassword === currentPassword) return res.status(400).json({ message: 'كلمة المرور الجديدة يجب أن تكون 8 أحرف على الأقل، والتأكيد مطابقًا، وألا تكون هي القديمة.' });
     user.passwordHash = await bcrypt.hash(newPassword, 12);
+    user.mustChangePassword = false;
     user.tokenVersion = Number(user.tokenVersion || 0) + 1;
     await user.save();
     await SupportPassword.updateMany({ ownerRole: 'fanni', accountId: user._id, usedAt: null, revokedAt: null }, { $set: { revokedAt: new Date() } });

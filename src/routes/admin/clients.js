@@ -12,6 +12,33 @@ function createAdminClientsRouter({
 }) {
   const router = express.Router();
 
+router.post('/clients/:phone/force-password-change', auth('admin'), async (req, res, next) => {
+  try {
+    const phone = normalizePhone(req.params.phone);
+    if (!phone) return res.status(400).json({ message: 'رقم هاتف العميل غير صالح' });
+    const client = await Client.findOne({ phone });
+    if (!client) return res.status(404).json({ message: 'حساب العميل غير موجود' });
+    client.mustChangePassword = true;
+    client.tokenVersion = Number(client.tokenVersion || 0) + 1;
+    await client.save();
+    await writeAdminAudit(req, 'إلزام عميل بتغيير كلمة المرور', 'clients', phone, `clientId=${String(client._id)}; forced=true`);
+    return res.json({ message: 'تم إلزام العميل بتغيير كلمة المرور عند تسجيل الدخول القادم، دون طلب كلمة المرور القديمة.', mustChangePassword: true });
+  } catch (error) { return next(error); }
+});
+router.delete('/clients/:phone/force-password-change', auth('admin'), async (req, res, next) => {
+  try {
+    const phone = normalizePhone(req.params.phone);
+    if (!phone) return res.status(400).json({ message: 'رقم هاتف العميل غير صالح' });
+    const client = await Client.findOne({ phone });
+    if (!client) return res.status(404).json({ message: 'حساب العميل غير موجود' });
+    client.mustChangePassword = false;
+    client.tokenVersion = Number(client.tokenVersion || 0) + 1;
+    await client.save();
+    await writeAdminAudit(req, 'إلغاء إلزام عميل بتغيير كلمة المرور', 'clients', phone, `clientId=${String(client._id)}; forced=false`);
+    return res.json({ message: 'تم إلغاء إلزام العميل بتغيير كلمة المرور.', mustChangePassword: false });
+  } catch (error) { return next(error); }
+});
+
 router.post('/clients/:phone/block', auth('admin'), async (req, res, next) => {
   try {
     const phone = normalizePhone(req.params.phone);

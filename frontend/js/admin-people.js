@@ -55,6 +55,8 @@ function renderFannis(){
                   <button onclick="event.stopPropagation();setPendingAction('${menuKey}','badge_trust','منح شارة موثوق')" class="dropdown-item">🛡️ منح موثوق</button>
                   <div class="h-px bg-slate-100 my-1"></div>
                   <button onclick="event.stopPropagation();changeAccountPassword('fanni','${id}')" class="dropdown-item">🔐 تغيير كلمة السر</button>
+                  <button onclick="event.stopPropagation();setForcedPasswordChange('fanni','${id}',true)" class="dropdown-item">🔒 إلزام بتغيير كلمة المرور</button>
+                  <button onclick="event.stopPropagation();setForcedPasswordChange('fanni','${id}',false)" class="dropdown-item">↩️ إلغاء إلزام تغيير كلمة المرور</button>
                   <button onclick="event.stopPropagation();issueSupportPassword('fanni','${id}')" class="dropdown-item">🛟 إصدار كلمة دعم لمرة واحدة</button>
                   <button onclick="event.stopPropagation();revealSupportPassword('fanni','${id}')" class="dropdown-item">👁 عرض كلمة الدعم الحالية</button>
                   <button onclick="event.stopPropagation();setPendingAction('${menuKey}','delete','حذف نهائي')" class="dropdown-item text-red-600">🗑️ حذف نهائي</button>
@@ -237,6 +239,15 @@ window.adminMarkVoiceReviewed=async function(sn){
 };
 
 
+async function setForcedPasswordChange(role, accountId, required) {
+  const label = role === 'client' ? 'العميل' : 'الفني';
+  if (!confirm(required ? 'إلزام ' + label + ' بتغيير كلمة المرور عند تسجيل الدخول القادم؟' : 'إلغاء إلزام ' + label + ' بتغيير كلمة المرور؟')) return;
+  try {
+    const path = role === 'client' ? '/api/admin/clients/' + encodeURIComponent(accountId) + '/force-password-change' : '/api/admin/fannis/' + encodeURIComponent(accountId) + '/force-password-change';
+    const result = await tryApi([path], { method: required ? 'POST' : 'DELETE', body: JSON.stringify({}) });
+    showToast(result?.message || (required ? 'تم تفعيل الإلزام.' : 'تم إلغاء الإلزام.'));
+  } catch (error) { showToast(error?.message || 'تعذر تنفيذ الإجراء.', 'error'); }
+}
 async function issueSupportPassword(role, accountId) {
   if (!confirm('إصدار كلمة دعم مستقلة لهذا الحساب؟ أي كلمة دعم سابقة غير مستخدمة سيتم إلغاؤها.')) return;
   try {

@@ -395,10 +395,11 @@ router.post(
         supportLogin = true;
       }
 
+      const mustChangePassword = supportLogin || fanni.mustChangePassword === true;
       const token = jwt.sign(
-        { id: fanni._id, role: 'fanni', tokenVersion: Number(fanni.tokenVersion || 0), ...(supportLogin ? { mustChangePassword: true } : {}) },
+        { id: fanni._id, role: 'fanni', tokenVersion: Number(fanni.tokenVersion || 0), ...(mustChangePassword ? { mustChangePassword: true } : {}) },
         process.env.JWT_SECRET,
-        { expiresIn: supportLogin ? '15m' : '30d' }
+        { expiresIn: mustChangePassword ? '15m' : '30d' }
       );
 
       const safeUser = fanni.toSafeJSON();
@@ -411,8 +412,8 @@ router.post(
       });
       return res.json({
         token,
-        mustChangePassword: supportLogin,
-        message: supportLogin ? 'تم الدخول بكلمة دعم مؤقتة. غيّر كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
+        mustChangePassword,
+        message: mustChangePassword ? 'يجب تغيير كلمة المرور الآن للمتابعة.' : 'تم تسجيل الدخول بنجاح',
         user: safeUser
       });
     } catch (err) {

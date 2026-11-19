@@ -9,6 +9,31 @@ function createAdminFanniManagementRouter({
 }) {
   const router = express.Router();
 
+router.post('/fannis/:id/force-password-change', auth('admin'), async (req, res, next) => {
+  try {
+    if (!validId(req.params.id)) return sendBadId(res);
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
+    fanni.mustChangePassword = true;
+    fanni.tokenVersion = Number(fanni.tokenVersion || 0) + 1;
+    await fanni.save();
+    await writeAdminAudit(req, 'إلزام فني بتغيير كلمة المرور', 'fannis', String(fanni._id), 'forced=true');
+    return res.json({ message: 'تم إلزام الفني بتغيير كلمة المرور عند تسجيل الدخول القادم، دون طلب كلمة المرور القديمة.', mustChangePassword: true });
+  } catch (err) { next(err); }
+});
+router.delete('/fannis/:id/force-password-change', auth('admin'), async (req, res, next) => {
+  try {
+    if (!validId(req.params.id)) return sendBadId(res);
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
+    fanni.mustChangePassword = false;
+    fanni.tokenVersion = Number(fanni.tokenVersion || 0) + 1;
+    await fanni.save();
+    await writeAdminAudit(req, 'إلغاء إلزام فني بتغيير كلمة المرور', 'fannis', String(fanni._id), 'forced=false');
+    return res.json({ message: 'تم إلغاء إلزام الفني بتغيير كلمة المرور.', mustChangePassword: false });
+  } catch (err) { next(err); }
+});
+
 router.post('/fannis/:id/approve', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
