@@ -1672,6 +1672,30 @@ async function run() {
       orderClientToken = r.body.clientToken;
     });
 
+    await test('order creation reuses the original order for repeated idempotency keys', async () => {
+      const { ALL_SERVICES } = require('../config/professions');
+      const Order = require('../models/Order');
+      const idempotencyKey = 'order-create-retry-test-0001';
+      const payload = {
+        service: ALL_SERVICES[0], area: 'المعادي', address: 'شارع اختبار التكرار 15',
+        description: 'اختبار منع إنشاء طلبين عند إعادة إرسال نفس الطلب', idempotencyKey
+      };
+      const before = await Order.countDocuments({ clientAccount: clientId });
+      const first = await request(app).post('/api/orders')
+        .set('Authorization', 'Bearer ' + clientToken).send(payload);
+      assert.equal(first.status, 201, JSON.stringify(first.body));
+      const second = await request(app).post('/api/orders')
+        .set('Authorization', 'Bearer ' + clientToken).send(payload);
+      assert.equal(second.status, 200, JSON.stringify(second.body));
+      assert.equal(second.body.duplicate, true);
+      assert.equal(second.body.sn, first.body.sn);
+      assert.ok(second.body.clientToken);
+      assert.equal(await Order.countDocuments({ clientAccount: clientId }), before + 1);
+      const stored = await Order.findOne({ clientAccount: clientId, requestKey: idempotencyKey }).lean();
+      assert.ok(stored);
+      assert.equal(stored.sn, first.body.sn);
+    });
+
     await test('published order offer, client acceptance, wallet commission ledger, and accepted chat work end to end', async () => {
       const { ALL_SERVICES } = require('../config/professions');
       const Fanni = require('../models/Fanni');
