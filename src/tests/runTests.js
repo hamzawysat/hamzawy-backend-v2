@@ -46,6 +46,32 @@ async function run() {
     app = require('../server');
     mongoose = require('mongoose');
 
+    await test('Arabic store search normalizes spelling variants and tolerates simple typos', async () => {
+      const search = require('../../frontend/js/store-search');
+      assert.equal(search.normalizeArabicStoreSearch('إشــتراك مُميّز'), 'اشتراك مميز');
+      assert.equal(search.normalizeArabicStoreSearch('أجهزة آيفون ١٢'), 'اجهزه ايفون 12');
+      const product = { name: 'اشتراك مميز', category: 'الباقات', description: 'تجديد اشتراك القنوات', details: 'رسيفر HD' };
+      assert.equal(search.matchesArabicStoreSearch(product, 'اشتراك'), true);
+      assert.equal(search.matchesArabicStoreSearch(product, 'اشترك مميز'), true, 'minor spelling differences should still match');
+      assert.equal(search.matchesArabicStoreSearch(product, 'تجديد قنوات'), true, 'all query terms may match across product fields');
+      assert.equal(search.matchesArabicStoreSearch(product, 'رسيفر'), true, 'product details should be searchable');
+      assert.equal(search.matchesArabicStoreSearch(product, 'منتج غير موجود'), false);
+      assert.equal(search.matchesArabicStoreSearch(product, '   '), true, 'an empty query should not filter products');
+    });
+
+    await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
+      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
+      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
+      const storeUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/store-ui.js'), 'utf8');
+      for (const page of [clientPage, technicianPage]) {
+        assert.ok(page.indexOf('/js/store-search.js') !== -1);
+        assert.ok(page.indexOf('/js/store-search.js') < page.indexOf('/js/store-ui.js'));
+      }
+      assert.ok(storeUi.includes('matchesArabicStoreSearch'));
+      assert.ok(storeUi.includes('storeSearchQueryByRole'));
+      assert.ok(storeUi.includes('ملقيناش منتجات مطابقة للبحث'));
+    });
+
     await test('technician card ledger normalizes Egyptian national-ID digits and encrypts the stored number', async () => {
       const cardOcr = require('../services/fanniCardOcr');
       const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
