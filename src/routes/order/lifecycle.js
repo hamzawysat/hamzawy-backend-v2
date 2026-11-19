@@ -403,6 +403,8 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
         message: 'تم تأكيد استلام الخدمة بالفعل.',
         order: {
           sn: order.sn,
+          clientPaymentTransactionNumber: order.clientPaymentTransactionNumber || '',
+          technicianSettlementTransactionNumber: order.technicianSettlementTransactionNumber || '',
           clientConfirmedAt: order.clientConfirmedAt,
           warrantyStartsAt: order.warrantyStartsAt,
           warrantyExpiresAt: order.warrantyExpiresAt,
@@ -500,13 +502,15 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
       : 'تم تأكيد استلام الخدمة وبدأ ضمان الإصلاح لمدة 14 يومًا.',
     order: {
       sn: confirmedOrder.sn,
+      clientPaymentTransactionNumber: confirmedOrder.clientPaymentTransactionNumber || '',
+      technicianSettlementTransactionNumber: confirmedOrder.technicianSettlementTransactionNumber || '',
       clientConfirmedAt: confirmedOrder.clientConfirmedAt,
       warrantyStartsAt: confirmedOrder.warrantyStartsAt,
       warrantyExpiresAt: confirmedOrder.warrantyExpiresAt,
       warrantyStatus: confirmedOrder.warrantyStatus,
       clientPaymentStatus: confirmedOrder.clientPaymentStatus
     },
-    settlement: settlement ? { amount: settlement.amount } : null
+    settlement: settlement ? { amount: settlement.amount, transactionNumber: confirmedOrder.technicianSettlementTransactionNumber || '' } : null
   });
 });
 
