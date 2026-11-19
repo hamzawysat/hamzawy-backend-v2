@@ -173,7 +173,7 @@ async function sendFirebasePushNotifications(devices, payload) {
           priority: 'HIGH',
           collapse_key: payload.notificationId ? 'hamzawy-' + String(payload.notificationId) : undefined,
           ttl: '86400s',
-          notification: { channel_id: channelFor(type), click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
+          notification: { channel_id: 'hamzawy_official', click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
         },
         webpush: { headers: { TTL: '86400', Urgency: 'high' } },
         apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
@@ -211,7 +211,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
         body: String(message || '').slice(0, 300),
         sound: 'default',
         priority: 'high',
-        channelId: 'default',
+        channelId: 'hamzawy_official',
         ttl: 86400,
         ...(notificationId ? { collapseId: 'hamzawy-' + String(notificationId) } : {}),
         data: { type: String(type || 'general').slice(0, 50), link: normalizeNotificationLink(link), destination: destinationFor(String(type || '')), notificationId: String(notificationId || '') }
