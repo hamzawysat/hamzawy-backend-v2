@@ -381,7 +381,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
             const balanceBefore = Number(buyer.walletBalance || 0);
             buyer.walletBalance = balanceBefore + refundAmount;
             await buyer.save({ session });
-            await new WalletTransaction({
+            const refundTransaction = new WalletTransaction({
               ...(order.buyerRole === 'client'
                 ? { client: order.buyerId, type: 'client_refund' }
                 : { fanni: order.buyerId, type: 'refund' }),
@@ -390,7 +390,9 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
               balanceAfter: Number(buyer.walletBalance),
               description: 'استرداد قيمة طلب متجر ملغي رقم ' + String(order._id),
               idempotencyKey: 'store-order-refund:' + String(order._id)
-            }).save({ session });
+            });
+            await refundTransaction.save({ session });
+            order.refundTransactionNumber = refundTransaction.transactionNumber;
             order.paymentStatus = 'مسترد';
           }
         }
