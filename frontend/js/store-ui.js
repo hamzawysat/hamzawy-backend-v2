@@ -52,12 +52,41 @@ function addStoreProductToCart(role,id){
   if(role==='client')showToast(message);else toast(message);
   render();
 }
+function closeStoreCartReview(){
+  const modal=document.getElementById('storeCartReviewModal');
+  if(modal)modal.remove();
+}
+function openStoreCartReview(role){
+  const cart=getStoreCart(role);
+  if(!cart.length){const message='السلة فارغة. أضف المنتجات أولًا.';if(role==='client')showToast(message,'error');else toast(message,'error');return;}
+  closeStoreCartReview();
+  const itemCount=cart.reduce((sum,item)=>sum+Number(item.quantity||1),0);
+  const total=cart.reduce((sum,item)=>sum+Number(item.price||0)*Number(item.quantity||1),0);
+  const modal=document.createElement('div');
+  modal.id='storeCartReviewModal';
+  modal.setAttribute('role','dialog');
+  modal.setAttribute('aria-modal','true');
+  modal.setAttribute('aria-labelledby','storeCartReviewTitle');
+  modal.style.cssText='position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.58);padding:12px;';
+  modal.innerHTML='<section dir="rtl" style="width:100%;max-width:540px;max-height:88vh;overflow:auto;background:#fff;border-radius:22px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.25);padding-bottom:calc(20px + env(safe-area-inset-bottom,0px))">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px"><h2 id="storeCartReviewTitle" style="font-weight:900;font-size:18px;color:#172554">مراجعة سلة المشتريات</h2><button type="button" id="storeCartReviewClose" aria-label="إغلاق" style="font-size:25px;line-height:1;color:#64748b;padding:4px 8px">×</button></div>'
+    +'<p style="font-size:12px;color:#64748b;margin:8px 0 14px">راجع المنتجات والكميات والأسعار قبل الانتقال لتأكيد الطلب.</p>'
+    +'<div style="display:grid;gap:8px">'+cart.map(item=>'<div style="display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #e2e8f0;padding:10px 0"><div style="min-width:0"><b style="display:block;font-size:13px;color:#1e293b">'+storeEsc(item.name)+'</b><span style="font-size:11px;color:#64748b">الكمية: '+Number(item.quantity||1)+' × '+Number(item.price||0).toLocaleString('ar-EG')+' جنيه</span></div><b style="white-space:nowrap;font-size:13px;color:#0f766e">'+(Number(item.price||0)*Number(item.quantity||1)).toLocaleString('ar-EG')+' جنيه</b></div>').join('')+'</div>'
+    +'<div style="display:flex;justify-content:space-between;gap:12px;padding:14px 0;font-weight:900;color:#0f172a"><span>إجمالي القطع: '+itemCount+'</span><span>الإجمالي: '+total.toLocaleString('ar-EG')+' جنيه</span></div>'
+    +'<p style="font-size:11px;color:#64748b;background:#f8fafc;border-radius:10px;padding:10px">هذه مراجعة فقط؛ لم يتم إرسال الطلب أو خصم أي مبلغ.</p>'
+    +'<button type="button" id="storeCartReviewDone" style="width:100%;margin-top:12px;background:#087f9c;color:#fff;border:0;border-radius:12px;padding:13px;font-weight:900;font-size:14px">العودة إلى السلة</button></section>';
+  document.body.appendChild(modal);
+  const close=()=>{const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();closeStoreCartReview();};
+  modal.querySelector('#storeCartReviewClose').addEventListener('click',close);
+  modal.querySelector('#storeCartReviewDone').addEventListener('click',close);
+  modal.addEventListener('click',event=>{if(event.target===modal)close();});
+}
 function renderStoreCart(role){
   const cart=getStoreCart(role);
   if(!cart.length)return '<div class="panel p-3 text-center text-[12px] text-slate-500"><b class="text-slate-700">سلة المشتريات (0)</b><p class="mt-1">أضف المنتجات التي تريد شراءها من الأقسام.</p></div>';
   const itemCount=cart.reduce((sum,item)=>sum+Number(item.quantity||1),0);
   const total=cart.reduce((sum,item)=>sum+Number(item.price||0)*Number(item.quantity||1),0);
-  return '<div class="panel p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[13px]">سلة المشتريات</b><div class="flex items-center gap-2"><span class="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-teal-800" aria-live="polite">'+itemCount+' قطعة</span><button type="button" data-role="'+storeEsc(role)+'" onclick="clearStoreCart(this.dataset.role)" class="rounded-lg border border-red-200 px-2 py-1 text-[10px] font-bold text-red-700">تفريغ السلة</button></div></div>'+cart.map(item=>'<div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><div class="min-w-0"><span class="block text-[12px] font-bold">'+storeEsc(item.name)+'</span><span class="text-[10px] text-slate-500">'+Number(item.price||0).toLocaleString('ar-EG')+' جنيه للقطعة</span></div><div class="flex shrink-0 items-center gap-2"><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,-1)" aria-label="تقليل الكمية" class="rounded-lg border px-3 py-1 font-black">−</button><span class="min-w-5 text-center text-[12px] font-black">'+Number(item.quantity||1)+'</span><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,1)" aria-label="زيادة الكمية" class="rounded-lg border px-3 py-1 font-black">+</button></div></div>').join('')+'<div class="flex items-center justify-between border-t border-slate-200 pt-2"><b class="text-[12px]">الإجمالي الحالي</b><b class="text-[13px] text-teal-700">'+total.toLocaleString('ar-EG')+' جنيه</b></div><p class="text-[10px] text-slate-500">إضافة المنتجات للسلة لا ترسل الطلب ولا تخصم أي مبلغ.</p></div>';
+  return '<div class="panel p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[13px]">سلة المشتريات</b><div class="flex items-center gap-2"><span class="rounded-full bg-teal-50 px-3 py-1 text-[11px] font-black text-teal-800" aria-live="polite">'+itemCount+' قطعة</span><button type="button" data-role="'+storeEsc(role)+'" onclick="clearStoreCart(this.dataset.role)" class="rounded-lg border border-red-200 px-2 py-1 text-[10px] font-bold text-red-700">تفريغ السلة</button></div></div>'+cart.map(item=>'<div class="flex items-center justify-between gap-2 border-t border-slate-100 pt-2"><div class="min-w-0"><span class="block text-[12px] font-bold">'+storeEsc(item.name)+'</span><span class="text-[10px] text-slate-500">'+Number(item.price||0).toLocaleString('ar-EG')+' جنيه للقطعة</span></div><div class="flex shrink-0 items-center gap-2"><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,-1)" aria-label="تقليل الكمية" class="rounded-lg border px-3 py-1 font-black">−</button><span class="min-w-5 text-center text-[12px] font-black">'+Number(item.quantity||1)+'</span><button type="button" data-role="'+storeEsc(role)+'" data-product-id="'+storeEsc(item.productId)+'" onclick="changeStoreCartQuantity(this.dataset.role,this.dataset.productId,1)" aria-label="زيادة الكمية" class="rounded-lg border px-3 py-1 font-black">+</button></div></div>').join('')+'<div class="flex items-center justify-between border-t border-slate-200 pt-2"><b class="text-[12px]">الإجمالي الحالي</b><b class="text-[13px] text-teal-700">'+total.toLocaleString('ar-EG')+' جنيه</b></div><button type="button" data-role="'+storeEsc(role)+'" onclick="openStoreCartReview(this.dataset.role)" class="w-full rounded-xl bg-teal-700 px-3 py-3 text-[12px] font-black text-white">مراجعة السلة قبل تأكيد الطلب</button><p class="text-[10px] text-slate-500">إضافة المنتجات للسلة لا ترسل الطلب ولا تخصم أي مبلغ.</p></div>';
 }
 function toggleStoreProductDetails(role,id){
   const byRole=state.storeExpandedProductDetailsByRole&&typeof state.storeExpandedProductDetailsByRole==='object'?state.storeExpandedProductDetailsByRole:{};
