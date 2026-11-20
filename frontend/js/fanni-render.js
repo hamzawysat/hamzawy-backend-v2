@@ -161,7 +161,7 @@ function renderContent(){
         <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-stat-card">
           <span class="fanni-home-stat-icon">✓</span><small>مهام مكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
         </button>
-        <button type="button" onclick="setTab('myOrders')" class="fanni-home-stat-card">
+        <button type="button" onclick="setTab('myOffers')" class="fanni-home-stat-card">
           <span class="fanni-home-stat-icon">📄</span><small>عروضي</small><strong data-home-stat="offers">${state.myOffers.length}</strong>
         </button>
       </div>
@@ -175,7 +175,7 @@ function renderContent(){
       <div class="fanni-home-section-head"><h3>إجراءات سريعة</h3></div>
       <div class="fanni-home-actions">
         <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-action"><span>📋</span><strong>سجل المهام</strong><i>‹</i></button>
-        <button type="button" onclick="setTab('myOrders')" class="fanni-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('myOffers')" class="fanni-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
         <button type="button" onclick="setTab('profile')" class="fanni-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></button>
         <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></button>
       </div>
