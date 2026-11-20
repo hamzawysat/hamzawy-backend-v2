@@ -824,6 +824,58 @@ function apiResponse(pathname) {
       await storeRestorePage.close();
     }
 
+    // Regression: returning to the admin store after opening an external image source
+    // must restore the selected product's edit form rather than opening a blank add form.
+    const storeEditRestorePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const storeEditPageErrors = [];
+    storeEditRestorePage.on('pageerror', error => storeEditPageErrors.push(error.message));
+    await storeEditRestorePage.addInitScript(() => {
+      localStorage.setItem('admin_token_v3', 'store-edit-restore-smoke-token');
+      localStorage.setItem('admin_token', 'store-edit-restore-smoke-token');
+      localStorage.setItem('token', 'store-edit-restore-smoke-token');
+      localStorage.setItem('auth_token', 'store-edit-restore-smoke-token');
+      sessionStorage.setItem('hamzawy-admin-store-edit-product', 'store-edit-restore-smoke-product');
+    });
+    await storeEditRestorePage.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      let body = apiResponse(url.pathname);
+      if (url.pathname.endsWith('/admin/store/products')) {
+        body = {
+          products: [{ _id: 'store-edit-restore-smoke-product', name: 'منتج استعادة وضع التعديل', category: 'عام', price: 275, description: 'وصف محفوظ', isActive: true, isAdvertised: false }],
+          categories: [{ name: 'عام', productCount: 1, imageUrl: '', fallbackImageUrl: '', customImageUrl: '', imageFileId: null, hasCustomImage: false }]
+        };
+      } else if (url.pathname.endsWith('/admin/store/ad-settings')) {
+        body = { rotationSeconds: 10 };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: JSON.stringify(body)
+      });
+    });
+    try {
+      const response = await storeEditRestorePage.goto(BASE + '/admin-smoke-panel-20261105#store', {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      });
+      if (!response || response.status() !== 200) failures.push('admin/store-edit-restore: admin page did not return HTTP 200');
+      await storeEditRestorePage.getByRole('button', { name: 'حفظ التعديل' }).waitFor({ state: 'visible', timeout: 6000 });
+      const restoredProductName = await storeEditRestorePage.locator('#store-name').inputValue();
+      if (restoredProductName !== 'منتج استعادة وضع التعديل') {
+        failures.push('admin/store-edit-restore: selected product edit form was not restored (received ' + restoredProductName + ')');
+      }
+      const restoredSession = await storeEditRestorePage.evaluate(() =>
+        sessionStorage.getItem('hamzawy-admin-store-edit-product'));
+      if (restoredSession !== 'store-edit-restore-smoke-product') {
+        failures.push('admin/store-edit-restore: edit session was not retained for navigation');
+      }
+      if (storeEditPageErrors.length) failures.push('admin/store-edit-restore: ' + storeEditPageErrors.join(' | '));
+    } catch (error) {
+      failures.push('admin/store-edit-restore: ' + error.message);
+    } finally {
+      await storeEditRestorePage.close();
+    }
+
   } finally {
     await browser.close();
   }
