@@ -89,6 +89,7 @@ async function run() {
       const clientRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-render.js'), 'utf8');
       const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
       const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
+      const technicianOffers = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-offers.js'), 'utf8');
       const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
       const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
       assert.notEqual(clientHomeStart, -1, 'client home dashboard must render');
@@ -121,6 +122,11 @@ async function run() {
       assert.ok(!technicianRender.includes('fanni-summary-card'), 'legacy duplicate technician summary must not appear above the native profile row');
       assert.ok(technicianRender.includes('fanni-home-availability-toggle'), 'technician profile row must include the ON/OFF availability control');
       assert.ok(technicianRender.includes('fanni-home-offline-note'), 'technician offline state must show the native-app warning');
+      assert.ok(
+        technicianOffers.includes("['تم الانتهاء','مكتمل','مكتملة','completed','finished']") &&
+        technicianOffers.includes("o?.orderStatus||o?.status||'"),
+        'technician offer lists and dashboard counts must classify all native-app completed statuses consistently'
+      );
       assert.ok(
         technicianRender.indexOf('class="fanni-home-actions"') < technicianRender.indexOf('class="fanni-home-review-note"'),
         'technician approval note must follow the quick actions like the native app'
