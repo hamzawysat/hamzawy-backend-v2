@@ -37,12 +37,19 @@
     if(!b){
       b=document.createElement('button');
       b.id='sonaa-web-push-enable';b._sonaaKey=key;b.type='button';
-      b.style.cssText='position:fixed;z-index:9999;top:12px;left:12px;max-width:calc(100vw - 24px);padding:9px 13px;border:1px solid #bfdbfe;border-radius:12px;background:#fff;color:#12305b;font:700 12px system-ui;box-shadow:0 4px 16px #0b1b3a22';
+      b.style.cssText='position:relative;z-index:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:max-content;max-width:calc(100% - 24px);min-height:34px;margin:7px auto;padding:7px 12px;border:1px solid #bfdbfe;border-radius:10px;background:#fff;color:#12305b;font:700 12px system-ui;line-height:1.35;white-space:normal;text-align:center;box-shadow:0 2px 8px #0b1b3a12';
       b.onclick=()=>enable(b,a);
       document.body.appendChild(b);
     }
     b.textContent=label||'🔔 تفعيل إشعارات المتصفح';
     b.disabled=false;
+    // Keep the opt-in prompt in normal page flow, immediately below the sticky dashboard header.
+    // This prevents it from covering header actions or dashboard controls.
+    const app=document.getElementById('app');
+    const shell=app?.querySelector('.dashboard-top-shell');
+    if(app&&b.parentElement!==app){
+      if(shell)shell.insertAdjacentElement('afterend',b);else app.prepend(b);
+    }
   }
   async function saveSubscription(a,s){
     const r=await fetch(apiUrl('/api/notifications/'+a.role+'/web-subscription'),{
