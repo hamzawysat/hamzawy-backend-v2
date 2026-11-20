@@ -936,6 +936,59 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #toast :where(.toast
   box-shadow: 0 8px 22px rgba(7,19,110,.16) !important;
 }
 
+/* Notifications and chat messages use the app's readable white/indigo surfaces. */
+html[data-sonaa-theme="fanni"] body #app .fanni-notifications-panel {
+  border:1px solid var(--hs-border) !important;
+  border-radius:18px !important;
+  background:#FFFFFF !important;
+  color:var(--hs-text) !important;
+  box-shadow:0 12px 30px rgba(7,19,110,.16) !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notifications-panel>div:first-child {
+  border-color:var(--hs-border) !important;
+  background:#FFFFFF !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notifications-panel button.text-blue-700 {
+  color:var(--hs-indigo-700) !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notification-item {
+  border-color:#E8EDF5 !important;
+  color:var(--hs-text) !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notification-item.is-unread {
+  background:#EEF2FF !important;
+  border-right:3px solid var(--hs-indigo-500) !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notification-item.is-read {
+  background:#FFFFFF !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notification-item b {
+  color:var(--hs-navy) !important;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-notification-item span {
+  color:var(--hs-text) !important;
+}
+html[data-sonaa-theme="support"] body .message {
+  border:1px solid var(--hs-border) !important;
+  border-radius:14px !important;
+  background:#F7F9FC !important;
+  color:var(--hs-text) !important;
+}
+html[data-sonaa-theme="support"] body .message.mine {
+  border-color:#D5DDFE !important;
+  background:#E8EDFF !important;
+}
+html[data-sonaa-theme="support"] body .message.admin {
+  border-color:#C6E8E2 !important;
+  background:#EAF8F5 !important;
+}
+html[data-sonaa-theme="support"] body .message .meta {
+  color:var(--hs-muted) !important;
+}
+html[data-sonaa-theme="support"] body .message .body {
+  color:var(--hs-text) !important;
+}
+
 /* Floating controls keep their position but use the same indigo identity. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .global-refresh-float,.support-float,.account-support-float,.refresh-float,.refresh-button
