@@ -77,7 +77,7 @@
       .map(item => item.area);
   }
 
-  global.normalizeAreaSearchText = normalizeAreaSearchText;
-  global.matchesAreaSearch = matchesAreaSearch;
-  global.filterAreaOptions = filterAreaOptions;
-})(window);
+  const api = { normalizeAreaSearchText, matchesAreaSearch, filterAreaOptions };
+  Object.assign(global, api);
+  if (typeof module !== 'undefined' && module.exports) module.exports = api;
+})(typeof window !== 'undefined' ? window : globalThis);
