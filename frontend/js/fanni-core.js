@@ -465,11 +465,13 @@ function applyFilter() {
  }
 
  if (state.search) {
-  const q = state.search.toLowerCase();
-
+  const rawQuery = String(state.search || '').trim().toLocaleLowerCase('ar-EG');
+  const normalizedQuery = normalizeAreaSearchText(rawQuery);
   list = list.filter(o =>
-   [o.sn, o.area, o.service, o.specialty, o.order?.service]
-    .some(x => String(x || '').toLowerCase().includes(q))
+   [o.sn, o.area, o.service, o.specialty, o.order?.service].some(value => {
+    const rawValue = String(value || '').trim().toLocaleLowerCase('ar-EG');
+    return rawValue.includes(rawQuery) || matchesAreaSearch(value, normalizedQuery);
+   })
   );
  }
 
