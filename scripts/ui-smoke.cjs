@@ -86,10 +86,6 @@ function verifyAdminDashboardSource() {
       editStoreFunction.includes('window.scrollTo({top:targetTop')) {
     throw new Error('Admin store product edit must scroll the actual edit panel into view, including nested scroll containers');
   }
-      !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
-      editStoreFunction.includes('window.scrollTo({top:0')) {
-    throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
-  }
   if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
       !store.includes('function persistStoreProductEditSession(productId)') ||
       !store.includes('function restoreStoreProductEditSession()') ||
