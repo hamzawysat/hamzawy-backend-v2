@@ -82,8 +82,9 @@ function verifyAdminDashboardSource() {
   }
   const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('\nasync function deleteStoreProduct('));
   if (!editStoreFunction.includes("document.getElementById('store-name')?.closest('.premium-panel')") ||
-      !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
-      editStoreFunction.includes('window.scrollTo({top:0')) {
+      !editStoreFunction.includes('scrollStoreProductEditFormIntoView();') ||
+      !store.includes("editForm.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })") ||
+      store.includes("window.scrollTo({top:0")) {
     throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
   }
   if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
