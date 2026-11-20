@@ -81,11 +81,12 @@ function verifyAdminDashboardSource() {
     throw new Error('Admin render must preserve the current scroll position');
   }
   const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('async function deleteStoreProduct('));
-  if (!editStoreFunction.includes("editForm.style.scrollMarginTop=(headerHeight+16)+'px'") ||
-      !editStoreFunction.includes("editForm.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'})") ||
-      editStoreFunction.includes('window.scrollTo({top:targetTop')) {
-    throw new Error('Admin store product edit must scroll the actual edit panel into view, including nested scroll containers');
+  if (!editStoreFunction.includes('scrollStoreProductEditFormIntoView();') ||
+      !store.includes('function scrollStoreProductEditFormIntoView()') ||
+      !store.includes("editForm.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })")) {
+    throw new Error('Admin product edit must call the nested-container-safe scroll helper');
   }
+
   if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
       !store.includes('function persistStoreProductEditSession(productId)') ||
       !store.includes('function restoreStoreProductEditSession()') ||
