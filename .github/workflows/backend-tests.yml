@@ -1,5 +1,9 @@
 name: Focused frontend and backend checks
 
+permissions:
+  contents: read
+  pull-requests: read
+
 on:
   pull_request:
     branches: [main]
@@ -47,6 +51,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          token: ${{ github.token }}
           filters: |
             backend:
               - 'src/**'
