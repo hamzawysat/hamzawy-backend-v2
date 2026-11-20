@@ -145,6 +145,31 @@ async function run() {
       assert.ok(brandStyles.includes('background:#DCE5FF'), 'referral strips must use the native-app indigo surface');
     });
 
+    await test('shared brand stylesheet remains the final visual layer on all browser pages', async () => {
+      const pages = [
+        'index.html', 'client.html', 'fanni.html', 'support.html', 'password.html',
+        'customers.html', 'technicians.html', 'download.html', 'links.html',
+        'admin.html', 'admin-setup.html'
+      ];
+      for (const page of pages) {
+        const source = fs.readFileSync(path.join(__dirname, '../../frontend', page), 'utf8');
+        const brandPosition = source.lastIndexOf('hamzawy-sat-brand.css');
+        assert.notEqual(brandPosition, -1, page + ' must load the shared brand stylesheet');
+        assert.equal(
+          source.indexOf('<style', brandPosition),
+          -1,
+          page + ' must not contain inline style blocks after the shared brand stylesheet'
+        );
+        assert.ok(
+          source.includes('<meta name="theme-color" content="#101F9B">'),
+          page + ' must use the native app brand color for browser chrome'
+        );
+      }
+      const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../frontend/manifest.webmanifest'), 'utf8'));
+      assert.equal(manifest.theme_color, '#101F9B');
+      assert.equal(manifest.background_color, '#F4F8FC');
+    });
+
     await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
       const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
       const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
