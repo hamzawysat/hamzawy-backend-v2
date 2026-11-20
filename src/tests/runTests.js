@@ -124,7 +124,8 @@ async function run() {
       assert.ok(technicianRender.includes('fanni-home-offline-note'), 'technician offline state must show the native-app warning');
       assert.ok(
         technicianOffers.includes("['تم الانتهاء','مكتمل','مكتملة','completed','finished']") &&
-        technicianOffers.includes("o?.orderStatus||o?.status||'"),
+        technicianOffers.includes("o?.orderStatus||o?.status||'") &&
+        !technicianOffers.includes("o?.completed===true"),
         'technician offer lists and dashboard counts must classify all native-app completed statuses consistently'
       );
       assert.ok(
