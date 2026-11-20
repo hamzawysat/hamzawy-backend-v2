@@ -59,6 +59,142 @@ async function run() {
       assert.equal(search.matchesArabicStoreSearch(product, '   '), true, 'an empty query should not filter products');
     });
 
+    await test('browser area search matches the native app Arabic normalization and typo tolerance', async () => {
+      const search = require('../../frontend/js/area-search');
+      assert.equal(search.normalizeAreaSearchText('إشــتراك مُميّز'), 'اشتراك مميز');
+      assert.equal(search.normalizeAreaSearchText('أجهزة آيفون ١٢'), 'اجهزه ايفون 12');
+      assert.equal(search.matchesAreaSearch('الإسكندرية', 'اسكندريه'), true);
+      assert.equal(search.matchesAreaSearch('القاهرة', 'المنصورة'), false);
+      assert.deepEqual(
+        search.filterAreaOptions(['القاهرة', 'الجيزة', 'جميع المناطق'], 'الجيزه'),
+        ['الجيزة'],
+        'matching areas should be ranked and the reserved all-areas label excluded'
+      );
+    });
+
+    await test('client and technician dashboards load the shared native area search before rendering', async () => {
+      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
+      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
+      const clientRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-render.js'), 'utf8');
+      const technicianCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-core.js'), 'utf8');
+      assert.ok(clientPage.indexOf('/js/area-search.js') !== -1);
+      assert.ok(clientPage.indexOf('/js/area-search.js') < clientPage.indexOf('/js/client-render.js'));
+      assert.ok(technicianPage.indexOf('/js/area-search.js') !== -1);
+      assert.ok(technicianPage.indexOf('/js/area-search.js') < technicianPage.indexOf('/js/fanni-core.js'));
+      assert.ok(clientRender.includes('filterAreaOptions(AREA_OPTIONS,state.areaSearch)'));
+      assert.ok(technicianCore.includes('matchesAreaSearch(value, normalizedQuery)'));
+    });
+
+    await test('client and technician home dashboards preserve native-app section order and key tiles', async () => {
+      const clientRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-render.js'), 'utf8');
+      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
+      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
+      const technicianOffers = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-offers.js'), 'utf8');
+      const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
+      const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
+      assert.notEqual(clientHomeStart, -1, 'client home dashboard must render');
+      const clientProfilePosition = clientRender.indexOf('class="client-home-profile-shell"');
+      const clientHeroPosition = clientRender.indexOf('class="client-home-hero"', clientHomeStart);
+      assert.ok(
+        clientProfilePosition !== -1 && clientProfilePosition < clientHeroPosition,
+        'client profile and wallet strip must appear above public banners and the main request banner'
+      );
+      assert.ok(
+        clientRender.includes("عميل • ${Number(state.walletBalance||0).toLocaleString('ar-EG')} جنيه"),
+        'client profile must show role and wallet balance'
+      );
+      for (const status of ['مكتمل', 'مكتملة', 'completed', 'complete', 'finished']) {
+        assert.ok(clientRender.includes("'" + status + "'"), 'client dashboard must classify ' + status + ' as a previous order');
+      }
+      assert.ok(clientRender.includes("o?.status||o?.orderStatus||''"), 'client dashboard counts must support both status fields like the native app');
+      assert.ok(
+        clientAccount.includes("new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished'])") &&
+        clientAccount.includes("o?.status||o?.orderStatus||'"),
+        'client order-history filters must classify the same completed statuses and status fields as the native dashboard'
+      );
+      assert.ok(
+        (clientRender.match(/onclick="setTab\('orders'\);state\.accountOrdersTab='current';render\(\)"/g) || []).length >= 3,
+        'client active-orders statistic, total-orders statistic, and order-history shortcut must always open current orders like the native app'
+      );
+      for (const key of ['wallet', 'available', 'completed', 'offers']) {
+        assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
+      }
+      assert.ok(!technicianRender.includes('fanni-summary-card'), 'legacy duplicate technician summary must not appear above the native profile row');
+      assert.ok(technicianRender.includes('fanni-home-availability-toggle'), 'technician profile row must include the ON/OFF availability control');
+      assert.ok(technicianRender.includes('fanni-home-offline-note'), 'technician offline state must show the native-app warning');
+      assert.ok(
+        technicianOffers.includes("['تم الانتهاء','مكتمل','مكتملة','completed','finished']") &&
+        technicianOffers.includes("o?.orderStatus||o?.status||'") &&
+        !technicianOffers.includes("o?.completed===true"),
+        'technician offer lists and dashboard counts must classify all native-app completed statuses consistently'
+      );
+      assert.ok(
+        technicianRender.indexOf('class="fanni-home-actions"') < technicianRender.indexOf('class="fanni-home-review-note"'),
+        'technician approval note must follow the quick actions like the native app'
+      );
+      assert.ok(technicianRender.includes('شارك رابط الدعوة واكسب رصيد لكل صديق ينضم'), 'technician referral copy must match the native app');
+      assert.ok(
+        (technicianRender.match(/onclick="setTab\('myOffers'\)"/g) || []).length >= 2,
+        'technician reports and offers shortcuts must always open active submitted offers, even after viewing completed tasks'
+      );
+      assert.ok(technicianRender.includes('استكشف الفرص ←'), 'technician jobs banner must expose the native-app action');
+      for (const label of ['سجل المهام', 'التقارير', 'الإعدادات', 'طلب دعم فني']) {
+        assert.ok(technicianRender.includes(label), 'technician quick actions are missing ' + label);
+      }
+      assert.ok(brandStyles.includes('min-height:108px'), 'dashboard statistic tiles must retain the native-app height');
+      assert.ok(brandStyles.includes('background:#DCE5FF'), 'referral strips must use the native-app indigo surface');
+      assert.ok(
+        clientAccount.includes('background:#1426A5;color:#fff') && clientAccount.includes('background:#1426A5;border:2px solid #fff') && clientAccount.includes('rgba(20,38,165,.30)'),
+        'client floating support control must use the shared royal-blue palette'
+      );
+      assert.ok(
+        technicianRender.includes('background:#1426A5') && technicianRender.includes('rgba(20,38,165,.30)') &&
+        !technicianRender.includes('rgba(169,130,46,.25)'),
+        'technician floating refresh control must not retain the legacy gold shadow'
+      );
+    });
+
+    await test('shared brand stylesheet remains the final visual layer on all browser pages', async () => {
+      const pages = [
+        'index.html', 'client.html', 'fanni.html', 'support.html', 'password.html',
+        'customers.html', 'technicians.html', 'download.html', 'links.html',
+        'admin.html', 'admin-setup.html'
+      ];
+      for (const page of pages) {
+        const source = fs.readFileSync(path.join(__dirname, '../../frontend', page), 'utf8');
+        const brandPosition = source.lastIndexOf('hamzawy-sat-brand.css');
+        assert.notEqual(brandPosition, -1, page + ' must load the shared brand stylesheet');
+        assert.equal(
+          source.indexOf('<style', brandPosition),
+          -1,
+          page + ' must not contain inline style blocks after the shared brand stylesheet'
+        );
+        assert.ok(
+          source.includes('<meta name="theme-color" content="#101F9B">'),
+          page + ' must use the native app brand color for browser chrome'
+        );
+      }
+      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
+      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
+      for (const source of [clientAccount, technicianRender]) {
+        assert.ok(source.includes('#172DAD') && source.includes('#FFFFFF'), 'account entry links must use the native blue palette');
+        for (const legacyColor of ['#d6b45a', '#fffdf5', '#fff4cf', '#173c6c', '#1d4ed8', '#2563eb']) {
+          assert.ok(!source.toLowerCase().includes(legacyColor.toLowerCase()), 'account entry renderer still contains legacy color ' + legacyColor);
+        }
+      }
+      assert.ok(clientAccount.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'client account social link must use the native blue palette');
+      assert.ok(technicianRender.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'technician account social link must use the native blue palette');
+      assert.ok(!clientAccount.includes('#d6b45a') && !clientAccount.includes('#fffdf5'), 'client account entry screen must not retain the legacy gold palette');
+      assert.ok(!technicianRender.includes('#d6b45a') && !technicianRender.includes('#fffdf5'), 'technician account entry screen must not retain the legacy gold palette');
+      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
+      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
+      assert.match(clientPage, /client-account\.js\?v=[^"'&\s]+/, 'client account script must have a cache-busting version');
+      assert.match(technicianPage, /fanni-render\.js\?v=[^"'&\s]+/, 'technician renderer script must have a cache-busting version');
+      const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../frontend/manifest.webmanifest'), 'utf8'));
+      assert.equal(manifest.theme_color, '#101F9B');
+      assert.equal(manifest.background_color, '#F4F8FC');
+    });
+
     await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
       const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
       const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');

@@ -1,9 +1,7 @@
 
 'use strict';
 
-function normalizeAreaSearchText(value){
-  return String(value||'').normalize('NFC').replace(/[أإآٱ]/g,'ا').toLocaleLowerCase('ar');
-}
+
 
 
 function renderClientNewRequestChooser(){
@@ -74,7 +72,7 @@ function render(){
      <div class="flex items-center justify-end gap-1">
       <a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="dashboard-download-btn h-9 px-2 sm:px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold whitespace-nowrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>تحميل التطبيق</span></a>
       <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-amber-200 bg-amber-50 text-[18px] text-amber-600 shrink-0">🔔${notificationBadge()}</button>
-      <a href="password.html?role=client&mode=account" aria-label="حسابي" title="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 bg-[#F8F6F0] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</a>
+      <a href="password.html?role=client&mode=account" aria-label="حسابي" title="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 bg-[#E8EDFF] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</a>
       <button type="button" onclick="logoutClient()" aria-label="خروج" title="خروج" class="h-9 px-2 rounded-xl bg-red-50 border border-red-100 text-red-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>
      </div>
      <a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="client-home-main-btn h-8 px-3 rounded-lg text-white inline-flex items-center justify-center gap-1 text-[10px] font-extrabold whitespace-nowrap"><span aria-hidden="true">⌂</span><span>القائمة الرئيسية</span></a><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" class="dashboard-social-link">🔗 تابعنا على منصات التواصل</a>
@@ -90,44 +88,72 @@ function render(){
     </div>
   </nav>
   </div>
+  <div class="client-home-profile-shell"><div class="client-home-profile"><span class="client-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${escHtml(String(state.account?.name||state.clientName||'ع').trim().charAt(0)||'ع')}</b></span><span class="client-home-profile-name"><small>مرحباً ${escHtml(state.account?.name||state.clientName||'بك')}</small><strong>عميل • ${Number(state.walletBalance||0).toLocaleString('ar-EG')} جنيه</strong></span></div></div>
   ${notificationPanel()}
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" class="global-refresh global-refresh-float ${globalRefreshInProgress?'is-refreshing':''}"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>
   ${renderPublicContent()}
   <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
     ${state.tab==='home'?(() => {
       const orders=Array.isArray(state.myOrders)?state.myOrders:[];
-      const closed=['تم الانتهاء','منتهي','ملغي','مؤرشف','منتهي - اعتذار'];
-      const activeCount=orders.filter(o=>!closed.includes(String(o.status||''))).length;
-      const completedCount=orders.length-activeCount;
+      const closed=new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished']);
+      const isPreviousOrder=o=>closed.has(String(o?.status||o?.orderStatus||'').trim().toLowerCase());
+      const activeCount=orders.filter(o=>!isPreviousOrder(o)).length;
+      const completedCount=orders.filter(isPreviousOrder).length;
+      const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
-        <button type="button" onclick="openClientReferralPage()" class="w-full rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-3 text-right shadow-sm"><span class="flex items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><span class="min-w-0 flex-1"><span class="block text-sm font-black text-amber-950">ادعُ صديقك لتحصل على 50 جنيه مكافأة</span><span class="mt-1 block text-[11px] font-extrabold text-amber-800">اضغط هنا لدعوة صديقك</span></span><span class="text-xl font-black text-amber-800">←</span></span></button>
-        <div class="panel p-4">
-          <div class="flex items-center justify-between gap-3">
-            <div><p class="text-[10px] font-bold text-slate-500">نظرة سريعة على حسابك</p><h2 id="clientHomeTitle" class="text-[17px] font-black mt-1">أهلاً ${escHtml(state.account?.name||state.clientName||'بك')}</h2><p class="text-[11px] text-slate-500 mt-1">كل خدمات حمزاوي سات في مكان واحد</p></div>
-            <span class="rounded-full bg-cyan-50 px-3 py-1.5 text-[10px] font-extrabold text-cyan-800">لوحة العميل</span>
-          </div>
-          <div class="mt-4 grid grid-cols-2 gap-2">
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">إجمالي طلباتي</p><p class="mt-1 text-2xl font-black text-slate-900">${orders.length}</p><button type="button" onclick="setTab('orders')" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض الطلبات</button></article>
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">طلبات جارية</p><p class="mt-1 text-2xl font-black text-slate-900">${activeCount}</p><button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="mt-2 text-[11px] font-extrabold text-cyan-800">متابعة الجاري</button></article>
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">طلبات سابقة</p><p class="mt-1 text-2xl font-black text-slate-900">${completedCount}</p><button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض السابق</button></article>
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">رصيد محفظتي</p><p class="mt-1 text-2xl font-black text-slate-900">${Number(state.walletBalance||0).toLocaleString('ar-EG')} <span class="text-xs">ج</span></p><button type="button" onclick="setTab('wallet')" class="mt-2 text-[11px] font-extrabold text-cyan-800">فتح المحفظة</button></article>
-          </div>
-          <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 flex items-center justify-between gap-3"><div><p class="text-[11px] font-extrabold">الإشعارات</p><p class="text-[10px] text-slate-500 mt-1"> ${Number(state.notificationsUnread||0)} إشعار غير مقروء</p></div><button type="button" onclick="toggleNotifications()" class="rounded-lg bg-white border border-slate-200 px-3 py-2 text-[11px] font-extrabold">فتح الإشعارات</button></div>
+        <button type="button" onclick="setTab('new')" class="client-home-hero">
+          <span class="client-home-hero-copy">
+            <strong>اطلب خدمتك بسهولة</strong>
+            <span>اختار الخدمة المناسبة وهنوصلك بالفني</span>
+            <span class="client-home-hero-cta">اطلب الآن ←</span>
+          </span>
+          <span class="client-home-hero-icon" aria-hidden="true">🛠️</span>
+        </button>
+
+        <div class="client-home-section-head">
+          <h2 id="clientHomeTitle">الإحصائيات</h2>
         </div>
-        <div class="panel p-4">
-          <h3 class="text-[14px] font-extrabold">القائمة الرئيسية</h3>
-          <p class="mt-1 text-[10px] text-slate-500">اختار القسم اللي عايز تفتحه</p>
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onclick="setTab('new')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">＋ طلب خدمة جديدة</button>
-            <button type="button" onclick="setTab('orders')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">📋 طلباتي</button>
-            <button type="button" onclick="setTab('track')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">🔎 تتبع طلب</button>
-            <button type="button" onclick="setTab('wallet')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">💳 محفظتي</button>
-            <button type="button" onclick="setTab('subscriptions')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">📄 الاشتراكات</button>
-            <button type="button" onclick="setTab('store')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">🛍️ المتجر</button>
-            <button type="button" onclick="setTab('complaint')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">⚠️ الشكاوى</button>
-            <a href="password.html?role=client&mode=account" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-[12px] font-extrabold text-slate-800">👤 حسابي</a>
-          </div>
+        <div class="client-home-stats">
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
+            <span class="client-home-stat-icon">📋</span>
+            <span class="client-home-stat-label">طلبات جارية</span>
+            <strong>${activeCount}</strong>
+          </button>
+          <button type="button" onclick="setTab('wallet')" class="client-home-stat-card">
+            <span class="client-home-stat-icon">💳</span>
+            <span class="client-home-stat-label">رصيد المحفظة</span>
+            <strong>${walletValue} <small>ج</small></strong>
+          </button>
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-stat-card">
+            <span class="client-home-stat-icon">✓</span>
+            <span class="client-home-stat-label">طلبات سابقة</span>
+            <strong>${completedCount}</strong>
+          </button>
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
+            <span class="client-home-stat-icon">📄</span>
+            <span class="client-home-stat-label">إجمالي الطلبات</span>
+            <strong>${orders.length}</strong>
+          </button>
+        </div>
+
+        <button type="button" onclick="openClientReferralPage()" class="client-home-referral">
+          <span class="client-home-referral-icon" aria-hidden="true">🎁</span>
+          <span class="client-home-referral-copy">
+            <strong>ادعُ صديقك واربح 50 جنيه</strong>
+            <small>شارك رابط الدعوة واكسب رصيد عند انضمام صديقك</small>
+          </span>
+          <span class="client-home-referral-cta">دعوة الآن ←</span>
+        </button>
+
+        <div class="client-home-section-head">
+          <h2>إجراءات سريعة</h2>
+        </div>
+        <div class="client-home-actions">
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+          <a href="password.html?role=client&mode=account" class="client-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></a>
+          <a href="/support" class="client-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></a>
         </div>
       </section>`;
     })():''}
@@ -138,7 +164,7 @@ function render(){
       <div class="mt-4 space-y-3 animate-fade client-new-order">
         <div class="panel p-4 sm:p-5">
           <div class="flex items-center gap-3">
-            <div class="h-10 w-10 rounded-xl bg-[#F8F6F0] text-blue-700 flex items-center justify-center text-xl">📝</div>
+            <div class="h-10 w-10 rounded-xl bg-[#E8EDFF] text-blue-700 flex items-center justify-center text-xl">📝</div>
             <div>
               <h3 class="font-extrabold text-[15px]">بيانات الطلب</h3>
               <p class="text-[11px] text-slate-500 mt-0.5">اختار الخدمة واكتب تفاصيلها</p>
@@ -154,7 +180,7 @@ function render(){
               <label class="text-[12px] font-extrabold mb-1.5 block">نوع الخدمة ${state.servicesLoading?'<span class="text-blue-600 font-bold">(جاري التحميل...)</span>':state.servicesError?'<span class="text-red-600">(فشل التحميل)</span>':''}</label>
               <button type="button" onclick="toggleService()" aria-expanded="${state.showService?'true':'false'}" ${state.servicesLoading?'disabled':''} class="field h-[60px] px-3.5 text-right flex items-center justify-between ${state.servicesLoading?'opacity-70':''}">
                 <span class="flex items-center gap-2.5 min-w-0">
-                  <span class="h-10 w-10 rounded-xl bg-[#F8F6F0] border border-[#E8E0CF] flex items-center justify-center shrink-0 text-xl">${cat?escHtml(cat.emoji):'🛠️'}</span>
+                  <span class="h-10 w-10 rounded-xl bg-[#E8EDFF] border border-[#D5DDFE] flex items-center justify-center shrink-0 text-xl">${cat?escHtml(cat.emoji):'🛠️'}</span>
                   <span class="min-w-0">
                     <span class="block text-[13px] font-extrabold truncate">${state.servicesLoading?'جاري تحميل الخدمات...':state.servicesError?'تعذر تحميل الخدمات':cat?escHtml(state.service):'اختار الخدمة'}</span>
                     <span class="block text-[10px] text-slate-500 mt-0.5">${state.servicesLoading?'انتظر لحظة':state.servicesError?'اضغط لإعادة المحاولة':cat?escHtml(cat.label):'اضغط هنا لعرض الأقسام والخدمات'}</span>
@@ -203,7 +229,7 @@ function render(){
                       </div>
                       <div class="service-choice-grid">
                         ${selectedCategory.services.map(s=>`
-                          <button type="button" onclick="selectServiceByIndex(${ALL_SERVICES.indexOf(s)})" class="service-choice ${state.service===s?'selected':'hover:bg-[#F8F6F0]'}">
+                          <button type="button" onclick="selectServiceByIndex(${ALL_SERVICES.indexOf(s)})" class="service-choice ${state.service===s?'selected':'hover:bg-[#E8EDFF]'}">
                             <span class="service-icon" aria-hidden="true">${serviceIconFor(s)}</span>
                             <span class="service-choice-name">${escHtml(s)}</span>
                             <span class="service-choice-availability">${Number(state.area?(c.serviceTechnicianCountsByArea?.[s]?.[state.area]||0):(TECHNICIAN_COUNTS[s]||0))||0} فنيين ${state.area?'في المنطقة':'مسجلين'}</span>
@@ -220,7 +246,7 @@ function render(){
               <label for="areaInput" class="text-[12px] font-extrabold mb-1.5 block">المنطقة أو الحي *</label>
               <input id="areaSearchInput" type="search" value="${escAttr(state.areaSearch||'')}" oninput="onAreaSearch(this.value)" placeholder="🔎 ابحث باسم المنطقة أو الحي..." class="field h-[48px] px-4 text-[13px] font-bold mb-2" autocomplete="off" aria-controls="areaSearchResults" aria-expanded="${!!String(state.areaSearch||'').trim()}">
               ${state.area?'<div class="mb-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-[12px] font-extrabold text-emerald-800"><span class="block">المنطقة المختارة: '+escHtml(state.area)+'</span>'+(state.service?'<span class="mt-1 block">عدد الفنيين اللي بيقدموا الخدمة دي في المنطقة: '+(selectedServiceAreaCount??0)+'</span>':'')+'</div>':''}
-              ${String(state.areaSearch||'').trim()?'<div id="areaSearchResults" class="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg" role="listbox">'+(AREA_OPTIONS.filter(area=>normalizeAreaSearchText(area).includes(normalizeAreaSearchText(String(state.areaSearch).trim()))).slice(0,60).map(area=>'<button type="button" role="option" aria-selected="'+(state.area===area?'true':'false')+'" onclick="onAreaInput(\''+escAttr(area).replace(/\\/g,'\\').replace(/'/g,"\\'")+'\')" class="block w-full border-b border-slate-100 px-4 py-3 text-right text-[13px] font-bold text-slate-800 last:border-0 hover:bg-[#F8F6F0]">'+escHtml(area)+'</button>').join('')||'<p class="px-4 py-3 text-[12px] text-slate-500">مفيش منطقة مطابقة للبحث. جرّب اسمًا تانيًا.</p>')+'</div>':''}
+              ${String(state.areaSearch||'').trim()?'<div id="areaSearchResults" class="max-h-56 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg" role="listbox">'+(filterAreaOptions(AREA_OPTIONS,state.areaSearch).slice(0,60).map(area=>'<button type="button" role="option" aria-selected="'+(state.area===area?'true':'false')+'" onclick="onAreaInput(\''+escAttr(area).replace(/\\/g,'\\').replace(/'/g,"\\'")+'\')" class="block w-full border-b border-slate-100 px-4 py-3 text-right text-[13px] font-bold text-slate-800 last:border-0 hover:bg-[#E8EDFF]">'+escHtml(area)+'</button>').join('')||'<p class="px-4 py-3 text-[12px] text-slate-500">مفيش منطقة مطابقة للبحث. جرّب اسمًا تانيًا.</p>')+'</div>':''}
               <p class="mt-1 text-[10px] text-slate-500">${AREA_OPTIONS.length?'اكتب جزءًا من اسم المنطقة، وهتظهر المناطق المطابقة تحت خانة البحث مباشرة.':'قائمة المناطق غير متاحة حاليًا؛ حدّث الصفحة وحاول مرة أخرى.'}</p>
               
             </div>
@@ -249,7 +275,7 @@ function render(){
               <div class="mb-3 rounded-2xl border-2 border-blue-200 bg-gradient-to-l from-blue-50 to-white p-3 space-y-2">
                 <div class="text-[13px] font-black text-slate-900">📝 وضّح المشكلة بالطريقة اللي تريحك</div>
                 <p class="text-[11px] leading-5 text-slate-600">اكتب وصف المشكلة أو سجّلها بصوتك، وممكن تستخدم الطريقتين مع بعض.</p>
-                <div class="rounded-xl border border-[#E8E0CF] bg-white p-2 space-y-1.5">
+                <div class="rounded-xl border border-[#D5DDFE] bg-white p-2 space-y-1.5">
                   <div class="text-[12px] font-extrabold text-slate-800">🎙️ سجّل المشكلة بصوتك</div>
                   <div role="alert" style="display:block!important;visibility:visible!important;opacity:1!important;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:6px 8px;margin:4px 0;color:#78350f;font-size:11px;font-weight:800;line-height:1.8;text-align:right"><span aria-hidden="true" style="font-size:17px;margin-left:6px">⚠️</span><span>تنبيه مهم: ممنوع ذكر رقم التليفون أو العنوان التفصيلي في التسجيل الصوتي.</span></div>
                    <p class="text-[11px] leading-5 text-slate-600">${state.voiceRecording?'🔴 التسجيل شغّال دلوقتي...':state.voiceBlob?'✅ التسجيل جاهز، تقدر تسمعه قبل الإرسال.':'اضغط على الزر واشرح المشكلة للفني بصوتك (حتى 30 ثانية).'}</p>
@@ -285,14 +311,14 @@ function render(){
         <div class="mx-auto h-16 w-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[28px] text-emerald-600">✓</div>
         <h3 class="mt-4 text-[19px] font-extrabold">تم إنشاء طلبك بنجاح!</h3>
         <p class="mt-1 text-[12px] text-slate-500">تقدر تتابع طلبك من حسابك في قسم «طلباتي» من غير ما تدخل الرقم كل مرة</p>
-        <div class="mt-5 rounded-[16px] bg-gradient-to-l from-[#0b1b3a] to-[#A9822E] p-4 flex items-center justify-between gap-3">
+        <div class="mt-5 rounded-[16px] bg-gradient-to-l from-[#101F9B] to-[#1426A5] p-4 flex items-center justify-between gap-3">
           <div class="text-right min-w-0">
-            <p class="text-[11px] text-[#F8F6F0]">رقم الطلب</p>
+            <p class="text-[11px] text-[#E8EDFF]">رقم الطلب</p>
             <p class="mt-1 text-[22px] font-black text-white tracking-wider select-all break-all">${escHtml(state.sn)}</p>
           </div>
-          <button type="button" onclick="copySn()" class="shrink-0 h-10 px-4 rounded-xl bg-white text-[#0b1b3a] font-extrabold text-[12px]">نسخ الكود</button>
+          <button type="button" onclick="copySn()" class="shrink-0 h-10 px-4 rounded-xl bg-white text-[#101F9B] font-extrabold text-[12px]">نسخ الكود</button>
         </div>
-        <div class="mt-4 rounded-xl bg-[#F8F6F0] border border-[#E8E0CF] p-3 text-[11px] text-blue-900 font-bold leading-6">متابعة الطلبات وقبول العروض متاحان من حسابك في قسم «طلباتي».</div>
+        <div class="mt-4 rounded-xl bg-[#E8EDFF] border border-[#D5DDFE] p-3 text-[11px] text-blue-900 font-bold leading-6">متابعة الطلبات وقبول العروض متاحان من حسابك في قسم «طلباتي».</div>
         <div class="mt-5 grid grid-cols-2 gap-2">
           <button type="button" onclick="trackNow()" class="h-[46px] rounded-xl primary-btn font-extrabold text-[12px]">عرض طلباتي</button>
           <button type="button" onclick="resetForm()" class="h-[46px] rounded-xl bg-slate-100 text-slate-700 font-extrabold text-[12px]">طلب جديد</button>
@@ -304,7 +330,7 @@ function render(){
     <div class="mt-4 space-y-3 animate-fade">
       <div class="panel p-4 sm:p-5">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-xl bg-[#F8F6F0] text-blue-700 flex items-center justify-center text-lg">🔎</div>
+          <div class="h-10 w-10 rounded-xl bg-[#E8EDFF] text-blue-700 flex items-center justify-center text-lg">🔎</div>
           <div>
             <h3 class="font-extrabold text-[14px]">تتبع طلبك</h3>
             <p class="text-[11px] text-slate-500 mt-0.5">اكتب كود التتبع اللي استلمته</p>
@@ -323,7 +349,7 @@ function render(){
             <p class="text-[10px] text-slate-500 font-bold">رقم الطلب</p>
             <h4 class="font-extrabold text-[14px] mt-1">${escHtml(state.tracked.sn||'طلب')}</h4>
           </div>
-          <span class="text-[10px] font-extrabold px-3 py-1.5 rounded-full bg-[#F8F6F0] border border-[#E8E0CF] text-blue-800">${escHtml(state.tracked.status||'قيد المراجعة')}</span>
+          <span class="text-[10px] font-extrabold px-3 py-1.5 rounded-full bg-[#E8EDFF] border border-[#D5DDFE] text-blue-800">${escHtml(state.tracked.status||'قيد المراجعة')}</span>
         </div>
         <div class="mt-4 soft-card rounded-xl p-3">
           <p class="text-[10px] text-slate-500 font-bold">الخدمة المطلوبة</p>
@@ -386,7 +412,7 @@ ${state.tracked.acceptedOfferId && String(state.tracked.acceptedOfferId)===offer
             }).join('')}
         </div>
         `:''}
-        <div class="mt-4 rounded-xl border border-slate-200 p-4"><h4 class="font-extrabold text-[13px]">${state.tracked.status==='تم الانتهاء'?'سجل المحادثة':'محادثة الطلب'}</h4><p class="mt-1 text-[10px] text-slate-500">${state.tracked.status==='تم الانتهاء'?'المهمة مكتملة؛ يمكنك مراجعة سجل المحادثة والتقييم فقط.':'بعد قبول العرض تتحول المحادثة إلى محادثة كاملة مع الفني الذي اخترته.'}</p>${['تم اختيار فني','تم الانتهاء'].includes(state.tracked.status)&&Array.isArray(state.tracked.chatMessages)?'<div id="client-accepted-chat-'+escAttr(state.tracked.sn)+'">'+state.tracked.chatMessages.filter(m=>!m.targetOfferId||String(m.targetOfferId)===String(state.tracked.acceptedOfferId||'')).map(m=>'<div class="mt-2 rounded-lg p-2 '+(m.senderRole==='client'?'bg-[#F8F6F0]':'bg-emerald-50')+'"><p class="text-[10px] font-bold">'+(m.senderRole==='client'?'أنت':'الفني')+'</p><p class="text-[12px] whitespace-pre-wrap break-words">'+escHtml(m.text||'')+'</p></div>').join('')+'</div>':''}${state.tracked.status==='تم اختيار فني'?(state.tracked.priceChangeRequests||[]).filter(r=>r.status==='قيد الموافقة').map(r=>'<div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3"><p class="text-[12px] font-extrabold">طلب تعديل السعر إلى '+escHtml(String(r.newPrice))+' جنيه</p><p class="mt-1 text-[11px]">'+escHtml(r.reason||'')+'</p><div class="mt-2 flex gap-2"><button type="button" onclick="decideClientPrice(\''+escAttr(state.tracked.sn)+'\',\''+escAttr(r._id)+'\',true)" class="flex-1 rounded-lg bg-emerald-600 p-2 text-white text-xs font-bold">موافقة</button><button type="button" onclick="decideClientPrice(\''+escAttr(state.tracked.sn)+'\',\''+escAttr(r._id)+'\',false)" class="flex-1 rounded-lg bg-red-600 p-2 text-white text-xs font-bold">رفض</button></div></div>').join('')+'<textarea id="clientChatText" data-sn="'+escAttr(state.tracked.sn)+'" maxlength="1000" onkeydown="if(event.keyCode===13&&!event.shiftKey){event.preventDefault();sendClientChat(this.dataset.sn)}" class="field mt-3 min-h-[72px]" placeholder="اكتب رسالتك للفني الذي اخترته..."></textarea><button type="button" onclick="sendClientChat(\''+escAttr(state.tracked.sn)+'\')" class="mt-2 w-full h-10 rounded-xl blue-btn font-extrabold text-[12px]">إرسال الرسالة</button>':''}</div>
+        <div class="mt-4 rounded-xl border border-slate-200 p-4"><h4 class="font-extrabold text-[13px]">${state.tracked.status==='تم الانتهاء'?'سجل المحادثة':'محادثة الطلب'}</h4><p class="mt-1 text-[10px] text-slate-500">${state.tracked.status==='تم الانتهاء'?'المهمة مكتملة؛ يمكنك مراجعة سجل المحادثة والتقييم فقط.':'بعد قبول العرض تتحول المحادثة إلى محادثة كاملة مع الفني الذي اخترته.'}</p>${['تم اختيار فني','تم الانتهاء'].includes(state.tracked.status)&&Array.isArray(state.tracked.chatMessages)?'<div id="client-accepted-chat-'+escAttr(state.tracked.sn)+'">'+state.tracked.chatMessages.filter(m=>!m.targetOfferId||String(m.targetOfferId)===String(state.tracked.acceptedOfferId||'')).map(m=>'<div class="mt-2 rounded-lg p-2 '+(m.senderRole==='client'?'bg-[#E8EDFF]':'bg-emerald-50')+'"><p class="text-[10px] font-bold">'+(m.senderRole==='client'?'أنت':'الفني')+'</p><p class="text-[12px] whitespace-pre-wrap break-words">'+escHtml(m.text||'')+'</p></div>').join('')+'</div>':''}${state.tracked.status==='تم اختيار فني'?(state.tracked.priceChangeRequests||[]).filter(r=>r.status==='قيد الموافقة').map(r=>'<div class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3"><p class="text-[12px] font-extrabold">طلب تعديل السعر إلى '+escHtml(String(r.newPrice))+' جنيه</p><p class="mt-1 text-[11px]">'+escHtml(r.reason||'')+'</p><div class="mt-2 flex gap-2"><button type="button" onclick="decideClientPrice(\''+escAttr(state.tracked.sn)+'\',\''+escAttr(r._id)+'\',true)" class="flex-1 rounded-lg bg-emerald-600 p-2 text-white text-xs font-bold">موافقة</button><button type="button" onclick="decideClientPrice(\''+escAttr(state.tracked.sn)+'\',\''+escAttr(r._id)+'\',false)" class="flex-1 rounded-lg bg-red-600 p-2 text-white text-xs font-bold">رفض</button></div></div>').join('')+'<textarea id="clientChatText" data-sn="'+escAttr(state.tracked.sn)+'" maxlength="1000" onkeydown="if(event.keyCode===13&&!event.shiftKey){event.preventDefault();sendClientChat(this.dataset.sn)}" class="field mt-3 min-h-[72px]" placeholder="اكتب رسالتك للفني الذي اخترته..."></textarea><button type="button" onclick="sendClientChat(\''+escAttr(state.tracked.sn)+'\')" class="mt-2 w-full h-10 rounded-xl blue-btn font-extrabold text-[12px]">إرسال الرسالة</button>':''}</div>
         ${state.tracked.status==='تم الانتهاء' && state.tracked.canRate && !isRatingSkipped('client',state.tracked.sn) ? '<div id="client-rating-'+escAttr(state.tracked.sn)+'" class="mt-4 rounded-xl border border-amber-200 bg-amber-50 p-4"><h4 class="font-extrabold text-[14px] text-amber-900">قيّم الفني بعد انتهاء المهمة</h4><p class="mt-1 text-[11px] text-amber-800">تقييمك يظهر لك وللفني، والتعليق اختياري.</p><label class="block mt-3 text-[12px] font-extrabold">عدد النجوم</label><select class="field mt-1" onchange="state.ratingStars=Number(this.value);render()">'+[5,4,3,2,1].map(n=>'<option value="'+n+'" '+(state.ratingStars===n?'selected':'')+'>'+('★'.repeat(n))+' — '+n+' نجوم</option>').join('')+'</select><label class="block mt-3 text-[12px] font-extrabold">تعليق (اختياري)</label><textarea id="clientRatingComment" class="field mt-1 min-h-[80px]" maxlength="500" placeholder="اكتب ملاحظتك عن التعامل..." oninput="state.ratingComment=this.value">'+escHtml(state.ratingComment)+'</textarea>'+(state.ratingStars===1?'<label class="mt-3 flex items-start gap-2 text-[12px] font-bold text-red-800"><input id="clientRatingBlock" type="checkbox" class="mt-1"> عدم عرض طلباتي المستقبلية على هذا الفني</label>':'')+'<button type="button" onclick="submitClientRating(\''+escAttr(state.tracked.sn)+'\')" '+(state.ratingSubmitting?'disabled':'')+' class="mt-3 w-full h-11 rounded-xl bg-amber-500 text-white font-extrabold text-[12px]">'+(state.ratingSubmitting?'جاري حفظ التقييم...':'إرسال التقييم')+'</button><button type="button" onclick="skipClientRating(\''+escAttr(state.tracked.sn)+'\')" class="mt-2 w-full h-10 rounded-xl border border-amber-300 bg-white text-amber-900 font-extrabold text-[12px]">تخطي التقييم</button></div>' : ''}
         ${Array.isArray(state.tracked.ratings)&&state.tracked.ratings.length ? '<div class="mt-4 rounded-xl border border-slate-200 p-4"><h4 class="font-extrabold text-[13px]">التقييمات المتبادلة</h4>'+state.tracked.ratings.map(r=>'<div class="mt-3 border-t border-slate-100 pt-3"><p class="text-[12px] font-extrabold">'+(r.reviewerRole==='client'?'تقييم العميل للفني':'تقييم الفني للعميل')+' — '+('★'.repeat(Math.max(0,Math.min(5,Number(r.stars)||0))))+' '+(Number(r.stars)||0)+'/5</p>'+(r.comment?'<p class="mt-1 text-[12px] leading-5 text-slate-600">'+escHtml(r.comment)+'</p>':'')+'</div>').join('')+'</div>' : ''}
       </div>`:''}
@@ -431,7 +457,7 @@ ${state.tracked.acceptedOfferId && String(state.tracked.acceptedOfferId)===offer
       <!-- قسم متابعة الشكاوى - إضافة جديدة -->
       <div class="panel p-4 sm:p-5 mt-4">
         <div class="flex items-center gap-3">
-          <div class="h-10 w-10 rounded-xl bg-[#F8F6F0] text-blue-700 flex items-center justify-center text-lg">🔍</div>
+          <div class="h-10 w-10 rounded-xl bg-[#E8EDFF] text-blue-700 flex items-center justify-center text-lg">🔍</div>
           <div>
             <h3 class="font-extrabold text-[15px]">متابعة الشكاوى</h3>
             <p class="text-[11px] text-slate-500 mt-0.5">تابع حالة شكواك ورد الإدارة عليها</p>
@@ -465,7 +491,7 @@ ${state.tracked.acceptedOfferId && String(state.tracked.acceptedOfferId)===offer
                       <p class="font-mono font-black text-[13px] text-blue-800 mt-1">${escHtml(sn)}</p>
                       <p class="text-[10px] text-slate-400 mt-1">${escHtml(created)}</p>
                     </div>
-                    <span class="shrink-0 text-[10px] font-extrabold px-3 py-1.5 rounded-full bg-[#F8F6F0] border border-[#E8E0CF] text-blue-800">${escHtml(status)}</span>
+                    <span class="shrink-0 text-[10px] font-extrabold px-3 py-1.5 rounded-full bg-[#E8EDFF] border border-[#D5DDFE] text-blue-800">${escHtml(status)}</span>
                   </div>
                   <div class="mt-3 rounded-xl bg-slate-50 border border-slate-100 p-3">
                     <p class="text-[10px] text-slate-500 font-bold">رد الإدارة</p>

@@ -17,7 +17,7 @@
   gap:5px!important;min-width:0!important;width:auto!important;
 }
 #app .app-header.fanni-app-header .brand-mark{
-  width:42px!important;height:42px!important;flex:0 0 42px!important;
+  width:34px!important;height:34px!important;flex:0 0 34px!important;
   border-radius:10px!important;overflow:hidden!important;background:#fff!important;
   border:1px solid #dbe5f1!important;box-shadow:0 2px 5px rgba(23,60,108,.10)!important;
 }
@@ -30,13 +30,13 @@
   flex:1 1 auto!important;min-width:0!important;
 }
 #app .app-header.fanni-app-header h1{
-  margin:0!important;font-size:11px!important;line-height:1.2!important;
-  font-weight:900!important;color:#173c6c!important;text-shadow:none!important;
+  margin:0!important;font-size:16px!important;line-height:1.2!important;
+  font-weight:900!important;color:#101F9B!important;text-shadow:none!important;
 }
 #app .app-header.fanni-app-header .client-header-slogan{
   display:block!important;margin:2px 0 0!important;font-size:8px!important;
   line-height:1.2!important;font-weight:800!important;white-space:nowrap!important;
-  color:#52657d!important;text-shadow:none!important;
+  color:#61758A!important;text-shadow:none!important;
 }
 /* Four compact utility actions on row one; home and social links share row two. */
 #app .app-header.fanni-app-header>div:first-child>div:last-child{
@@ -90,7 +90,7 @@
   overflow:hidden!important;text-overflow:ellipsis!important;box-shadow:none!important;
 }
 #app .app-header.fanni-app-header .client-home-main-btn{
-  background:#173c6c!important;color:#fff!important;-webkit-text-fill-color:#fff!important;
+  background:#101F9B!important;color:#fff!important;-webkit-text-fill-color:#fff!important;
   border:1px solid #102d53!important;
 }
 #app .app-header.fanni-app-header .dashboard-social-link,
@@ -104,8 +104,8 @@
   #app .app-header.fanni-app-header>div:first-child{gap:6px!important;padding:4px 6px!important}
   #app .app-header.fanni-app-header>div:first-child>div:first-child{flex-basis:38%!important;gap:4px!important}
   #app .app-header.fanni-app-header .brand-mark{width:38px!important;height:38px!important;flex-basis:38px!important}
-  #app .app-header.fanni-app-header h1{font-size:10px!important}
-  #app .app-header.fanni-app-header .client-header-slogan{font-size:7px!important}
+  #app .app-header.fanni-app-header h1{font-size:14px!important}
+  #app .app-header.fanni-app-header .client-header-slogan{font-size:7.5px!important}
   #app .app-header.fanni-app-header>div:first-child>div:last-child{flex-basis:62%!important;gap:3px!important}
   #app .app-header.fanni-app-header>div:first-child>div:last-child>div:first-child{gap:3px!important}
   #app .app-header.fanni-app-header>div:first-child>div:last-child>div:first-child>*{height:26px!important;min-height:26px!important;max-height:26px!important;font-size:8px!important}
@@ -116,8 +116,8 @@
   #app .app-header.fanni-app-header>div:first-child>div:first-child{flex-basis:36%!important}
   #app .app-header.fanni-app-header>div:first-child>div:last-child{flex-basis:64%!important}
   #app .app-header.fanni-app-header .brand-mark{width:34px!important;height:34px!important;flex-basis:34px!important}
-  #app .app-header.fanni-app-header h1{font-size:9px!important}
-  #app .app-header.fanni-app-header .client-header-slogan{font-size:6.5px!important}
+  #app .app-header.fanni-app-header h1{font-size:12px!important}
+  #app .app-header.fanni-app-header .client-header-slogan{font-size:7px!important}
   #app .app-header.fanni-app-header>div:first-child>div:last-child>div:first-child>*{font-size:7px!important}
   #app .app-header.fanni-app-header>div:first-child>div:last-child>a{font-size:7px!important}
 }

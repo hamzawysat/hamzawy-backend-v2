@@ -8,6 +8,7 @@ const path = require('path');
 function verifyAdminDashboardSource() {
   const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
   const shell = read('frontend/js/admin-shell.js');
+  const store = read('frontend/js/admin-store.js');
   const core = read('frontend/js/admin-core.js');
   const stats = read('frontend/js/admin/clients-render.js');
   const header = read('frontend/css/admin-header.css');
@@ -74,8 +75,49 @@ function verifyAdminDashboardSource() {
       !html.includes('admin-header.css?v=20261118-admin-actions-audience1')) {
     throw new Error('Admin dashboard header stylesheet/cache regression');
   }
+  if (!shell.includes('let adminRenderSequence=0;') ||
+      !shell.includes('window.scrollTo(scrollSnapshot.x,scrollSnapshot.y)') ||
+      !shell.includes('requestAnimationFrame(restoreScrollPosition)')) {
+    throw new Error('Admin render must preserve the current scroll position');
+  }
+  if ((store.match(/object-contain/g) || []).length < 2 ||
+      store.includes('object-cover')) {
+    throw new Error('Admin store category and product images must remain fully visible without cropping');
+  }
+  if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
+      !html.includes('admin-store.js?v=20261120-admin-store-contain1')) {
+    throw new Error('Admin visual fix asset cache versions were not refreshed');
+  }
 }
 verifyAdminDashboardSource();
+function verifyBrandVisualSystem() {
+  const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
+  const brand = read('frontend/css/hamzawy-sat-brand.css');
+  const pages = [
+    ['index.html', 'index'],
+    ['client.html', 'client'],
+    ['fanni.html', 'fanni'],
+    ['password.html', 'password'],
+    ['support.html', 'support'],
+    ['customers.html', 'customers'],
+    ['technicians.html', 'technicians'],
+    ['download.html', 'download'],
+    ['links.html', 'links'],
+    ['admin.html', 'admin'],
+    ['admin-setup.html', 'admin-setup']
+  ];
+  for (const [file, theme] of pages) {
+    const html = read('frontend/' + file);
+    if (!html.includes('data-sonaa-theme="' + theme + '"') ||
+        !html.includes('/css/hamzawy-sat-brand.css')) {
+      throw new Error('Shared native-app brand system missing from ' + file);
+    }
+    if (!brand.includes('html[data-sonaa-theme="' + theme + '"]')) {
+      throw new Error('Shared brand system has no page-specific rules for ' + theme);
+    }
+  }
+}
+verifyBrandVisualSystem();
 
 const BASE = process.env.SONAA_SMOKE_BASE || 'http://127.0.0.1:4173';
 const pages = [
@@ -123,11 +165,22 @@ function apiResponse(pathname) {
           });
         }
         const pageErrors = [];
+        const browserConsoleErrors = [];
         const badLocalResponses = [];
+        const authResponses = [];
+        const technicianProfileResponses = [];
 
         page.on('pageerror', error => pageErrors.push(error.message));
-        page.on('response', response => {
+        page.on('console', message => { if (message.type() === 'error') browserConsoleErrors.push(message.text()); });
+        page.on('response', async response => {
           const url = new URL(response.url());
+          if (url.origin === BASE && url.pathname === '/api/client/login' && response.request().method() === 'POST') {
+            authResponses.push('POST ' + url.pathname + ' -> ' + response.status());
+          }
+          if (url.origin === BASE && url.pathname === '/api/fanni/me') {
+            const detail = await response.text().catch(() => '');
+            technicianProfileResponses.push(response.request().method() + ' ' + url.pathname + ' -> ' + response.status() + ' ' + detail.slice(0, 350));
+          }
           if (url.origin === BASE && (response.status() === 404 || response.status() >= 500)) {
             badLocalResponses.push(response.status() + ' ' + url.pathname);
           }
@@ -279,8 +332,10 @@ function apiResponse(pathname) {
                 '/css/client-foundation.css',
                 '/css/client-layout.css',
                 '/css/theme.css',
-                '/css/hamzawy-sat-brand.css',
-                '/css/client-components.css'
+                '/css/client-components.css',
+                '/css/ui-light-surfaces.css',
+                '/css/dashboard-header-unified.css',
+                '/css/hamzawy-sat-brand.css'
               ].map(path => clientHeadStyles.indexOf(path));
               const clientHtmlSource = await (await page.request.get(BASE + '/frontend/client.html')).text();
               const clientActionsSource = await (await page.request.get(BASE + '/frontend/js/client-actions.js')).text();
@@ -371,9 +426,19 @@ function apiResponse(pathname) {
               if (process.env.SONAA_SMOKE_REAL_API === '1') {
                 await page.locator('#accountPhone').fill('01012345670');
                 await page.locator('#accountPassword').fill('ClientSmokePass123');
+                const clientLoginResponsePromise = page.waitForResponse(response =>
+                  response.url().includes('/api/client/login') && response.request().method() === 'POST',
+                  { timeout: 15000 }
+                );
                 await page.locator('.account-submit').click();
-                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), { timeout: 10000 });
-                await page.waitForFunction(() => !!state.account && !!state.accountToken, { timeout: 10000 });
+                const clientLoginResponse = await clientLoginResponsePromise;
+                if (!clientLoginResponse.ok()) {
+                  const loginBody = await clientLoginResponse.text().catch(() => '');
+                  throw new Error('client/desktop: seeded client login returned HTTP ' +
+                    clientLoginResponse.status() + ' (' + loginBody.slice(0, 500) + ')');
+                }
+                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
                 await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
                 const customerTabIds = ['home', 'new', 'orders', 'wallet', 'subscriptions', 'store', 'complaint'];
                 const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
@@ -461,7 +526,13 @@ function apiResponse(pathname) {
                 await page.locator('#fanniLoginPhone').fill('01012345671');
                 await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
                 await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
-                await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), { timeout: 10000 });
+                await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!document.querySelector('#guidelinesAcceptedCheck') || !!document.querySelector('nav.fanni-dashboard-tabs'), null, { timeout: 10000 });
+                if (await page.locator('#guidelinesAcceptedCheck').count()) {
+                  await page.locator('#guidelinesAcceptedCheck').check();
+                  await page.getByRole('button', { name: 'موافق ثم تأكيد' }).click();
+                }
+                await page.locator('nav.fanni-dashboard-tabs').waitFor({ state: 'visible', timeout: 10000 });
                 const technicianNavigation = await page.evaluate(() => ({
                   tabs: typeof TECHNICIAN_TAB_DEFINITIONS !== 'undefined' ? TECHNICIAN_TAB_DEFINITIONS.map(tab => tab.id) : [],
                   notificationBell: !!document.querySelector('button[aria-label="الإشعارات"]'),
@@ -487,13 +558,16 @@ function apiResponse(pathname) {
                 const pollingStarted = await page.evaluate(() => !!fanniChatsPollTimer && !!fanniMessagesPollTimer);
                 if (!pollingStarted) failures.push('technician: chat/message polling did not start after login');
                 await page.getByRole('button', { name: /الدعم الفني/ }).first().waitFor({ state: 'visible', timeout: 3000 });
-                await page.evaluate(() => setTab('myOrders'));
+                await page.evaluate(() => openTechnicianSection('myOrders'));
                 await page.getByRole('button', { name: /المهام المكتملة/ }).click();
                 await page.getByRole('heading', { name: 'المهام المكتملة' }).waitFor({ state: 'visible', timeout: 3000 });
                 await page.getByRole('button', { name: /العروض الجارية/ }).click();
                 await page.getByRole('heading', { name: 'عروضي' }).waitFor({ state: 'visible', timeout: 3000 });
-                await page.evaluate(() => setTab('profile'));
-                await page.getByRole('button', { name: /تغيير كلمة المرور/ }).waitFor({ state: 'visible', timeout: 3000 });
+                await page.evaluate(() => openTechnicianSection('profile'));
+                await page.getByText(/تغيير كلمة المرور/).first().waitFor({ state: 'visible', timeout: 5000 }).catch(async error => {
+                  const state = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), user: (() => { try { return JSON.parse(localStorage.getItem('fanni_user_v4') || 'null'); } catch { return null; } })(), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), app: document.querySelector('#app')?.innerText.slice(0, 700) }));
+                  throw new Error(error.message + ' [profile diagnostic: ' + JSON.stringify({ state, profile: technicianProfileResponses, consoleErrors: browserConsoleErrors.slice(-12) }) + ']');
+                });
                 await page.locator('button[onclick="beginEditProfile()"]').click();
                 await page.locator('#fanniEditPhone').fill('01012345672');
                 await page.locator('button[onclick="saveProfileChanges()"]').click();
@@ -556,7 +630,7 @@ function apiResponse(pathname) {
                 await page.locator('#login-phone').fill('01012345678');
                 await page.locator('#login-pass').fill('AdminSmokePass123');
                 await page.locator('#login-btn').click();
-                await page.waitForFunction(() => !!localStorage.getItem('admin_token_v3'), { timeout: 10000 });
+                await page.waitForFunction(() => !!localStorage.getItem('admin_token_v3'), null, { timeout: 10000 });
                 await page.waitForTimeout(1200);
               }
             }
@@ -596,8 +670,14 @@ function apiResponse(pathname) {
             await page.locator('#fanniLoginPhone').fill('01012345671');
             await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
             await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
-            await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), { timeout: 10000 });
-            await page.waitForFunction(() => state.tab === 'home', { timeout: 5000 });
+            await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
+            await page.waitForFunction(() => state.tab === 'home', null, { timeout: 5000 });
+            await page.waitForFunction(() => !!document.querySelector('#guidelinesAcceptedCheck') || !!document.querySelector('nav.fanni-dashboard-tabs'), null, { timeout: 10000 });
+            if (await page.locator('#guidelinesAcceptedCheck').count()) {
+              await page.locator('#guidelinesAcceptedCheck').check();
+              await page.getByRole('button', { name: 'موافق ثم تأكيد' }).click();
+            }
+            await page.locator('nav.fanni-dashboard-tabs').waitFor({ state: 'visible', timeout: 10000 });
 
             const resources = await page.evaluate(() => ({
               css: [...document.querySelectorAll('link[rel="stylesheet"]')].map(item => item.href).filter(url => url.includes('/css/fanni-')),
@@ -609,28 +689,31 @@ function apiResponse(pathname) {
 
             const expectedTabs = [
               ['الرئيسية', 'home'],
-              ['فرص العمل', 'available'],
-              ['طلباتي', 'myOrders'],
+              ['الطلبات المتاحة', 'available'],
+              ['عروضي', 'myOrders'],
               ['المحفظة', 'wallet'],
               ['المتجر', 'store'],
               ['حسابي', 'profile']
             ];
             for (const [label, tab] of expectedTabs) {
               try {
-                const tabButton = page.locator(`button[onclick="openTechnicianSection('${tab}')"]`).first();
+                const tabButton = page.locator('button.fanni-section-tab').filter({ hasText: label }).first();
                 await tabButton.click({ timeout: 8000 });
                 await page.waitForTimeout(120);
                 const isActive = await page.evaluate(expected => [...document.querySelectorAll('button')]
                   .some(button => button.getAttribute('onclick') === "openTechnicianSection('" + expected + "')" &&
                     button.classList.contains('is-active')), tab);
-                if (!isActive) failures.push('technician/mobile: navigation did not activate the ' + tab + ' section');
+                if (!isActive) {
+                  const stateDiagnostic = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), activeTabs: [...document.querySelectorAll('button.fanni-section-tab')].map(button => ({ text: button.innerText, active: button.classList.contains('is-active') })) }));
+                  failures.push('technician/mobile: navigation did not activate the ' + tab + ' section ' + JSON.stringify({ stateDiagnostic, profile: technicianProfileResponses }));
+                }
               } catch (error) {
                 failures.push('technician/mobile: ' + tab + ' navigation click failed: ' + error.message);
                 throw error;
               }
             }
 
-            await page.locator('button[onclick="openTechnicianSection(\'home\')"]').first().click();
+            await page.locator('button.fanni-section-tab').filter({ hasText: 'الرئيسية' }).first().click();
             await page.locator('.fanni-home-dashboard').waitFor({ state: 'visible', timeout: 3000 });
             const homeStatsCount = await page.locator('.fanni-home-dashboard [data-home-stat]').count();
             if (homeStatsCount !== 4) failures.push('technician/mobile: home dashboard must show all four summary statistics');
@@ -666,7 +749,8 @@ function apiResponse(pathname) {
           if (pageErrors.length) failures.push(target.name + '/' + viewport.name + ': ' + pageErrors.join(' | '));
           if (badLocalResponses.length) failures.push(target.name + '/' + viewport.name + ': ' + badLocalResponses.join(', '));
         } catch (error) {
-          failures.push(target.name + '/' + viewport.name + ': ' + error.message);
+          const diagnostics = [...authResponses, ...pageErrors.map(message => 'pageerror: ' + message)];
+          failures.push(target.name + '/' + viewport.name + ': ' + error.message + (diagnostics.length ? ' [' + diagnostics.join(' | ') + ']' : ''));
         } finally {
           await page.close();
         }

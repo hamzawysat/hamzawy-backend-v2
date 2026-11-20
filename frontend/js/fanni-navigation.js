@@ -1,6 +1,6 @@
 'use strict';
 
-const TECHNICIAN_TAB_DEFINITIONS=[{id:'home',label:'الرئيسية'},{id:'available',label:'فرص العمل'},{id:'myOrders',label:'طلباتي'},{id:'wallet',label:'المحفظة'},{id:'store',label:'المتجر'},{id:'profile',label:'حسابي'},{id:'support',label:'الدعم الفني'}];
+const TECHNICIAN_TAB_DEFINITIONS=[{id:'home',label:'الرئيسية'},{id:'available',label:'الطلبات المتاحة'},{id:'myOrders',label:'عروضي'},{id:'wallet',label:'المحفظة'},{id:'store',label:'المتجر'},{id:'profile',label:'حسابي'},{id:'support',label:'الدعم الفني'}];
 const TECHNICIAN_TAB_HISTORY=[];
 function setTab(tab,fromBack=false){
  if(tab==='myOffers'){tab='myOrders';state.myOrdersView='active';}

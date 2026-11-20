@@ -5,10 +5,10 @@ function renderContent(){
   if(window.IS_EDITOR_PREVIEW&&window.PREVIEW_REQUESTED_TAB){state.tab=window.PREVIEW_REQUESTED_TAB;}
   const user=currentUser||getUser()||(window.IS_EDITOR_PREVIEW&&window.PREVIEW_REQUESTED_TAB&&!['login','register'].includes(window.PREVIEW_REQUESTED_TAB)?{name:'معاينة المحرر',status:'approved',technicianGuidelinesAcceptedAt:'preview',technicianGuidelinesVersion:'2026-10-20-v1',specialties:[],areas:[],walletBalance:0}:null);
   const previewTab=window.IS_EDITOR_PREVIEW?window.PREVIEW_REQUESTED_TAB:'';
+  const specialties=Array.isArray(user?.specialties)?user.specialties:[];
+  const areas=Array.isArray(user?.areas)?user.areas:[];
   const authenticated=(!!previewTab&&!['login','register'].includes(previewTab))||(!!getToken()&&!forceTechnicianRegistration);
  document.title=authenticated?'لوحة الفني | حمزاوي سات':(state.tab==='register'?'تسجيل فني جديد | حمزاوي سات':'تسجيل دخول الفني | حمزاوي سات');
- const specialties=Array.isArray(user?.specialties)?user.specialties.filter(value=>ALL_SERVICES.includes(String(value||'').trim().replace(/\s+/g,' '))):[];
- const areas=Array.isArray(user?.areas)?user.areas:[];
  const balance=state.walletBalance||user?.walletBalance||user?.balance||user?.wallet||0;
  const approved=isApproved();
  const status=user?.status||'غير محدد';
@@ -29,7 +29,7 @@ function renderContent(){
     <div class="flex items-center justify-end gap-1">
      <a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="dashboard-download-btn h-9 px-2 sm:px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold whitespace-nowrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>تحميل التطبيق</span></a>
      <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-amber-200 bg-amber-50 text-[18px] text-amber-600 shrink-0">🔔${notificationBadge()}</button>
-     ${authenticated?'<button type="button" onclick="location.href=\'password.html?role=fanni&mode=account\'" aria-label="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 !bg-[#F8F6F0] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</button><button type="button" onclick="logout()" aria-label="خروج" class="h-9 px-2 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>':''}
+     ${authenticated?'<button type="button" onclick="location.href=\'password.html?role=fanni&mode=account\'" aria-label="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 !bg-[#E8EDFF] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</button><button type="button" onclick="logout()" aria-label="خروج" class="h-9 px-2 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>':''}
     </div>
     <a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="client-home-main-btn h-8 px-3 rounded-lg text-white inline-flex items-center justify-center gap-1 text-[10px] font-extrabold whitespace-nowrap"><span aria-hidden="true">⌂</span><span>القائمة الرئيسية</span></a><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" class="dashboard-social-link">🔗 تابعنا على منصات التواصل</a>
    </div>
@@ -49,7 +49,7 @@ function renderContent(){
   <section class="account-gate fanni-login-gate mt-5 px-4 py-6 flex flex-col items-center">
    <div class="w-full max-w-[440px]">
     <nav dir="rtl" class="account-top-nav mb-5 flex w-full items-center gap-2" style="width:100%;display:flex;flex-direction:row;direction:rtl;align-items:stretch;gap:8px"><a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="account-nav-btn account-home-btn h-10 px-2 rounded-xl inline-flex flex-1 items-center justify-center text-xs font-black" style="flex:1 1 0;min-width:0;height:40px;white-space:nowrap;padding-inline:4px">⌂ القائمة الرئيسية</a><a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="account-nav-btn account-download-btn h-10 px-2 rounded-xl inline-flex flex-1 items-center justify-center text-xs font-black" style="flex:1 1 0;min-width:0;height:40px;white-space:nowrap;padding-inline:4px">⬇ تحميل التطبيق</a><button type="button" onclick="goBack()" class="account-nav-btn h-10 px-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-extrabold" style="flex:1 1 0;min-width:0;height:40px;white-space:nowrap;padding-inline:4px">← رجوع</button></nav>
-    <div class="flex justify-center mb-4"><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:36px!important;padding:7px 11px!important;border:1px solid #d6b45a!important;border-radius:11px!important;background:linear-gradient(145deg,#fffdf5,#fff4cf)!important;color:#173c6c!important;-webkit-text-fill-color:#173c6c!important;font-size:10px!important;font-weight:900!important;line-height:1.4!important;text-decoration:none!important;white-space:nowrap!important;box-shadow:0 3px 0 #d6b45a,0 5px 10px rgba(11,27,58,.10)!important;">🔗 تابعنا على منصات التواصل</a></div>
+    <div class="flex justify-center mb-4"><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:36px!important;padding:7px 11px!important;border:1px solid #172DAD!important;border-radius:11px!important;background:linear-gradient(145deg,#2946C7,#07136E)!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;font-size:10px!important;font-weight:900!important;line-height:1.4!important;text-decoration:none!important;white-space:nowrap!important;box-shadow:0 4px 0 #07136E,0 6px 12px rgba(7,19,110,.14)!important;">🔗 تابعنا على منصات التواصل</a></div>
     <div class="text-center mb-6">
      <div class="account-brand fanni-login-brand brand-mark mx-auto flex items-center justify-center"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="144" height="144" decoding="async"></div>
      <h1 class="mt-4 text-2xl font-black">${state.tab==='register'?'تسجيل فني جديد':'تسجيل دخول الفني'}</h1>
@@ -57,7 +57,7 @@ function renderContent(){
     </div>
     <section class="fanni-login-panel account-panel mt-4 panel p-5 animate-fade">
      <div class="account-tabs fanni-login-tabs flex justify-center gap-2" style="padding:0!important;margin:0 0 20px!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:${state.tab==='register'?'flex':'none'}!important">
-       <button type="button" onclick="setTab(state.tab==='register'?'login':'register')" class="account-switch-link h-9 px-4 rounded-full bg-[#eff6ff] border border-dashed border-[#93c5fd] text-[#1d4ed8] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#dbeafe] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #93c5fd!important;border-radius:9999px!important;background:#eff6ff!important;background-image:none!important;color:#1d4ed8!important;-webkit-text-fill-color:#1d4ed8!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="${state.tab==='register'?'تسجيل الدخول':'تسجيل فني جديد'}"><span style="color:#1d4ed8!important;-webkit-text-fill-color:#1d4ed8!important;background:transparent!important;background-image:none!important">${state.tab==='register'?'لتسجيل الدخول':'لتسجيل فني جديد'}</span><small style="color:#1d4ed8!important;-webkit-text-fill-color:#1d4ed8!important;background:transparent!important;background-image:none!important;font-size:10px!important;font-weight:700!important;text-decoration:underline dashed;text-underline-offset:2px">اضغط هنا</small></button>
+       <button type="button" onclick="setTab(state.tab==='register'?'login':'register')" class="account-switch-link h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed border-[#D5DDFE] text-[#172DAD] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#E8EDFF] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #D5DDFE!important;border-radius:9999px!important;background:#F4F6FF!important;background-image:none!important;color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="${state.tab==='register'?'تسجيل الدخول':'تسجيل فني جديد'}"><span style="color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;background:transparent!important;background-image:none!important">${state.tab==='register'?'لتسجيل الدخول':'لتسجيل فني جديد'}</span><small style="color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;background:transparent!important;background-image:none!important;font-size:10px!important;font-weight:700!important;text-decoration:underline dashed;text-underline-offset:2px">اضغط هنا</small></button>
       </div>
   ${state.tab==='register'?`
    <div class="space-y-4">
@@ -66,9 +66,9 @@ function renderContent(){
     <div><label class="field-label">رقم التليفون *</label><input id="fanniRegPhone" class="field" inputmode="numeric" autocomplete="tel" enterkeyhint="next" value="${esc(state.regPhone)}" oninput="state.regPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
 
     <div class="rounded-2xl border p-3">
-     <div class="font-extrabold text-[12px] mb-3">التخصصات * ${SERVICES_LOADING?'<span class="text-[#5A4520] 600">(جاري التحميل...)</span>':SERVICES_ERROR?'<span class="text-red-600">(فشل التحميل)</span>':''}</div>
+     <div class="font-extrabold text-[12px] mb-3">التخصصات * ${SERVICES_LOADING?'<span class="text-[#18324F] 600">(جاري التحميل...)</span>':SERVICES_ERROR?'<span class="text-red-600">(فشل التحميل)</span>':''}</div>
      ${SERVICES_LOADING?`
-       <div class="py-6 text-center"><div class="inline-block h-6 w-6 border-2 border-[#E8E0CF] 600 border-t-transparent rounded-full animate-spin"></div><p class="mt-2 text-[11px] font-bold text-slate-600">جاري تحميل التخصصات...</p></div>
+       <div class="py-6 text-center"><div class="inline-block h-6 w-6 border-2 border-[#D5DDFE] 600 border-t-transparent rounded-full animate-spin"></div><p class="mt-2 text-[11px] font-bold text-slate-600">جاري تحميل التخصصات...</p></div>
      `:SERVICES_ERROR?`
        <div class="rounded-xl bg-red-50 border border-red-200 p-3 text-center"><p class="text-[11px] font-bold text-red-700">${esc(SERVICES_ERROR)}</p><button onclick="loadServices()" class="mt-2 secondary-btn px-4 py-2 text-[11px]">إعادة المحاولة</button><p class="mt-2 text-[10px] text-slate-500">إذا لم تظهر التخصصات، اضغط على إعادة المحاولة.</p></div>
      `:CATEGORIES.map((cat,index)=>{
@@ -78,7 +78,7 @@ function renderContent(){
       return `<section class="mb-3 overflow-hidden rounded-xl border border-slate-200 bg-white">
        <button type="button" onclick="toggleSpecialtyCategory(this.dataset.category)" data-category="${esc(cat.label)}" aria-expanded="${isOpen}" aria-controls="${categoryId}" class="fanni-specialty-category-head flex w-full items-center justify-between gap-3 p-3 text-right">
         <span class="min-w-0"><span class="block text-[12px] font-extrabold text-slate-800">${esc(cat.emoji)} ${esc(cat.label)}</span><span class="mt-1 block text-[10px] font-bold text-slate-500">${selectedCount?'تم اختيار '+selectedCount+' خدمة':'اضغط لعرض الخدمات'}</span></span>
-        <span class="flex shrink-0 items-center gap-2"><span class="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-extrabold text-[#5A4520] 800">${selectedCount}</span><span class="text-slate-500">${isOpen?'−':'+'}</span></span>
+        <span class="flex shrink-0 items-center gap-2"><span class="rounded-full bg-blue-100 px-2 py-1 text-[10px] font-extrabold text-[#18324F] 800">${selectedCount}</span><span class="text-slate-500">${isOpen?'−':'+'}</span></span>
        </button>
        ${isOpen?`<div id="${categoryId}" class="fanni-specialty-options grid grid-cols-3 gap-2 border-t p-3 max-[380px]:grid-cols-2">${cat.services.map(s=>`<label class="service-chip ${state.regSpecialties.includes(s)?'selected':''}"><input type="checkbox" data-specialty="${esc(s)}" ${state.regSpecialties.includes(s)?'checked':''} onchange="toggleSpecialty(this.dataset.specialty)"><span class="service-icon" aria-hidden="true">${serviceIconFor(s)}</span><span>${esc(s)}</span></label>`).join('')}</div>`:''}
       </section>`;
@@ -130,76 +130,59 @@ function renderContent(){
    </div>
   </section>
  `:`
-  <section class="fanni-summary-card mt-4 rounded-2xl p-3 sm:p-4">
-   <div class="fanni-summary-top flex items-center justify-between gap-3">
-    <div class="min-w-0"><p class="fanni-summary-eyebrow text-[11px] font-bold">أهلاً بيك في حمزاوي سات</p><h2 class="mt-1 text-[17px] font-extrabold truncate">${esc(user?.name||'فني')}</h2></div>
-    <div class="fanni-summary-balance shrink-0 rounded-xl px-3 py-2 text-center"><div class="text-[10px] font-bold">رصيد المحفظة</div><div class="text-[20px] font-black leading-tight">${esc(balance)} <span class="text-[11px]">جنيه</span></div></div>
-   </div>
-   <details class="fanni-summary-details mt-3">
-    <summary class="fanni-details-toggle flex items-center justify-center gap-2 w-full rounded-xl px-3 py-2.5 text-[12px] font-extrabold"><span>تفاصيل</span><svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-    <div class="fanni-details-content mt-3 space-y-3">
-     <div class="fanni-detail-line flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"><span class="text-[11px] font-bold">حالة الاعتماد</span><b class="text-[11px]">${esc(status)}</b></div>
-     <div class="fanni-detail-line flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"><span class="text-[11px] font-bold">المستوى المهني</span><b class="text-[11px]">${esc(user?.level||'مبتدئ')}</b></div>
-     ${!approved?'<div class="fanni-approval-note rounded-xl px-3 py-2.5 text-[11px] leading-6">حسابك لم يُعتمد بعد. يمكنك مراجعة بياناتك، لكن إرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>':''}
-     <div class="fanni-detail-line rounded-xl px-3 py-2.5"><div class="flex items-center justify-between gap-2"><b class="text-[11px]">تخصصاتك</b><span class="text-[10px]">${specialties.length} تخصص</span></div><div class="mt-2 flex flex-wrap gap-1.5">${specialties.map(s=>'<span class="fanni-detail-chip rounded-full px-2.5 py-1 text-[10px]">'+esc(s)+'</span>').join('')||'<span class="text-[10px]">لا توجد تخصصات مسجلة حاليًا.</span>'}</div></div>
-     <div class="fanni-detail-line rounded-xl px-3 py-2.5"><b class="text-[11px]">مناطق العمل</b><p class="mt-1 text-[11px] leading-5">${esc(areas.join('، ')||'غير محددة')}</p></div>
-     <button type="button" onclick="setTab('wallet')" class="fanni-wallet-shortcut w-full rounded-xl px-3 py-2.5 text-[11px] font-extrabold">فتح المحفظة</button>
-    </div>
-   </details>
-  </section>
-
-   
   ${state.tab==='home'?`
-   <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
-    <button type="button" onclick="openFanniReferralPage()" class="w-full rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-3 text-right shadow-sm"><span class="flex items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><span class="min-w-0 flex-1"><span class="block text-sm font-black text-amber-950">ادعُ صديقك لتحصل على 150 جنيه مكافأة</span><span class="mt-1 block text-[11px] font-extrabold text-amber-800">اضغط هنا لدعوة صديقك</span></span><span class="text-xl font-black text-amber-800">←</span></span></button>
-    <div class="panel p-4">
-     <div class="flex items-center justify-between gap-3">
-      <div>
-       <p class="text-[10px] font-bold text-slate-500">نظرة سريعة على حسابك</p>
-       <h2 id="fanniHomeTitle" class="section-title mt-1">ملخص شغلك</h2>
+    <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
+      <div class="fanni-home-profile panel p-3">
+        <div class="fanni-home-profile-top">
+          <div class="fanni-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${esc(String(user?.name||'فني').trim().charAt(0)||'ف')}</b></div>
+          <div class="fanni-home-profile-name">
+            <h2 id="fanniHomeTitle">مرحباً ${esc(user?.name||'بك')}</h2>
+            <p>${esc(user?.level||'مبتدئ')} • ${approved?'معتمد':esc(status)} • ${esc(balance)} جنيه</p>
+          </div>
+          <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="fanni-home-availability-toggle ${user?.acceptingOrders===false?'is-paused':'is-available'}">
+            <strong>${state.availabilitySaving?'جارٍ التحديث...':user?.acceptingOrders===false?'● OFF · غير متصل الآن':'● ON · متصل الآن'}</strong>
+            <small>${user?.acceptingOrders===false?'اضغط للتفعيل':'اضغط للإيقاف'}</small>
+          </button>
+        </div>
       </div>
-      <span class="rounded-full bg-cyan-50 px-3 py-1.5 text-[10px] font-extrabold text-cyan-800">لوحة الفني</span>
-     </div>
-     <div class="mt-4 rounded-xl border ${user?.acceptingOrders===false?'border-amber-300 bg-amber-50':'border-emerald-200 bg-emerald-50'} p-3">
-      <div class="flex items-center justify-between gap-3">
-       <div><p class="text-[12px] font-extrabold text-slate-900">استقبال الطلبات الجديدة</p><p class="mt-1 text-[10px] font-bold ${user?.acceptingOrders===false?'text-amber-800':'text-emerald-800'}">${user?.acceptingOrders===false?'متوقف — لن تظهر لك فرص جديدة':'مفعّل — ستصلك فرص العمل المناسبة'}</p></div>
-       <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="rounded-xl px-4 py-2.5 text-[11px] font-extrabold text-white disabled:opacity-50 ${user?.acceptingOrders===false?'bg-emerald-700':'bg-amber-700'}">${state.availabilitySaving?'جاري الحفظ...':user?.acceptingOrders===false?'تفعيل الاستقبال':'عدم استلام طلبات'}</button>
+      ${user?.acceptingOrders===false?'<div class="fanni-home-offline-note"><span>⚠️</span><span>أنت غير متصل ولن تستقبل طلبات جديدة. فعّل ON لاستقبال الطلبات.</span></div>':''}
+
+      <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner">
+        <span class="fanni-home-jobs-icon">💼</span>
+        <span><strong>فرص عمل متاحة</strong><small>استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em>استكشف الفرص ←</em></span>
+      </button>
+
+      <div class="fanni-home-section-head"><h3>الإحصائيات</h3></div>
+      <div class="fanni-home-stats">
+        <button type="button" onclick="setTab('wallet')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">💳</span><small>رصيد المحفظة</small><strong data-home-stat="wallet">${Number(balance||0).toLocaleString('ar-EG')} ج</strong>
+        </button>
+        <button type="button" onclick="setTab('available')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">💼</span><small>فرص متاحة</small><strong data-home-stat="available">${state.filteredOrders.length}</strong>
+        </button>
+        <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">✓</span><small>مهام مكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
+        </button>
+        <button type="button" onclick="setTab('myOffers')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">📄</span><small>عروضي</small><strong data-home-stat="offers">${state.myOffers.length}</strong>
+        </button>
       </div>
-     </div>
-     <div class="mt-4 grid grid-cols-2 gap-2">
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">فرص العمل المتاحة</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="available">${state.filteredOrders.length}</p>
-       <button type="button" onclick="setTab('available')" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض الفرص</button>
-      </article>
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">عروضي والمهام الجارية</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="active">${state.myOffers.length}</p>
-       <button type="button" onclick="setTab('myOrders')" class="mt-2 text-[11px] font-extrabold text-cyan-800">متابعة طلباتي</button>
-      </article>
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">المهام المكتملة</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="completed">${state.completedOffers.length}</p>
-       <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض المكتمل</button>
-      </article>
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">إشعارات غير مقروءة</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="notifications">${Number(state.notificationsUnread||0)}</p>
-       <button type="button" onclick="toggleNotifications()" class="mt-2 text-[11px] font-extrabold text-cyan-800">فتح الإشعارات</button>
-      </article>
-     </div>
-    </div>
-    ${!approved?`<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] leading-6 text-amber-900">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
-    <div class="panel p-4">
-     <h3 class="section-title">اختصارات سريعة</h3>
-     <div class="mt-3 grid grid-cols-2 gap-2">
-      <button type="button" onclick="setTab('available')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">📋 فرص العمل</button>
-      <button type="button" onclick="setTab('myOrders')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">💼 طلباتي</button>
-      <button type="button" onclick="setTab('wallet')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">💳 المحفظة</button>
-      <button type="button" onclick="setTab('store')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">🛍️ المتجر</button>
-     </div>
-    </div>
-   </section>`:''}
+
+      <button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral">
+        <span class="fanni-home-referral-icon">🎁</span>
+        <span><strong>ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب رصيد لكل صديق ينضم</small></span>
+        <b>دعوة الآن ←</b>
+      </button>
+
+      <div class="fanni-home-section-head"><h3>إجراءات سريعة</h3></div>
+      <div class="fanni-home-actions">
+        <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-action"><span>📋</span><strong>سجل المهام</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('myOffers')" class="fanni-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('profile')" class="fanni-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></button>
+        <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></button>
+      </div>
+      ${!approved?`<div class="fanni-home-review-note">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
+    </section>`:''}
   ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
 
   ${state.tab==='available'?`
@@ -226,7 +209,7 @@ function renderContent(){
       const sn=o.sn||o.orderSn||'';
       return `<article class="panel p-4 space-y-3">
        <div class="flex justify-between items-start gap-3">
-        <div class="min-w-0"><span class="font-black text-[11px] bg-[#0b1b3a] text-white px-2.5 py-1 rounded-lg">${esc(sn||'بدون كود')}</span><span class="text-[10px] px-2.5 py-1 rounded-full bg-[#F8F6F0] border text-[#5A4520] 700 font-extrabold">${esc(o.service||o.specialty||'')}</span></div>
+        <div class="min-w-0"><span class="font-black text-[11px] bg-[#101F9B] text-white px-2.5 py-1 rounded-lg">${esc(sn||'بدون كود')}</span><span class="text-[10px] px-2.5 py-1 rounded-full bg-[#E8EDFF] border text-[#18324F] 700 font-extrabold">${esc(o.service||o.specialty||'')}</span></div>
         <span class="text-[10px] rounded-full bg-emerald-50 px-2 py-1">${esc(o.status||'جديد')}</span>
        </div>
 
@@ -259,20 +242,20 @@ function renderContent(){
     ${!state.myOffers.length?'<div class="empty-state panel p-8 text-center" role="status"><div class="text-3xl">💼</div><p class="text-[13px] font-extrabold mt-3">لا توجد طلبات جارية حاليا</p><p class="text-[11px] text-slate-500 mt-1">ستظهر هنا الطلبات التي قدمت عليها عروضًا أو تم قبولها.</p><button type="button" onclick="loadMyOffers()" class="secondary-btn mt-4 px-5 py-2 text-[11px]">تحديث الطلبات الجارية</button></div>':state.myOffers.map(o=>`<article class="panel p-4 space-y-3">
      <div class="flex justify-between gap-3">
       <div><div class="text-[10px] text-slate-500">كود الطلب</div><b class="font-mono text-[12px]">${esc(o.orderSn||o.sn||o.order?.sn||'')}</b></div>
-      <div><div class="text-[10px] text-slate-500">سعر عرضك</div><b class="text-[#5A4520] 700">${esc(o.price??o.priceNum??'غير متاح')} جنيه</b></div>
+      <div><div class="text-[10px] text-slate-500">سعر عرضك</div><b class="text-[#18324F] 700">${esc(o.price??o.priceNum??'غير متاح')} جنيه</b></div>
      </div>
 
      <div class="flex flex-wrap items-center gap-2">
       <span class="text-[10px] rounded-full px-3 py-1 font-extrabold ${o?.accepted===true?'bg-emerald-50 text-emerald-800 border border-emerald-100':'bg-amber-50 text-amber-800 border border-amber-100'}">${o?.accepted===true?'تم قبول عرضك':'بانتظار قرار العميل'}</span>
       <span class="text-[10px] rounded-full bg-slate-100 text-slate-700 px-3 py-1">${esc(o.orderStatus||o.status||'حالة غير محددة')}</span>
-      ${o.service?`<span class="text-[10px] rounded-full bg-[#F8F6F0] text-[#5A4520] 800 px-3 py-1">${esc(o.service)}</span>`:''}
+      ${o.service?`<span class="text-[10px] rounded-full bg-[#E8EDFF] text-[#18324F] 800 px-3 py-1">${esc(o.service)}</span>`:''}
      </div>
 
      ${o.message?`<div class="rounded-xl border border-slate-100 bg-slate-50 p-3"><div class="text-[10px] text-slate-500 font-extrabold mb-1">رسالة العرض</div><p class="text-[12px] leading-6 break-words">${esc(o.message)}</p></div>`:''}
 
      ${renderAcceptedClient(o)}
      ${o?.accepted===true ? `<button type="button" onclick="document.getElementById('fanni-accepted-chat-${esc(o.orderSn||o.sn||o.order?.sn||'')}')?.scrollIntoView({behavior:'smooth',block:'center'})" class="w-full h-10 rounded-xl primary-btn text-[11px] font-extrabold">الدخول إلى المحادثة</button>` : ''}
-     ${o?.accepted===true ? '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><p class="text-[12px] font-extrabold">محادثة الطلب</p>'+'<div id="fanni-accepted-chat-'+esc(o.orderSn||o.sn||o.order?.sn||'')+'">'+(Array.isArray(o.chatMessages)?o.chatMessages.map(m=>'<div class="rounded-lg p-2 '+(m.senderRole==='fanni'?'bg-[#F8F6F0]':'bg-emerald-50')+'"><p class="text-[10px] font-bold">'+(m.senderRole==='fanni'?'أنت':'العميل')+'</p><p class="text-[12px] whitespace-pre-wrap break-words">'+esc(m.text||'')+'</p></div>').join(''):'')+'</div>'+'<textarea id="fanni-chat-'+esc(o.orderSn)+'" data-sn="'+esc(o.orderSn)+'" data-offer-id="'+esc(o._id||'')+'" maxlength="1000" onkeydown="if(event.keyCode===13&&!event.shiftKey){event.preventDefault();sendFanniChat(this.dataset.sn,this.dataset.offerId)}" class="field min-h-[70px]" placeholder="اكتب ردك للعميل"></textarea><button type="button" onclick="sendFanniChat(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\')" class="primary-btn w-full h-10 text-[12px]">إرسال الرسالة</button><p class="text-[10px] text-slate-500">طلب زيادة السعر: اكتب السعر الإجمالي الجديد وسبب الزيادة. لن يتغير السعر إلا بعد موافقة العميل داخل المنصة.</p><input id="price-change-'+esc(o.orderSn)+'" type="number" min="1" step="1" class="field" placeholder="السعر الجديد عند وجود شغل إضافي"><input id="price-reason-'+esc(o.orderSn)+'" maxlength="500" class="field" placeholder="سبب تعديل السعر"><button type="button" onclick="requestFanniPriceChange(\''+esc(o.orderSn)+'\')" class="secondary-btn w-full h-10 text-[12px]">إرسال طلب زيادة السعر للعميل</button></div>' : '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><p class="text-[12px] font-extrabold">استفسارات العميل قبل قبول العرض</p>'+'<div id="fanni-prechat-chat-'+esc(o.orderSn||o.sn||o.order?.sn||'')+'-'+esc(o._id||'')+'">'+(Array.isArray(o.chatMessages)?o.chatMessages.map(m=>'<div class="rounded-lg p-2 '+(m.senderRole==='fanni'?'bg-[#F8F6F0]':'bg-emerald-50')+'"><p class="text-[10px] font-bold">'+(m.senderRole==='fanni'?'أنت':'العميل')+'</p><p class="text-[12px]">'+esc(m.text||'')+'</p></div>').join(''):'')+'</div>'+'<div class="grid grid-cols-3 gap-2"><button type="button" onclick="sendFanniQuickReply(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\',\'نعم\')" class="secondary-btn text-xs">نعم</button><button type="button" onclick="sendFanniQuickReply(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\',\'لا\')" class="secondary-btn text-xs">لا</button><button type="button" onclick="sendFanniQuickReply(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\',\'حسب الاتفاق\')" class="secondary-btn text-xs">حسب الاتفاق</button></div></div>'}
+     ${o?.accepted===true ? '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><p class="text-[12px] font-extrabold">محادثة الطلب</p>'+'<div id="fanni-accepted-chat-'+esc(o.orderSn||o.sn||o.order?.sn||'')+'">'+(Array.isArray(o.chatMessages)?o.chatMessages.map(m=>'<div class="rounded-lg p-2 '+(m.senderRole==='fanni'?'bg-[#E8EDFF]':'bg-emerald-50')+'"><p class="text-[10px] font-bold">'+(m.senderRole==='fanni'?'أنت':'العميل')+'</p><p class="text-[12px] whitespace-pre-wrap break-words">'+esc(m.text||'')+'</p></div>').join(''):'')+'</div>'+'<textarea id="fanni-chat-'+esc(o.orderSn)+'" data-sn="'+esc(o.orderSn)+'" data-offer-id="'+esc(o._id||'')+'" maxlength="1000" onkeydown="if(event.keyCode===13&&!event.shiftKey){event.preventDefault();sendFanniChat(this.dataset.sn,this.dataset.offerId)}" class="field min-h-[70px]" placeholder="اكتب ردك للعميل"></textarea><button type="button" onclick="sendFanniChat(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\')" class="primary-btn w-full h-10 text-[12px]">إرسال الرسالة</button><p class="text-[10px] text-slate-500">طلب زيادة السعر: اكتب السعر الإجمالي الجديد وسبب الزيادة. لن يتغير السعر إلا بعد موافقة العميل داخل المنصة.</p><input id="price-change-'+esc(o.orderSn)+'" type="number" min="1" step="1" class="field" placeholder="السعر الجديد عند وجود شغل إضافي"><input id="price-reason-'+esc(o.orderSn)+'" maxlength="500" class="field" placeholder="سبب تعديل السعر"><button type="button" onclick="requestFanniPriceChange(\''+esc(o.orderSn)+'\')" class="secondary-btn w-full h-10 text-[12px]">إرسال طلب زيادة السعر للعميل</button></div>' : '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><p class="text-[12px] font-extrabold">استفسارات العميل قبل قبول العرض</p>'+'<div id="fanni-prechat-chat-'+esc(o.orderSn||o.sn||o.order?.sn||'')+'-'+esc(o._id||'')+'">'+(Array.isArray(o.chatMessages)?o.chatMessages.map(m=>'<div class="rounded-lg p-2 '+(m.senderRole==='fanni'?'bg-[#E8EDFF]':'bg-emerald-50')+'"><p class="text-[10px] font-bold">'+(m.senderRole==='fanni'?'أنت':'العميل')+'</p><p class="text-[12px]">'+esc(m.text||'')+'</p></div>').join(''):'')+'</div>'+'<div class="grid grid-cols-3 gap-2"><button type="button" onclick="sendFanniQuickReply(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\',\'نعم\')" class="secondary-btn text-xs">نعم</button><button type="button" onclick="sendFanniQuickReply(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\',\'لا\')" class="secondary-btn text-xs">لا</button><button type="button" onclick="sendFanniQuickReply(\''+esc(o.orderSn)+'\',\''+esc(o._id||'')+'\',\'حسب الاتفاق\')" class="secondary-btn text-xs">حسب الاتفاق</button></div></div>'}
      ${o?.accepted===true && o.orderStatus==='تم اختيار فني' ? `<button data-sn="${esc(o.orderSn||o.sn||o.order?.sn||'')}" onclick="completeOrder(this.dataset.sn)" class="primary-btn w-full h-11 text-[12px]">إنهاء المهمة</button>` : ''}
     </article>`).join('')}
    </section>`:''}
@@ -291,13 +274,13 @@ function renderContent(){
       </div>
       <div>
        <div class="text-[10px] text-slate-500">سعر عرضك</div>
-       <b class="text-[#5A4520] 700">${esc(o.price??o.priceNum??'غير متاح')} جنيه</b>
+       <b class="text-[#18324F] 700">${esc(o.price??o.priceNum??'غير متاح')} جنيه</b>
       </div>
      </div>
 
      <div class="flex flex-wrap items-center gap-2">
       <span class="text-[10px] rounded-full px-3 py-1 font-extrabold bg-emerald-50 text-emerald-800 border border-emerald-100">تم إنهاء المهمة</span>
-      ${o.service?`<span class="text-[10px] rounded-full bg-[#F8F6F0] text-[#5A4520] 800 px-3 py-1">${esc(o.service)}</span>`:''}
+      ${o.service?`<span class="text-[10px] rounded-full bg-[#E8EDFF] text-[#18324F] 800 px-3 py-1">${esc(o.service)}</span>`:''}
      </div>
 
      ${renderAcceptedClient(o)}
@@ -310,14 +293,14 @@ function renderContent(){
 
   ${state.tab==='wallet'?`
    <section class="mt-4 space-y-4">
-    <div class="panel p-4"><div class="flex justify-between items-center"><div><h3 class="section-title">محفظتي</h3><p class="text-[10px] text-slate-500 mt-1">رصيدك ومتابعة معاملات المحفظة</p></div><b class="text-[#5A4520] 800">${esc(balance)} ج</b></div></div>
+    <div class="panel p-4"><div class="flex justify-between items-center"><div><h3 class="section-title">محفظتي</h3><p class="text-[10px] text-slate-500 mt-1">رصيدك ومتابعة معاملات المحفظة</p></div><b class="text-[#18324F] 800">${esc(balance)} ج</b></div></div>
    <div class="fanni-wallet-tabs" role="tablist" aria-label="أقسام المحفظة">${[{id:"topup",label:"شحن المحفظة",icon:"＋"},{id:"requests",label:"طلبات الشحن",icon:"📥"},{id:"transactions",label:"سجل العمليات",icon:"📄"}].map(tab=>'<button type="button" role="tab" aria-selected="'+((state.walletTab||"topup")===tab.id?"true":"false")+'" onclick="setFanniWalletTab(\''+tab.id+'\')" class="'+((state.walletTab||"topup")===tab.id?"fanni-wallet-tab is-active":"fanni-wallet-tab")+'"><span class="fanni-wallet-tab-icon">'+tab.icon+'</span>'+tab.label+'</button>').join("")}</div>
     <div class="panel p-4 ${((state.walletTab||"topup")==="topup")?"":"hidden"}">
 
-     <div class="mt-4 rounded-2xl bg-[#F8F6F0] border border-[#E8E0CF] 100 p-4 space-y-4">
-      <p class="text-[11px] font-extrabold text-[#5A4520] 900">أرقام التحويل المعتمدة</p>
-      ${[1,2].map(index=>{const number=String(state['walletPhone'+index]||'').trim();const available=/^01[0-9]{9}$/.test(number);return '<div class="rounded-xl border border-[#E8E0CF] 100 bg-white p-3"><p class="text-[11px] font-bold text-slate-600">رقم المحفظة '+(index===1?'الأول':'الثاني')+'</p><div class="mt-2 flex flex-wrap items-center gap-3"><p id="wallet-transfer-number-'+index+'" class="text-[17px] font-black text-[#5A4520] 800 font-mono" dir="ltr">'+(available?esc(number):'غير متاح')+'</p>'+(available?'<button type="button" onclick="copyWalletNumber('+index+')" class="secondary-btn px-4 py-2 text-[11px]" aria-label="نسخ رقم المحفظة '+index+'">📋 نسخ الرقم</button>':'')+'</div></div>';}).join('')}
-      <p class="text-[10px] text-[#5A4520] 800/80 leading-5">راجع الرقم وبيانات التحويل قبل إرسال أي مبلغ. طلب الشحن يحتاج مراجعة الإدارة.</p>
+     <div class="mt-4 rounded-2xl bg-[#E8EDFF] border border-[#D5DDFE] 100 p-4 space-y-4">
+      <p class="text-[11px] font-extrabold text-[#18324F] 900">أرقام التحويل المعتمدة</p>
+      ${[1,2].map(index=>{const number=String(state['walletPhone'+index]||'').trim();const available=/^01[0-9]{9}$/.test(number);return '<div class="rounded-xl border border-[#D5DDFE] 100 bg-white p-3"><p class="text-[11px] font-bold text-slate-600">رقم المحفظة '+(index===1?'الأول':'الثاني')+'</p><div class="mt-2 flex flex-wrap items-center gap-3"><p id="wallet-transfer-number-'+index+'" class="text-[17px] font-black text-[#18324F] 800 font-mono" dir="ltr">'+(available?esc(number):'غير متاح')+'</p>'+(available?'<button type="button" onclick="copyWalletNumber('+index+')" class="secondary-btn px-4 py-2 text-[11px]" aria-label="نسخ رقم المحفظة '+index+'">📋 نسخ الرقم</button>':'')+'</div></div>';}).join('')}
+      <p class="text-[10px] text-[#18324F] 800/80 leading-5">راجع الرقم وبيانات التحويل قبل إرسال أي مبلغ. طلب الشحن يحتاج مراجعة الإدارة.</p>
      </div>
 
      ${!approved?'<div class="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">لا يمكن تقديم طلب شحن قبل اعتماد حسابك.</div>':''}
@@ -345,7 +328,7 @@ function renderContent(){
       ${!state.walletHistory.length?'<div class="rounded-xl bg-slate-50 p-5 text-center text-[11px] text-slate-500">لا توجد طلبات شحن سابقة.</div>':state.walletHistory.map(h=>`<div class="rounded-xl border bg-slate-50 p-3">
        <div class="flex justify-between gap-2"><b class="text-[12px]">${esc(h.amount??'')} جنيه</b><span class="text-[10px] text-slate-500">${esc(h.senderNumber||h.fromPhone||h.phone||'')}</span></div>
        <p class="text-[10px] text-slate-500 mt-2">الكود: ${esc(h.referenceNumber||h.reference||h.referenceCode||'بدون')}</p>
-       <p class="text-[10px] mt-1 text-[#5A4520] 700 font-bold">الحالة: ${esc(h.status||'قيد المراجعة')}</p>
+       <p class="text-[10px] mt-1 text-[#18324F] 700 font-bold">الحالة: ${esc(h.status||'قيد المراجعة')}</p>
        ${h.transactionNumber?`<p class="text-[10px] font-bold text-blue-700 mt-1" dir="ltr">رقم العملية: ${esc(h.transactionNumber)}</p>`:''}
        ${h.createdAt?`<p class="text-[10px] text-slate-400 mt-1">${esc(new Date(h.createdAt).toLocaleString('ar-EG'))}</p>`:''}
       </div>`).join('')}
@@ -375,7 +358,7 @@ function renderContent(){
         const isOpen=state.openSpecialtyCategory===cat.label;
         return `<section class="mb-2 overflow-hidden rounded-xl border border-slate-200 bg-white">
          <button type="button" onclick="toggleEditSpecialtyCategory(this.dataset.category)" data-category="${esc(cat.label)}" aria-expanded="${isOpen}" aria-controls="${categoryId}" class="flex w-full items-center justify-between gap-3 bg-slate-50 p-3 text-right">
-          <span><span class="block text-[12px] font-extrabold">${esc(cat.emoji)} ${esc(cat.label)}</span><span class="mt-1 block text-[10px] text-slate-500">${selectedCount?'تم اختيار '+selectedCount+' خدمة':'اضغط لعرض الخدمات'}</span></span><span class="text-[#5A4520] 700 font-black">${isOpen?'−':'+'}</span>
+          <span><span class="block text-[12px] font-extrabold">${esc(cat.emoji)} ${esc(cat.label)}</span><span class="mt-1 block text-[10px] text-slate-500">${selectedCount?'تم اختيار '+selectedCount+' خدمة':'اضغط لعرض الخدمات'}</span></span><span class="text-[#18324F] 700 font-black">${isOpen?'−':'+'}</span>
          </button>
          ${isOpen?`<div id="${categoryId}" class="fanni-specialty-options grid grid-cols-3 gap-2 max-[380px]:grid-cols-2 border-t p-3">${cat.services.map(s=>`<button type="button" data-specialty="${esc(s)}" aria-pressed="${state.editSpecialties.includes(s)}" onclick="event.preventDefault();event.stopPropagation();toggleEditSpecialty(this.dataset.specialty)" class="service-chip ${state.editSpecialties.includes(s)?'selected':''}"><span class="service-icon" aria-hidden="true">${serviceIconFor(s)}</span><span>${esc(s)}</span></button>`).join('')}</div>`:''}
         </section>`;
@@ -385,8 +368,8 @@ function renderContent(){
       <div class="grid grid-cols-2 gap-2"><button type="button" onclick="cancelEditProfile()" class="secondary-btn h-11" ${state.editSaving?'disabled':''}>إلغاء</button><button type="button" onclick="saveProfileChanges()" class="primary-btn h-11" ${state.editSaving?'disabled':''}>${state.editSaving?'جاري الحفظ...':'حفظ التعديلات'}</button></div>
      </div>
     `:`
-     <div class="mt-4 space-y-4 text-[12px]"><div class="rounded-2xl border border-[#E8E0CF] 100 bg-[#F8F6F0]/60 p-3"><div class="mb-2 font-extrabold text-[#5A4520] 900">بيانات الحساب</div>${[['الاسم',user?.name],['رقم الهاتف',user?.phone],['حالة الحساب',user?.status],['رصيد المحفظة',balance+' جنيه']].map(x=>`<div class="rounded-xl bg-white border p-3 mb-2"><div class="text-[10px] text-slate-500 mb-1">${x[0]}</div><b>${esc(x[1]||'غير متاح')}</b></div>`).join('')}</div><div class="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div class="mb-2 font-extrabold text-slate-800">بيانات العمل</div>${[['التخصصات',specialties.join('، ')||'لا توجد خدمات ضمن تخصص حمزاوي سات حاليًا'],['مناطق العمل',areas.join('، ') ]].map(x=>`<div class="rounded-xl bg-white border p-3 mb-2"><div class="text-[10px] text-slate-500 mb-1">${x[0]}</div><b>${esc(x[1]||'غير متاح')}</b></div>`).join('')}</div></div>
-     <button type="button" onclick="beginEditProfile()" class="mt-4 w-full h-11 rounded-xl bg-[#F8F6F0] border border-[#E8E0CF] 200 text-[#5A4520] 800 font-extrabold text-[12px]">✏️ تعديل البيانات</button>
+     <div class="mt-4 space-y-4 text-[12px]"><div class="rounded-2xl border border-[#D5DDFE] 100 bg-[#E8EDFF]/60 p-3"><div class="mb-2 font-extrabold text-[#18324F] 900">بيانات الحساب</div>${[['الاسم',user?.name],['رقم الهاتف',user?.phone],['حالة الحساب',user?.status],['رصيد المحفظة',balance+' جنيه']].map(x=>`<div class="rounded-xl bg-white border p-3 mb-2"><div class="text-[10px] text-slate-500 mb-1">${x[0]}</div><b>${esc(x[1]||'غير متاح')}</b></div>`).join('')}</div><div class="rounded-2xl border border-slate-200 bg-slate-50 p-3"><div class="mb-2 font-extrabold text-slate-800">بيانات العمل</div>${[['التخصصات',specialties.join('، ')||'لا توجد خدمات ضمن تخصص حمزاوي سات حاليًا'],['مناطق العمل',areas.join('، ') ]].map(x=>`<div class="rounded-xl bg-white border p-3 mb-2"><div class="text-[10px] text-slate-500 mb-1">${x[0]}</div><b>${esc(x[1]||'غير متاح')}</b></div>`).join('')}</div></div>
+     <button type="button" onclick="beginEditProfile()" class="mt-4 w-full h-11 rounded-xl bg-[#E8EDFF] border border-[#D5DDFE] 200 text-[#18324F] 800 font-extrabold text-[12px]">✏️ تعديل البيانات</button>
      <button type="button" onclick="location.href='password.html?role=fanni&mode=change'" class="mt-2 w-full h-11 rounded-xl border border-blue-200 bg-blue-50 text-blue-800 font-extrabold text-[12px]">🔒 تغيير كلمة المرور</button>
      <div class="mt-4 rounded-xl border border-emerald-100 bg-emerald-50/60 p-3">
       <div class="font-extrabold text-[12px] text-emerald-900">شاراتي</div>
@@ -419,7 +402,7 @@ function renderContent(){
 
  
   ${`<style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>`:''}
-  <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float ${authenticated?'':'prelogin-floating'} ${globalRefreshInProgress?'is-refreshing':''}" ${authenticated?'':'style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#A9822E;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(169,130,46,.25);"' }><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
+  <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float ${authenticated?'':'prelogin-floating'} ${globalRefreshInProgress?'is-refreshing':''}" ${authenticated?'':'style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#1426A5;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,38,165,.30);"' }><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
  
 }
 
