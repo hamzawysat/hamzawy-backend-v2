@@ -402,7 +402,6 @@ function apiResponse(pathname) {
                 '/css/theme.css',
                 '/css/client-components.css',
                 '/css/ui-light-surfaces.css',
-                '/css/dashboard-header-unified.css',
                 '/css/hamzawy-sat-brand.css'
               ].map(path => clientHeadStyles.indexOf(path));
               const clientHtmlSource = await (await page.request.get(BASE + '/frontend/client.html')).text();
