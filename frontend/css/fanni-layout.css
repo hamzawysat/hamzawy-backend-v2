@@ -100,3 +100,24 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 @media (prefers-reduced-motion: reduce) {
   .fanni-home-referral { animation: none; }
 }
+
+
+/* Match the technician home referral card and notification affordance to Android. */
+.fanni-home-referral {
+  background: #DCE5FF !important;
+  border: 1px solid #C7D2FE !important;
+  color: #09145B !important;
+  animation: fanni-referral-pulse 1.7s ease-in-out infinite;
+}
+.fanni-home-referral .fanni-referral-icon {
+  background: #E8EDFF !important;
+  color: #09145B !important;
+  border: 1px solid #C7D2FE;
+}
+.fanni-home-referral .fanni-referral-title { color: #09145B !important; }
+.fanni-home-referral .fanni-referral-copy { color: #26356E !important; }
+.fanni-home-referral .fanni-referral-toggle {
+  background: #102A9B !important;
+  border-color: #102A9B !important;
+  color: #FFFFFF !important;
+}
