@@ -1348,6 +1348,23 @@ html[data-sonaa-theme="index"] body .hero :where(h1,.hero-copy,.eyebrow,.eyebrow
   color:#FFFFFF !important;
   -webkit-text-fill-color:#FFFFFF !important;
 }
+html[data-sonaa-theme="index"] body .hero .eyebrow {
+  border-color:rgba(255,255,255,.3) !important;
+  background:rgba(255,255,255,.14) !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  text-shadow:none !important;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.2),0 3px 8px rgba(7,19,110,.12) !important;
+}
+html[data-sonaa-theme="index"] body .hero .eyebrow i {
+  background:#16A6A1 !important;
+  box-shadow:0 0 0 3px rgba(22,166,161,.22) !important;
+}
+html[data-sonaa-theme="index"] body .hero .profession-tag {
+  border-color:rgba(255,255,255,.25) !important;
+  background:rgba(255,255,255,.13) !important;
+  color:#FFFFFF !important;
+}
 html[data-sonaa-theme="index"] body .hero h1 span {
   color:#D5DDFE !important;
   -webkit-text-fill-color:#D5DDFE !important;
@@ -1382,7 +1399,12 @@ html[data-sonaa-theme="index"] body .entry.technician .entry-icon {
   color:#0E8581 !important;
 }
 html[data-sonaa-theme="index"] body .entry-action .action-label {
-  color:var(--hs-navy) !important;
+  border:1px solid #172DAD !important;
+  border-bottom:3px solid #07136E !important;
+  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  box-shadow:0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
 }
 html[data-sonaa-theme="index"] body .trust-row {
   color:var(--hs-muted) !important;
