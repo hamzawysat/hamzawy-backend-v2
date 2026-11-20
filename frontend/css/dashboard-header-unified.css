@@ -96,12 +96,6 @@
 #app .app-header.fanni-app-header button:active{transform:translateY(1px)!important;filter:brightness(.97)!important}
 @media(min-width:520px){
  #app .app-header.fanni-app-header>div:first-child{gap:14px!important;padding:6px 12px!important}
- #app .app-header.fanni-app-header>div:first-child>div:first-child{flex-basis:42%!important}
- #app .app-header.fanni-app-header .brand-mark{width:48px!important;height:48px!important;flex-basis:48px!important}
- #app .app-header.fanni-app-header h1{font-size:14px!important}
- #app .app-header.fanni-app-header .client-header-slogan{font-size:10px!important}
- #app .app-header.fanni-app-header>div:first-child>div:last-child>div:first-child>*{min-height:32px!important;height:32px!important;max-height:32px!important;font-size:10px!important}
- #app .app-header.fanni-app-header>div:first-child>div:last-child>a{min-height:29px!important;height:29px!important;font-size:10px!important}
 }
 @media(max-width:380px){
  #app .app-header.fanni-app-header>div:first-child{gap:5px!important;padding-inline:6px!important}
@@ -111,10 +105,23 @@
  #app .app-header.fanni-app-header .client-header-slogan{font-size:8px!important}
  #app .app-header.fanni-app-header>div:first-child>div:last-child{gap:3px!important}
  #app .app-header.fanni-app-header>div:first-child>div:last-child>div:first-child{gap:3px!important}
- #app .app-header.fanni-app-header>div:first-child>div:last-child>div:first-child>*{min-height:28px!important;height:28px!important;max-height:28px!important;padding-inline:2px!important;font-size:8px!important}
  #app .app-header.fanni-app-header .dashboard-download-btn span{display:none!important}
- #app .app-header.fanni-app-header>div:first-child>div:last-child>a{min-height:25px!important;height:25px!important;padding-inline:3px!important;font-size:8px!important}
 }
 @media(prefers-reduced-motion:reduce){
  #app .app-header.fanni-app-header a,#app .app-header.fanni-app-header button{transition:none!important}
+}
+
+/* All header actions, including the social link, share the same compact sizing. */
+#app .app-header.fanni-app-header .dashboard-social-link{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;flex:1 1 0!important;width:auto!important;min-width:0!important;
+  min-height:30px!important;height:30px!important;max-height:30px!important;
+  margin:0!important;padding:2px 4px!important;border-radius:8px!important;
+  font-size:9px!important;line-height:1!important;font-weight:900!important;
+  white-space:nowrap!important;text-decoration:none!important;box-shadow:none!important;
+  background:#fff5dc!important;color:#73520d!important;-webkit-text-fill-color:#73520d!important;
+  border:1px solid #e8d39a!important;
+}
+#app .app-header.fanni-app-header>div:first-child>div:last-child>a[href="/"]{
+  min-height:30px!important;height:30px!important;max-height:30px!important;
 }
