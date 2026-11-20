@@ -17,7 +17,7 @@ function renderContent(){
 
  if(fanniReferralPageOpen&&authenticated){document.title='دعوات الفني | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[680px] px-4 py-5"><button type="button" onclick="closeFanniReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة فني واكسب 150 جنيه مكافأة</h1>'+(renderFanniReferralCard()||'<div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
  document.getElementById('app').innerHTML=`
- <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات كل خدمة تبدأ بخطوة</span></div>
+ 
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
  <header class="app-header fanni-app-header ${isBrowserDashboard?'':'sticky top-0 z-40'} backdrop-blur-xl">
   <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
