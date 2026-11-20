@@ -329,46 +329,6 @@ html[data-sonaa-theme="admin"] body [role="tablist"] > button:active {
 
 
 
-/* Fixed moving Hamzawy Sat brand line above client and technician dashboard headers. */
-#app .dashboard-brand-marquee {
-  position: fixed;
-  inset: 0 0 auto 0;
-  z-index: 50;
-  width: 100%;
-  height: 32px;
-  box-sizing: border-box;
-  overflow: hidden;
-  white-space: nowrap;
-  padding: 6px 0;
-  text-align: left;
-  direction: ltr;
-  background: #102A36;
-  color: #FFFFFF;
-  border-bottom: 1px solid rgba(255,255,255,.16);
-}
-/* Keep the existing sticky header below the fixed brand line without changing its markup or contents. */
-#app .dashboard-brand-marquee + .dashboard-top-shell {
-  top: 32px;
-  margin-top: 32px;
-}
-#app .dashboard-brand-marquee span {
-  display: inline-block;
-  width: max-content;
-  color: #FFFFFF;
-  font-size: 13px;
-  font-weight: 900;
-  line-height: 20px;
-  direction: rtl;
-  animation: hamzawy-brand-marquee 20s linear infinite;
-}
-@keyframes hamzawy-brand-marquee {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(100vw); }
-}
-@media (prefers-reduced-motion: reduce) {
-  #app .dashboard-brand-marquee span { animation: none; }
-}
-
 /* Download-app buttons only: very light canary gold with a white glow.
    Kept separate from the shared button palette. */
 html[data-sonaa-theme] .home-nav .download-link,
