@@ -95,9 +95,10 @@ function render(){
   <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
     ${state.tab==='home'?(() => {
       const orders=Array.isArray(state.myOrders)?state.myOrders:[];
-      const closed=['تم الانتهاء','منتهي','ملغي','مؤرشف','منتهي - اعتذار'];
-      const activeCount=orders.filter(o=>!closed.includes(String(o.status||''))).length;
-      const completedCount=orders.length-activeCount;
+      const closed=new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished']);
+      const isPreviousOrder=o=>closed.has(String(o?.status||o?.orderStatus||'').trim().toLowerCase());
+      const activeCount=orders.filter(o=>!isPreviousOrder(o)).length;
+      const completedCount=orders.filter(isPreviousOrder).length;
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
