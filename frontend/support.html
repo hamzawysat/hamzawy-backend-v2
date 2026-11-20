@@ -105,6 +105,16 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--sonaa-color-0d948
 #notice-area,#error-area{font-weight:800}
 @media(prefers-reduced-motion:reduce){.btn,.field,.case,.card{transition:none}}
 
+
+/* Match the native in-app support screen for client and technician accounts. */
+body.support-user-mode .wrap{max-width:none;margin:0;padding:0 0 max(24px,env(safe-area-inset-bottom));}
+body.support-user-mode .header{background:#fff;color:#101F9B;border-radius:0;padding:14px 16px;box-shadow:none;border-bottom:1px solid #E5E9F2;}
+body.support-user-mode .header h1{color:#101F9B;font-size:20px;}
+body.support-user-mode .header .sub{color:#71809A;font-size:11px;margin-top:2px;}
+body.support-user-mode .card{margin:10px 14px 0;border-radius:18px;padding:15px;box-shadow:none;}
+body.support-user-mode .cols{margin:0 14px;}
+body.support-user-mode .cols .card{margin:10px 0 0;}
+@media(max-width:700px){body.support-user-mode .cols{display:flex;flex-direction:column;gap:0;}}
 </style>
 <link rel="stylesheet" href="/css/theme.css">
 
@@ -169,7 +179,7 @@ input[type=checkbox]{width:18px;height:18px;accent-color:var(--sonaa-color-0d948
 </section>
 <div id="error-area"></div>
 </div>
-<script src="/js/support-page.js"></script>
+<script src="/js/support-page.js?v=20261120-native-support-parity1"></script>
 
 
 
