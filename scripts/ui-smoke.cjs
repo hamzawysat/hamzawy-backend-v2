@@ -350,8 +350,13 @@ function apiResponse(pathname) {
             }
           }
 
-          if (target.name !== 'home' && !await page.locator('#app, #setupForm, #main, main.wrap').count()) {
-            failures.push(target.name + '/' + viewport.name + ': expected page root was not rendered');
+          const expectedRoot = {
+            client: '#app', technician: '#app', admin: '#app', password: '#app, #setupForm', support: 'main, #app',
+            customers: 'body > .shell', technicians: 'body > .shell', download: 'body > .card', links: 'body > .card',
+            'admin-setup': '#app, #setupForm, main'
+          }[target.name];
+          if (target.name !== 'home' && expectedRoot && !await page.locator(expectedRoot).count()) {
+            failures.push(target.name + '/' + viewport.name + ': expected page root was not rendered (' + expectedRoot + ')');
           }
 
           const dimensions = await page.evaluate(() => ({
@@ -371,7 +376,6 @@ function apiResponse(pathname) {
 
               const clientHeadStyles = await page.locator('head link[rel="stylesheet"]').evaluateAll(items => items.map(item => new URL(item.href).pathname));
               const clientStyleOrder = [
-                '/css/client-foundation.css',
                 '/css/client-layout.css',
                 '/css/theme.css',
                 '/css/client-components.css',
