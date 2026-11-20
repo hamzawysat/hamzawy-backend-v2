@@ -104,6 +104,8 @@ async function run() {
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
         assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
       }
+      assert.ok(technicianRender.includes('fanni-home-availability-toggle'), 'technician profile row must include the ON/OFF availability control');
+      assert.ok(technicianRender.includes('fanni-home-offline-note'), 'technician offline state must show the native-app warning');
       assert.ok(technicianRender.includes('استكشف الفرص ←'), 'technician jobs banner must expose the native-app action');
       for (const label of ['سجل المهام', 'التقارير', 'الإعدادات', 'طلب دعم فني']) {
         assert.ok(technicianRender.includes(label), 'technician quick actions are missing ' + label);
