@@ -35,6 +35,11 @@ function verifyAdminDashboardSource() {
       shell.includes("filter(item=>item.value>0)")) {
     throw new Error('Admin dashboard KPI or quick-action regression');
   }
+  const storeUi = read('frontend/js/store-ui.js');
+  if (!storeUi.includes('اكتب كمية من 1 إلى 99.') ||
+      !storeUi.includes('quantity>1000')) {
+    throw new Error('Store purchase quantity validation message must match the native app while preserving the accepted quantity range');
+  }
   const clientWallet = read('frontend/js/client-wallet.js');
   const fanniWallet = read('frontend/js/fanni-wallet.js');
   const fanniRender = read('frontend/js/fanni-render.js');
