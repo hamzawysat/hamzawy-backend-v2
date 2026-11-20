@@ -7,7 +7,7 @@ const { chromium } = require('playwright');
 
 (async () => {
   const source = fs.readFileSync(path.join(__dirname, '..', 'frontend/js/admin-store.js'), 'utf8');
-  const helper = source.match(/^function scrollStoreProductEditFormIntoView\(\) \{[\\s\\S]*?^\}/m);
+  const helper = source.match(/^function scrollStoreProductEditFormIntoView\(\) \{[\s\S]*?^\}/m);
   assert.ok(helper, 'production admin store scroll helper must exist');
   const editFunction = source.slice(source.indexOf('function editStoreProduct('), source.indexOf('async function deleteStoreProduct('));
   assert.ok(editFunction.includes('scrollStoreProductEditFormIntoView();'), 'editing a product must invoke the scroll helper');
