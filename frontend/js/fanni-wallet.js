@@ -1,4 +1,8 @@
 'use strict';
+function normalizeFanniWalletPhoneDigits(value){
+ const arabic='٠١٢٣٤٥٦٧٨٩',persian='۰۱۲۳۴۵۶۷۸۹';
+ return String(value||'').replace(/[٠-٩۰-۹]/g,digit=>{const index=arabic.indexOf(digit);return String(index>=0?index:persian.indexOf(digit));}).replace(/\D/g,'');
+}
 
 async function copyWalletNumber(index){
  const walletNumber=String(document.getElementById('wallet-transfer-number-'+index)?.textContent||'').trim();
@@ -69,7 +73,7 @@ async function submitWallet(){
  render();
 
  try{
-  const phone=state.walletFromPhone.replace(/\D/g,'');
+  const phone=normalizeFanniWalletPhoneDigits(state.walletFromPhone);
   const reference=clean(state.walletRef,50);
   const fingerprint=JSON.stringify({phone,amount:Number(state.walletAmount),reference,method:state.walletMethod});
   if(state.walletPendingFingerprint!==fingerprint){
