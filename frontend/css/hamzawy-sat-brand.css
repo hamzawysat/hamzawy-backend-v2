@@ -333,6 +333,229 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(.store-p
   object-fit: contain;
 }
 
+/* Client home: same hero, 2×2 statistics, referral strip, and action rows as the native app. */
+html[data-sonaa-theme="client"] body #app .client-home-hero {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  width:100%;
+  min-height:118px;
+  padding:17px;
+  text-align:right;
+  border:1px solid #172DAD;
+  border-radius:20px;
+  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%);
+  color:#FFFFFF;
+  box-shadow:0 5px 0 #07136E,0 10px 20px rgba(7,19,110,.16);
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-copy {
+  display:flex;
+  flex:1;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:6px;
+  min-width:0;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-copy strong {
+  color:#FFFFFF;
+  font-size:18px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-copy>span:not(.client-home-hero-cta) {
+  color:#E8EDFF;
+  font-size:11px;
+  font-weight:700;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-cta {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-top:4px;
+  padding:7px 13px;
+  border-radius:10px;
+  background:#FFFFFF;
+  color:#1426A5;
+  font-size:11px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-icon {
+  display:grid;
+  flex:0 0 54px;
+  width:54px;
+  height:54px;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.3);
+  border-radius:17px;
+  background:rgba(255,255,255,.14);
+  font-size:30px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-section-head {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:2px 3px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-section-head h2 {
+  margin:0;
+  color:var(--hs-navy);
+  font-size:15px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-section-head>span {
+  color:var(--hs-muted);
+  font-size:10px;
+  font-weight:800;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stats {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-card {
+  display:grid;
+  grid-template-columns:42px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  align-items:center;
+  column-gap:9px;
+  min-width:0;
+  min-height:82px;
+  padding:11px;
+  text-align:right;
+  border:1px solid var(--hs-border);
+  border-radius:16px;
+  background:#FFFFFF;
+  box-shadow:0 3px 9px rgba(16,31,155,.06);
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-icon {
+  display:grid;
+  grid-row:1 / span 2;
+  width:40px;
+  height:40px;
+  place-items:center;
+  border-radius:13px;
+  background:#E8EDFF;
+  color:#172DAD;
+  font-size:19px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-label {
+  min-width:0;
+  color:var(--hs-muted);
+  font-size:10px;
+  font-weight:800;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-card strong {
+  min-width:0;
+  overflow:hidden;
+  color:var(--hs-navy);
+  font-size:19px;
+  font-weight:900;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-card strong small {
+  font-size:10px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-height:66px;
+  padding:11px 12px;
+  text-align:right;
+  border:1px solid #F3D58D;
+  border-radius:16px;
+  background:linear-gradient(145deg,#FFF9E8,#FFFFFF);
+  box-shadow:0 3px 8px rgba(146,99,20,.06);
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-icon {
+  display:grid;
+  flex:0 0 40px;
+  width:40px;
+  height:40px;
+  place-items:center;
+  border-radius:12px;
+  background:#FFF0C2;
+  font-size:22px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-copy {
+  display:flex;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  gap:3px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-copy strong {
+  color:#805A0A;
+  font-size:12px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-copy small {
+  color:#94712B;
+  font-size:9px;
+  font-weight:700;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-cta {
+  flex:none;
+  color:#805A0A;
+  font-size:10px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-actions {
+  display:grid;
+  gap:7px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action {
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:100%;
+  min-height:48px;
+  padding:7px 11px;
+  text-align:right;
+  border:1px solid var(--hs-border);
+  border-radius:13px;
+  background:#FFFFFF;
+  color:var(--hs-text);
+  box-shadow:0 2px 0 var(--hs-border);
+}
+html[data-sonaa-theme="client"] body #app .client-home-action>span {
+  display:grid;
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+  place-items:center;
+  border-radius:11px;
+  background:#E8EDFF;
+  color:#172DAD;
+  font-size:17px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action strong {
+  flex:1;
+  color:var(--hs-text);
+  font-size:12px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action i {
+  color:var(--hs-indigo-400);
+  font-size:19px;
+  font-style:normal;
+  font-weight:900;
+}
+@media(max-width:360px) {
+  html[data-sonaa-theme="client"] body #app .client-home-stat-card {
+    grid-template-columns:34px minmax(0,1fr);
+    column-gap:7px;
+    padding:9px;
+  }
+  html[data-sonaa-theme="client"] body #app .client-home-stat-icon {
+    width:32px;height:32px;border-radius:10px;font-size:16px;
+  }
+  html[data-sonaa-theme="client"] body #app .client-home-stat-card strong {font-size:16px}
+}
+
 /* Wallets, messages, notifications, and support feedback. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(.wallet-card,.fanni-wallet-card) {
   background: linear-gradient(145deg,#101F9B 0%,#07136E 100%) !important;
