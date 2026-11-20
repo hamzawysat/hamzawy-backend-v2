@@ -151,31 +151,20 @@ function renderContent(){
    
   ${state.tab==='home'?`
     <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
-      <div class="fanni-home-profile panel p-4">
+      <div class="fanni-home-profile panel p-3">
         <div class="fanni-home-profile-top">
           <div class="fanni-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${esc(String(user?.name||'فني').trim().charAt(0)||'ف')}</b></div>
           <div class="fanni-home-profile-name">
-            <p>أهلاً بيك في حمزاوي سات</p>
-            <h2 id="fanniHomeTitle">${esc(user?.name||'فني')}</h2>
+            <h2 id="fanniHomeTitle">مرحباً ${esc(user?.name||'بك')}</h2>
+            <p>${esc(user?.level||'مبتدئ')} • ${approved?'معتمد':esc(status)} • ${esc(balance)} جنيه</p>
           </div>
-          <div class="fanni-home-profile-balance">
-            <small>رصيد المحفظة</small>
-            <strong>${esc(balance)} <span>جنيه</span></strong>
-          </div>
-        </div>
-        <div class="fanni-home-profile-status">
-          <span class="${approved?'is-approved':'is-pending'}">${approved?'حساب معتمد':('الحساب '+esc(status))}</span>
-          <span class="${user?.acceptingOrders===false?'is-paused':'is-available'}">${user?.acceptingOrders===false?'استقبال الطلبات متوقف':'استقبال الطلبات مفعّل'}</span>
+          <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="fanni-home-availability-toggle ${user?.acceptingOrders===false?'is-paused':'is-available'}">
+            <strong>${state.availabilitySaving?'جارٍ التحديث...':user?.acceptingOrders===false?'● OFF · غير متصل الآن':'● ON · متصل الآن'}</strong>
+            <small>${user?.acceptingOrders===false?'اضغط للتفعيل':'اضغط للإيقاف'}</small>
+          </button>
         </div>
       </div>
-
-      <div class="fanni-home-availability panel p-3">
-        <div>
-          <strong>استقبال الطلبات الجديدة</strong>
-          <small>${user?.acceptingOrders===false?'أوقف استقبال الفرص الجديدة مؤقتًا':'أنت جاهز لاستقبال فرص العمل المناسبة'}</small>
-        </div>
-        <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="${user?.acceptingOrders===false?'is-paused':'is-available'}">${state.availabilitySaving?'جاري الحفظ...':user?.acceptingOrders===false?'تفعيل الاستقبال':'إيقاف الاستقبال'}</button>
-      </div>
+      ${user?.acceptingOrders===false?'<div class="fanni-home-offline-note"><span>⚠️</span><span>أنت غير متصل ولن تستقبل طلبات جديدة. فعّل ON لاستقبال الطلبات.</span></div>':''}
 
       <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner">
         <span class="fanni-home-jobs-icon">💼</span>
