@@ -42,7 +42,894 @@ function verifyAdminDashboardSource() {
       !profilePage.includes('انتظر القرار قبل إرسال طلب جديد')) {
     throw new Error('Technician profile edit must block duplicate submissions while an earlier change is pending, matching the native app');
   }
-  const storeUi = read('frontend/js/store-ui.js');
+  if (profilePage.includes("if(!specialties.length)return showProfileEditFeedback") ||
+      !profilePage.includes('editFanniSelectedSpecialties.length<20')) {
+    throw new Error('Technician specialties must remain optional with a 20-item cap, matching the native app');
+  }
+
+  if (!storeUi.includes('اكتب كمية من 1 إلى 99.') ||
+      !storeUi.includes('quantity>1000')) {
+    throw new Error('Store purchase quantity validation message must match the native app while preserving the accepted quantity range');
+  }
+  const clientWallet = read('frontend/js/client-wallet.js');
+  const fanniWallet = read('frontend/js/fanni-wallet.js');
+  const fanniRender = read('frontend/js/fanni-render.js');
+  if (!clientWallet.includes('function normalizeClientWalletPhoneDigits(value)') ||
+      !clientWallet.includes('normalizeClientWalletPhoneDigits(this.value)') ||
+      !clientWallet.includes('normalizeClientWalletPhoneDigits(state.walletFromPhone)') ||
+      !fanniWallet.includes('function normalizeFanniWalletPhoneDigits(value)') ||
+      !fanniWallet.includes('normalizeFanniWalletPhoneDigits(state.walletFromPhone)') ||
+      !fanniRender.includes('normalizeFanniWalletPhoneDigits(this.value)')) {
+    throw new Error('Client and technician wallet phone inputs must accept Arabic and Persian numerals like the native app');
+  }
+  const adminContent = read('frontend/js/admin/support-render.js');
+  const adminActions = read('frontend/js/admin/support-actions.js');
+  const adminCss = read('frontend/css/admin-layout.css');
+  const publicRoute = read('src/routes/public.js');
+  const platformRoute = read('src/routes/admin/platform.js');
+  const fanniRender = read('frontend/js/fanni-render.js');
+  const fanniDashboard = read('frontend/js/fanni-dashboard.js');
+  if (!shell.includes("setTab('orders');state.filterOrder='__new';applyOrderFilter()") ||
+      !shell.includes("setTab('pending')") ||
+      !shell.includes("if(action==='advertisement'){setTab('content')") ||
+      shell.includes("window.open('/client.html'") || shell.includes("window.open('/fanni.html'")) {
+    throw new Error('Admin quick actions must open the matching internal pending lists and announcement editor');
+  }
+  if (!adminCss.includes('grid-template-columns:repeat(2,minmax(0,1fr))') ||
+      !adminCss.includes('justify-content:center') ||
+      !adminContent.includes('content-announcement-audience') ||
+      !adminContent.includes('faq-audience')) {
+    throw new Error('Admin buttons or content audience controls regression');
+  }
+  if (!adminActions.includes('announcementAudience') ||
+      !adminActions.includes('audience,active:true') ||
+      !platformRoute.includes("Joi.string().valid('client','fanni','both')") ||
+      !publicRoute.includes("req.query.role || 'client'") ||
+      !fanniRender.includes('renderFanniPublicContent') ||
+      !fanniDashboard.includes("apiGet('/api/content?role=fanni')")) {
+    throw new Error('Client/technician announcement and FAQ audience targeting regression');
+  }
+  if (sectionPositions.some(position => position < 0) ||
+      sectionPositions.some((position, index) => index > 0 && position <= sectionPositions[index - 1])) {
+    throw new Error('Admin dashboard section order regression');
+  }
+  if (!core.includes("label:'نظرة عامة'") ||
+      !stats.includes('إحصائيات الطلبات الشهرية') ||
+      stats.includes('stat-card')) {
+    throw new Error('Admin overview/statistics merge regression');
+  }
+  if (!header.includes('.admin-topbar') ||
+      !html.includes('admin-header.css?v=20261118-admin-actions-audience1')) {
+    throw new Error('Admin dashboard header stylesheet/cache regression');
+  }
+  if (!shell.includes('let adminRenderSequence=0;') ||
+      !shell.includes('window.scrollTo(scrollSnapshot.x,scrollSnapshot.y)') ||
+      !shell.includes('requestAnimationFrame(restoreScrollPosition)')) {
+    throw new Error('Admin render must preserve the current scroll position');
+  }
+  const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('\nasync function deleteStoreProduct('));
+  if (!editStoreFunction.includes("document.getElementById('store-name')?.closest('.premium-panel')") ||
+      !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
+      editStoreFunction.includes('window.scrollTo({top:0')) {
+    throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
+  }
+  if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
+      !store.includes('function persistStoreProductEditSession(productId)') ||
+      !store.includes('function restoreStoreProductEditSession()') ||
+      !store.includes('restoreStoreProductEditSession();') ||
+      !store.includes('persistStoreProductEditSession(id);') ||
+      !store.includes('persistStoreProductEditSession(null);')) {
+    throw new Error('Admin store must preserve and restore the selected product edit mode across page navigation');
+  }
+  if ((store.match(/object-contain/g) || []).length < 2 ||
+      store.includes('object-cover')) {
+    throw new Error('Admin store category and product images must remain fully visible without cropping');
+  }
+  if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
+      !html.includes('admin-store.js?v=20261120-admin-store-edit-restore1')) {
+    throw new Error('Admin visual fix asset cache versions were not refreshed');
+  }
+}
+verifyAdminDashboardSource();
+function verifyBrandVisualSystem() {
+  const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
+  const brand = read('frontend/css/hamzawy-sat-brand.css');
+  const pages = [
+    ['index.html', 'index'],
+    ['client.html', 'client'],
+    ['fanni.html', 'fanni'],
+    ['password.html', 'password'],
+    ['support.html', 'support'],
+    ['customers.html', 'customers'],
+    ['technicians.html', 'technicians'],
+    ['download.html', 'download'],
+    ['links.html', 'links'],
+    ['admin.html', 'admin'],
+    ['admin-setup.html', 'admin-setup']
+  ];
+  for (const [file, theme] of pages) {
+    const html = read('frontend/' + file);
+    if (!html.includes('data-sonaa-theme="' + theme + '"') ||
+        !html.includes('/css/hamzawy-sat-brand.css')) {
+      throw new Error('Shared native-app brand system missing from ' + file);
+    }
+    if (!brand.includes('html[data-sonaa-theme="' + theme + '"]')) {
+      throw new Error('Shared brand system has no page-specific rules for ' + theme);
+    }
+  }
+}
+verifyBrandVisualSystem();
+
+const BASE = process.env.SONAA_SMOKE_BASE || 'http://127.0.0.1:4173';
+const pages = [
+  { path: '/index.html', name: 'home' },
+  { path: '/client.html', name: 'client' },
+  { path: '/fanni.html', name: 'technician' },
+  { path: '/admin-smoke-panel-20261105', name: 'admin' },
+  { path: '/password.html?role=client', name: 'password' },
+  { path: '/support.html', name: 'support' },
+  { path: '/admin-setup.html', name: 'admin-setup' }
+];
+
+function apiResponse(pathname) {
+  if (pathname.endsWith('/services')) {
+    return { categories: [{ label: 'اختبار', services: ['كهرباء'] }], services: ['كهرباء'] };
+  }
+  if (pathname.endsWith('/areas')) return { areas: ['القاهرة', 'الجيزة'] };
+  if (pathname.endsWith('/content')) return { content: [] };
+  if (pathname.endsWith('/wallet-settings')) return {};
+  if (pathname.includes('/notifications')) return { notifications: [], unreadCount: 0 };
+  if (pathname.includes('/page-visits')) return { ok: true };
+  return { ok: true, data: [], requests: [], cases: [], recoveries: [] };
+}
+
+(async () => {
+  const browser = await chromium.launch({ headless: true });
+  const failures = [];
+  const overflow = [];
+
+  try {
+    for (const viewport of [
+      { name: 'desktop', width: 1365, height: 900 },
+      { name: 'mobile', width: 360, height: 800 }
+    ]) {
+      for (const target of pages) {
+        const page = await browser.newPage({ viewport: { width: viewport.width, height: viewport.height } });
+        if (target.name === 'technician' && viewport.name === 'mobile') {
+          await page.addInitScript(() => {
+            const nativeSetInterval = window.setInterval.bind(window);
+            window.__sonaaIntervalDelays = [];
+            window.setInterval = (handler, delay, ...args) => {
+              window.__sonaaIntervalDelays.push(Number(delay));
+              return nativeSetInterval(handler, delay, ...args);
+            };
+          });
+        }
+        const pageErrors = [];
+        const browserConsoleErrors = [];
+        const badLocalResponses = [];
+        const authResponses = [];
+        const technicianProfileResponses = [];
+
+        page.on('pageerror', error => pageErrors.push(error.message));
+        page.on('console', message => { if (message.type() === 'error') browserConsoleErrors.push(message.text()); });
+        page.on('response', async response => {
+          const url = new URL(response.url());
+          if (url.origin === BASE && url.pathname === '/api/client/login' && response.request().method() === 'POST') {
+            authResponses.push('POST ' + url.pathname + ' -> ' + response.status());
+          }
+          if (url.origin === BASE && url.pathname === '/api/fanni/me') {
+            const detail = await response.text().catch(() => '');
+            technicianProfileResponses.push(response.request().method() + ' ' + url.pathname + ' -> ' + response.status() + ' ' + detail.slice(0, 350));
+          }
+          if (url.origin === BASE && (response.status() === 404 || response.status() >= 500)) {
+            badLocalResponses.push(response.status() + ' ' + url.pathname);
+          }
+        });
+
+        if (process.env.SONAA_SMOKE_REAL_API !== '1') {
+          await page.route('**/api/**', async route => {
+            const url = new URL(route.request().url());
+            await route.fulfill({
+              status: 200,
+              contentType: 'application/json; charset=utf-8',
+              body: JSON.stringify(apiResponse(url.pathname))
+            });
+          });
+        }
+
+        try {
+          const response = await page.goto(BASE + target.path, { waitUntil: 'domcontentloaded', timeout: 20000 });
+          if (!response || response.status() !== 200) {
+            failures.push(target.name + '/' + viewport.name + ': page did not return HTTP 200');
+          }
+          await page.waitForTimeout(900);
+
+          // Dedicated visual-feedback regression checks for all three dashboards.
+          if (['client', 'technician', 'admin'].includes(target.name)) {
+            const cssVersion = await page.locator('link[rel="stylesheet"][href*="ui-light-surfaces.css"]').evaluateAll(items =>
+              items.map(item => new URL(item.href).searchParams.get('v')));
+            if (cssVersion.length !== 1 || cssVersion[0] !== '20261117-button-feedback-v3') {
+              failures.push(target.name + '/' + viewport.name + ': central interaction stylesheet cache version is stale or duplicated');
+            }
+
+            const visualTargets = await page.evaluate(targetName => {
+              const root = document.querySelector('#app');
+              if (!root) return false;
+              const button = document.createElement('button');
+              button.type = 'button';
+              button.textContent = 'اختبار ضغط';
+              button.dataset.visualFeedbackTest = 'button';
+              const tablist = document.createElement('div');
+              tablist.setAttribute('role', 'tablist');
+              let tab;
+              if (targetName === 'client') {
+                tablist.className = 'client-wallet-tabs';
+                tab = document.createElement('button');
+                tab.className = 'client-wallet-tab is-active';
+              } else if (targetName === 'technician') {
+                tablist.className = 'fanni-wallet-tabs';
+                tab = document.createElement('button');
+                tab.className = 'fanni-wallet-tab is-active';
+              } else {
+                tab = document.createElement('button');
+                tab.className = 'admin-topup-owner-tab is-active';
+              }
+              tab.type = 'button';
+              tab.setAttribute('role', 'tab');
+              tab.setAttribute('aria-selected', 'true');
+              tab.textContent = 'اختبار تبويب';
+              tab.dataset.visualFeedbackTest = 'tab';
+              tablist.append(tab);
+              root.append(button, tablist);
+              return true;
+            }, target.name);
+            if (!visualTargets) {
+              failures.push(target.name + '/' + viewport.name + ': could not mount visual-feedback test controls');
+            } else {
+              const selectedTabStyle = await page.locator('[data-visual-feedback-test="tab"]').evaluate(element => {
+                const style = getComputedStyle(element);
+                return { backgroundImage: style.backgroundImage, boxShadow: style.boxShadow };
+              });
+              if (selectedTabStyle.backgroundImage === 'none' || selectedTabStyle.boxShadow === 'none') {
+                failures.push(target.name + '/' + viewport.name + ': selected tab has no visible active-state styling');
+              }
+
+              for (const selector of ['[data-visual-feedback-test="button"]', '[data-visual-feedback-test="tab"]']) {
+                const targetControl = page.locator(selector);
+                await targetControl.scrollIntoViewIfNeeded();
+                const bounds = await targetControl.boundingBox();
+                if (!bounds) {
+                  failures.push(target.name + '/' + viewport.name + ': visual-feedback control has no layout box');
+                  continue;
+                }
+                const center = { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 };
+                await page.mouse.move(center.x, center.y);
+                // Loading/auth overlays can sit above the dashboard root in smoke mode.
+                // Remove only a hit-tested blocker for this isolated visual fixture.
+                await page.evaluate(({ x, y, selector }) => {
+                  const control = document.querySelector(selector);
+                  const hit = document.elementFromPoint(x, y);
+                  if (control && hit && hit !== control && !control.contains(hit)) {
+                    const knownOverlay = hit.closest('#clientLoadingOverlay,#fanniLoadingOverlay,.client-loading-overlay,.fanni-loading-overlay');
+                    const hitStyle = getComputedStyle(hit);
+                    const isExternalOverlay = !hit.closest('#app') && !['BODY','HTML'].includes(hit.tagName) &&
+                      ['fixed','absolute'].includes(hitStyle.position) && Number(hitStyle.zIndex) > 0;
+                    const blocker = knownOverlay || (isExternalOverlay ? hit : null);
+                    if (blocker && blocker !== control && !control.contains(blocker)) blocker.remove();
+                  }
+                }, { ...center, selector });
+                await page.mouse.move(center.x, center.y);
+                await page.mouse.down();
+                // Let the 140ms background transition reach its final pressed color.
+                await page.waitForTimeout(180);
+                const pressedStyle = await targetControl.evaluate(element => {
+                  const style = getComputedStyle(element);
+                  return {
+                    backgroundColor: style.backgroundColor,
+                    transform: style.transform,
+                    animationName: style.animationName,
+                    boxShadow: style.boxShadow
+                  };
+                });
+                await page.mouse.up();
+                const pressedRgb = pressedStyle.backgroundColor.match(/^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/);
+                const expectedPressedRgb = [169, 130, 46];
+                const pressedColorMatches = Boolean(pressedRgb) &&
+                  pressedRgb.slice(1).every((channel, index) =>
+                    Math.abs(Number(channel) - expectedPressedRgb[index]) <= 4);
+                if (pressedStyle.transform === 'none' ||
+                    !pressedColorMatches ||
+                    pressedStyle.animationName !== 'sonaa-button-press-pulse' ||
+                    pressedStyle.boxShadow === 'none') {
+                  failures.push(target.name + '/' + viewport.name + ': ' + selector +
+                    ' missing press feedback (' + JSON.stringify(pressedStyle) + ')');
+                }
+              }
+            }
+          }
+
+          if (target.name !== 'home' && !await page.locator('#app, #setupForm, #main, main.wrap').count()) {
+            failures.push(target.name + '/' + viewport.name + ': expected page root was not rendered');
+          }
+
+          const dimensions = await page.evaluate(() => ({
+            viewport: document.documentElement.clientWidth,
+            document: document.documentElement.scrollWidth
+          }));
+          if (dimensions.document > dimensions.viewport + 2) {
+            overflow.push(target.name + '/' + viewport.name + ': ' + dimensions.document + 'px content in ' + dimensions.viewport + 'px viewport');
+          }
+
+          if (viewport.name === 'desktop') {
+            if (target.name === 'client') {
+              await page.locator('#accountPhone').fill('123');
+              await page.locator('#accountPassword').fill('x');
+              await page.locator('.account-submit').click();
+              await page.getByText('رقم الموبايل غير صحيح؛ اكتب 11 رقمًا يبدأ بـ 01.').waitFor({ state: 'visible', timeout: 3000 });
+
+              const clientHeadStyles = await page.locator('head link[rel="stylesheet"]').evaluateAll(items => items.map(item => new URL(item.href).pathname));
+              const clientStyleOrder = [
+                '/css/client-foundation.css',
+                '/css/client-layout.css',
+                '/css/theme.css',
+                '/css/client-components.css',
+                '/css/ui-light-surfaces.css',
+                '/css/dashboard-header-unified.css',
+                '/css/hamzawy-sat-brand.css'
+              ].map(path => clientHeadStyles.indexOf(path));
+              const clientHtmlSource = await (await page.request.get(BASE + '/frontend/client.html')).text();
+              const clientActionsSource = await (await page.request.get(BASE + '/frontend/js/client-actions.js')).text();
+              const clientAccountSource = await (await page.request.get(BASE + '/frontend/js/client-account.js')).text();
+              const clientRenderSource = await (await page.request.get(BASE + '/frontend/js/client-render.js')).text();
+              const behaviorScripts = await page.locator('script[src="/js/page-behaviors.js"]').evaluateAll(items => items.map(item => item.dataset.sonaaFeatures || item.dataset.sonaaFeature || ''));
+              const clientScriptPaths = await page.locator('script[src]').evaluateAll(items => items.map(item => new URL(item.src).pathname).filter(path => path.startsWith('/js/')));
+              const clientComponentsSource = await (await page.request.get(BASE + '/frontend/css/client-components.css')).text();
+              const clientLayoutSource = await (await page.request.get(BASE + '/frontend/css/client-layout.css')).text();
+              const sharedEditorSource = await (await page.request.get(BASE + '/frontend/js/editor.js')).text();
+              const orderPollingIntervals = (clientActionsSource.match(/},\s*25000\);/g) || []).length;
+              if (!sharedEditorSource.includes('function getEffectiveData(data)') ||
+                  !sharedEditorSource.includes('function clearMobileOverrideProperties(data,properties)') ||
+                  !sharedEditorSource.includes("clearMobileOverrideProperties(data,[property])") ||
+                  (sharedEditorSource.split("clearMobileOverrideProperties(data,['translateX','translateY'])").length - 1) < 2 ||
+                  !sharedEditorSource.includes('const data=getSelectedData(),effective=getEffectiveData(data)') ||
+                  !sharedEditorSource.includes('originX:Number(effective.translateX)||0,originY:Number(effective.translateY)||0') ||
+                  !sharedEditorSource.includes('const x=(Number(effective.translateX)||0)+dx,y=(Number(effective.translateY)||0)+dy')) {
+                failures.push('client/desktop: editor changes do not consistently apply to shared desktop/mobile layout data');
+              }
+              if (clientStyleOrder.some(index => index < 0) ||
+                  clientStyleOrder.some((index, position) => position > 0 && index <= clientStyleOrder[position - 1]) ||
+                  /<style\b/i.test(clientHtmlSource) ||
+                  clientHtmlSource.includes(':root{--navy:') ||
+                  clientHtmlSource.includes('#app .client-section-tabs{')) {
+                failures.push('client/desktop: stylesheet extraction or cascade order is incorrect');
+              }
+              if (/<style\b/i.test(clientAccountSource) || /<style\b/i.test(clientRenderSource) ||
+                  !clientLayoutSource.includes('.account-top-nav{') ||
+                  !clientComponentsSource.includes('body .support-float{position:fixed!important;left:16px!important;right:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}') ||
+                  !clientComponentsSource.includes('body .global-refresh-float{position:fixed!important;left:16px!important;right:auto!important;bottom:85px!important;top:auto!important;z-index:80!important}') ||
+                  !clientLayoutSource.includes('.global-refresh.is-refreshing svg{animation:global-refresh-spin 1s linear infinite}')) {
+                failures.push('client/desktop: dynamic CSS remains in JavaScript or extracted component rules are missing');
+              }
+              if (orderPollingIntervals < 2 ||
+                  !/setInterval\(refreshTrackedChatSilently,\s*10000\)/.test(clientActionsSource) ||
+                  clientActionsSource.includes('},3000);') ||
+                  clientActionsSource.includes('},2000);')) {
+                failures.push('client/desktop: customer polling does not follow the 25s/10s project cadence');
+              }
+              if (behaviorScripts.length !== 1 ||
+                  !behaviorScripts[0].includes('client-global-refresh') ||
+                  !behaviorScripts[0].includes('sticky-tabs') ||
+                  new Set(clientScriptPaths).size !== clientScriptPaths.length) {
+                failures.push('client/desktop: client JavaScript features are missing or a module is loaded more than once');
+              }
+
+              const editorSectionValues = {
+                new: 'client:new-order',
+                orders: 'client:my-orders',
+                track: 'client:track',
+                wallet: 'client:wallet',
+                subscriptions: 'client:subscriptions',
+                store: 'client:store',
+                complaint: 'client:complaint'
+              };
+              const clientSections = Object.keys(editorSectionValues);
+              const editorOptions = await page.evaluate(async () => {
+                const response = await fetch('/editor.html');
+                const markup = await response.text();
+                const editorDocument = new DOMParser().parseFromString(markup, 'text/html');
+                return [...editorDocument.querySelectorAll('#subPageSelect option')].map(option => option.value);
+              });
+              const editorScript = await (await page.request.get(BASE + '/frontend/js/editor.js')).text();
+              for (const section of clientSections) {
+                const optionValue = editorSectionValues[section];
+                if (!editorOptions.includes(optionValue) || !editorScript.includes(optionValue)) {
+                  failures.push('client/desktop: shared editor is missing the ' + section + ' section');
+                }
+                const previewResponse = await page.goto(BASE + '/client.html?preview=true&section=' + section, {
+                  waitUntil: 'domcontentloaded', timeout: 15000
+                });
+                if (!previewResponse || previewResponse.status() !== 200) {
+                  failures.push('client/desktop: preview route failed for ' + section);
+                  continue;
+                }
+                await page.waitForFunction(expected => window.IS_EDITOR_PREVIEW === true && state.tab === expected,
+                  section, { timeout: 5000 });
+              }
+
+              await page.goto(BASE + '/client.html?preview=true&section=new', { waitUntil: 'domcontentloaded' });
+              await page.waitForFunction(() => state.tab === 'new', null, { timeout: 5000 });
+              await page.evaluate(() => window.postMessage({ action: 'openSection', section: 'wallet' }, '*'));
+              await page.waitForFunction(() => state.tab === 'wallet', null, { timeout: 5000 });
+              await page.goto(BASE + '/client.html', { waitUntil: 'domcontentloaded' });
+              await page.locator('#accountPhone').waitFor({ state: 'visible', timeout: 5000 });
+
+              if (process.env.SONAA_SMOKE_REAL_API === '1') {
+                await page.locator('#accountPhone').fill('01012345670');
+                await page.locator('#accountPassword').fill('ClientSmokePass123');
+                const clientLoginResponsePromise = page.waitForResponse(response =>
+                  response.url().includes('/api/client/login') && response.request().method() === 'POST',
+                  { timeout: 15000 }
+                );
+                await page.locator('.account-submit').click();
+                const clientLoginResponse = await clientLoginResponsePromise;
+                if (!clientLoginResponse.ok()) {
+                  const loginBody = await clientLoginResponse.text().catch(() => '');
+                  throw new Error('client/desktop: seeded client login returned HTTP ' +
+                    clientLoginResponse.status() + ' (' + loginBody.slice(0, 500) + ')');
+                }
+                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
+                await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
+                const customerTabIds = ['home', 'new', 'orders', 'wallet', 'subscriptions', 'store', 'complaint'];
+                const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
+                if (await customerTabButtons.count() !== customerTabIds.length) {
+                  failures.push('client/desktop: expected seven customer top navigation buttons');
+                }
+                if (await page.locator('.client-section-tabs').count() !== 1 || await page.locator('nav.fixed.bottom-0').count() !== 0 ||
+                    await page.locator('.dashboard-top-shell').evaluate(shell => getComputedStyle(shell).position !== 'sticky')) {
+                  failures.push('client/desktop: customer navigation is not pinned beneath the sticky dashboard header');
+                }
+                if (await page.locator('.client-home-dashboard').count() !== 1 || await page.evaluate(() => state.tab) !== 'home') {
+                  failures.push('client/desktop: customer dashboard did not open on the home section');
+                }
+                for (let tabIndex = 0; tabIndex < customerTabIds.length; tabIndex++) {
+                  await customerTabButtons.nth(tabIndex).click();
+                  await page.waitForFunction(expected => state.tab === expected, customerTabIds[tabIndex], { timeout: 5000 });
+                }
+
+                // Exercise the shared visual editor against the isolated MongoDB-backed API.
+                const adminLogin = await page.request.post(BASE + '/api/admin/login', {
+                  data: { phone: '01012345678', password: 'AdminSmokePass123' }
+                });
+                if (adminLogin.status() !== 200) {
+                  failures.push('client/desktop: editor admin login failed with HTTP ' + adminLogin.status());
+                } else {
+                  const adminSession = await adminLogin.json();
+                  await page.evaluate(token => localStorage.setItem('admin_token_v3', token), adminSession.token);
+                  const editorResponse = await page.goto(BASE + '/editor.html', { waitUntil: 'domcontentloaded', timeout: 15000 });
+                  if (!editorResponse || editorResponse.status() !== 200) {
+                    failures.push('client/desktop: visual editor route failed');
+                  } else {
+                    const preview = page.frameLocator('#previewFrame');
+                    await preview.locator('#app .account-slogan').waitFor({ state: 'visible', timeout: 10000 });
+                    await page.locator('#editModeBtn').click();
+                    await preview.locator('#app .account-slogan').click();
+                    await page.locator('#ctrlText').fill('اختبار حفظ واسترجاع المحرر');
+                    await page.locator('#saveBtn').click();
+                    await page.getByText('تم الحفظ في MongoDB', { exact: false }).waitFor({ state: 'visible', timeout: 10000 });
+
+                    const layoutResponse = await page.request.get(BASE + '/api/admin/ui-layout/client', {
+                      headers: { Authorization: 'Bearer ' + adminSession.token }
+                    });
+                    const persisted = await layoutResponse.json();
+                    const savedText = Object.values(persisted.layout?.elements || {}).some(item => item.text === 'اختبار حفظ واسترجاع المحرر');
+                    if (layoutResponse.status() !== 200 || !savedText) {
+                      failures.push('client/desktop: editor save was not persisted by the MongoDB-backed API');
+                    }
+
+                    await page.locator('[data-device="mobile"]').click();
+                    await page.locator('#reloadPreviewBtn').click();
+                    await page.waitForFunction(() => document.querySelector('#saveStatus')?.textContent.includes('جاهز'), null, { timeout: 20000 });
+                    await preview.locator('#app .account-slogan').waitFor({ state: 'visible', timeout: 10000 });
+                    const mobileReloadLayout = await (await page.request.get(BASE + '/api/admin/ui-layout/client', {
+                      headers: { Authorization: 'Bearer ' + adminSession.token }
+                    })).json();
+                    if (!Object.values(mobileReloadLayout.layout?.elements || {}).some(item => item.text === 'اختبار حفظ واسترجاع المحرر')) {
+                      failures.push('client/desktop: saved editor text was not retained after mobile preview reload');
+                    }
+                    await page.locator('[data-device="desktop"]').click();
+                    await page.locator('#reloadPreviewBtn').click();
+                    await page.waitForFunction(() => document.querySelector('#saveStatus')?.textContent.includes('جاهز'), null, { timeout: 20000 });
+                    await preview.locator('#app .account-slogan').waitFor({ state: 'visible', timeout: 10000 });
+                    const desktopReloadLayout = await (await page.request.get(BASE + '/api/admin/ui-layout/client', {
+                      headers: { Authorization: 'Bearer ' + adminSession.token }
+                    })).json();
+                    if (!Object.values(desktopReloadLayout.layout?.elements || {}).some(item => item.text === 'اختبار حفظ واسترجاع المحرر')) {
+                      failures.push('client/desktop: saved editor text was not retained after desktop preview reload');
+                    }
+
+                    const resetLayout = await page.request.delete(BASE + '/api/admin/ui-layout/client', {
+                      headers: { Authorization: 'Bearer ' + adminSession.token }
+                    });
+                    if (resetLayout.status() !== 200) {
+                      failures.push('client/desktop: isolated editor test data could not be reset');
+                    }
+                  }
+                }
+              }
+            } else if (target.name === 'technician') {
+              await page.locator('#fanniLoginPhone').fill('123');
+              await page.locator('#fanniLoginPassword').fill('x');
+              await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
+              await page.getByText('رقم التليفون غير صحيح').waitFor({ state: 'visible', timeout: 3000 });
+              if (process.env.SONAA_SMOKE_REAL_API === '1') {
+                await page.locator('#fanniLoginPhone').fill('01012345671');
+                await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
+                await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
+                await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!document.querySelector('#guidelinesAcceptedCheck') || !!document.querySelector('nav.fanni-dashboard-tabs'), null, { timeout: 10000 });
+                if (await page.locator('#guidelinesAcceptedCheck').count()) {
+                  await page.locator('#guidelinesAcceptedCheck').check();
+                  await page.getByRole('button', { name: 'موافق ثم تأكيد' }).click();
+                }
+                await page.locator('nav.fanni-dashboard-tabs').waitFor({ state: 'visible', timeout: 10000 });
+                const technicianNavigation = await page.evaluate(() => ({
+                  tabs: typeof TECHNICIAN_TAB_DEFINITIONS !== 'undefined' ? TECHNICIAN_TAB_DEFINITIONS.map(tab => tab.id) : [],
+                  notificationBell: !!document.querySelector('button[aria-label="الإشعارات"]'),
+                  supportFloat: !!document.querySelector('a.support-float[href="support.html?role=fanni"]'),
+                  topTabs: !!document.querySelector('nav.fanni-dashboard-tabs'),
+                  pinnedShell: (() => { const shell = document.querySelector('.dashboard-top-shell'); return !!shell && getComputedStyle(shell).position === 'sticky'; })(),
+                  topTabButtons: document.querySelectorAll('nav.fanni-dashboard-tabs button[onclick^="openTechnicianSection("]').length,
+                  bottomTabs: document.querySelectorAll('nav.fixed.bottom-0 button[onclick^="openTechnicianSection("]').length,
+                  refreshOnLeft: (() => { const button = document.querySelector('#global-refresh'); if (!button) return false; const rect = button.getBoundingClientRect(); return rect.left >= 0 && rect.left < window.innerWidth / 2; })()
+                }));
+                if (technicianNavigation.tabs.join(',') !== 'home,available,myOrders,wallet,store,profile,support') {
+                  failures.push('technician/desktop: expected technician section definitions are missing');
+                }
+                if (!technicianNavigation.notificationBell) failures.push('technician/desktop: notification bell is missing');
+                if (technicianNavigation.supportFloat) failures.push('technician/desktop: floating support shortcut still exists');
+                if (!technicianNavigation.topTabs) failures.push('technician/desktop: top navigation is missing');
+                if (!technicianNavigation.pinnedShell) failures.push('technician/desktop: navigation is not pinned beneath the sticky dashboard header');
+                if (technicianNavigation.topTabButtons !== 7) failures.push('technician/desktop: expected 7 top navigation buttons, found ' + technicianNavigation.topTabButtons);
+                if (technicianNavigation.bottomTabs !== 0) failures.push('technician/desktop: bottom navigation should not be present in the browser');
+                if (!technicianNavigation.refreshOnLeft) failures.push('technician/desktop: refresh control is not positioned on the left');
+                const initialTab = await page.evaluate(() => state.tab);
+            if (initialTab !== 'home') failures.push('technician/mobile: dashboard did not open on the home section');
+                const pollingStarted = await page.evaluate(() => !!fanniChatsPollTimer && !!fanniMessagesPollTimer);
+                if (!pollingStarted) failures.push('technician: chat/message polling did not start after login');
+                await page.getByRole('button', { name: /الدعم الفني/ }).first().waitFor({ state: 'visible', timeout: 3000 });
+                await page.evaluate(() => openTechnicianSection('myOrders'));
+                await page.getByRole('button', { name: /المهام المكتملة/ }).click();
+                await page.getByRole('heading', { name: 'المهام المكتملة' }).waitFor({ state: 'visible', timeout: 3000 });
+                await page.getByRole('button', { name: /العروض الجارية/ }).click();
+                await page.getByRole('heading', { name: 'عروضي' }).waitFor({ state: 'visible', timeout: 3000 });
+                await page.evaluate(() => openTechnicianSection('profile'));
+                await page.getByText(/تغيير كلمة المرور/).first().waitFor({ state: 'visible', timeout: 5000 }).catch(async error => {
+                  const state = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), user: (() => { try { return JSON.parse(localStorage.getItem('fanni_user_v4') || 'null'); } catch { return null; } })(), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), app: document.querySelector('#app')?.innerText.slice(0, 700) }));
+                  throw new Error(error.message + ' [profile diagnostic: ' + JSON.stringify({ state, profile: technicianProfileResponses, consoleErrors: browserConsoleErrors.slice(-12) }) + ']');
+                });
+                await page.locator('button[onclick="beginEditProfile()"]').click();
+                await page.locator('#fanniEditPhone').fill('01012345672');
+                await page.locator('button[onclick="saveProfileChanges()"]').click();
+                await page.locator('button[onclick="beginEditProfile()"]').waitFor({ state: 'visible', timeout: 10000 });
+                await page.locator('#toast').getByText(/تم إرسال طلب تعديل بيانات/).waitFor({ state: 'visible', timeout: 3000 });
+                await page.route('**/api/areas', route => route.fulfill({
+                  status: 200,
+                  contentType: 'application/json; charset=utf-8',
+                  body: JSON.stringify({ message: 'فشل اختبار تحميل المناطق' })
+                }));
+                await page.locator('#global-refresh').click();
+                await page.locator('#toast').getByText(/تعذر تحديث: مناطق العمل/).waitFor({ state: 'visible', timeout: 8000 });
+                await page.unroute('**/api/areas');
+              }
+            } else if (target.name === 'admin') {
+              await page.locator('#login-btn').click();
+              await page.getByText('اكتب البيانات').waitFor({ state: 'visible', timeout: 3000 });
+              const storeFailureRegression = await page.evaluate(async () => {
+                if (typeof window.loadStoreProducts !== 'function' || typeof state === 'undefined') return { supported: false };
+                const originalTryApi = window.tryApi;
+                const originalRender = window.render;
+                const originalProducts = state.storeProducts;
+                const originalLoading = state.storeProductsLoading;
+                const originalError = state.storeProductsLoadError;
+                const originalTab = state.tab;
+                state.storeProducts = [{ _id: 'smoke-existing-product', name: 'منتج محفوظ للاختبار' }];
+                state.storeProductsLoading = false;
+                state.storeProductsLoadError = '';
+                state.tab = 'store';
+                window.render = () => {};
+                window.tryApi = async paths => {
+                  const endpoint = Array.isArray(paths) ? paths[0] : paths;
+                  if (String(endpoint).includes('/products')) throw new Error('simulated temporary store refresh failure');
+                  return { rotationSeconds: 5 };
+                };
+                try {
+                  await window.loadStoreProducts();
+                  return {
+                    supported: true,
+                    count: state.storeProducts.length,
+                    productId: state.storeProducts[0]?._id,
+                    loading: state.storeProductsLoading
+                  };
+                } finally {
+                  window.tryApi = originalTryApi;
+                  window.render = originalRender;
+                  state.storeProducts = originalProducts;
+                  state.storeProductsLoading = originalLoading;
+                  state.storeProductsLoadError = originalError;
+                  state.tab = originalTab;
+                }
+              });
+              if (!storeFailureRegression.supported ||
+                  storeFailureRegression.count !== 1 ||
+                  storeFailureRegression.productId !== 'smoke-existing-product' ||
+                  storeFailureRegression.loading !== false) {
+                failures.push('admin/' + viewport.name + ': a temporary store refresh failure must preserve the existing product list and clear loading state (' + JSON.stringify(storeFailureRegression) + ')');
+              }
+              if (process.env.SONAA_SMOKE_REAL_API === '1') {
+                await page.locator('#login-phone').fill('01012345678');
+                await page.locator('#login-pass').fill('AdminSmokePass123');
+                await page.locator('#login-btn').click();
+                await page.waitForFunction(() => !!localStorage.getItem('admin_token_v3'), null, { timeout: 10000 });
+                await page.waitForTimeout(1200);
+              }
+            }
+          }
+
+          if (viewport.name === 'mobile' && target.name === 'client') {
+            const clientTabs = ['new', 'orders', 'track', 'wallet', 'subscriptions', 'store', 'complaint'];
+            const loadedClientCss = await page.locator('link[rel="stylesheet"]').evaluateAll(items =>
+              items.map(item => new URL(item.href).pathname));
+            if (!loadedClientCss.includes('/css/client-foundation.css') ||
+                !loadedClientCss.includes('/css/client-layout.css') ||
+                !loadedClientCss.includes('/css/client-components.css')) {
+              failures.push('client/mobile: one or more extracted client stylesheets are missing');
+            }
+            for (const tab of clientTabs) {
+              await page.goto(BASE + '/client.html?preview=true&section=' + tab, {
+                waitUntil: 'domcontentloaded', timeout: 15000
+              });
+              await page.waitForFunction(expected => window.IS_EDITOR_PREVIEW === true && state.tab === expected,
+                tab, { timeout: 5000 });
+              const tabDimensions = await page.evaluate(() => ({
+                viewport: document.documentElement.clientWidth,
+                document: document.documentElement.scrollWidth
+              }));
+              if (tabDimensions.document > tabDimensions.viewport + 2) {
+                overflow.push('client/' + tab + '/mobile: ' + tabDimensions.document + 'px content in ' + tabDimensions.viewport + 'px viewport');
+              }
+            }
+            await page.goto(BASE + '/client.html?preview=true&section=new', { waitUntil: 'domcontentloaded' });
+            await page.waitForFunction(() => state.tab === 'new', null, { timeout: 5000 });
+            await page.evaluate(() => window.postMessage({ action: 'openSection', section: 'wallet' }, '*'));
+            await page.waitForFunction(() => state.tab === 'wallet', null, { timeout: 5000 });
+          }
+
+
+          if (viewport.name === 'mobile' && target.name === 'technician' && process.env.SONAA_SMOKE_REAL_API === '1') {
+            await page.locator('#fanniLoginPhone').fill('01012345671');
+            await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
+            await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
+            await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
+            await page.waitForFunction(() => state.tab === 'home', null, { timeout: 5000 });
+            await page.waitForFunction(() => !!document.querySelector('#guidelinesAcceptedCheck') || !!document.querySelector('nav.fanni-dashboard-tabs'), null, { timeout: 10000 });
+            if (await page.locator('#guidelinesAcceptedCheck').count()) {
+              await page.locator('#guidelinesAcceptedCheck').check();
+              await page.getByRole('button', { name: 'موافق ثم تأكيد' }).click();
+            }
+            await page.locator('nav.fanni-dashboard-tabs').waitFor({ state: 'visible', timeout: 10000 });
+
+            const resources = await page.evaluate(() => ({
+              css: [...document.querySelectorAll('link[rel="stylesheet"]')].map(item => item.href).filter(url => url.includes('/css/fanni-')),
+              scripts: [...document.querySelectorAll('script[src]')].map(item => item.src).filter(url => url.includes('/js/fanni-'))
+            }));
+            if (new Set(resources.css).size !== resources.css.length || new Set(resources.scripts).size !== resources.scripts.length) {
+              failures.push('technician/mobile: duplicate CSS or JavaScript module references detected');
+            }
+
+            const expectedTabs = [
+              ['الرئيسية', 'home'],
+              ['الطلبات المتاحة', 'available'],
+              ['عروضي', 'myOrders'],
+              ['المحفظة', 'wallet'],
+              ['المتجر', 'store'],
+              ['حسابي', 'profile']
+            ];
+            for (const [label, tab] of expectedTabs) {
+              try {
+                const tabButton = page.locator('button.fanni-section-tab').filter({ hasText: label }).first();
+                await tabButton.click({ timeout: 8000 });
+                await page.waitForTimeout(120);
+                const isActive = await page.evaluate(expected => [...document.querySelectorAll('button')]
+                  .some(button => button.getAttribute('onclick') === "openTechnicianSection('" + expected + "')" &&
+                    button.classList.contains('is-active')), tab);
+                if (!isActive) {
+                  const stateDiagnostic = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), activeTabs: [...document.querySelectorAll('button.fanni-section-tab')].map(button => ({ text: button.innerText, active: button.classList.contains('is-active') })) }));
+                  failures.push('technician/mobile: navigation did not activate the ' + tab + ' section ' + JSON.stringify({ stateDiagnostic, profile: technicianProfileResponses }));
+                }
+              } catch (error) {
+                failures.push('technician/mobile: ' + tab + ' navigation click failed: ' + error.message);
+                throw error;
+              }
+            }
+
+            await page.locator('button.fanni-section-tab').filter({ hasText: 'الرئيسية' }).first().click();
+            await page.locator('.fanni-home-dashboard').waitFor({ state: 'visible', timeout: 3000 });
+            const homeStatsCount = await page.locator('.fanni-home-dashboard [data-home-stat]').count();
+            if (homeStatsCount !== 4) failures.push('technician/mobile: home dashboard must show all four summary statistics');
+
+            const polling = await page.evaluate(() => ({
+              chats: !!fanniChatsPollTimer,
+              messages: !!fanniMessagesPollTimer,
+              bell: !!document.querySelector('button[aria-label="الإشعارات"]'),
+              intervals: window.__sonaaIntervalDelays || []
+            }));
+            if (!polling.chats || !polling.messages || !polling.bell ||
+                polling.intervals.filter(delay => delay === 25000).length !== 1 ||
+                polling.intervals.filter(delay => delay === 10000).length < 1) {
+              failures.push('technician/mobile: chat polling must run at 25s and 10s and keep the notification bell');
+            }
+
+            await page.evaluate(() => {
+              Object.defineProperty(document, 'hidden', { configurable: true, value: true });
+              document.dispatchEvent(new Event('visibilitychange'));
+            });
+            const stopped = await page.evaluate(() => !fanniChatsPollTimer && !fanniMessagesPollTimer);
+            await page.evaluate(() => {
+              Object.defineProperty(document, 'hidden', { configurable: true, value: false });
+              document.dispatchEvent(new Event('visibilitychange'));
+            });
+            const resumed = await page.evaluate(() => !!fanniChatsPollTimer && !!fanniMessagesPollTimer);
+            if (!stopped || !resumed) failures.push('technician/mobile: polling did not stop/resume with page visibility');
+
+            await page.locator('button[onclick="openTechnicianSection(\'support\')"]:visible').first().click({ timeout: 8000 });
+            await page.waitForURL(url => url.pathname.endsWith('/support.html') && url.searchParams.get('role') === 'fanni', { timeout: 5000 });
+          }
+
+          if (pageErrors.length) failures.push(target.name + '/' + viewport.name + ': ' + pageErrors.join(' | '));
+          if (badLocalResponses.length) failures.push(target.name + '/' + viewport.name + ': ' + badLocalResponses.join(', '));
+        } catch (error) {
+          const diagnostics = [...authResponses, ...pageErrors.map(message => 'pageerror: ' + message)];
+          failures.push(target.name + '/' + viewport.name + ': ' + error.message + (diagnostics.length ? ' [' + diagnostics.join(' | ') + ']' : ''));
+        } finally {
+          await page.close();
+        }
+      }
+    }
+    // Regression: an existing admin session restored directly into #store must hydrate
+    // the saved product list and ad-rotation setting without logging out and back in.
+    const storeRestorePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const storeApiCalls = [];
+    const storePageErrors = [];
+    storeRestorePage.on('pageerror', error => storePageErrors.push(error.message));
+    await storeRestorePage.addInitScript(() => {
+      localStorage.setItem('admin_token_v3', 'store-tab-restore-smoke-token');
+      localStorage.setItem('admin_token', 'store-tab-restore-smoke-token');
+      localStorage.setItem('token', 'store-tab-restore-smoke-token');
+      localStorage.setItem('auth_token', 'store-tab-restore-smoke-token');
+    });
+    await storeRestorePage.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      storeApiCalls.push(url.pathname);
+      let body = apiResponse(url.pathname);
+      if (url.pathname.endsWith('/admin/store/products')) {
+        body = {
+          products: [{ _id: 'store-restore-smoke-product', name: 'منتج استعادة المتجر', category: 'عام', price: 125, isActive: true, isAdvertised: false }],
+          categories: [{ name: 'عام', productCount: 1, imageUrl: '', fallbackImageUrl: '', customImageUrl: '', imageFileId: null, hasCustomImage: false }]
+        };
+      } else if (url.pathname.endsWith('/admin/store/ad-settings')) {
+        body = { rotationSeconds: 10 };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: JSON.stringify(body)
+      });
+    });
+    try {
+      const response = await storeRestorePage.goto(BASE + '/admin-smoke-panel-20261105#store', {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      });
+      if (!response || response.status() !== 200) failures.push('admin/store-restore: admin page did not return HTTP 200');
+      await storeRestorePage.getByText('منتج استعادة المتجر').waitFor({ state: 'visible', timeout: 6000 });
+      const rotationSettingsToggle = storeRestorePage.getByRole('button', { name: /مدة عرض صورة الإعلان/ });
+      await rotationSettingsToggle.waitFor({ state: 'visible', timeout: 5000 });
+      if (await rotationSettingsToggle.getAttribute('aria-expanded') !== 'false') {
+        failures.push('admin/store-restore: ad rotation settings should start collapsed');
+      }
+      await rotationSettingsToggle.click();
+      const savedRotation = await storeRestorePage.locator('#store-ad-rotation-seconds').inputValue();
+      if (savedRotation !== '10') failures.push('admin/store-restore: saved ad rotation setting was not restored (expected 10, received ' + savedRotation + ')');
+      if (!storeApiCalls.includes('/api/admin/store/products')) failures.push('admin/store-restore: restored store tab did not request saved products');
+      if (!storeApiCalls.includes('/api/admin/store/ad-settings')) failures.push('admin/store-restore: restored store tab did not request saved ad settings');
+      if (storePageErrors.length) failures.push('admin/store-restore: ' + storePageErrors.join(' | '));
+    } catch (error) {
+      failures.push('admin/store-restore: ' + error.message);
+    } finally {
+      await storeRestorePage.close();
+    }
+
+
+// Regression: returning to the admin store after opening an external image source
+    // must restore the selected product's edit form rather than opening a blank add form.
+    const storeEditRestorePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const storeEditPageErrors = [];
+    storeEditRestorePage.on('pageerror', error => storeEditPageErrors.push(error.message));
+    await storeEditRestorePage.addInitScript(() => {
+      localStorage.setItem('admin_token_v3', 'store-edit-restore-smoke-token');
+      localStorage.setItem('admin_token', 'store-edit-restore-smoke-token');
+      localStorage.setItem('token', 'store-edit-restore-smoke-token');
+      localStorage.setItem('auth_token', 'store-edit-restore-smoke-token');
+      sessionStorage.setItem('hamzawy-admin-store-edit-product', JSON.stringify({ productId: 'store-edit-restore-smoke-product', values: { 'store-name': 'اسم معدل لم يتم حفظه', 'store-price': '333', 'store-description': 'مسودة وصف غير محفوظة' } }));
+    });
+    await storeEditRestorePage.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      let body = apiResponse(url.pathname);
+      if (url.pathname.endsWith('/admin/store/products')) {
+        body = {
+          products: [{ _id: 'store-edit-restore-smoke-product', name: 'منتج استعادة وضع التعديل', category: 'عام', price: 275, description: 'وصف محفوظ', isActive: true, isAdvertised: false }],
+          categories: [{ name: 'عام', productCount: 1, imageUrl: '', fallbackImageUrl: '', customImageUrl: '', imageFileId: null, hasCustomImage: false }]
+        };
+      } else if (url.pathname.endsWith('/admin/store/ad-settings')) {
+        body = { rotationSeconds: 10 };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: JSON.stringify(body)
+      });
+    });
+    try {
+      const response = await storeEditRestorePage.goto(BASE + '/admin-smoke-panel-20261105#store', {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      });
+      if (!response || response.status() !== 200) failures.push('admin/store-edit-restore: admin page did not return HTTP 200');
+      await storeEditRestorePage.getByRole('button', { name: 'حفظ التعديل' }).waitFor({ state: 'visible', timeout: 6000 });
+      const restoredProductName = await storeEditRestorePage.locator('#store-name').inputValue();
+      if (restoredProductName !== 'اسم معدل لم يتم حفظه') {
+        failures.push('admin/store-edit-restore: unsaved product name draft was not restored (received ' + restoredProductName + ')');
+      }
+      const restoredPrice = await storeEditRestorePage.locator('#store-price').inputValue();
+      const restoredDescription = await storeEditRestorePage.locator('#store-description').inputValue();
+      if (restoredPrice !== '333' || restoredDescription !== 'مسودة وصف غير محفوظة') {
+        failures.push('admin/store-edit-restore: unsaved product form fields were not restored');
+      }
+      const restoredSession = await storeEditRestorePage.evaluate(() => {
+        try { return JSON.parse(sessionStorage.getItem('hamzawy-admin-store-edit-product') || 'null')?.productId; }
+        catch { return null; }
+      });
+      if (restoredSession !== 'store-edit-restore-smoke-product') {
+        failures.push('admin/store-edit-restore: edit session was not retained for navigation');
+      }
+      if (storeEditPageErrors.length) failures.push('admin/store-edit-restore: ' + storeEditPageErrors.join(' | '));
+    } catch (error) {
+      failures.push('admin/store-edit-restore: ' + error.message);
+    } finally {
+      await storeEditRestorePage.close();
+    }
+
+  } finally {
+    await browser.close();
+  }
+
+  if (overflow.length) {
+    console.log('RESPONSIVE OVERFLOW WARNINGS:');
+    for (const item of overflow) console.log('- ' + item);
+  }
+
+  if (failures.length) {
+    console.error('FRONTEND BROWSER SMOKE TESTS FAILED:');
+    for (const item of failures) console.error('- ' + item);
+    process.exitCode = 1;
+  } else {
+    console.log('Frontend browser smoke tests passed: ' + pages.length + ' pages x 2 viewports = ' + (pages.length * 2) + ' page loads.');
+    console.log('Responsive overflow warnings: ' + overflow.length);
+  }
+})();
+
   if (!storeUi.includes('اكتب كمية من 1 إلى 99.') ||
       !storeUi.includes('quantity>1000')) {
     throw new Error('Store purchase quantity validation message must match the native app while preserving the accepted quantity range');
