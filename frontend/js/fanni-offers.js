@@ -6,8 +6,9 @@ async function loadMyOffers(){
  try{
   const data=await API.myOffers();
   const allOffers=extractList(data,['offers','items','requests']);
-state.completedOffers=allOffers.filter(o=>o.completed===true||o.orderStatus==='تم الانتهاء');
-state.myOffers=allOffers.filter(o=>!(o.completed===true||o.orderStatus==='تم الانتهاء'));
+const isCompletedOffer=o=>o?.completed===true||['تم الانتهاء','مكتمل','مكتملة','completed','finished'].includes(String(o?.orderStatus||o?.status||'').trim().toLowerCase());
+state.completedOffers=allOffers.filter(isCompletedOffer);
+state.myOffers=allOffers.filter(o=>!isCompletedOffer(o));
   applyFilter();
   render();
   return true;
