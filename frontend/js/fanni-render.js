@@ -187,11 +187,9 @@ function renderContent(){
         </button>
       </div>
 
-      ${!approved?`<div class="fanni-home-review-note">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
-
       <button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral">
         <span class="fanni-home-referral-icon">🎁</span>
-        <span><strong>ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب مكافأتك بعد إكمال الشروط</small></span>
+        <span><strong>ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب رصيد لكل صديق ينضم</small></span>
         <b>دعوة الآن ←</b>
       </button>
 
@@ -202,6 +200,7 @@ function renderContent(){
         <button type="button" onclick="setTab('profile')" class="fanni-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></button>
         <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></button>
       </div>
+      ${!approved?`<div class="fanni-home-review-note">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
     </section>`:''}
   ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
 
