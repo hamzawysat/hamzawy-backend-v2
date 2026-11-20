@@ -132,9 +132,10 @@ async function openAccountOrder(sn,jumpToChat=false){
 }
 function renderOrders(){
   var h='<div class="client-orders-content mt-4 space-y-3"><div class="client-orders-summary panel p-4 flex items-center justify-between gap-3"><div><h3 class="font-extrabold text-[15px]">طلباتي</h3><p class="mt-1 text-[11px] text-slate-500">تابع كل طلباتك من هنا.</p></div></div>';
-  const closedStatuses=['تم الانتهاء','منتهي','ملغي','مؤرشف','منتهي - اعتذار'];
-  const currentOrders=state.myOrders.filter(o=>!closedStatuses.includes(String(o.status||'')));
-  const previousOrders=state.myOrders.filter(o=>closedStatuses.includes(String(o.status||'')));
+  const closedStatuses=new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished']);
+  const isPreviousOrder=o=>closedStatuses.has(String(o?.status||o?.orderStatus||'').trim().toLowerCase());
+  const currentOrders=state.myOrders.filter(o=>!isPreviousOrder(o));
+  const previousOrders=state.myOrders.filter(isPreviousOrder);
   const visibleOrders=state.accountOrdersTab==='previous'?previousOrders:currentOrders;
   h+='<div class="client-orders-status-tabs grid grid-cols-2 gap-2 p-1 rounded-xl"><button type="button" onclick="state.accountOrdersTab=\'current\';render()" class="client-orders-status-tab '+(state.accountOrdersTab==='current'?'is-active':'')+'">طلبات جارية ('+currentOrders.length+')</button><button type="button" onclick="state.accountOrdersTab=\'previous\';render()" class="client-orders-status-tab '+(state.accountOrdersTab==='previous'?'is-active':'')+'">طلبات سابقة ('+previousOrders.length+')</button></div>';
   if(state.accountOrdersLoading)return h+'<div class="panel p-8 text-center text-sm font-bold text-slate-500">جاري تحميل طلباتك...</div></div>';
