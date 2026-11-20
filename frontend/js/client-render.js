@@ -46,7 +46,7 @@ function render(){
     }
     renderAccountGate();return;
   }
-  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
+  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#101F9B]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
   const matching=CATEGORIES.map(c=>({
@@ -71,7 +71,7 @@ function render(){
     <div class="flex flex-col items-end gap-1.5 shrink-0">
      <div class="flex items-center justify-end gap-1">
       <a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="dashboard-download-btn h-9 px-2 sm:px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold whitespace-nowrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>تحميل التطبيق</span></a>
-      <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-amber-200 bg-amber-50 text-[18px] text-amber-600 shrink-0">🔔${notificationBadge()}</button>
+      <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-[#D5DDFE] bg-[#EEF2FF] text-[18px] text-[#101F9B] shrink-0">🔔${notificationBadge()}</button>
       <a href="password.html?role=client&mode=account" aria-label="حسابي" title="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 bg-[#E8EDFF] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</a>
       <button type="button" onclick="logoutClient()" aria-label="خروج" title="خروج" class="h-9 px-2 rounded-xl bg-red-50 border border-red-100 text-red-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>
      </div>
