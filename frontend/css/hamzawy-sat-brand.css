@@ -1653,3 +1653,166 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body :where(
     transition: none !important;
   }
 }
+
+/* Client dashboard parity refinements: mirror the native app's profile, hero,
+   statistic tiles, referral strip, and compact quick-action list. */
+html[data-sonaa-theme="client"] body #app .client-home-profile {
+  min-height:76px;
+  padding:10px 16px;
+  border:0;
+  border-radius:0;
+  background:#F2F4F9;
+  box-shadow:none;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-avatar {
+  flex-basis:34px;
+  width:34px;
+  height:34px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-avatar>span {
+  font-size:35px;
+  line-height:37px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-avatar>b {
+  font-size:14px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-name {
+  gap:3px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-name small {
+  color:#09145B;
+  font-size:16px;
+  font-weight:900;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-name strong {
+  color:#46506B;
+  font-size:12px;
+  font-weight:700;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero {
+  min-height:116px;
+  padding:14px;
+  border-color:#092D9E;
+  border-radius:18px;
+  background:#092D9E;
+  box-shadow:none;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-copy>span:not(.client-home-hero-cta) {
+  font-size:13px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-cta {
+  margin-top:6px;
+  padding:8px 14px;
+  border-radius:11px;
+  font-size:13px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-hero-icon {
+  flex-basis:54px;
+  width:54px;
+  height:54px;
+  border:0;
+  border-radius:27px;
+  background:#DCE6FF;
+  color:#102A9B;
+  font-size:26px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-card {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:108px;
+  padding:10px;
+  text-align:center;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-icon {
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  margin-bottom:5px;
+  border-radius:21px;
+  background:#E3E9FF;
+  font-size:21px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-label {
+  font-size:12px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-stat-card strong {
+  margin-top:2px;
+  font-size:20px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral {
+  min-height:58px;
+  padding:8px;
+  border:0;
+  border-radius:13px;
+  background:#DCE5FF;
+  box-shadow:none;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-icon {
+  flex-basis:28px;
+  width:28px;
+  height:28px;
+  border-radius:0;
+  background:transparent;
+  font-size:21px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-copy strong {
+  color:#09145B;
+  font-size:14px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-copy small {
+  color:#26356E;
+  font-size:11px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-referral-cta {
+  padding:9px 11px;
+  border-radius:11px;
+  background:#102A9B;
+  color:#FFFFFF;
+  font-size:12px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-actions {
+  gap:0;
+  padding:0 12px;
+  border-radius:17px;
+  background:#FFFFFF;
+  box-shadow:0 3px 9px rgba(16,31,155,.08);
+}
+html[data-sonaa-theme="client"] body #app .client-home-action {
+  min-height:52px;
+  padding:7px 0;
+  border:0;
+  border-bottom:1px solid #EDF0F5;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action:last-child {
+  border-bottom:0;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action>span {
+  flex-basis:28px;
+  width:28px;
+  height:28px;
+  border-radius:0;
+  background:transparent;
+  font-size:21px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action strong {
+  font-size:15px;
+}
+html[data-sonaa-theme="client"] body #app .client-home-action i {
+  color:#CBD0D9;
+  font-size:24px;
+}
+@media(max-width:360px) {
+  html[data-sonaa-theme="client"] body #app .client-home-stat-card {
+    min-height:104px;
+    padding:9px;
+  }
+  html[data-sonaa-theme="client"] body #app .client-home-stat-icon {
+    flex-basis:38px;
+    width:38px;
+    height:38px;
+  }
+}
