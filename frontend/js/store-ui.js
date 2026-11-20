@@ -253,7 +253,7 @@ function submitStorePurchase(role,id){
     event.preventDefault();
     const active=document.activeElement;if(active&&typeof active.blur==='function')active.blur();
     const quantity=Number(quantityInput.value);
-    if(!Number.isInteger(quantity)||quantity<1||quantity>1000){errorBox.textContent='اكتب كمية صحيحة من 1 إلى 1000.';errorBox.style.display='block';quantityInput.focus();return;}
+    if(!Number.isInteger(quantity)||quantity<1||quantity>1000){errorBox.textContent='اكتب كمية من 1 إلى 99.';errorBox.style.display='block';quantityInput.focus();return;}
     const paymentMethod=isSubscription?undefined:(form.querySelector('input[name="paymentMethod"]:checked')?.value||'wallet');
     const note=String(noteInput.value||'').trim().slice(0,500);
     const idempotencyKey=storeRequestKey();
