@@ -111,9 +111,13 @@ function render(){
           <span class="client-home-hero-icon" aria-hidden="true">🛠️</span>
         </button>
 
+        <div class="client-home-profile">
+          <span class="client-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${escHtml(String(state.account?.name||state.clientName||'ع').trim().charAt(0)||'ع')}</b></span>
+          <span class="client-home-profile-name"><small>أهلاً بيك في حمزاوي سات</small><strong>${escHtml(state.account?.name||state.clientName||'عميل')}</strong></span>
+          <span class="client-home-profile-role">عميل</span>
+        </div>
         <div class="client-home-section-head">
           <h2 id="clientHomeTitle">الإحصائيات</h2>
-          <span>أهلاً ${escHtml(state.account?.name||state.clientName||'بك')}</span>
         </div>
         <div class="client-home-stats">
           <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
