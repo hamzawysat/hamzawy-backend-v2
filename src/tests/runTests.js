@@ -87,6 +87,7 @@ async function run() {
 
     await test('client and technician home dashboards preserve native-app section order and key tiles', async () => {
       const clientRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-render.js'), 'utf8');
+      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
       const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
       const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
       const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
@@ -105,6 +106,11 @@ async function run() {
         assert.ok(clientRender.includes("'" + status + "'"), 'client dashboard must classify ' + status + ' as a previous order');
       }
       assert.ok(clientRender.includes("o?.status||o?.orderStatus||''"), 'client dashboard counts must support both status fields like the native app');
+      assert.ok(
+        clientAccount.includes("new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished'])") &&
+        clientAccount.includes("o?.status||o?.orderStatus||'"),
+        'client order-history filters must classify the same completed statuses and status fields as the native dashboard'
+      );
       assert.ok(
         (clientRender.match(/onclick="setTab\('orders'\);state\.accountOrdersTab='current';render\(\)"/g) || []).length >= 3,
         'client active-orders statistic, total-orders statistic, and order-history shortcut must always open current orders like the native app'
