@@ -149,57 +149,74 @@ function renderContent(){
   </section>
 
    
-  ${state.tab==='home'?`
-   <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
-    <button type="button" onclick="openFanniReferralPage()" class="w-full rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-3 text-right shadow-sm"><span class="flex items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><span class="min-w-0 flex-1"><span class="block text-sm font-black text-amber-950">ادعُ صديقك لتحصل على 150 جنيه مكافأة</span><span class="mt-1 block text-[11px] font-extrabold text-amber-800">اضغط هنا لدعوة صديقك</span></span><span class="text-xl font-black text-amber-800">←</span></span></button>
-    <div class="panel p-4">
-     <div class="flex items-center justify-between gap-3">
-      <div>
-       <p class="text-[10px] font-bold text-slate-500">نظرة سريعة على حسابك</p>
-       <h2 id="fanniHomeTitle" class="section-title mt-1">ملخص شغلك</h2>
+  ${state.tab==='home'?\`
+    <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
+      <div class="fanni-home-profile panel p-4">
+        <div class="fanni-home-profile-top">
+          <div class="fanni-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${esc(String(user?.name||'فني').trim().charAt(0)||'ف')}</b></div>
+          <div class="fanni-home-profile-name">
+            <p>أهلاً بيك في حمزاوي سات</p>
+            <h2 id="fanniHomeTitle">${esc(user?.name||'فني')}</h2>
+          </div>
+          <div class="fanni-home-profile-balance">
+            <small>رصيد المحفظة</small>
+            <strong>${esc(balance)} <span>جنيه</span></strong>
+          </div>
+        </div>
+        <div class="fanni-home-profile-status">
+          <span class="${approved?'is-approved':'is-pending'}">${approved?'حساب معتمد':('الحساب '+esc(status))}</span>
+          <span class="${user?.acceptingOrders===false?'is-paused':'is-available'}">${user?.acceptingOrders===false?'استقبال الطلبات متوقف':'استقبال الطلبات مفعّل'}</span>
+        </div>
       </div>
-      <span class="rounded-full bg-cyan-50 px-3 py-1.5 text-[10px] font-extrabold text-cyan-800">لوحة الفني</span>
-     </div>
-     <div class="mt-4 rounded-xl border ${user?.acceptingOrders===false?'border-amber-300 bg-amber-50':'border-emerald-200 bg-emerald-50'} p-3">
-      <div class="flex items-center justify-between gap-3">
-       <div><p class="text-[12px] font-extrabold text-slate-900">استقبال الطلبات الجديدة</p><p class="mt-1 text-[10px] font-bold ${user?.acceptingOrders===false?'text-amber-800':'text-emerald-800'}">${user?.acceptingOrders===false?'متوقف — لن تظهر لك فرص جديدة':'مفعّل — ستصلك فرص العمل المناسبة'}</p></div>
-       <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="rounded-xl px-4 py-2.5 text-[11px] font-extrabold text-white disabled:opacity-50 ${user?.acceptingOrders===false?'bg-emerald-700':'bg-amber-700'}">${state.availabilitySaving?'جاري الحفظ...':user?.acceptingOrders===false?'تفعيل الاستقبال':'عدم استلام طلبات'}</button>
+
+      <div class="fanni-home-availability panel p-3">
+        <div>
+          <strong>استقبال الطلبات الجديدة</strong>
+          <small>${user?.acceptingOrders===false?'أوقف استقبال الفرص الجديدة مؤقتًا':'أنت جاهز لاستقبال فرص العمل المناسبة'}</small>
+        </div>
+        <button type="button" onclick="toggleOrderAvailability()" ${state.availabilitySaving||!approved?'disabled':''} class="${user?.acceptingOrders===false?'is-paused':'is-available'}">${state.availabilitySaving?'جاري الحفظ...':user?.acceptingOrders===false?'تفعيل الاستقبال':'إيقاف الاستقبال'}</button>
       </div>
-     </div>
-     <div class="mt-4 grid grid-cols-2 gap-2">
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">فرص العمل المتاحة</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="available">${state.filteredOrders.length}</p>
-       <button type="button" onclick="setTab('available')" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض الفرص</button>
-      </article>
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">عروضي والمهام الجارية</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="active">${state.myOffers.length}</p>
-       <button type="button" onclick="setTab('myOrders')" class="mt-2 text-[11px] font-extrabold text-cyan-800">متابعة طلباتي</button>
-      </article>
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">المهام المكتملة</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="completed">${state.completedOffers.length}</p>
-       <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض المكتمل</button>
-      </article>
-      <article class="rounded-xl border border-slate-200 bg-white p-3">
-       <p class="text-[10px] font-bold text-slate-500">إشعارات غير مقروءة</p>
-       <p class="mt-1 text-2xl font-black text-slate-900" data-home-stat="notifications">${Number(state.notificationsUnread||0)}</p>
-       <button type="button" onclick="toggleNotifications()" class="mt-2 text-[11px] font-extrabold text-cyan-800">فتح الإشعارات</button>
-      </article>
-     </div>
-    </div>
-    ${!approved?`<div class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-[12px] leading-6 text-amber-900">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
-    <div class="panel p-4">
-     <h3 class="section-title">اختصارات سريعة</h3>
-     <div class="mt-3 grid grid-cols-2 gap-2">
-      <button type="button" onclick="setTab('available')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">📋 فرص العمل</button>
-      <button type="button" onclick="setTab('myOrders')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">💼 طلباتي</button>
-      <button type="button" onclick="setTab('wallet')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">💳 المحفظة</button>
-      <button type="button" onclick="setTab('store')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">🛍️ المتجر</button>
-     </div>
-    </div>
-   </section>`:''}
+
+      <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner">
+        <span class="fanni-home-jobs-icon">📋</span>
+        <span><strong>فرص العمل المتاحة</strong><small>تصفح الطلبات الجديدة وقدّم عرضك المناسب</small></span>
+        <b>${state.filteredOrders.length}</b>
+        <i>‹</i>
+      </button>
+
+      <div class="fanni-home-section-head"><h3>الإحصائيات</h3></div>
+      <div class="fanni-home-stats">
+        <button type="button" onclick="setTab('available')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">📋</span><small>فرص العمل المتاحة</small><strong>${state.filteredOrders.length}</strong>
+        </button>
+        <button type="button" onclick="setTab('myOrders')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">💼</span><small>عروضي والمهام الجارية</small><strong>${state.myOffers.length}</strong>
+        </button>
+        <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">✓</span><small>المهام المكتملة</small><strong>${state.completedOffers.length}</strong>
+        </button>
+        <button type="button" onclick="toggleNotifications()" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">🔔</span><small>إشعارات غير مقروءة</small><strong>${Number(state.notificationsUnread||0)}</strong>
+        </button>
+      </div>
+
+      ${!approved?\`<div class="fanni-home-review-note">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>\`:''}
+
+      <button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral">
+        <span class="fanni-home-referral-icon">🎁</span>
+        <span><strong>ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب مكافأتك بعد إكمال الشروط</small></span>
+        <b>دعوة الآن ←</b>
+      </button>
+
+      <div class="fanni-home-section-head"><h3>إجراءات سريعة</h3></div>
+      <div class="fanni-home-actions">
+        <button type="button" onclick="setTab('available')" class="fanni-home-action"><span>📋</span><strong>فرص العمل</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('myOrders')" class="fanni-home-action"><span>💼</span><strong>عروضي والمهام</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('wallet')" class="fanni-home-action"><span>💳</span><strong>المحفظة</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('store')" class="fanni-home-action"><span>🛍️</span><strong>المتجر</strong><i>‹</i></button>
+        <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>الدعم الفني</strong><i>‹</i></button>
+      </div>
+    </section>\`:''}
   ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
 
   ${state.tab==='available'?`
