@@ -85,6 +85,29 @@ async function run() {
       assert.ok(technicianCore.includes('matchesAreaSearch(value, normalizedQuery)'));
     });
 
+    await test('client and technician home dashboards preserve native-app section order and key tiles', async () => {
+      const clientRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-render.js'), 'utf8');
+      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
+      const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
+      const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
+      assert.notEqual(clientHomeStart, -1, 'client home dashboard must render');
+      assert.ok(
+        clientRender.indexOf('class="client-home-profile"', clientHomeStart) <
+          clientRender.indexOf('class="client-home-hero"', clientHomeStart),
+        'client profile and wallet summary must appear before the main request banner'
+      );
+      assert.ok(clientRender.includes('عميل • ${walletValue} جنيه'), 'client profile must show role and wallet balance');
+      for (const key of ['wallet', 'available', 'completed', 'offers']) {
+        assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
+      }
+      assert.ok(technicianRender.includes('استكشف الفرص ←'), 'technician jobs banner must expose the native-app action');
+      for (const label of ['سجل المهام', 'التقارير', 'الإعدادات', 'طلب دعم فني']) {
+        assert.ok(technicianRender.includes(label), 'technician quick actions are missing ' + label);
+      }
+      assert.ok(brandStyles.includes('min-height:108px'), 'dashboard statistic tiles must retain the native-app height');
+      assert.ok(brandStyles.includes('background:#DCE5FF'), 'referral strips must use the native-app indigo surface');
+    });
+
     await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
       const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
       const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
