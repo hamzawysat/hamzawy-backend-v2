@@ -80,6 +80,12 @@ function verifyAdminDashboardSource() {
       !shell.includes('requestAnimationFrame(restoreScrollPosition)')) {
     throw new Error('Admin render must preserve the current scroll position');
   }
+  const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('\nasync function deleteStoreProduct('));
+  if (!editStoreFunction.includes("document.getElementById('store-name')?.closest('.premium-panel')") ||
+      !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
+      editStoreFunction.includes('window.scrollTo({top:0')) {
+    throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
+  }
   if ((store.match(/object-contain/g) || []).length < 2 ||
       store.includes('object-cover')) {
     throw new Error('Admin store category and product images must remain fully visible without cropping');
