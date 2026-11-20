@@ -82,8 +82,9 @@ function verifyAdminDashboardSource() {
   }
   const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('\nasync function deleteStoreProduct('));
   if (!editStoreFunction.includes("document.getElementById('store-name')?.closest('.premium-panel')") ||
-      !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
-      editStoreFunction.includes('window.scrollTo({top:0')) {
+      !editStoreFunction.includes('scrollStoreProductEditFormIntoView();') ||
+      !store.includes("editForm.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' })") ||
+      store.includes("window.scrollTo({top:0")) {
     throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
   }
   if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
@@ -99,7 +100,7 @@ function verifyAdminDashboardSource() {
     throw new Error('Admin store category and product images must remain fully visible without cropping');
   }
   if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
-      !html.includes('admin-store.js?v=20261120-admin-store-edit-restore1')) {
+      !html.includes('admin-store.js?v=20261120-admin-store-scroll-helper1')) {
     throw new Error('Admin visual fix asset cache versions were not refreshed');
   }
 }
@@ -107,6 +108,23 @@ verifyAdminDashboardSource();
 function verifyBrandVisualSystem() {
   const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
   const brand = read('frontend/css/hamzawy-sat-brand.css');
+  const themeCss = read('frontend/css/theme.css');
+  const clientHtml = read('frontend/client.html');
+  const fanniOverrides = read('frontend/css/fanni-overrides.css');
+  if (!brand.includes('--sonaa-color-0b1b3a: #101F9B;') ||
+      !brand.includes('--sonaa-color-2563eb: #172DAD;') ||
+      !brand.includes('--sonaa-color-0d9488: #16A6A1;') ||
+      !themeCss.includes('--navy:#101F9B') ||
+      !themeCss.includes('--teal:#16A6A1') ||
+      themeCss.includes('--navy:#171a22') ||
+      themeCss.includes('--blue:#c9a34f')) {
+    throw new Error('Shared legacy color tokens must resolve to the Android app palette');
+  }
+  if (clientHtml.includes('/css/client-foundation.css') ||
+      fanniOverrides.includes('background:linear-gradient(145deg,#F5F0E5,#E8D9B7)') ||
+      fanniOverrides.includes('border:1px solid #C9A34F!important')) {
+    throw new Error('Legacy gold auth overrides must not override the Android app palette');
+  }
   const pages = [
     ['index.html', 'index'],
     ['client.html', 'client'],
@@ -130,6 +148,12 @@ function verifyBrandVisualSystem() {
       throw new Error('Shared brand system has no page-specific rules for ' + theme);
     }
   }
+  for (const file of ['customers.html','technicians.html']) {
+    const html = read('frontend/' + file);
+    if (!/name="viewport"[^>]*viewport-fit=cover/.test(html)) {
+      throw new Error('Public directory must respect mobile safe-area insets: ' + file);
+    }
+  }
 }
 verifyBrandVisualSystem();
 
@@ -141,6 +165,10 @@ const pages = [
   { path: '/admin-smoke-panel-20261105', name: 'admin' },
   { path: '/password.html?role=client', name: 'password' },
   { path: '/support.html', name: 'support' },
+  { path: '/customers.html', name: 'customers' },
+  { path: '/technicians.html', name: 'technicians' },
+  { path: '/download.html', name: 'download' },
+  { path: '/links.html', name: 'links' },
   { path: '/admin-setup.html', name: 'admin-setup' }
 ];
 
@@ -322,8 +350,13 @@ function apiResponse(pathname) {
             }
           }
 
-          if (target.name !== 'home' && !await page.locator('#app, #setupForm, #main, main.wrap').count()) {
-            failures.push(target.name + '/' + viewport.name + ': expected page root was not rendered');
+          const expectedRoot = {
+            client: '#app', technician: '#app', admin: '#app', password: 'body > main.wrap', support: 'body > .wrap',
+            customers: 'body > .shell', technicians: 'body > .shell', download: 'body > .card', links: 'body > .card',
+            'admin-setup': '#app, #setupForm, main'
+          }[target.name];
+          if (target.name !== 'home' && expectedRoot && !await page.locator(expectedRoot).count()) {
+            failures.push(target.name + '/' + viewport.name + ': expected page root was not rendered (' + expectedRoot + ')');
           }
 
           const dimensions = await page.evaluate(() => ({
@@ -343,7 +376,6 @@ function apiResponse(pathname) {
 
               const clientHeadStyles = await page.locator('head link[rel="stylesheet"]').evaluateAll(items => items.map(item => new URL(item.href).pathname));
               const clientStyleOrder = [
-                '/css/client-foundation.css',
                 '/css/client-layout.css',
                 '/css/theme.css',
                 '/css/client-components.css',
@@ -666,9 +698,10 @@ function apiResponse(pathname) {
             const clientTabs = ['new', 'orders', 'track', 'wallet', 'subscriptions', 'store', 'complaint'];
             const loadedClientCss = await page.locator('link[rel="stylesheet"]').evaluateAll(items =>
               items.map(item => new URL(item.href).pathname));
-            if (!loadedClientCss.includes('/css/client-foundation.css') ||
-                !loadedClientCss.includes('/css/client-layout.css') ||
-                !loadedClientCss.includes('/css/client-components.css')) {
+            if (!loadedClientCss.includes('/css/client-layout.css') ||
+                !loadedClientCss.includes('/css/theme.css') ||
+                !loadedClientCss.includes('/css/client-components.css') ||
+                !loadedClientCss.includes('/css/hamzawy-sat-brand.css')) {
               failures.push('client/mobile: one or more extracted client stylesheets are missing');
             }
             for (const tab of clientTabs) {

@@ -66,7 +66,6 @@ jobs:
               - '!frontend/js/admin-store.js'
               - 'frontend/css/**'
             admin_store:
-              - 'frontend/admin.html'
               - 'frontend/js/admin-store.js'
               - 'scripts/admin-store-edit-smoke.cjs'
             dependencies:
@@ -90,7 +89,7 @@ jobs:
 
   frontend-browser-smoke:
     needs: changes
-    if: (needs.changes.outputs.frontend == 'true' && needs.changes.outputs.admin_store != 'true') || github.event_name == 'workflow_dispatch'
+    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
