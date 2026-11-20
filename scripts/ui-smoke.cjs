@@ -147,6 +147,12 @@ function verifyBrandVisualSystem() {
       throw new Error('Shared brand system has no page-specific rules for ' + theme);
     }
   }
+  for (const file of ['customers.html','technicians.html']) {
+    const html = read('frontend/' + file);
+    if (!/name="viewport"[^>]*viewport-fit=cover/.test(html)) {
+      throw new Error('Public directory must respect mobile safe-area insets: ' + file);
+    }
+  }
 }
 verifyBrandVisualSystem();
 
@@ -158,6 +164,10 @@ const pages = [
   { path: '/admin-smoke-panel-20261105', name: 'admin' },
   { path: '/password.html?role=client', name: 'password' },
   { path: '/support.html', name: 'support' },
+  { path: '/customers.html', name: 'customers' },
+  { path: '/technicians.html', name: 'technicians' },
+  { path: '/download.html', name: 'download' },
+  { path: '/links.html', name: 'links' },
   { path: '/admin-setup.html', name: 'admin-setup' }
 ];
 
