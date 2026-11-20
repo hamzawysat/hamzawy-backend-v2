@@ -116,6 +116,10 @@ async function run() {
         'technician approval note must follow the quick actions like the native app'
       );
       assert.ok(technicianRender.includes('شارك رابط الدعوة واكسب رصيد لكل صديق ينضم'), 'technician referral copy must match the native app');
+      assert.ok(
+        (technicianRender.match(/onclick="setTab\('myOffers'\)"/g) || []).length >= 2,
+        'technician reports and offers shortcuts must always open active submitted offers, even after viewing completed tasks'
+      );
       assert.ok(technicianRender.includes('استكشف الفرص ←'), 'technician jobs banner must expose the native-app action');
       for (const label of ['سجل المهام', 'التقارير', 'الإعدادات', 'طلب دعم فني']) {
         assert.ok(technicianRender.includes(label), 'technician quick actions are missing ' + label);
