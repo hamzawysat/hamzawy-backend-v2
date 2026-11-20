@@ -105,6 +105,10 @@ async function run() {
         assert.ok(clientRender.includes("'" + status + "'"), 'client dashboard must classify ' + status + ' as a previous order');
       }
       assert.ok(clientRender.includes("o?.status||o?.orderStatus||''"), 'client dashboard counts must support both status fields like the native app');
+      assert.ok(
+        (clientRender.match(/onclick="setTab\('orders'\);state\.accountOrdersTab='current';render\(\)"/g) || []).length >= 3,
+        'client active-orders statistic, total-orders statistic, and order-history shortcut must always open current orders like the native app'
+      );
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
         assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
       }
