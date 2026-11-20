@@ -179,8 +179,8 @@ async function run() {
       assert.ok(technicianRender.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'technician account social link must use the native blue palette');
       assert.ok(!clientAccount.includes('#d6b45a') && !clientAccount.includes('#fffdf5'), 'client account entry screen must not retain the legacy gold palette');
       assert.ok(!technicianRender.includes('#d6b45a') && !technicianRender.includes('#fffdf5'), 'technician account entry screen must not retain the legacy gold palette');
-      assert.match(fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8'), /client-account\\.js\\?v=20261120-native-app-parity2/);
-      assert.match(fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8'), /fanni-render\\.js\\?v=20261120-native-app-parity7/);
+      assert.match(fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8'), /client-account\.js\?v=20261120-native-app-parity2/);
+      assert.match(fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8'), /fanni-render\.js\?v=20261120-native-app-parity7/);
       const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../frontend/manifest.webmanifest'), 'utf8'));
       assert.equal(manifest.theme_color, '#101F9B');
       assert.equal(manifest.background_color, '#F4F8FC');
