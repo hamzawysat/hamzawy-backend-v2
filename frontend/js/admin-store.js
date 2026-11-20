@@ -172,6 +172,23 @@ async function importStoreCsvProducts(){
   finally{storeCsvImportState.busy=false;render();}
 }
 
+const STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product';
+function persistStoreProductEditSession(productId){
+  try{
+    if(productId)sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,String(productId));
+    else sessionStorage.removeItem(STORE_PRODUCT_EDIT_SESSION_KEY);
+  }catch(_){}
+}
+function restoreStoreProductEditSession(){
+  if(window.__hamzawyStoreEditRestored||state.tab!=='store')return;
+  let productId='';
+  try{productId=sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||'';}catch(_){}
+  if(!productId)return;
+  const product=(state.storeProducts||[]).find(item=>String(item._id)===String(productId));
+  if(!product){persistStoreProductEditSession(null);return;}
+  window.__hamzawyStoreEditRestored=true;
+  editStoreProduct(productId);
+}
 let storeProductsLoadSequence=0;
 async function loadStoreProducts(){
   const requestId=++storeProductsLoadSequence;
@@ -214,7 +231,10 @@ async function loadStoreProducts(){
     if(requestId===storeProductsLoadSequence){
       state.storeProductsLoading=false;
       state.storeAdSettingsLoading=false;
-      if(state.tab==='store')render();
+      if(state.tab==='store'){
+        render();
+        restoreStoreProductEditSession();
+      }
     }
   }
 }
@@ -224,8 +244,8 @@ async function pollStoreAdminNotifications(){try{const data=await tryApi(['/api/
 function startStoreOrderCountPolling(){if(window.__sonaaStoreOrderCountTimer||!getToken())return;loadStoreOrderCount(true);pollStoreAdminNotifications();window.__sonaaStoreOrderCountTimer=setInterval(()=>{if(!document.hidden&&getToken()){loadStoreOrderCount(true);pollStoreAdminNotifications();}},15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getToken()){loadStoreOrderCount(true);pollStoreAdminNotifications();}});}
 (function attachStoreOrdersCount(){const item=(typeof ADMIN_SECTIONS!=='undefined'?ADMIN_SECTIONS:[]).flatMap(section=>section.tabs||[]).find(tab=>tab.id==='storeOrders');if(item)item.count=()=>Math.max(0,Number(state.storeOrdersPendingCount)||0);})();
 async function saveStoreAdRotationSeconds(){const seconds=Number(document.getElementById('store-ad-rotation-seconds')?.value);if(![5,10,15,20,30,45,60].includes(seconds))return showToast('اختار مدة صحيحة لعرض الصورة','error');try{const result=await tryApi(['/api/admin/store/ad-settings'],{method:'PUT',body:JSON.stringify({rotationSeconds:seconds})});state.storeAdRotationSeconds=Number(result.rotationSeconds)||seconds;state.storeAdSettingsLoaded=true;state.storeAdSettingsLoadError='';showToast('تم حفظ مدة عرض صور الإعلان');render();}catch(error){showToast(error.message||'تعذر حفظ مدة الإعلان','error');}}
-function toggleStoreProductForm(){state.storeProductEditingId=null;state.storeProductFormOpen=state.storeProductFormOpen!==true;render();}
-function cancelStoreProductEdit(){state.storeProductEditingId=null;state.storeProductFormOpen=false;state.storeNewProductAsAdvertisement=false;render();}
+function toggleStoreProductForm(){persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=state.storeProductFormOpen!==true;render();}
+function cancelStoreProductEdit(){persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=false;state.storeNewProductAsAdvertisement=false;render();}
 function setStoreOrderStatusTab(status){if(!['جديد','تم التواصل','قيد التجهيز','مرفوض','ملغي','مكتمل'].includes(status))return;state.storeOrderStatusTab=status;render();}
 
 function toggleStoreCategoryManager(){state.storeCategoryManagerOpen=state.storeCategoryManagerOpen!==true;render();}
@@ -369,11 +389,11 @@ async function createStoreProduct(){const editingProduct=(state.storeProducts||[
       adExpiresAt:isAdvertised?new Date(Date.now()+Math.max(1,Math.min(365,Number(document.getElementById('store-ad-days')?.value)||7))*86400000).toISOString():null
     })});
     if(saved?.product){const savedProduct=saved.product;const current=Array.isArray(state.storeProducts)?state.storeProducts:[];const index=current.findIndex(item=>String(item._id)===String(savedProduct._id));state.storeProducts=index>=0?current.map((item,i)=>i===index?savedProduct:item):[savedProduct,...current];}
-    showToast(editingProduct?'تم تعديل المنتج':'تمت إضافة المنتج');state.storeProductEditingId=null;state.storeProductFormOpen=false;
+    showToast(editingProduct?'تم تعديل المنتج':'تمت إضافة المنتج');persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=false;
     await loadStoreProducts();
   }catch(e){showToast(e.message||'تعذرت إضافة المنتج','error');}
 }
-function editStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;state.storeProductEditingId=String(id);state.storeProductFormOpen=true;render();const values={'store-name':p.name,'store-category':p.category||'عام','store-price':p.price,'store-original-price':p.originalPrice??'','store-offer':p.offerText||'','store-type':p.type||'product','store-duration':p.subscriptionDuration||'','store-description':p.description||'','store-details':p.details||'','store-image-url':p.imageUrl||'','store-stock':p.stock??'','store-ad-audience':p.adAudience||'both','store-ad-priority':String(p.adPriority??0)};Object.entries(values).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.value=String(value);});const newCategoryInput=document.getElementById('store-category-new');if(newCategoryInput)newCategoryInput.value='';const ad=document.getElementById('store-ad-enabled');if(ad)ad.checked=!!p.isAdvertised;const button=document.querySelector('[onclick="createStoreProduct()"]');if(button)button.textContent='حفظ التعديل';const title=document.querySelector('.premium-panel button[onclick="toggleStoreProductForm()"] b');if(title)title.textContent='تعديل المنتج';const days=document.getElementById('store-ad-days');if(days&&p.adExpiresAt){const left=Math.max(1,Math.ceil((new Date(p.adExpiresAt).getTime()-Date.now())/86400000));days.value=String([1,3,7,14,30,60,90,180,365].includes(left)?left:7);}const wrap=document.getElementById('store-name')?.parentElement;if(wrap&&!wrap.querySelector('[data-cancel-edit]')){const cancel=document.createElement('button');cancel.type='button';cancel.dataset.cancelEdit='true';cancel.className='rounded-xl border px-4 py-3';cancel.textContent='إلغاء التعديل';cancel.onclick=cancelStoreProductEdit;wrap.appendChild(cancel);}const editForm=document.getElementById('store-name')?.closest('.premium-panel');if(editForm){const stickyHeader=document.querySelector('.admin-topbar');const headerHeight=stickyHeader?.getBoundingClientRect().height||0;const targetTop=Math.max(0,editForm.getBoundingClientRect().top+(window.scrollY||0)-headerHeight-12);window.scrollTo({top:targetTop,behavior:'smooth'});}}
+function editStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;persistStoreProductEditSession(id);state.storeProductEditingId=String(id);state.storeProductFormOpen=true;render();const values={'store-name':p.name,'store-category':p.category||'عام','store-price':p.price,'store-original-price':p.originalPrice??'','store-offer':p.offerText||'','store-type':p.type||'product','store-duration':p.subscriptionDuration||'','store-description':p.description||'','store-details':p.details||'','store-image-url':p.imageUrl||'','store-stock':p.stock??'','store-ad-audience':p.adAudience||'both','store-ad-priority':String(p.adPriority??0)};Object.entries(values).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.value=String(value);});const newCategoryInput=document.getElementById('store-category-new');if(newCategoryInput)newCategoryInput.value='';const ad=document.getElementById('store-ad-enabled');if(ad)ad.checked=!!p.isAdvertised;const button=document.querySelector('[onclick="createStoreProduct()"]');if(button)button.textContent='حفظ التعديل';const title=document.querySelector('.premium-panel button[onclick="toggleStoreProductForm()"] b');if(title)title.textContent='تعديل المنتج';const days=document.getElementById('store-ad-days');if(days&&p.adExpiresAt){const left=Math.max(1,Math.ceil((new Date(p.adExpiresAt).getTime()-Date.now())/86400000));days.value=String([1,3,7,14,30,60,90,180,365].includes(left)?left:7);}const wrap=document.getElementById('store-name')?.parentElement;if(wrap&&!wrap.querySelector('[data-cancel-edit]')){const cancel=document.createElement('button');cancel.type='button';cancel.dataset.cancelEdit='true';cancel.className='rounded-xl border px-4 py-3';cancel.textContent='إلغاء التعديل';cancel.onclick=cancelStoreProductEdit;wrap.appendChild(cancel);}const editForm=document.getElementById('store-name')?.closest('.premium-panel');if(editForm){const stickyHeader=document.querySelector('.admin-topbar');const headerHeight=stickyHeader?.getBoundingClientRect().height||0;const targetTop=Math.max(0,editForm.getBoundingClientRect().top+(window.scrollY||0)-headerHeight-12);window.scrollTo({top:targetTop,behavior:'smooth'});}}
 async function deleteStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;if(!confirm('حذف المنتج "'+p.name+'" نهائيًا؟ إذا كان مرتبطًا بطلبات سابقة فلن يسمح النظام بالحذف حفاظًا على سجل الطلبات.'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'DELETE'});showToast('تم حذف المنتج نهائيًا');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر حذف المنتج','error');}}
 async function hideStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p||!confirm('إخفاء المنتج من المتجر؟'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'عام',description:p.description||'',details:p.details||'',price:Number(p.price),originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',imageUrl:p.imageUrl||'',imageFileId:p.imageFileId||null,isActive:false,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم إخفاء المنتج');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر إخفاء المنتج','error');}}
 async function updateStoreOrder(id){
