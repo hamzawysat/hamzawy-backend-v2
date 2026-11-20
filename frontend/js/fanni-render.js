@@ -178,25 +178,23 @@ function renderContent(){
       </div>
 
       <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner">
-        <span class="fanni-home-jobs-icon">📋</span>
-        <span><strong>فرص العمل المتاحة</strong><small>تصفح الطلبات الجديدة وقدّم عرضك المناسب</small></span>
-        <b>${state.filteredOrders.length}</b>
-        <i>‹</i>
+        <span class="fanni-home-jobs-icon">💼</span>
+        <span><strong>فرص عمل متاحة</strong><small>استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em>استكشف الفرص ←</em></span>
       </button>
 
       <div class="fanni-home-section-head"><h3>الإحصائيات</h3></div>
       <div class="fanni-home-stats">
-        <button type="button" onclick="setTab('available')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">📋</span><small>فرص العمل المتاحة</small><strong data-home-stat="available">${state.filteredOrders.length}</strong>
+        <button type="button" onclick="setTab('wallet')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">💳</span><small>رصيد المحفظة</small><strong data-home-stat="wallet">${Number(balance||0).toLocaleString('ar-EG')} ج</strong>
         </button>
-        <button type="button" onclick="setTab('myOrders')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">💼</span><small>عروضي والمهام الجارية</small><strong data-home-stat="active">${state.myOffers.length}</strong>
+        <button type="button" onclick="setTab('available')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">💼</span><small>فرص متاحة</small><strong data-home-stat="available">${state.filteredOrders.length}</strong>
         </button>
         <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">✓</span><small>المهام المكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
+          <span class="fanni-home-stat-icon">✓</span><small>مهام مكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
         </button>
-        <button type="button" onclick="toggleNotifications()" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">🔔</span><small>إشعارات غير مقروءة</small><strong data-home-stat="notifications">${Number(state.notificationsUnread||0)}</strong>
+        <button type="button" onclick="setTab('myOrders')" class="fanni-home-stat-card">
+          <span class="fanni-home-stat-icon">📄</span><small>عروضي</small><strong data-home-stat="offers">${state.myOffers.length}</strong>
         </button>
       </div>
 
@@ -210,11 +208,10 @@ function renderContent(){
 
       <div class="fanni-home-section-head"><h3>إجراءات سريعة</h3></div>
       <div class="fanni-home-actions">
-        <button type="button" onclick="setTab('available')" class="fanni-home-action"><span>📋</span><strong>فرص العمل</strong><i>‹</i></button>
-        <button type="button" onclick="setTab('myOrders')" class="fanni-home-action"><span>💼</span><strong>عروضي والمهام</strong><i>‹</i></button>
-        <button type="button" onclick="setTab('wallet')" class="fanni-home-action"><span>💳</span><strong>المحفظة</strong><i>‹</i></button>
-        <button type="button" onclick="setTab('store')" class="fanni-home-action"><span>🛍️</span><strong>المتجر</strong><i>‹</i></button>
-        <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>الدعم الفني</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-action"><span>📋</span><strong>سجل المهام</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('myOrders')" class="fanni-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+        <button type="button" onclick="setTab('profile')" class="fanni-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></button>
+        <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></button>
       </div>
     </section>`:''}
   ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
