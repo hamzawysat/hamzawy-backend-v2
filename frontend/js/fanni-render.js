@@ -130,25 +130,6 @@ function renderContent(){
    </div>
   </section>
  `:`
-  <section class="fanni-summary-card mt-4 rounded-2xl p-3 sm:p-4">
-   <div class="fanni-summary-top flex items-center justify-between gap-3">
-    <div class="min-w-0"><p class="fanni-summary-eyebrow text-[11px] font-bold">أهلاً بيك في حمزاوي سات</p><h2 class="mt-1 text-[17px] font-extrabold truncate">${esc(user?.name||'فني')}</h2></div>
-    <div class="fanni-summary-balance shrink-0 rounded-xl px-3 py-2 text-center"><div class="text-[10px] font-bold">رصيد المحفظة</div><div class="text-[20px] font-black leading-tight">${esc(balance)} <span class="text-[11px]">جنيه</span></div></div>
-   </div>
-   <details class="fanni-summary-details mt-3">
-    <summary class="fanni-details-toggle flex items-center justify-center gap-2 w-full rounded-xl px-3 py-2.5 text-[12px] font-extrabold"><span>تفاصيل</span><svg viewBox="0 0 24 24" class="h-4 w-4 transition-transform" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-    <div class="fanni-details-content mt-3 space-y-3">
-     <div class="fanni-detail-line flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"><span class="text-[11px] font-bold">حالة الاعتماد</span><b class="text-[11px]">${esc(status)}</b></div>
-     <div class="fanni-detail-line flex items-center justify-between gap-2 rounded-xl px-3 py-2.5"><span class="text-[11px] font-bold">المستوى المهني</span><b class="text-[11px]">${esc(user?.level||'مبتدئ')}</b></div>
-     ${!approved?'<div class="fanni-approval-note rounded-xl px-3 py-2.5 text-[11px] leading-6">حسابك لم يُعتمد بعد. يمكنك مراجعة بياناتك، لكن إرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>':''}
-     <div class="fanni-detail-line rounded-xl px-3 py-2.5"><div class="flex items-center justify-between gap-2"><b class="text-[11px]">تخصصاتك</b><span class="text-[10px]">${specialties.length} تخصص</span></div><div class="mt-2 flex flex-wrap gap-1.5">${specialties.map(s=>'<span class="fanni-detail-chip rounded-full px-2.5 py-1 text-[10px]">'+esc(s)+'</span>').join('')||'<span class="text-[10px]">لا توجد تخصصات مسجلة حاليًا.</span>'}</div></div>
-     <div class="fanni-detail-line rounded-xl px-3 py-2.5"><b class="text-[11px]">مناطق العمل</b><p class="mt-1 text-[11px] leading-5">${esc(areas.join('، ')||'غير محددة')}</p></div>
-     <button type="button" onclick="setTab('wallet')" class="fanni-wallet-shortcut w-full rounded-xl px-3 py-2.5 text-[11px] font-extrabold">فتح المحفظة</button>
-    </div>
-   </details>
-  </section>
-
-   
   ${state.tab==='home'?`
     <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
       <div class="fanni-home-profile panel p-3">
