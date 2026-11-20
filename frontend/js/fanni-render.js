@@ -306,7 +306,7 @@ function renderContent(){
      ${!approved?'<div class="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">لا يمكن تقديم طلب شحن قبل اعتماد حسابك.</div>':''}
 
      <div class="mt-4 space-y-3">
-      <div><label class="field-label">رقم الهاتف المحوّل منه *</label><input class="field" inputmode="numeric" value="${esc(state.walletFromPhone)}" oninput="state.walletFromPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
+      <div><label class="field-label">رقم الهاتف المحوّل منه *</label><input class="field" inputmode="numeric" value="${esc(state.walletFromPhone)}" oninput="state.walletFromPhone=normalizeFanniWalletPhoneDigits(this.value).slice(0,11)" placeholder="01xxxxxxxxx"></div>
 
       <div><label class="field-label">المبلغ بالجنيه *</label><input class="field" type="number" min="10" max="10000" step="1" value="${esc(state.walletAmount)}" oninput="state.walletAmount=this.value.slice(0,5)" placeholder="100"></div>
 
