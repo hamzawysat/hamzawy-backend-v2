@@ -556,6 +556,362 @@ html[data-sonaa-theme="client"] body #app .client-home-action i {
   html[data-sonaa-theme="client"] body #app .client-home-stat-card strong {font-size:16px}
 }
 
+/* Technician home: profile/status, availability, jobs banner, 2×2 stats and action list. */
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-top {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  min-width:0;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-avatar {
+  position:relative;
+  display:grid;
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  place-items:center;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-avatar span {
+  color:#8195E5;
+  font-size:43px;
+  font-weight:900;
+  line-height:1;
+  text-shadow:0 1px 3px #DCE4FF;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-avatar b {
+  position:absolute;
+  color:#172554;
+  font-size:16px;
+  font-style:italic;
+  font-weight:900;
+  line-height:1;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-name {
+  flex:1;
+  min-width:0;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-name p {
+  margin:0;
+  color:var(--hs-muted);
+  font-size:10px;
+  font-weight:800;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-name h2 {
+  overflow:hidden;
+  margin:3px 0 0;
+  color:var(--hs-navy);
+  font-size:16px;
+  font-weight:900;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-balance {
+  flex:none;
+  min-width:94px;
+  padding:8px 10px;
+  border:1px solid var(--hs-indigo-200);
+  border-radius:13px;
+  background:var(--hs-indigo-50);
+  text-align:center;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-balance small {
+  display:block;
+  color:var(--hs-muted);
+  font-size:9px;
+  font-weight:800;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-balance strong {
+  display:block;
+  margin-top:2px;
+  color:var(--hs-navy);
+  font-size:15px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-balance strong span {
+  font-size:9px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-status {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:11px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-status span {
+  display:inline-flex;
+  align-items:center;
+  min-height:25px;
+  padding:4px 9px;
+  border:1px solid transparent;
+  border-radius:999px;
+  font-size:9px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-status .is-approved,
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-status .is-available {
+  border-color:#A7F3D0;
+  background:#ECFDF5;
+  color:#047857;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-status .is-pending,
+html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-status .is-paused {
+  border-color:#F3D58D;
+  background:#FFF8E7;
+  color:#946200;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  border:1px solid var(--hs-border);
+  border-radius:16px;
+  background:#FFFFFF;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability>div {
+  display:flex;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  gap:3px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability strong {
+  color:var(--hs-navy);
+  font-size:11px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability small {
+  color:var(--hs-muted);
+  font-size:9px;
+  font-weight:700;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability button {
+  flex:none;
+  min-height:36px;
+  padding:7px 10px;
+  border:1px solid #172DAD;
+  border-radius:11px;
+  background:linear-gradient(145deg,#2946C7,#07136E);
+  color:#FFFFFF;
+  font-size:10px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability button.is-paused {
+  border-color:#047857;
+  background:linear-gradient(145deg,#10B981,#047857);
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-availability button:disabled {
+  opacity:.5;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  width:100%;
+  min-height:76px;
+  padding:12px;
+  text-align:right;
+  border:1px solid #172DAD;
+  border-radius:18px;
+  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%);
+  color:#FFFFFF;
+  box-shadow:0 4px 0 #07136E,0 8px 16px rgba(7,19,110,.14);
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-icon {
+  display:grid;
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.25);
+  border-radius:13px;
+  background:rgba(255,255,255,.14);
+  font-size:21px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner>span:nth-child(2) {
+  display:flex;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  gap:3px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner strong {
+  color:#FFFFFF;
+  font-size:12px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner small {
+  color:#E8EDFF;
+  font-size:9px;
+  font-weight:700;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner>b {
+  display:grid;
+  flex:0 0 31px;
+  width:31px;
+  height:31px;
+  place-items:center;
+  border-radius:10px;
+  background:#FFFFFF;
+  color:#1426A5;
+  font-size:15px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner>i {
+  color:#FFFFFF;
+  font-size:20px;
+  font-style:normal;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-section-head h3 {
+  margin:0;
+  color:var(--hs-navy);
+  font-size:14px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stats {
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:9px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card {
+  display:grid;
+  grid-template-columns:38px minmax(0,1fr);
+  grid-template-rows:auto auto;
+  align-items:center;
+  column-gap:8px;
+  min-width:0;
+  min-height:78px;
+  padding:10px;
+  text-align:right;
+  border:1px solid var(--hs-border);
+  border-radius:15px;
+  background:#FFFFFF;
+  box-shadow:0 3px 9px rgba(16,31,155,.06);
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-icon {
+  display:grid;
+  grid-row:1 / span 2;
+  width:36px;
+  height:36px;
+  place-items:center;
+  border-radius:12px;
+  background:#E8EDFF;
+  color:#172DAD;
+  font-size:18px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card small {
+  color:var(--hs-muted);
+  font-size:9px;
+  font-weight:800;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card strong {
+  color:var(--hs-navy);
+  font-size:19px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-review-note {
+  padding:11px 12px;
+  border:1px solid #F3D58D;
+  border-radius:13px;
+  background:#FFF8E7;
+  color:#805A0A;
+  font-size:10px;
+  font-weight:800;
+  line-height:1.8;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral {
+  display:flex;
+  align-items:center;
+  gap:9px;
+  width:100%;
+  min-height:65px;
+  padding:10px 11px;
+  text-align:right;
+  border:1px solid #F3D58D;
+  border-radius:16px;
+  background:linear-gradient(145deg,#FFF9E8,#FFFFFF);
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral-icon {
+  display:grid;
+  flex:0 0 39px;
+  width:39px;
+  height:39px;
+  place-items:center;
+  border-radius:12px;
+  background:#FFF0C2;
+  font-size:21px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral>span:nth-child(2) {
+  display:flex;
+  flex:1;
+  min-width:0;
+  flex-direction:column;
+  gap:3px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral strong {
+  color:#805A0A;
+  font-size:11px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral small {
+  color:#94712B;
+  font-size:9px;
+  font-weight:700;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral>b {
+  flex:none;
+  color:#805A0A;
+  font-size:9px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-actions {
+  display:grid;
+  gap:7px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action {
+  display:flex;
+  align-items:center;
+  gap:11px;
+  width:100%;
+  min-height:48px;
+  padding:7px 11px;
+  text-align:right;
+  border:1px solid var(--hs-border);
+  border-radius:13px;
+  background:#FFFFFF;
+  color:var(--hs-text);
+  box-shadow:0 2px 0 var(--hs-border);
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action>span {
+  display:grid;
+  flex:0 0 34px;
+  width:34px;
+  height:34px;
+  place-items:center;
+  border-radius:11px;
+  background:#E8EDFF;
+  color:#172DAD;
+  font-size:17px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action strong {
+  flex:1;
+  color:var(--hs-text);
+  font-size:12px;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action i {
+  color:var(--hs-indigo-400);
+  font-size:19px;
+  font-style:normal;
+  font-weight:900;
+}
+@media(max-width:360px) {
+  html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-balance {min-width:82px;padding:7px}
+  html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-name h2 {font-size:14px}
+  html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card {grid-template-columns:32px minmax(0,1fr);column-gap:6px;padding:8px}
+  html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-icon {width:30px;height:30px;font-size:15px}
+}
+
 /* Wallets, messages, notifications, and support feedback. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(.wallet-card,.fanni-wallet-card) {
   background: linear-gradient(145deg,#101F9B 0%,#07136E 100%) !important;
