@@ -182,8 +182,6 @@ async function run() {
           assert.ok(!source.toLowerCase().includes(legacyColor.toLowerCase()), 'account entry renderer still contains legacy color ' + legacyColor);
         }
       }
-      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
-      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
       assert.ok(clientAccount.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'client account social link must use the native blue palette');
       assert.ok(technicianRender.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'technician account social link must use the native blue palette');
       assert.ok(!clientAccount.includes('#d6b45a') && !clientAccount.includes('#fffdf5'), 'client account entry screen must not retain the legacy gold palette');
