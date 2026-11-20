@@ -88,6 +88,7 @@ function render(){
     </div>
   </nav>
   </div>
+  ${state.tab==='home'?'<div class="client-home-profile-shell"><div class="client-home-profile"><span class="client-home-profile-avatar" aria-hidden="true"><span>✦</span><b>'+escHtml(String(state.account?.name||state.clientName||'ع').trim().charAt(0)||'ع')+'</b></span><span class="client-home-profile-name"><small>مرحباً '+escHtml(state.account?.name||state.clientName||'بك')+'</small><strong>عميل • '+Number(state.walletBalance||0).toLocaleString('ar-EG')+' جنيه</strong></span></div></div>':''}
   ${notificationPanel()}
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" class="global-refresh global-refresh-float ${globalRefreshInProgress?'is-refreshing':''}"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>
   ${renderPublicContent()}
@@ -100,10 +101,6 @@ function render(){
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
-        <div class="client-home-profile">
-          <span class="client-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${escHtml(String(state.account?.name||state.clientName||'ع').trim().charAt(0)||'ع')}</b></span>
-          <span class="client-home-profile-name"><small>مرحباً ${escHtml(state.account?.name||state.clientName||'بك')}</small><strong>عميل • ${walletValue} جنيه</strong></span>
-        </div>
         <button type="button" onclick="setTab('new')" class="client-home-hero">
           <span class="client-home-hero-copy">
             <strong>اطلب خدمتك بسهولة</strong>
