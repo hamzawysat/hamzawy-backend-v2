@@ -91,12 +91,16 @@ async function run() {
       const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
       const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
       assert.notEqual(clientHomeStart, -1, 'client home dashboard must render');
+      const clientProfilePosition = clientRender.indexOf('class="client-home-profile-shell"');
+      const clientHeroPosition = clientRender.indexOf('class="client-home-hero"', clientHomeStart);
       assert.ok(
-        clientRender.indexOf('class="client-home-profile"', clientHomeStart) <
-          clientRender.indexOf('class="client-home-hero"', clientHomeStart),
-        'client profile and wallet summary must appear before the main request banner'
+        clientProfilePosition !== -1 && clientProfilePosition < clientHeroPosition,
+        'client profile and wallet strip must appear above public banners and the main request banner'
       );
-      assert.ok(clientRender.includes('عميل • ${walletValue} جنيه'), 'client profile must show role and wallet balance');
+      assert.ok(
+        clientRender.includes("عميل • '+Number(state.walletBalance||0).toLocaleString('ar-EG')+' جنيه"),
+        'client profile must show role and wallet balance'
+      );
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
         assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
       }
