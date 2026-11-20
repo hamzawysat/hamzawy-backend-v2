@@ -1467,6 +1467,107 @@ html[data-sonaa-theme="links"] body .arr {
   color:var(--hs-indigo-500) !important;
 }
 
+/* Admin pages retain their own layout but share the app's core palette. */
+html[data-sonaa-theme="admin"] {
+  --sonaa-color-0b1b3a:#101F9B;
+  --sonaa-color-1e3a8a:#1426A5;
+  --sonaa-color-2563eb:#172DAD;
+  --sonaa-color-1d4ed8:#2946C7;
+  --sonaa-color-3b82f6:#526BE0;
+  --sonaa-color-f59e0b:#F5B928;
+  --sonaa-color-f1f5fb:#F4F8FC;
+  --sonaa-color-fff:#FFFFFF;
+  --sonaa-color-e6eefc:#D8E5F2;
+  --sonaa-color-dbe3ef:#D5DDFE;
+  --sonaa-color-dbe5f5:#D8E5F2;
+  --sonaa-color-d4deed:#D5DDFE;
+  --sonaa-color-f8fafc:#F4F6FF;
+  --sonaa-color-102b50:#18324F;
+  --navy:#101F9B;
+  --blue:#1426A5;
+  --blue2:#172DAD;
+  --gold:#F5B928;
+  --page:#F4F8FC;
+  --card:#FFFFFF;
+}
+html[data-sonaa-theme="admin"] body {
+  background:#F4F8FC !important;
+  color:#18324F !important;
+  font-family:system-ui,"Noto Sans Arabic",sans-serif !important;
+}
+html[data-sonaa-theme="admin"] body #app :where(.premium-panel,.premium-card,.panel,.card) {
+  border-color:var(--hs-border) !important;
+  border-radius:20px !important;
+  background:#FFFFFF !important;
+  color:var(--hs-text) !important;
+  box-shadow:0 4px 14px rgba(16,31,155,.07) !important;
+}
+html[data-sonaa-theme="admin"] body #app .premium-card::before {
+  background:linear-gradient(90deg,#1426A5,#16A6A1,#F5B928) !important;
+}
+html[data-sonaa-theme="admin"] body #app .field,
+html[data-sonaa-theme="admin"] body #app :where(input,select,textarea) {
+  border-color:var(--hs-indigo-200) !important;
+  border-radius:12px !important;
+  background:#FFFFFF !important;
+  color:var(--hs-navy) !important;
+}
+html[data-sonaa-theme="admin"] body #app .tab-btn {
+  border-color:var(--hs-border) !important;
+  border-radius:16px !important;
+  background:#FFFFFF !important;
+  color:var(--hs-text) !important;
+  box-shadow:0 3px 0 var(--hs-border) !important;
+}
+html[data-sonaa-theme="admin"] body #app .tab-btn.active {
+  border-color:#172DAD !important;
+  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  color:#FFFFFF !important;
+  box-shadow:0 4px 0 #07136E,0 7px 14px rgba(7,19,110,.16) !important;
+}
+html[data-sonaa-theme="admin"] body #app .tab-btn.active :where(span,small,b,strong) {
+  color:#FFFFFF !important;
+}
+html[data-sonaa-theme="admin"] body #app .section-nav-group {
+  border-color:var(--hs-border) !important;
+  border-radius:17px !important;
+  background:linear-gradient(160deg,#FFFFFF,#F4F6FF) !important;
+  box-shadow:0 4px 0 var(--hs-indigo-200),0 8px 14px rgba(16,31,155,.07) !important;
+}
+html[data-sonaa-theme="admin"] body #app .admin-topbar {
+  border-color:var(--hs-border) !important;
+  background:#FFFFFF !important;
+  color:var(--hs-navy) !important;
+  box-shadow:0 4px 14px rgba(16,31,155,.08) !important;
+}
+html[data-sonaa-theme="admin"] body #app :where(.admin-brand,.admin-brand-name) {
+  color:var(--hs-navy) !important;
+}
+html[data-sonaa-theme="admin"] body #app .admin-icon-btn {
+  border-color:var(--hs-border) !important;
+  border-radius:12px !important;
+  background:#F4F6FF !important;
+  color:var(--hs-indigo-700) !important;
+}
+html[data-sonaa-theme="admin"] body #app .admin-header-search {
+  border-color:var(--hs-border) !important;
+  border-radius:12px !important;
+  background:#F4F6FF !important;
+  color:var(--hs-muted) !important;
+}
+html[data-sonaa-theme="admin"] body #app .admin-header-search input {
+  color:var(--hs-navy) !important;
+}
+html[data-sonaa-theme="admin"] body #app .admin-logout-btn {
+  border-color:#FECACA !important;
+  background:#FFF1F2 !important;
+  color:#991B1B !important;
+}
+html[data-sonaa-theme="admin"] body #toast :where(.toast,.alert,.notice) {
+  border-radius:14px !important;
+  box-shadow:0 8px 22px rgba(7,19,110,.16) !important;
+}
+
 /* Accessible focus and reduced-motion support. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body :where(
   a,button,input,select,textarea
