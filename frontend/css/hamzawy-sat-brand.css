@@ -1892,11 +1892,18 @@ html[data-sonaa-theme="client"] body #app .client-home-referral-copy small {
   font-size:11px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-referral-cta {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   padding:9px 11px;
+  border:1px solid #2946C7;
   border-radius:11px;
   background:#102A9B;
   color:#FFFFFF;
+  -webkit-text-fill-color:#FFFFFF;
   font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
 }
 html[data-sonaa-theme="client"] body #app .client-home-actions {
   gap:0;
@@ -2031,11 +2038,18 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-referral small {
   font-size:11px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-referral>b {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
   padding:9px 11px;
+  border:1px solid #2946C7;
   border-radius:11px;
   background:#102A9B;
   color:#FFFFFF;
+  -webkit-text-fill-color:#FFFFFF;
   font-size:12px;
+  font-weight:900;
+  white-space:nowrap;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-actions {
   gap:0;

@@ -219,7 +219,7 @@ body #app header.app-header a[href="https://hamzawy-sat.vercel.app/download.html
   gap:5px!important;min-width:0!important;width:auto!important;
 }
 #app .app-header.fanni-app-header .brand-mark{
-  width:34px!important;height:34px!important;flex:0 0 34px!important;
+  width:42px!important;height:42px!important;flex:0 0 42px!important;
   border-radius:10px!important;overflow:hidden!important;background:#fff!important;
   border:1px solid #dbe5f1!important;box-shadow:0 2px 5px rgba(23,60,108,.10)!important;
 }
@@ -232,7 +232,7 @@ body #app header.app-header a[href="https://hamzawy-sat.vercel.app/download.html
   flex:1 1 auto!important;min-width:0!important;
 }
 #app .app-header.fanni-app-header h1{
-  margin:0!important;font-size:16px!important;line-height:1.2!important;
+  margin:0!important;font-size:18px!important;line-height:1.2!important;
   font-weight:900!important;color:#101F9B!important;text-shadow:none!important;
 }
 #app .app-header.fanni-app-header .client-header-slogan{
@@ -297,8 +297,9 @@ body #app header.app-header a[href="https://hamzawy-sat.vercel.app/download.html
 }
 #app .app-header.fanni-app-header .dashboard-social-link,
 #app .app-header.fanni-app-header a[href="/links"]{
-  background:#fff5dc!important;color:#73520d!important;-webkit-text-fill-color:#73520d!important;
-  border:1px solid #e8d39a!important;
+  background:linear-gradient(145deg,#2946C7,#07136E)!important;
+  background-color:#101F9B!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;
+  border:1px solid #2946C7!important;
 }
 #app .app-header.fanni-app-header a:active,
 #app .app-header.fanni-app-header button:active{transform:translateY(1px)!important;filter:brightness(.97)!important}
