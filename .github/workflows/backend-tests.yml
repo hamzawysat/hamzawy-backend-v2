@@ -48,6 +48,7 @@ jobs:
       admin_store: ${{ steps.filter.outputs.admin_store }}
       dependencies: ${{ steps.filter.outputs.dependencies }}
     steps:
+      - uses: actions/checkout@v5
       - uses: dorny/paths-filter@v3
         id: filter
         with:
