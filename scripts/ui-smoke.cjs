@@ -165,11 +165,13 @@ function apiResponse(pathname) {
           });
         }
         const pageErrors = [];
+        const browserConsoleErrors = [];
         const badLocalResponses = [];
         const authResponses = [];
         const technicianProfileResponses = [];
 
         page.on('pageerror', error => pageErrors.push(error.message));
+        page.on('console', message => { if (message.type() === 'error') browserConsoleErrors.push(message.text()); });
         page.on('response', async response => {
           const url = new URL(response.url());
           if (url.origin === BASE && url.pathname === '/api/client/login' && response.request().method() === 'POST') {
@@ -564,7 +566,7 @@ function apiResponse(pathname) {
                 await page.evaluate(() => openTechnicianSection('profile'));
                 await page.getByText(/تغيير كلمة المرور/).first().waitFor({ state: 'visible', timeout: 5000 }).catch(async error => {
                   const state = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), user: (() => { try { return JSON.parse(localStorage.getItem('fanni_user_v4') || 'null'); } catch { return null; } })(), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), app: document.querySelector('#app')?.innerText.slice(0, 700) }));
-                  throw new Error(error.message + ' [profile diagnostic: ' + JSON.stringify({ state, profile: technicianProfileResponses }) + ']');
+                  throw new Error(error.message + ' [profile diagnostic: ' + JSON.stringify({ state, profile: technicianProfileResponses, consoleErrors: browserConsoleErrors.slice(-12) }) + ']');
                 });
                 await page.locator('button[onclick="beginEditProfile()"]').click();
                 await page.locator('#fanniEditPhone').fill('01012345672');
