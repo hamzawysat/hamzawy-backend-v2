@@ -149,7 +149,7 @@ function renderContent(){
   </section>
 
    
-  ${state.tab==='home'?\`
+  ${state.tab==='home'?`
     <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
       <div class="fanni-home-profile panel p-4">
         <div class="fanni-home-profile-top">
@@ -200,7 +200,7 @@ function renderContent(){
         </button>
       </div>
 
-      ${!approved?\`<div class="fanni-home-review-note">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>\`:''}
+      ${!approved?`<div class="fanni-home-review-note">حسابك ${esc(status)}. تقدر تراجع بياناتك، وإرسال العروض وشحن المحفظة متاحان بعد اعتماد الإدارة.</div>`:''}
 
       <button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral">
         <span class="fanni-home-referral-icon">🎁</span>
@@ -216,7 +216,7 @@ function renderContent(){
         <button type="button" onclick="setTab('store')" class="fanni-home-action"><span>🛍️</span><strong>المتجر</strong><i>‹</i></button>
         <button type="button" onclick="openTechnicianSection('support')" class="fanni-home-action"><span>🎧</span><strong>الدعم الفني</strong><i>‹</i></button>
       </div>
-    </section>\`:''}
+    </section>`:''}
   ${state.tab==='myOrders'?`<div class="mt-3 panel p-2 grid grid-cols-2 gap-2"><button type="button" onclick="setMyOrdersView('active')" class="fanni-orders-view-tab ${state.myOrdersView==='active'?'is-active':''}">العروض الجارية (${state.myOffers.length})</button><button type="button" onclick="setMyOrdersView('completed')" class="fanni-orders-view-tab ${state.myOrdersView==='completed'?'is-active':''}">المهام المكتملة (${state.completedOffers.length})</button></div>`:''}
 
   ${state.tab==='available'?`
