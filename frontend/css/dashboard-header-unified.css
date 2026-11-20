@@ -118,3 +118,18 @@
 @media(prefers-reduced-motion:reduce){
  #app .app-header.fanni-app-header a,#app .app-header.fanni-app-header button{transition:none!important}
 }
+
+/* All header actions, including the social link, share the same compact sizing. */
+#app .app-header.fanni-app-header .dashboard-social-link{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  box-sizing:border-box!important;flex:1 1 0!important;width:auto!important;min-width:0!important;
+  min-height:27px!important;height:27px!important;max-height:27px!important;
+  margin:0!important;padding:2px 4px!important;border-radius:8px!important;
+  font-size:9px!important;line-height:1!important;font-weight:900!important;
+  white-space:nowrap!important;text-decoration:none!important;box-shadow:none!important;
+  background:#fff5dc!important;color:#73520d!important;-webkit-text-fill-color:#73520d!important;
+  border:1px solid #e8d39a!important;
+}
+#app .app-header.fanni-app-header>div:first-child>div:last-child>a[href="/"]{
+  min-height:27px!important;height:27px!important;max-height:27px!important;
+}
