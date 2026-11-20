@@ -107,6 +107,23 @@ verifyAdminDashboardSource();
 function verifyBrandVisualSystem() {
   const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
   const brand = read('frontend/css/hamzawy-sat-brand.css');
+  const themeCss = read('frontend/css/theme.css');
+  const clientHtml = read('frontend/client.html');
+  const fanniOverrides = read('frontend/css/fanni-overrides.css');
+  if (!brand.includes('--sonaa-color-0b1b3a: #101F9B;') ||
+      !brand.includes('--sonaa-color-2563eb: #172DAD;') ||
+      !brand.includes('--sonaa-color-0d9488: #16A6A1;') ||
+      !themeCss.includes('--navy:#101F9B') ||
+      !themeCss.includes('--teal:#16A6A1') ||
+      themeCss.includes('--navy:#171a22') ||
+      themeCss.includes('--blue:#c9a34f')) {
+    throw new Error('Shared legacy color tokens must resolve to the Android app palette');
+  }
+  if (clientHtml.includes('/css/client-foundation.css') ||
+      fanniOverrides.includes('background:linear-gradient(145deg,#F5F0E5,#E8D9B7)') ||
+      fanniOverrides.includes('border:1px solid #C9A34F!important')) {
+    throw new Error('Legacy gold auth overrides must not override the Android app palette');
+  }
   const pages = [
     ['index.html', 'index'],
     ['client.html', 'client'],
