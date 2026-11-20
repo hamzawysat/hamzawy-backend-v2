@@ -438,8 +438,20 @@ function apiResponse(pathname) {
               await page.locator('#accountPhone').waitFor({ state: 'visible', timeout: 5000 });
 
               if (process.env.SONAA_SMOKE_REAL_API === '1') {
+                await page.evaluate(() => {
+                  if (typeof state !== 'undefined') {
+                    state.accountAuthMode = 'login';
+                    state.accountError = '';
+                    render();
+                  }
+                  // The login form intentionally guards submission behind this explicit intent flag.
+                  // Set it in the browser test as well as exercising the real submit button.
+                  window.__sonaaClientLoginIntent = true;
+                });
                 await page.locator('#accountPhone').fill('01012345670');
                 await page.locator('#accountPassword').fill('ClientSmokePass123');
+                const loginFormValid = await page.locator('#accountPhone').evaluate(input => input.form?.checkValidity());
+                if (!loginFormValid) throw new Error('client/desktop: seeded login form is invalid before submission');
                 const clientLoginResponsePromise = page.waitForResponse(response =>
                   response.url().includes('/api/client/login') && response.request().method() === 'POST',
                   { timeout: 15000 }
