@@ -170,7 +170,7 @@ function apiResponse(pathname) {
         const technicianProfileResponses = [];
 
         page.on('pageerror', error => pageErrors.push(error.message));
-        page.on('response', response => {
+        page.on('response', async response => {
           const url = new URL(response.url());
           if (url.origin === BASE && url.pathname === '/api/client/login' && response.request().method() === 'POST') {
             authResponses.push('POST ' + url.pathname + ' -> ' + response.status());
