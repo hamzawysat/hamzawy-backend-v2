@@ -187,16 +187,16 @@ function renderContent(){
       <div class="fanni-home-section-head"><h3>الإحصائيات</h3></div>
       <div class="fanni-home-stats">
         <button type="button" onclick="setTab('available')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">📋</span><small>فرص العمل المتاحة</small><strong>${state.filteredOrders.length}</strong>
+          <span class="fanni-home-stat-icon">📋</span><small>فرص العمل المتاحة</small><strong data-home-stat="available">${state.filteredOrders.length}</strong>
         </button>
         <button type="button" onclick="setTab('myOrders')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">💼</span><small>عروضي والمهام الجارية</small><strong>${state.myOffers.length}</strong>
+          <span class="fanni-home-stat-icon">💼</span><small>عروضي والمهام الجارية</small><strong data-home-stat="active">${state.myOffers.length}</strong>
         </button>
         <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">✓</span><small>المهام المكتملة</small><strong>${state.completedOffers.length}</strong>
+          <span class="fanni-home-stat-icon">✓</span><small>المهام المكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
         </button>
         <button type="button" onclick="toggleNotifications()" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">🔔</span><small>إشعارات غير مقروءة</small><strong>${Number(state.notificationsUnread||0)}</strong>
+          <span class="fanni-home-stat-icon">🔔</span><small>إشعارات غير مقروءة</small><strong data-home-stat="notifications">${Number(state.notificationsUnread||0)}</strong>
         </button>
       </div>
 
