@@ -1563,6 +1563,12 @@ html[data-sonaa-theme="admin"] body #app .admin-logout-btn {
   background:#FFF1F2 !important;
   color:#991B1B !important;
 }
+html[data-sonaa-theme="admin"] body #global-refresh {
+  border:2px solid #FFFFFF !important;
+  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  color:#FFFFFF !important;
+  box-shadow:0 4px 0 #07136E,0 8px 18px rgba(7,19,110,.2) !important;
+}
 html[data-sonaa-theme="admin"] body #toast :where(.toast,.alert,.notice) {
   border-radius:14px !important;
   box-shadow:0 8px 22px rgba(7,19,110,.16) !important;
