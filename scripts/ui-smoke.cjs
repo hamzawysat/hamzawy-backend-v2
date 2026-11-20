@@ -80,8 +80,12 @@ function verifyAdminDashboardSource() {
       !shell.includes('requestAnimationFrame(restoreScrollPosition)')) {
     throw new Error('Admin render must preserve the current scroll position');
   }
-  const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('\nasync function deleteStoreProduct('));
-  if (!editStoreFunction.includes("document.getElementById('store-name')?.closest('.premium-panel')") ||
+  const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('async function deleteStoreProduct('));
+  if (!editStoreFunction.includes("editForm.style.scrollMarginTop=(headerHeight+16)+'px'") ||
+      !editStoreFunction.includes("editForm.scrollIntoView({behavior:'smooth',block:'start',inline:'nearest'})") ||
+      editStoreFunction.includes('window.scrollTo({top:targetTop')) {
+    throw new Error('Admin store product edit must scroll the actual edit panel into view, including nested scroll containers');
+  }
       !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
       editStoreFunction.includes('window.scrollTo({top:0')) {
     throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
