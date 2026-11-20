@@ -834,7 +834,7 @@ function apiResponse(pathname) {
       localStorage.setItem('admin_token', 'store-edit-restore-smoke-token');
       localStorage.setItem('token', 'store-edit-restore-smoke-token');
       localStorage.setItem('auth_token', 'store-edit-restore-smoke-token');
-      sessionStorage.setItem('hamzawy-admin-store-edit-product', 'store-edit-restore-smoke-product');
+      sessionStorage.setItem('hamzawy-admin-store-edit-product', JSON.stringify({ productId: 'store-edit-restore-smoke-product', values: { 'store-name': 'اسم معدل لم يتم حفظه', 'store-price': '333', 'store-description': 'مسودة وصف غير محفوظة' } }));
     });
     await storeEditRestorePage.route('**/api/**', async route => {
       const url = new URL(route.request().url());
@@ -861,11 +861,18 @@ function apiResponse(pathname) {
       if (!response || response.status() !== 200) failures.push('admin/store-edit-restore: admin page did not return HTTP 200');
       await storeEditRestorePage.getByRole('button', { name: 'حفظ التعديل' }).waitFor({ state: 'visible', timeout: 6000 });
       const restoredProductName = await storeEditRestorePage.locator('#store-name').inputValue();
-      if (restoredProductName !== 'منتج استعادة وضع التعديل') {
-        failures.push('admin/store-edit-restore: selected product edit form was not restored (received ' + restoredProductName + ')');
+      if (restoredProductName !== 'اسم معدل لم يتم حفظه') {
+        failures.push('admin/store-edit-restore: unsaved product name draft was not restored (received ' + restoredProductName + ')');
       }
-      const restoredSession = await storeEditRestorePage.evaluate(() =>
-        sessionStorage.getItem('hamzawy-admin-store-edit-product'));
+      const restoredPrice = await storeEditRestorePage.locator('#store-price').inputValue();
+      const restoredDescription = await storeEditRestorePage.locator('#store-description').inputValue();
+      if (restoredPrice !== '333' || restoredDescription !== 'مسودة وصف غير محفوظة') {
+        failures.push('admin/store-edit-restore: unsaved product form fields were not restored');
+      }
+      const restoredSession = await storeEditRestorePage.evaluate(() => {
+        try { return JSON.parse(sessionStorage.getItem('hamzawy-admin-store-edit-product') || 'null')?.productId; }
+        catch { return null; }
+      });
       if (restoredSession !== 'store-edit-restore-smoke-product') {
         failures.push('admin/store-edit-restore: edit session was not retained for navigation');
       }
