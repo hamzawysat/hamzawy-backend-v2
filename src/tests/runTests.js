@@ -59,6 +59,32 @@ async function run() {
       assert.equal(search.matchesArabicStoreSearch(product, '   '), true, 'an empty query should not filter products');
     });
 
+    await test('browser area search matches the native app Arabic normalization and typo tolerance', async () => {
+      const search = require('../../frontend/js/area-search');
+      assert.equal(search.normalizeAreaSearchText('إشــتراك مُميّز'), 'اشتراك مميز');
+      assert.equal(search.normalizeAreaSearchText('أجهزة آيفون ١٢'), 'اجهزه ايفون 12');
+      assert.equal(search.matchesAreaSearch('الإسكندرية', 'اسكندريه'), true);
+      assert.equal(search.matchesAreaSearch('القاهرة', 'المنصورة'), false);
+      assert.deepEqual(
+        search.filterAreaOptions(['القاهرة', 'الجيزة', 'جميع المناطق'], 'الجيزه'),
+        ['الجيزة'],
+        'matching areas should be ranked and the reserved all-areas label excluded'
+      );
+    });
+
+    await test('client and technician dashboards load the shared native area search before rendering', async () => {
+      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
+      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
+      const clientRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-render.js'), 'utf8');
+      const technicianCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-core.js'), 'utf8');
+      assert.ok(clientPage.indexOf('/js/area-search.js') !== -1);
+      assert.ok(clientPage.indexOf('/js/area-search.js') < clientPage.indexOf('/js/client-render.js'));
+      assert.ok(technicianPage.indexOf('/js/area-search.js') !== -1);
+      assert.ok(technicianPage.indexOf('/js/area-search.js') < technicianPage.indexOf('/js/fanni-core.js'));
+      assert.ok(clientRender.includes('filterAreaOptions(AREA_OPTIONS,state.areaSearch)'));
+      assert.ok(technicianCore.includes('matchesAreaSearch(value, normalizedQuery)'));
+    });
+
     await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
       const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
       const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
