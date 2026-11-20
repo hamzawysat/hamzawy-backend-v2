@@ -46,7 +46,7 @@ function render(){
     }
     renderAccountGate();return;
   }
-  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-bold text-amber-900">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
+  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#101F9B]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
   const matching=CATEGORIES.map(c=>({
@@ -71,7 +71,7 @@ function render(){
     <div class="flex flex-col items-end gap-1.5 shrink-0">
      <div class="flex items-center justify-end gap-1">
       <a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="dashboard-download-btn h-9 px-2 sm:px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold whitespace-nowrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>تحميل التطبيق</span></a>
-      <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-amber-200 bg-amber-50 text-[18px] text-amber-600 shrink-0">🔔${notificationBadge()}</button>
+      <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-[#D5DDFE] bg-[#EEF2FF] text-[18px] text-[#101F9B] shrink-0">🔔${notificationBadge()}</button>
       <a href="password.html?role=client&mode=account" aria-label="حسابي" title="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 bg-[#E8EDFF] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</a>
       <button type="button" onclick="logoutClient()" aria-label="خروج" title="خروج" class="h-9 px-2 rounded-xl bg-red-50 border border-red-100 text-red-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>
      </div>
@@ -79,7 +79,7 @@ function render(){
     </div>
    </div>
   </header>
-<nav class="${isBrowserDashboard?'client-section-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
+<nav class="${isBrowserDashboard?'client-section-tabs client-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
     <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
       ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'new',icon:'＋',label:'طلب جديد'},{id:'orders',icon:'📋',label:'طلباتي'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'subscriptions',icon:'📄',label:'الاشتراكات'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'complaint',icon:'🎧',label:'الشكاوى'}].map(t=>`
         <button type="button" onclick="setTab('${t.id}')" class="client-section-tab ${state.tab===t.id?'is-active':''}">
@@ -92,7 +92,7 @@ function render(){
   ${notificationPanel()}
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" class="global-refresh global-refresh-float ${globalRefreshInProgress?'is-refreshing':''}"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>
   ${renderPublicContent()}
-  <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
+  <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 client-browser-main ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
     ${state.tab==='home'?(() => {
       const orders=Array.isArray(state.myOrders)?state.myOrders:[];
       const closed=new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished']);

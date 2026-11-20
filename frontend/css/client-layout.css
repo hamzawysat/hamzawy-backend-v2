@@ -146,3 +146,54 @@ body #app header.app-header a[href="https://hamzawy-sat.vercel.app/download.html
 #app .client-wallet-tab-content>.panel{animation:clientWalletTabIn .18s ease-out}
 @keyframes clientWalletTabIn{from{opacity:.65;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 @media(max-width:360px){#app .client-wallet-tabs{gap:5px;padding:6px}#app .client-wallet-tabs button{font-size:9px;padding:6px 2px}}
+
+
+/* Browser dashboard mobile navigation and referral promo now mirror the Android app. */
+@media (max-width: 767px) {
+  .client-browser-bottom-nav {
+    position: fixed !important;
+    inset-inline: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    z-index: 80 !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .client-browser-main { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important; }
+  .store-ad-slot { bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+@keyframes client-referral-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 3px 10px rgba(16,31,155,.10); }
+  50% { transform: scale(1.025); box-shadow: 0 5px 16px rgba(16,31,155,.18); }
+}
+.client-home-referral {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #C7D2FE;
+  border-radius: 13px;
+  background: #DCE5FF;
+  color: #09145B;
+  text-align: right;
+  animation: client-referral-pulse 1.7s ease-in-out infinite;
+}
+.client-home-referral-icon { flex: 0 0 auto; font-size: 21px; }
+.client-home-referral-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
+.client-home-referral-copy strong { color: #09145B; font-size: 14px; font-weight: 900; }
+.client-home-referral-copy small { color: #26356E; font-size: 11px; font-weight: 700; }
+.client-home-referral-cta {
+  flex: 0 0 auto;
+  border-radius: 11px;
+  background: #102A9B;
+  padding: 9px 11px;
+  color: #FFF;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .client-home-referral { animation: none; }
+}
