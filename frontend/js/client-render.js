@@ -79,7 +79,7 @@ function render(){
     </div>
    </div>
   </header>
-<nav class="${isBrowserDashboard?'client-section-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
+<nav class="${isBrowserDashboard?'client-section-tabs client-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
     <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
       ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'new',icon:'＋',label:'طلب جديد'},{id:'orders',icon:'📋',label:'طلباتي'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'subscriptions',icon:'📄',label:'الاشتراكات'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'complaint',icon:'🎧',label:'الشكاوى'}].map(t=>`
         <button type="button" onclick="setTab('${t.id}')" class="client-section-tab ${state.tab===t.id?'is-active':''}">
@@ -92,7 +92,7 @@ function render(){
   ${notificationPanel()}
   <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" class="global-refresh global-refresh-float ${globalRefreshInProgress?'is-refreshing':''}"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>
   ${renderPublicContent()}
-  <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
+  <main class="mx-auto w-full max-w-[640px] px-3 sm:px-4 client-browser-main ${isBrowserDashboard?'pb-8 safe-bottom':'pb-[160px] safe-bottom'}">
     ${state.tab==='home'?(() => {
       const orders=Array.isArray(state.myOrders)?state.myOrders:[];
       const closed=new Set(['تم الانتهاء','منتهي','مكتمل','مكتملة','ملغي','مؤرشف','منتهي - اعتذار','completed','complete','finished']);
