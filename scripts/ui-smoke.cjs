@@ -279,8 +279,10 @@ function apiResponse(pathname) {
                 '/css/client-foundation.css',
                 '/css/client-layout.css',
                 '/css/theme.css',
-                '/css/hamzawy-sat-brand.css',
-                '/css/client-components.css'
+                '/css/client-components.css',
+                '/css/ui-light-surfaces.css',
+                '/css/dashboard-header-unified.css',
+                '/css/hamzawy-sat-brand.css'
               ].map(path => clientHeadStyles.indexOf(path));
               const clientHtmlSource = await (await page.request.get(BASE + '/frontend/client.html')).text();
               const clientActionsSource = await (await page.request.get(BASE + '/frontend/js/client-actions.js')).text();
