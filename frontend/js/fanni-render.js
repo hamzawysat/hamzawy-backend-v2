@@ -35,7 +35,7 @@ function renderContent(){
    </div>
   </div>
  </header>
-<nav class="${isBrowserDashboard?'fanni-dashboard-tabs border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
+<nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
    <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
     ${authenticated?TECHNICIAN_TAB_DEFINITIONS.map(t=>{const info={home:['⌂','الرئيسية'],available:['📋','الطلبات المتاحة'],myOrders:['💼','عروضي'],wallet:['💳','المحفظة'],store:['🛍️','المتجر'],profile:['👤','حسابي'],support:['🎧','الدعم الفني']}[t.id];return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="fanni-section-tab ${state.tab===t.id?'is-active':''}"><span class="fanni-section-tab-icon">${info[0]}</span><span class="fanni-section-tab-label">${info[1]}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
        
@@ -44,7 +44,7 @@ function renderContent(){
   </div>
   ${notificationPanel()}
 
- ${renderFanniPublicContent()}<main class="mx-auto max-w-[680px] px-3 ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
+ ${renderFanniPublicContent()}<main class="mx-auto max-w-[680px] px-3 fanni-browser-main ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
  ${!authenticated?`
   <section class="account-gate fanni-login-gate mt-5 px-4 py-6 flex flex-col items-center">
    <div class="w-full max-w-[440px]">
