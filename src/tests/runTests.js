@@ -165,6 +165,14 @@ async function run() {
           page + ' must use the native app brand color for browser chrome'
         );
       }
+      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
+      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
+      for (const source of [clientAccount, technicianRender]) {
+        assert.ok(source.includes('#172DAD') && source.includes('#FFFFFF'), 'account entry links must use the native blue palette');
+        for (const legacyColor of ['#d6b45a', '#fffdf5', '#fff4cf', '#173c6c', '#1d4ed8']) {
+          assert.ok(!source.toLowerCase().includes(legacyColor.toLowerCase()), 'account entry renderer still contains legacy color ' + legacyColor);
+        }
+      }
       const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../frontend/manifest.webmanifest'), 'utf8'));
       assert.equal(manifest.theme_color, '#101F9B');
       assert.equal(manifest.background_color, '#F4F8FC');
