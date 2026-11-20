@@ -98,7 +98,7 @@ async function run() {
         'client profile and wallet strip must appear above public banners and the main request banner'
       );
       assert.ok(
-        clientRender.includes("عميل • '+Number(state.walletBalance||0).toLocaleString('ar-EG')+' جنيه"),
+        clientRender.includes("عميل • ${Number(state.walletBalance||0).toLocaleString('ar-EG')} جنيه"),
         'client profile must show role and wallet balance'
       );
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
