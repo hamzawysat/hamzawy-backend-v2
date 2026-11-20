@@ -35,6 +35,17 @@ function verifyAdminDashboardSource() {
       shell.includes("filter(item=>item.value>0)")) {
     throw new Error('Admin dashboard KPI or quick-action regression');
   }
+  const clientWallet = read('frontend/js/client-wallet.js');
+  const fanniWallet = read('frontend/js/fanni-wallet.js');
+  const fanniRender = read('frontend/js/fanni-render.js');
+  if (!clientWallet.includes('function normalizeClientWalletPhoneDigits(value)') ||
+      !clientWallet.includes('normalizeClientWalletPhoneDigits(this.value)') ||
+      !clientWallet.includes('normalizeClientWalletPhoneDigits(state.walletFromPhone)') ||
+      !fanniWallet.includes('function normalizeFanniWalletPhoneDigits(value)') ||
+      !fanniWallet.includes('normalizeFanniWalletPhoneDigits(state.walletFromPhone)') ||
+      !fanniRender.includes('normalizeFanniWalletPhoneDigits(this.value)')) {
+    throw new Error('Client and technician wallet phone inputs must accept Arabic and Persian numerals like the native app');
+  }
   const adminContent = read('frontend/js/admin/support-render.js');
   const adminActions = read('frontend/js/admin/support-actions.js');
   const adminCss = read('frontend/css/admin-layout.css');
