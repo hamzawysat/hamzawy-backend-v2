@@ -401,7 +401,7 @@ function renderContent(){
  </main>
 
  
-  ${`<style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>`:''}
+  <style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>
  
 }
 
