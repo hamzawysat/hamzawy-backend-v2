@@ -351,7 +351,7 @@ function apiResponse(pathname) {
           }
 
           const expectedRoot = {
-            client: '#app', technician: '#app', admin: '#app', password: '#app, #setupForm', support: 'main, #app',
+            client: '#app', technician: '#app', admin: '#app', password: 'body > main.wrap', support: 'body > .wrap',
             customers: 'body > .shell', technicians: 'body > .shell', download: 'body > .card', links: 'body > .card',
             'admin-setup': '#app, #setupForm, main'
           }[target.name];
@@ -698,9 +698,10 @@ function apiResponse(pathname) {
             const clientTabs = ['new', 'orders', 'track', 'wallet', 'subscriptions', 'store', 'complaint'];
             const loadedClientCss = await page.locator('link[rel="stylesheet"]').evaluateAll(items =>
               items.map(item => new URL(item.href).pathname));
-            if (!loadedClientCss.includes('/css/client-foundation.css') ||
-                !loadedClientCss.includes('/css/client-layout.css') ||
-                !loadedClientCss.includes('/css/client-components.css')) {
+            if (!loadedClientCss.includes('/css/client-layout.css') ||
+                !loadedClientCss.includes('/css/theme.css') ||
+                !loadedClientCss.includes('/css/client-components.css') ||
+                !loadedClientCss.includes('/css/hamzawy-sat-brand.css')) {
               failures.push('client/mobile: one or more extracted client stylesheets are missing');
             }
             for (const tab of clientTabs) {
