@@ -371,9 +371,19 @@ function apiResponse(pathname) {
               if (process.env.SONAA_SMOKE_REAL_API === '1') {
                 await page.locator('#accountPhone').fill('01012345670');
                 await page.locator('#accountPassword').fill('ClientSmokePass123');
+                const clientLoginResponsePromise = page.waitForResponse(response =>
+                  response.url().includes('/api/client/login') && response.request().method() === 'POST',
+                  { timeout: 15000 }
+                );
                 await page.locator('.account-submit').click();
-                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), { timeout: 10000 });
-                await page.waitForFunction(() => !!state.account && !!state.accountToken, { timeout: 10000 });
+                const clientLoginResponse = await clientLoginResponsePromise;
+                if (!clientLoginResponse.ok()) {
+                  const loginBody = await clientLoginResponse.text().catch(() => '');
+                  throw new Error('client/desktop: seeded client login returned HTTP ' +
+                    clientLoginResponse.status() + ' (' + loginBody.slice(0, 500) + ')');
+                }
+                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
                 await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
                 const customerTabIds = ['home', 'new', 'orders', 'wallet', 'subscriptions', 'store', 'complaint'];
                 const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
