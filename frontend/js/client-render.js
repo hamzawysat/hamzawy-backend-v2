@@ -62,7 +62,7 @@ function render(){
     :null;
   document.getElementById('app').innerHTML=`
   
-  <div class="dashboard-brand-marquee" aria-label="حمزاوي سات كل خدمة تبدأ بخطوة"><span>حمزاوي سات كل خدمة تبدأ بخطوة</span></div>
+  
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
   <header class="app-header fanni-app-header ${isBrowserDashboard?'':'sticky top-0 z-40'} backdrop-blur-xl">
    <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
