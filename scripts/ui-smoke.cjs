@@ -520,6 +520,12 @@ function apiResponse(pathname) {
                 await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
                 await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
                 await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!document.querySelector('#guidelinesAcceptedCheck') || !!document.querySelector('nav.fanni-dashboard-tabs'), null, { timeout: 10000 });
+                if (await page.locator('#guidelinesAcceptedCheck').count()) {
+                  await page.locator('#guidelinesAcceptedCheck').check();
+                  await page.getByRole('button', { name: 'موافق ثم تأكيد' }).click();
+                }
+                await page.locator('nav.fanni-dashboard-tabs').waitFor({ state: 'visible', timeout: 10000 });
                 const technicianNavigation = await page.evaluate(() => ({
                   tabs: typeof TECHNICIAN_TAB_DEFINITIONS !== 'undefined' ? TECHNICIAN_TAB_DEFINITIONS.map(tab => tab.id) : [],
                   notificationBell: !!document.querySelector('button[aria-label="الإشعارات"]'),
@@ -656,6 +662,12 @@ function apiResponse(pathname) {
             await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
             await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
             await page.waitForFunction(() => state.tab === 'home', null, { timeout: 5000 });
+            await page.waitForFunction(() => !!document.querySelector('#guidelinesAcceptedCheck') || !!document.querySelector('nav.fanni-dashboard-tabs'), null, { timeout: 10000 });
+            if (await page.locator('#guidelinesAcceptedCheck').count()) {
+              await page.locator('#guidelinesAcceptedCheck').check();
+              await page.getByRole('button', { name: 'موافق ثم تأكيد' }).click();
+            }
+            await page.locator('nav.fanni-dashboard-tabs').waitFor({ state: 'visible', timeout: 10000 });
 
             const resources = await page.evaluate(() => ({
               css: [...document.querySelectorAll('link[rel="stylesheet"]')].map(item => item.href).filter(url => url.includes('/css/fanni-')),
