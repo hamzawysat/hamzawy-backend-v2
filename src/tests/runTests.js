@@ -104,6 +104,7 @@ async function run() {
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
         assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
       }
+      assert.ok(!technicianRender.includes('fanni-summary-card'), 'legacy duplicate technician summary must not appear above the native profile row');
       assert.ok(technicianRender.includes('fanni-home-availability-toggle'), 'technician profile row must include the ON/OFF availability control');
       assert.ok(technicianRender.includes('fanni-home-offline-note'), 'technician offline state must show the native-app warning');
       assert.ok(
