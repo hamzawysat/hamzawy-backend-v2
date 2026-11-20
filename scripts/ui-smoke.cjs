@@ -545,12 +545,12 @@ function apiResponse(pathname) {
                 const pollingStarted = await page.evaluate(() => !!fanniChatsPollTimer && !!fanniMessagesPollTimer);
                 if (!pollingStarted) failures.push('technician: chat/message polling did not start after login');
                 await page.getByRole('button', { name: /الدعم الفني/ }).first().waitFor({ state: 'visible', timeout: 3000 });
-                await page.evaluate(() => setTab('myOrders'));
+                await page.evaluate(() => openTechnicianSection('myOrders'));
                 await page.getByRole('button', { name: /المهام المكتملة/ }).click();
                 await page.getByRole('heading', { name: 'المهام المكتملة' }).waitFor({ state: 'visible', timeout: 3000 });
                 await page.getByRole('button', { name: /العروض الجارية/ }).click();
                 await page.getByRole('heading', { name: 'عروضي' }).waitFor({ state: 'visible', timeout: 3000 });
-                await page.evaluate(() => setTab('profile'));
+                await page.evaluate(() => openTechnicianSection('profile'));
                 await page.getByRole('button', { name: /تغيير كلمة المرور/ }).waitFor({ state: 'visible', timeout: 3000 });
                 await page.locator('button[onclick="beginEditProfile()"]').click();
                 await page.locator('#fanniEditPhone').fill('01012345672');
@@ -675,7 +675,7 @@ function apiResponse(pathname) {
             ];
             for (const [label, tab] of expectedTabs) {
               try {
-                const tabButton = page.locator(`button[onclick="openTechnicianSection('${tab}')"]`).first();
+                const tabButton = page.locator('button.fanni-section-tab').filter({ hasText: label }).first();
                 await tabButton.click({ timeout: 8000 });
                 await page.waitForTimeout(120);
                 const isActive = await page.evaluate(expected => [...document.querySelectorAll('button')]
@@ -688,7 +688,7 @@ function apiResponse(pathname) {
               }
             }
 
-            await page.locator('button[onclick="openTechnicianSection(\'home\')"]').first().click();
+            await page.locator('button.fanni-section-tab').filter({ hasText: 'الرئيسية' }).first().click();
             await page.locator('.fanni-home-dashboard').waitFor({ state: 'visible', timeout: 3000 });
             const homeStatsCount = await page.locator('.fanni-home-dashboard [data-home-stat]').count();
             if (homeStatsCount !== 4) failures.push('technician/mobile: home dashboard must show all four summary statistics');
