@@ -1955,3 +1955,13 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-action i {
     height:38px;
   }
 }
+
+html[data-sonaa-theme="client"] body #app .client-home-profile-shell {
+  width:100%;
+  background:#F2F4F9;
+}
+html[data-sonaa-theme="client"] body #app .client-home-profile-shell .client-home-profile {
+  width:100%;
+  max-width:640px;
+  margin:0 auto;
+}
