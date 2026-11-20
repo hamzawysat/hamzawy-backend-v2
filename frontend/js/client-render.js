@@ -99,35 +99,62 @@ function render(){
       const closed=['تم الانتهاء','منتهي','ملغي','مؤرشف','منتهي - اعتذار'];
       const activeCount=orders.filter(o=>!closed.includes(String(o.status||''))).length;
       const completedCount=orders.length-activeCount;
+      const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
-        <button type="button" onclick="openClientReferralPage()" class="w-full rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-3 text-right shadow-sm"><span class="flex items-center gap-3"><span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><span class="min-w-0 flex-1"><span class="block text-sm font-black text-amber-950">ادعُ صديقك لتحصل على 50 جنيه مكافأة</span><span class="mt-1 block text-[11px] font-extrabold text-amber-800">اضغط هنا لدعوة صديقك</span></span><span class="text-xl font-black text-amber-800">←</span></span></button>
-        <div class="panel p-4">
-          <div class="flex items-center justify-between gap-3">
-            <div><p class="text-[10px] font-bold text-slate-500">نظرة سريعة على حسابك</p><h2 id="clientHomeTitle" class="text-[17px] font-black mt-1">أهلاً ${escHtml(state.account?.name||state.clientName||'بك')}</h2><p class="text-[11px] text-slate-500 mt-1">كل خدمات حمزاوي سات في مكان واحد</p></div>
-            <span class="rounded-full bg-cyan-50 px-3 py-1.5 text-[10px] font-extrabold text-cyan-800">لوحة العميل</span>
-          </div>
-          <div class="mt-4 grid grid-cols-2 gap-2">
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">إجمالي طلباتي</p><p class="mt-1 text-2xl font-black text-slate-900">${orders.length}</p><button type="button" onclick="setTab('orders')" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض الطلبات</button></article>
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">طلبات جارية</p><p class="mt-1 text-2xl font-black text-slate-900">${activeCount}</p><button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="mt-2 text-[11px] font-extrabold text-cyan-800">متابعة الجاري</button></article>
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">طلبات سابقة</p><p class="mt-1 text-2xl font-black text-slate-900">${completedCount}</p><button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="mt-2 text-[11px] font-extrabold text-cyan-800">عرض السابق</button></article>
-            <article class="rounded-xl border border-slate-200 bg-white p-3"><p class="text-[10px] font-bold text-slate-500">رصيد محفظتي</p><p class="mt-1 text-2xl font-black text-slate-900">${Number(state.walletBalance||0).toLocaleString('ar-EG')} <span class="text-xs">ج</span></p><button type="button" onclick="setTab('wallet')" class="mt-2 text-[11px] font-extrabold text-cyan-800">فتح المحفظة</button></article>
-          </div>
-          <div class="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 flex items-center justify-between gap-3"><div><p class="text-[11px] font-extrabold">الإشعارات</p><p class="text-[10px] text-slate-500 mt-1"> ${Number(state.notificationsUnread||0)} إشعار غير مقروء</p></div><button type="button" onclick="toggleNotifications()" class="rounded-lg bg-white border border-slate-200 px-3 py-2 text-[11px] font-extrabold">فتح الإشعارات</button></div>
+        <button type="button" onclick="setTab('new')" class="client-home-hero">
+          <span class="client-home-hero-copy">
+            <strong>اطلب خدمتك بسهولة</strong>
+            <span>اختار الخدمة المناسبة وهنوصلك بالفني</span>
+            <span class="client-home-hero-cta">اطلب الآن ←</span>
+          </span>
+          <span class="client-home-hero-icon" aria-hidden="true">🛠️</span>
+        </button>
+
+        <div class="client-home-section-head">
+          <h2 id="clientHomeTitle">الإحصائيات</h2>
+          <span>أهلاً ${escHtml(state.account?.name||state.clientName||'بك')}</span>
         </div>
-        <div class="panel p-4">
-          <h3 class="text-[14px] font-extrabold">القائمة الرئيسية</h3>
-          <p class="mt-1 text-[10px] text-slate-500">اختار القسم اللي عايز تفتحه</p>
-          <div class="mt-3 grid grid-cols-2 gap-2">
-            <button type="button" onclick="setTab('new')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">＋ طلب خدمة جديدة</button>
-            <button type="button" onclick="setTab('orders')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">📋 طلباتي</button>
-            <button type="button" onclick="setTab('track')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">🔎 تتبع طلب</button>
-            <button type="button" onclick="setTab('wallet')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">💳 محفظتي</button>
-            <button type="button" onclick="setTab('subscriptions')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">📄 الاشتراكات</button>
-            <button type="button" onclick="setTab('store')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">🛍️ المتجر</button>
-            <button type="button" onclick="setTab('complaint')" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-[12px] font-extrabold text-slate-800">⚠️ الشكاوى</button>
-            <a href="password.html?role=client&mode=account" class="rounded-xl border border-slate-200 bg-white px-3 py-3 text-center text-[12px] font-extrabold text-slate-800">👤 حسابي</a>
-          </div>
+        <div class="client-home-stats">
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
+            <span class="client-home-stat-icon">📋</span>
+            <span class="client-home-stat-label">طلبات جارية</span>
+            <strong>${activeCount}</strong>
+          </button>
+          <button type="button" onclick="setTab('wallet')" class="client-home-stat-card">
+            <span class="client-home-stat-icon">💳</span>
+            <span class="client-home-stat-label">رصيد المحفظة</span>
+            <strong>${walletValue} <small>ج</small></strong>
+          </button>
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-stat-card">
+            <span class="client-home-stat-icon">✓</span>
+            <span class="client-home-stat-label">طلبات سابقة</span>
+            <strong>${completedCount}</strong>
+          </button>
+          <button type="button" onclick="setTab('orders')" class="client-home-stat-card">
+            <span class="client-home-stat-icon">📄</span>
+            <span class="client-home-stat-label">إجمالي الطلبات</span>
+            <strong>${orders.length}</strong>
+          </button>
+        </div>
+
+        <button type="button" onclick="openClientReferralPage()" class="client-home-referral">
+          <span class="client-home-referral-icon" aria-hidden="true">🎁</span>
+          <span class="client-home-referral-copy">
+            <strong>ادعُ صديقك واربح 50 جنيه</strong>
+            <small>شارك رابط الدعوة واكسب رصيد عند انضمام صديقك</small>
+          </span>
+          <span class="client-home-referral-cta">دعوة الآن ←</span>
+        </button>
+
+        <div class="client-home-section-head">
+          <h2>إجراءات سريعة</h2>
+        </div>
+        <div class="client-home-actions">
+          <button type="button" onclick="setTab('orders')" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+          <a href="password.html?role=client&mode=account" class="client-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></a>
+          <a href="/support" class="client-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></a>
         </div>
       </section>`;
     })():''}
