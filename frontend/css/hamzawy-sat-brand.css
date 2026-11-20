@@ -1816,3 +1816,142 @@ html[data-sonaa-theme="client"] body #app .client-home-action i {
     height:38px;
   }
 }
+
+/* Technician dashboard parity refinements from the native dashboard. */
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner {
+  min-height:88px;
+  padding:10px 13px;
+  border-color:#092D9E;
+  border-radius:18px;
+  background:#092D9E;
+  box-shadow:none;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-icon {
+  flex-basis:44px;
+  width:44px;
+  height:44px;
+  border:0;
+  border-radius:22px;
+  background:#DCE6FF;
+  color:#102A9B;
+  font-size:21px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner strong {
+  font-size:15px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner small {
+  font-size:11px;
+  line-height:16px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner em {
+  display:inline-flex;
+  align-self:flex-start;
+  margin-top:4px;
+  padding:6px 11px;
+  border-radius:9px;
+  background:#FFFFFF;
+  color:#102A9B;
+  font-size:11px;
+  font-style:normal;
+  font-weight:900;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card {
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-height:108px;
+  padding:10px;
+  text-align:center;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-icon {
+  flex:0 0 42px;
+  width:42px;
+  height:42px;
+  margin-bottom:5px;
+  border-radius:21px;
+  background:#E3E9FF;
+  font-size:21px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card small {
+  font-size:12px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card strong {
+  margin-top:2px;
+  font-size:20px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral {
+  min-height:58px;
+  padding:8px;
+  border:0;
+  border-radius:13px;
+  background:#DCE5FF;
+  box-shadow:none;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral-icon {
+  flex-basis:28px;
+  width:28px;
+  height:28px;
+  border-radius:0;
+  background:transparent;
+  font-size:21px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral strong {
+  color:#09145B;
+  font-size:14px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral small {
+  color:#26356E;
+  font-size:11px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-referral>b {
+  padding:9px 11px;
+  border-radius:11px;
+  background:#102A9B;
+  color:#FFFFFF;
+  font-size:12px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-actions {
+  gap:0;
+  padding:0 12px;
+  border-radius:17px;
+  background:#FFFFFF;
+  box-shadow:0 3px 9px rgba(16,31,155,.08);
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action {
+  min-height:52px;
+  padding:7px 0;
+  border:0;
+  border-bottom:1px solid #EDF0F5;
+  border-radius:0;
+  background:transparent;
+  box-shadow:none;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action:last-child {
+  border-bottom:0;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action>span {
+  flex-basis:28px;
+  width:28px;
+  height:28px;
+  border-radius:0;
+  background:transparent;
+  font-size:21px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action strong {
+  font-size:15px;
+}
+html[data-sonaa-theme="fanni"] body #app .fanni-home-action i {
+  color:#CBD0D9;
+  font-size:24px;
+}
+@media(max-width:360px) {
+  html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card {
+    min-height:104px;
+    padding:9px;
+  }
+  html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-icon {
+    flex-basis:38px;
+    width:38px;
+    height:38px;
+  }
+}
