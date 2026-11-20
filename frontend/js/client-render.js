@@ -100,6 +100,10 @@ function render(){
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
+        <div class="client-home-profile">
+          <span class="client-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${escHtml(String(state.account?.name||state.clientName||'ع').trim().charAt(0)||'ع')}</b></span>
+          <span class="client-home-profile-name"><small>مرحباً ${escHtml(state.account?.name||state.clientName||'بك')}</small><strong>عميل • ${walletValue} جنيه</strong></span>
+        </div>
         <button type="button" onclick="setTab('new')" class="client-home-hero">
           <span class="client-home-hero-copy">
             <strong>اطلب خدمتك بسهولة</strong>
@@ -109,11 +113,6 @@ function render(){
           <span class="client-home-hero-icon" aria-hidden="true">🛠️</span>
         </button>
 
-        <div class="client-home-profile">
-          <span class="client-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${escHtml(String(state.account?.name||state.clientName||'ع').trim().charAt(0)||'ع')}</b></span>
-          <span class="client-home-profile-name"><small>أهلاً بيك في حمزاوي سات</small><strong>${escHtml(state.account?.name||state.clientName||'عميل')}</strong></span>
-          <span class="client-home-profile-role">عميل</span>
-        </div>
         <div class="client-home-section-head">
           <h2 id="clientHomeTitle">الإحصائيات</h2>
         </div>
