@@ -125,6 +125,26 @@ function verifyBrandVisualSystem() {
       fanniOverrides.includes('border:1px solid #C9A34F!important')) {
     throw new Error('Legacy gold auth overrides must not override the Android app palette');
   }
+  const clientRender = read('frontend/js/client-render.js');
+  const fanniRender = read('frontend/js/fanni-render.js');
+  const fanniDashboard = read('frontend/js/fanni-dashboard.js');
+  const clientLayout = read('frontend/css/client-layout.css');
+  const fanniLayout = read('frontend/css/fanni-layout.css');
+  if (!clientRender.includes('client-browser-bottom-nav') ||
+      !fanniRender.includes('fanni-browser-bottom-nav') ||
+      !clientLayout.includes('.client-browser-bottom-nav') ||
+      !fanniLayout.includes('.fanni-browser-bottom-nav') ||
+      !clientLayout.includes('position: fixed !important') ||
+      !fanniLayout.includes('position: fixed !important')) {
+    throw new Error('Client/technician browser dashboard navigation must stay fixed at the bottom on mobile');
+  }
+  if (!clientRender.includes('bg-[#EEF2FF] text-[#101F9B]') ||
+      !fanniRender.includes('bg-[#EEF2FF] text-[#101F9B]') ||
+      !fanniDashboard.includes('fanni-home-referral') ||
+      !fanniDashboard.includes('bg-[#DCE5FF]') ||
+      !fanniLayout.includes('background: #DCE5FF !important')) {
+    throw new Error('Client/technician notifications and referral cards must match the Android indigo palette');
+  }
   const pages = [
     ['index.html', 'index'],
     ['client.html', 'client'],
