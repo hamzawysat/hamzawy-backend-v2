@@ -111,7 +111,12 @@ function init(){
   $('admin-refresh').addEventListener('click',()=>refresh());$('admin-send').addEventListener('click',sendAdminReply);$('admin-save-status').addEventListener('click',saveStatus);
   $('admin-filter').addEventListener('change',()=>loadCases(false).catch(e=>showError(e.message)));$('human-only').addEventListener('change',()=>loadCases(false).catch(e=>showError(e.message)));
  }else{
-  $('role-caption').textContent=role==='client'?'دعم حساب العميل — محادثة خاصة داخل حمزاوي سات':'دعم الفني — محادثة خاصة داخل حمزاوي سات';
+  document.body.classList.add('support-user-mode');
+  document.querySelector('.header h1').textContent='دعم حمزاوي سات';
+  $('role-caption').textContent='إحنا هنا لمساعدتك';
+  $('new-title').textContent='محادثة جديدة';
+  document.querySelector('label[for="subject"]').textContent='عنوان المشكلة';
+  $('create-btn').textContent='إرسال وفتح محادثة الدعم';
   $('main').classList.remove('hidden');$('create-btn').addEventListener('click',createCase);$('refresh-btn').addEventListener('click',()=>refresh());$('send-btn').addEventListener('click',()=>sendOwnerMessage(false));$('human-btn').addEventListener('click',()=>sendOwnerMessage(true));
  }
  loadCases(false).catch(e=>showError(e.message));
