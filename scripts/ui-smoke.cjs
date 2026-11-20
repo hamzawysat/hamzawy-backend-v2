@@ -124,10 +124,14 @@ function apiResponse(pathname) {
         }
         const pageErrors = [];
         const badLocalResponses = [];
+        const authResponses = [];
 
         page.on('pageerror', error => pageErrors.push(error.message));
         page.on('response', response => {
           const url = new URL(response.url());
+          if (url.origin === BASE && url.pathname === '/api/client/login' && response.request().method() === 'POST') {
+            authResponses.push('POST ' + url.pathname + ' -> ' + response.status());
+          }
           if (url.origin === BASE && (response.status() === 404 || response.status() >= 500)) {
             badLocalResponses.push(response.status() + ' ' + url.pathname);
           }
@@ -374,8 +378,8 @@ function apiResponse(pathname) {
                 await page.locator('#accountPhone').fill('01012345670');
                 await page.locator('#accountPassword').fill('ClientSmokePass123');
                 await page.locator('.account-submit').click();
-                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), { timeout: 10000 });
-                await page.waitForFunction(() => !!state.account && !!state.accountToken, { timeout: 10000 });
+                await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), null, { timeout: 10000 });
+                await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
                 await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
                 const customerTabIds = ['home', 'new', 'orders', 'wallet', 'subscriptions', 'store', 'complaint'];
                 const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
@@ -463,7 +467,7 @@ function apiResponse(pathname) {
                 await page.locator('#fanniLoginPhone').fill('01012345671');
                 await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
                 await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
-                await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), { timeout: 10000 });
+                await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
                 const technicianNavigation = await page.evaluate(() => ({
                   tabs: typeof TECHNICIAN_TAB_DEFINITIONS !== 'undefined' ? TECHNICIAN_TAB_DEFINITIONS.map(tab => tab.id) : [],
                   notificationBell: !!document.querySelector('button[aria-label="الإشعارات"]'),
@@ -558,7 +562,7 @@ function apiResponse(pathname) {
                 await page.locator('#login-phone').fill('01012345678');
                 await page.locator('#login-pass').fill('AdminSmokePass123');
                 await page.locator('#login-btn').click();
-                await page.waitForFunction(() => !!localStorage.getItem('admin_token_v3'), { timeout: 10000 });
+                await page.waitForFunction(() => !!localStorage.getItem('admin_token_v3'), null, { timeout: 10000 });
                 await page.waitForTimeout(1200);
               }
             }
@@ -598,8 +602,8 @@ function apiResponse(pathname) {
             await page.locator('#fanniLoginPhone').fill('01012345671');
             await page.locator('#fanniLoginPassword').fill('FanniSmokePass123');
             await page.getByRole('button', { name: 'دخول إلى حسابي' }).click();
-            await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), { timeout: 10000 });
-            await page.waitForFunction(() => state.tab === 'home', { timeout: 5000 });
+            await page.waitForFunction(() => !!localStorage.getItem('fanni_token_v4'), null, { timeout: 10000 });
+            await page.waitForFunction(() => state.tab === 'home', null, { timeout: 5000 });
 
             const resources = await page.evaluate(() => ({
               css: [...document.querySelectorAll('link[rel="stylesheet"]')].map(item => item.href).filter(url => url.includes('/css/fanni-')),
@@ -668,7 +672,8 @@ function apiResponse(pathname) {
           if (pageErrors.length) failures.push(target.name + '/' + viewport.name + ': ' + pageErrors.join(' | '));
           if (badLocalResponses.length) failures.push(target.name + '/' + viewport.name + ': ' + badLocalResponses.join(', '));
         } catch (error) {
-          failures.push(target.name + '/' + viewport.name + ': ' + error.message);
+          const diagnostics = [...authResponses, ...pageErrors.map(message => 'pageerror: ' + message)];
+          failures.push(target.name + '/' + viewport.name + ': ' + error.message + (diagnostics.length ? ' [' + diagnostics.join(' | ') + ']' : ''));
         } finally {
           await page.close();
         }
