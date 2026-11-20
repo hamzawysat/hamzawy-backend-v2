@@ -121,6 +121,92 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   box-shadow: 0 3px 0 #B91C1C,0 5px 9px rgba(153,27,27,.08) !important;
 }
 
+/* Generic page buttons use the same native 44px control rhythm. */
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
+  button.btn:not(.danger):not(.success):not(.secondary):not(.light),
+  a.btn:not(.danger):not(.success):not(.secondary):not(.light),
+  .btn:not(.danger):not(.success):not(.secondary):not(.light):not(.dark)
+) {
+  min-height: 44px;
+  padding: 11px 14px;
+  border-radius: 15px !important;
+  background: linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  border: 1px solid #172DAD !important;
+  border-bottom: 3px solid #07136E !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  font-weight: 900;
+  box-shadow: 0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
+  button.btn.secondary,a.btn.secondary,.btn.secondary,
+  button.btn.light,a.btn.light,.btn.light
+) {
+  min-height: 42px;
+  padding: 10px 13px;
+  border-radius: 13px !important;
+  background: linear-gradient(145deg,#FFFFFF 0%,#F4F6FF 100%) !important;
+  border: 1px solid #D5DDFE !important;
+  border-bottom: 3px solid #D5DDFE !important;
+  color: #172DAD !important;
+  -webkit-text-fill-color: #172DAD !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(button.btn.dark,.btn.dark) {
+  background: linear-gradient(145deg,#101F9B,#07136E) !important;
+  border-color: #07136E !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body :where(
+  button.btn:not(.danger):not(.success):not(.secondary):not(.light),
+  a.btn:not(.danger):not(.success):not(.secondary):not(.light),
+  .btn:not(.danger):not(.success):not(.secondary):not(.light):not(.dark)
+) {
+  min-height: 44px;
+  border-radius: 15px !important;
+}
+
+/* Normalize utility-color remnants without recoloring semantic amber, red, or green states. */
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
+  [class*="text-blue-"],[class*="text-indigo-"],[class*="text-sky-"]
+) {
+  color: var(--hs-indigo-700) !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
+  [class*="border-blue-"],[class*="border-indigo-"],[class*="border-sky-"]
+) {
+  border-color: var(--hs-indigo-200) !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
+  [class*="bg-blue-50"],[class*="bg-blue-100"],[class*="bg-indigo-50"],[class*="bg-indigo-100"],[class*="bg-sky-50"],[class*="bg-sky-100"]
+) {
+  background-color: var(--hs-indigo-50) !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
+  [class*="bg-blue-600"],[class*="bg-blue-700"],[class*="bg-blue-800"],[class*="bg-indigo-600"],[class*="bg-indigo-700"],[class*="bg-indigo-800"]
+) {
+  background: linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body :where(
+  html[data-sonaa-theme="support"] .btn:not(.secondary):not(.light):not(.danger),
+  html[data-sonaa-theme="password"] .btn:not(.secondary):not(.light):not(.danger)
+) {
+  min-height: 44px;
+  border-radius: 15px !important;
+}
+html[data-sonaa-theme="support"] body .btn.secondary,
+html[data-sonaa-theme="support"] body .btn.light,
+html[data-sonaa-theme="password"] body .btn.secondary,
+html[data-sonaa-theme="password"] body .btn.light {
+  background: #F4F6FF !important;
+  color: #172DAD !important;
+  -webkit-text-fill-color: #172DAD !important;
+  border: 1px solid #D5DDFE !important;
+  box-shadow: 0 3px 0 #D5DDFE !important;
+}
+
 /* Form controls: white fields, indigo border, clear focus ring. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   input:not([type="checkbox"]):not([type="radio"]),select,textarea,.field
