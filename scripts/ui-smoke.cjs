@@ -80,12 +80,26 @@ function verifyAdminDashboardSource() {
       !shell.includes('requestAnimationFrame(restoreScrollPosition)')) {
     throw new Error('Admin render must preserve the current scroll position');
   }
+  const editStoreFunction = store.slice(store.indexOf('function editStoreProduct('), store.indexOf('\nasync function deleteStoreProduct('));
+  if (!editStoreFunction.includes("document.getElementById('store-name')?.closest('.premium-panel')") ||
+      !editStoreFunction.includes('window.scrollTo({top:targetTop,behavior:\'smooth\'})') ||
+      editStoreFunction.includes('window.scrollTo({top:0')) {
+    throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
+  }
+  if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
+      !store.includes('function persistStoreProductEditSession(productId)') ||
+      !store.includes('function restoreStoreProductEditSession()') ||
+      !store.includes('restoreStoreProductEditSession();') ||
+      !store.includes('persistStoreProductEditSession(id);') ||
+      !store.includes('persistStoreProductEditSession(null);')) {
+    throw new Error('Admin store must preserve and restore the selected product edit mode across page navigation');
+  }
   if ((store.match(/object-contain/g) || []).length < 2 ||
       store.includes('object-cover')) {
     throw new Error('Admin store category and product images must remain fully visible without cropping');
   }
   if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
-      !html.includes('admin-store.js?v=20261120-admin-store-contain1')) {
+      !html.includes('admin-store.js?v=20261120-admin-store-edit-restore1')) {
     throw new Error('Admin visual fix asset cache versions were not refreshed');
   }
 }
@@ -424,8 +438,20 @@ function apiResponse(pathname) {
               await page.locator('#accountPhone').waitFor({ state: 'visible', timeout: 5000 });
 
               if (process.env.SONAA_SMOKE_REAL_API === '1') {
+                await page.evaluate(() => {
+                  if (typeof state !== 'undefined') {
+                    state.accountAuthMode = 'login';
+                    state.accountError = '';
+                    render();
+                  }
+                  // The login form intentionally guards submission behind this explicit intent flag.
+                  // Set it in the browser test as well as exercising the real submit button.
+                  window.__sonaaClientLoginIntent = true;
+                });
                 await page.locator('#accountPhone').fill('01012345670');
                 await page.locator('#accountPassword').fill('ClientSmokePass123');
+                const loginFormValid = await page.locator('#accountPhone').evaluate(input => input.form?.checkValidity());
+                if (!loginFormValid) throw new Error('client/desktop: seeded login form is invalid before submission');
                 const clientLoginResponsePromise = page.waitForResponse(response =>
                   response.url().includes('/api/client/login') && response.request().method() === 'POST',
                   { timeout: 15000 }
@@ -808,6 +834,65 @@ function apiResponse(pathname) {
       failures.push('admin/store-restore: ' + error.message);
     } finally {
       await storeRestorePage.close();
+    }
+
+    // Regression: returning to the admin store after opening an external image source
+    // must restore the selected product's edit form rather than opening a blank add form.
+    const storeEditRestorePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    const storeEditPageErrors = [];
+    storeEditRestorePage.on('pageerror', error => storeEditPageErrors.push(error.message));
+    await storeEditRestorePage.addInitScript(() => {
+      localStorage.setItem('admin_token_v3', 'store-edit-restore-smoke-token');
+      localStorage.setItem('admin_token', 'store-edit-restore-smoke-token');
+      localStorage.setItem('token', 'store-edit-restore-smoke-token');
+      localStorage.setItem('auth_token', 'store-edit-restore-smoke-token');
+      sessionStorage.setItem('hamzawy-admin-store-edit-product', JSON.stringify({ productId: 'store-edit-restore-smoke-product', values: { 'store-name': 'اسم معدل لم يتم حفظه', 'store-price': '333', 'store-description': 'مسودة وصف غير محفوظة' } }));
+    });
+    await storeEditRestorePage.route('**/api/**', async route => {
+      const url = new URL(route.request().url());
+      let body = apiResponse(url.pathname);
+      if (url.pathname.endsWith('/admin/store/products')) {
+        body = {
+          products: [{ _id: 'store-edit-restore-smoke-product', name: 'منتج استعادة وضع التعديل', category: 'عام', price: 275, description: 'وصف محفوظ', isActive: true, isAdvertised: false }],
+          categories: [{ name: 'عام', productCount: 1, imageUrl: '', fallbackImageUrl: '', customImageUrl: '', imageFileId: null, hasCustomImage: false }]
+        };
+      } else if (url.pathname.endsWith('/admin/store/ad-settings')) {
+        body = { rotationSeconds: 10 };
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json; charset=utf-8',
+        body: JSON.stringify(body)
+      });
+    });
+    try {
+      const response = await storeEditRestorePage.goto(BASE + '/admin-smoke-panel-20261105#store', {
+        waitUntil: 'domcontentloaded',
+        timeout: 20000
+      });
+      if (!response || response.status() !== 200) failures.push('admin/store-edit-restore: admin page did not return HTTP 200');
+      await storeEditRestorePage.getByRole('button', { name: 'حفظ التعديل' }).waitFor({ state: 'visible', timeout: 6000 });
+      const restoredProductName = await storeEditRestorePage.locator('#store-name').inputValue();
+      if (restoredProductName !== 'اسم معدل لم يتم حفظه') {
+        failures.push('admin/store-edit-restore: unsaved product name draft was not restored (received ' + restoredProductName + ')');
+      }
+      const restoredPrice = await storeEditRestorePage.locator('#store-price').inputValue();
+      const restoredDescription = await storeEditRestorePage.locator('#store-description').inputValue();
+      if (restoredPrice !== '333' || restoredDescription !== 'مسودة وصف غير محفوظة') {
+        failures.push('admin/store-edit-restore: unsaved product form fields were not restored');
+      }
+      const restoredSession = await storeEditRestorePage.evaluate(() => {
+        try { return JSON.parse(sessionStorage.getItem('hamzawy-admin-store-edit-product') || 'null')?.productId; }
+        catch { return null; }
+      });
+      if (restoredSession !== 'store-edit-restore-smoke-product') {
+        failures.push('admin/store-edit-restore: edit session was not retained for navigation');
+      }
+      if (storeEditPageErrors.length) failures.push('admin/store-edit-restore: ' + storeEditPageErrors.join(' | '));
+    } catch (error) {
+      failures.push('admin/store-edit-restore: ' + error.message);
+    } finally {
+      await storeEditRestorePage.close();
     }
 
   } finally {
