@@ -1,5 +1,7 @@
 'use strict';
 
+let adminRenderSequence=0;
+
 function captureAdminInputFocus(){
   const app=document.getElementById('app');
   const active=document.activeElement;
@@ -34,6 +36,8 @@ function restoreAdminInputFocus(snapshot){
 }
 
 function render(){
+  const renderSequence=++adminRenderSequence;
+  const scrollSnapshot={x:window.scrollX||0,y:window.scrollY||0};
   const inputFocusSnapshot=captureAdminInputFocus();
   if(!getToken()){renderLogin();return;}
   if(!canReadTab(state.tab)){const first=ADMIN_SECTIONS.flatMap(section=>section.tabs).find(item=>canReadTab(item.id));state.tab=first?.id||'dashboard';}
@@ -126,6 +130,16 @@ function render(){
   <div onclick="closeAllMenus()" id="menu-backdrop" class="${Object.keys(state.dropdowns).length?'fixed inset-0 z-30 bg-black/5':''}"></div>
   `;
   restoreAdminInputFocus(inputFocusSnapshot);
+  const restoreScrollPosition=()=>{
+    if(renderSequence!==adminRenderSequence)return;
+    const root=document.documentElement;
+    const previousScrollBehavior=root.style.scrollBehavior;
+    root.style.scrollBehavior='auto';
+    window.scrollTo(scrollSnapshot.x,scrollSnapshot.y);
+    root.style.scrollBehavior=previousScrollBehavior;
+  };
+  restoreScrollPosition();
+  if(typeof window.requestAnimationFrame==='function')window.requestAnimationFrame(restoreScrollPosition);
 }
 
 function renderCurrentTab(){
