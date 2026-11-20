@@ -130,7 +130,7 @@ function render(){
             <span class="client-home-stat-label">طلبات سابقة</span>
             <strong>${completedCount}</strong>
           </button>
-          <button type="button" onclick="setTab('orders')" class="client-home-stat-card">
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
             <span class="client-home-stat-icon">📄</span>
             <span class="client-home-stat-label">إجمالي الطلبات</span>
             <strong>${orders.length}</strong>
@@ -150,7 +150,7 @@ function render(){
           <h2>إجراءات سريعة</h2>
         </div>
         <div class="client-home-actions">
-          <button type="button" onclick="setTab('orders')" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
+          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
           <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
           <a href="password.html?role=client&mode=account" class="client-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></a>
           <a href="/support" class="client-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></a>
