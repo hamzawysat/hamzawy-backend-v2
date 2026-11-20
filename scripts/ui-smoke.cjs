@@ -8,6 +8,7 @@ const path = require('path');
 function verifyAdminDashboardSource() {
   const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
   const shell = read('frontend/js/admin-shell.js');
+  const store = read('frontend/js/admin-store.js');
   const core = read('frontend/js/admin-core.js');
   const stats = read('frontend/js/admin/clients-render.js');
   const header = read('frontend/css/admin-header.css');
@@ -74,8 +75,49 @@ function verifyAdminDashboardSource() {
       !html.includes('admin-header.css?v=20261118-admin-actions-audience1')) {
     throw new Error('Admin dashboard header stylesheet/cache regression');
   }
+  if (!shell.includes('let adminRenderSequence=0;') ||
+      !shell.includes('window.scrollTo(scrollSnapshot.x,scrollSnapshot.y)') ||
+      !shell.includes('requestAnimationFrame(restoreScrollPosition)')) {
+    throw new Error('Admin render must preserve the current scroll position');
+  }
+  if ((store.match(/object-contain/g) || []).length < 2 ||
+      store.includes('object-cover')) {
+    throw new Error('Admin store category and product images must remain fully visible without cropping');
+  }
+  if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
+      !html.includes('admin-store.js?v=20261120-admin-store-contain1')) {
+    throw new Error('Admin visual fix asset cache versions were not refreshed');
+  }
 }
 verifyAdminDashboardSource();
+function verifyBrandVisualSystem() {
+  const read = relative => fs.readFileSync(path.join(__dirname, '..', relative), 'utf8');
+  const brand = read('frontend/css/hamzawy-sat-brand.css');
+  const pages = [
+    ['index.html', 'index'],
+    ['client.html', 'client'],
+    ['fanni.html', 'fanni'],
+    ['password.html', 'password'],
+    ['support.html', 'support'],
+    ['customers.html', 'customers'],
+    ['technicians.html', 'technicians'],
+    ['download.html', 'download'],
+    ['links.html', 'links'],
+    ['admin.html', 'admin'],
+    ['admin-setup.html', 'admin-setup']
+  ];
+  for (const [file, theme] of pages) {
+    const html = read('frontend/' + file);
+    if (!html.includes('data-sonaa-theme="' + theme + '"') ||
+        !html.includes('/css/hamzawy-sat-brand.css')) {
+      throw new Error('Shared native-app brand system missing from ' + file);
+    }
+    if (!brand.includes('html[data-sonaa-theme="' + theme + '"]')) {
+      throw new Error('Shared brand system has no page-specific rules for ' + theme);
+    }
+  }
+}
+verifyBrandVisualSystem();
 
 const BASE = process.env.SONAA_SMOKE_BASE || 'http://127.0.0.1:4173';
 const pages = [
