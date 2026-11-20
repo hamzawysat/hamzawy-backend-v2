@@ -189,10 +189,8 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
-html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body :where(
-  html[data-sonaa-theme="support"] .btn:not(.secondary):not(.light):not(.danger),
-  html[data-sonaa-theme="password"] .btn:not(.secondary):not(.light):not(.danger)
-) {
+html[data-sonaa-theme="support"] body .btn:not(.secondary):not(.light):not(.danger),
+html[data-sonaa-theme="password"] body .btn:not(.secondary):not(.light):not(.danger) {
   min-height: 44px;
   border-radius: 15px !important;
 }
