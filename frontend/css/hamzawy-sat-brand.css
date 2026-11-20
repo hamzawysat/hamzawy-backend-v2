@@ -1157,6 +1157,154 @@ html[data-sonaa-theme="support"] body h1 {
   color: var(--hs-navy) !important;
 }
 
+/* Public home page: keep its layout, but use the same blue identity as the app. */
+html[data-sonaa-theme="index"] body .topbar {
+  background:#FFFFFF !important;
+  border-bottom:1px solid var(--hs-border) !important;
+  box-shadow:0 4px 14px rgba(16,31,155,.07) !important;
+}
+html[data-sonaa-theme="index"] body .brand .brand-mark {
+  width:38px;
+  height:38px;
+  border:1px solid var(--hs-border) !important;
+  border-radius:12px !important;
+  background:#FFFFFF !important;
+  box-shadow:0 3px 0 var(--hs-border) !important;
+}
+html[data-sonaa-theme="index"] body .sonaa-brand-shimmer {
+  background:none !important;
+  color:var(--hs-navy) !important;
+  -webkit-text-fill-color:var(--hs-navy) !important;
+  text-shadow:none !important;
+  animation:none !important;
+  font-weight:900;
+}
+html[data-sonaa-theme="index"] body .topbar-links .download-link,
+html[data-sonaa-theme="index"] body .topbar-links .social-link {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:6px;
+  width:168px;
+  max-width:calc((100vw - 40px)/2);
+  min-height:38px;
+  box-sizing:border-box;
+  padding:8px 11px;
+  border:1px solid #172DAD !important;
+  border-radius:12px;
+  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+  font-size:10px;
+  font-weight:900;
+  line-height:1.4;
+  text-decoration:none;
+  white-space:nowrap;
+  box-shadow:0 4px 0 #07136E,0 6px 12px rgba(7,19,110,.14) !important;
+}
+html[data-sonaa-theme="index"] body .hero {
+  border:1px solid #172DAD !important;
+  border-radius:22px !important;
+  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  color:#FFFFFF !important;
+  box-shadow:0 5px 0 #07136E,0 12px 22px rgba(7,19,110,.16) !important;
+}
+html[data-sonaa-theme="index"] body .hero :where(h1,.hero-copy,.eyebrow,.eyebrow i) {
+  color:#FFFFFF !important;
+  -webkit-text-fill-color:#FFFFFF !important;
+}
+html[data-sonaa-theme="index"] body .hero h1 span {
+  color:#D5DDFE !important;
+  -webkit-text-fill-color:#D5DDFE !important;
+}
+html[data-sonaa-theme="index"] body .hero-badge {
+  border:1px solid rgba(255,255,255,.3) !important;
+  border-radius:16px !important;
+  background:rgba(255,255,255,.13) !important;
+  color:#FFFFFF !important;
+}
+html[data-sonaa-theme="index"] body .services-title {
+  color:#FFFFFF !important;
+}
+html[data-sonaa-theme="index"] body .services-list {
+  border-color:var(--hs-border) !important;
+  border-radius:13px !important;
+  background:#FFFFFF !important;
+  color:var(--hs-text) !important;
+}
+html[data-sonaa-theme="index"] body .entry {
+  border:1px solid var(--hs-border) !important;
+  border-radius:20px !important;
+  background:#FFFFFF !important;
+  box-shadow:0 4px 0 var(--hs-border),0 8px 16px rgba(16,31,155,.07) !important;
+}
+html[data-sonaa-theme="index"] body .entry.customer .entry-icon {
+  background:#E8EDFF !important;
+  color:#172DAD !important;
+}
+html[data-sonaa-theme="index"] body .entry.technician .entry-icon {
+  background:#E6F7F5 !important;
+  color:#0E8581 !important;
+}
+html[data-sonaa-theme="index"] body .entry-action .action-label {
+  color:var(--hs-navy) !important;
+}
+html[data-sonaa-theme="index"] body .trust-row {
+  color:var(--hs-muted) !important;
+}
+html[data-sonaa-theme="index"] body .trust-row svg {
+  color:var(--hs-teal) !important;
+}
+html[data-sonaa-theme="index"] body footer {
+  border-top:1px solid var(--hs-border) !important;
+  background:#FFFFFF !important;
+  color:var(--hs-muted) !important;
+}
+html[data-sonaa-theme="download"] body .logo {
+  border-color:var(--hs-indigo-200) !important;
+  box-shadow:0 4px 0 var(--hs-indigo-200) !important;
+}
+html[data-sonaa-theme="download"] body .status {
+  border-color:var(--hs-indigo-200) !important;
+  background:var(--hs-indigo-50) !important;
+  color:var(--hs-indigo-700) !important;
+}
+html[data-sonaa-theme="download"] body .dot {
+  background:var(--hs-teal) !important;
+}
+html[data-sonaa-theme="download"] body .feature {
+  border-color:var(--hs-indigo-200) !important;
+  background:var(--hs-indigo-50) !important;
+  color:var(--hs-text) !important;
+}
+html[data-sonaa-theme="download"] body .note {
+  border-color:var(--hs-border) !important;
+  background:#F7F9FC !important;
+  color:var(--hs-muted) !important;
+}
+html[data-sonaa-theme="download"] body .release-link {
+  color:var(--hs-indigo-700) !important;
+}
+html[data-sonaa-theme="password"] body .account-support-float,
+html[data-sonaa-theme="support"] body .account-support-float {
+  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  border-color:#FFFFFF !important;
+  color:#FFFFFF !important;
+  box-shadow:0 4px 0 #07136E,0 8px 18px rgba(7,19,110,.2) !important;
+}
+html[data-sonaa-theme="links"] body .social-card,
+html[data-sonaa-theme="links"] body .link-card {
+  border:1px solid var(--hs-border) !important;
+  border-radius:18px !important;
+  background:#FFFFFF !important;
+  color:var(--hs-text) !important;
+  box-shadow:0 4px 12px rgba(16,31,155,.07) !important;
+}
+html[data-sonaa-theme="links"] body .social-card a,
+html[data-sonaa-theme="links"] body .link-card a {
+  color:var(--hs-indigo-700) !important;
+}
+
 /* Accessible focus and reduced-motion support. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body :where(
   a,button,input,select,textarea
