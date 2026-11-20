@@ -101,6 +101,10 @@ async function run() {
         clientRender.includes("عميل • ${Number(state.walletBalance||0).toLocaleString('ar-EG')} جنيه"),
         'client profile must show role and wallet balance'
       );
+      for (const status of ['مكتمل', 'مكتملة', 'completed', 'complete', 'finished']) {
+        assert.ok(clientRender.includes("'" + status + "'"), 'client dashboard must classify ' + status + ' as a previous order');
+      }
+      assert.ok(clientRender.includes("o?.status||o?.orderStatus||''"), 'client dashboard counts must support both status fields like the native app');
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
         assert.ok(technicianRender.includes('data-home-stat="' + key + '"'), 'technician home is missing the ' + key + ' statistic');
       }
