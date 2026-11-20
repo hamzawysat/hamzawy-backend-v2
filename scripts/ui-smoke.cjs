@@ -86,12 +86,20 @@ function verifyAdminDashboardSource() {
       editStoreFunction.includes('window.scrollTo({top:0')) {
     throw new Error('Admin store edit must scroll the product form into view instead of jumping to page top');
   }
+  if (!store.includes("STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product'") ||
+      !store.includes('function persistStoreProductEditSession(productId)') ||
+      !store.includes('function restoreStoreProductEditSession()') ||
+      !store.includes('restoreStoreProductEditSession();') ||
+      !store.includes('persistStoreProductEditSession(id);') ||
+      !store.includes('persistStoreProductEditSession(null);')) {
+    throw new Error('Admin store must preserve and restore the selected product edit mode across page navigation');
+  }
   if ((store.match(/object-contain/g) || []).length < 2 ||
       store.includes('object-cover')) {
     throw new Error('Admin store category and product images must remain fully visible without cropping');
   }
   if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
-      !html.includes('admin-store.js?v=20261120-admin-store-contain1')) {
+      !html.includes('admin-store.js?v=20261120-admin-store-edit-restore1')) {
     throw new Error('Admin visual fix asset cache versions were not refreshed');
   }
 }
