@@ -35,6 +35,13 @@ function verifyAdminDashboardSource() {
       shell.includes("filter(item=>item.value>0)")) {
     throw new Error('Admin dashboard KPI or quick-action regression');
   }
+  const profilePage = read('frontend/js/password-page.js');
+  if (!profilePage.includes('user?.pendingProfileChange?.requestedAt') ||
+      !profilePage.includes('function syncFanniPendingProfileEdit()') ||
+      !profilePage.includes('button.disabled=editFanniPendingProfileChange') ||
+      !profilePage.includes('انتظر القرار قبل إرسال طلب جديد')) {
+    throw new Error('Technician profile edit must block duplicate submissions while an earlier change is pending, matching the native app');
+  }
   const storeUi = read('frontend/js/store-ui.js');
   if (!storeUi.includes('اكتب كمية من 1 إلى 99.') ||
       !storeUi.includes('quantity>1000')) {
