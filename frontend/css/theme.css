@@ -422,12 +422,12 @@
 :root { --navy:var(--sonaa-brand-navy); --blue:var(--sonaa-brand-blue); --blue-dark:var(--sonaa-brand-blue-dark); --gold:var(--sonaa-brand-gold); --teal:var(--sonaa-brand-teal); --text:var(--sonaa-text); --ink:var(--sonaa-text); --muted:var(--sonaa-muted); --border:var(--sonaa-border); --line:var(--sonaa-border); --paper:var(--sonaa-surface); --page:var(--sonaa-page); --card:var(--sonaa-surface); }
 
 
-/* Hamzawy Sat black-and-gold brand palette — shared by every web page. */
+/* Shared palette aligned with the authoritative Android app. */
 :root[data-sonaa-theme] {
-  --navy:#171a22; --navy2:#242832; --navy-light:#242832;
-  --blue:#c9a34f; --blue-dark:#a9822e; --blue2:#a9822e; --teal:#b88d3a;
-  --ink:#242832; --text:#242832; --page:#f8f6f0; --paper:#f8f6f0;
-  --line:#e8e0cf; --border:#e8e0cf; --gold:#c9a34f;
+  --navy:#101F9B; --navy2:#07136E; --navy-light:#07136E;
+  --blue:#1426A5; --blue-dark:#2946C7; --blue2:#172DAD; --teal:#16A6A1;
+  --ink:#18324F; --text:#18324F; --page:#F4F8FC; --paper:#F4F8FC;
+  --line:#D8E5F2; --border:#D8E5F2; --gold:#F5B928;
 }
 /* Keep legacy Tailwind arbitrary-color brand classes in sync with the shared palette. */
 :where([class*="bg-[#0b1b3a]"]) { background-color:#171a22!important; }
