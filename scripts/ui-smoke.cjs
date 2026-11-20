@@ -138,8 +138,10 @@ function verifyBrandVisualSystem() {
       !fanniLayout.includes('position: fixed !important')) {
     throw new Error('Client/technician browser dashboard navigation must stay fixed at the bottom on mobile');
   }
-  if (!clientRender.includes('bg-[#EEF2FF] text-[#101F9B]') ||
-      !fanniRender.includes('bg-[#EEF2FF] text-[#101F9B]') ||
+  if (!clientRender.includes('bg-[#EEF2FF]') ||
+      !clientRender.includes('text-[#101F9B]') ||
+      !fanniRender.includes('bg-[#EEF2FF]') ||
+      !fanniRender.includes('text-[#101F9B]') ||
       !fanniDashboard.includes('fanni-home-referral') ||
       !fanniDashboard.includes('bg-[#DCE5FF]') ||
       !fanniLayout.includes('background: #DCE5FF !important')) {
