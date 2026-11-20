@@ -173,21 +173,50 @@ async function importStoreCsvProducts(){
 }
 
 const STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product';
+const STORE_PRODUCT_EDIT_FIELDS=['store-name','store-category','store-category-new','store-price','store-original-price','store-offer','store-type','store-duration','store-description','store-details','store-image-url','store-stock','store-ad-enabled','store-ad-audience','store-ad-priority','store-ad-days'];
 function persistStoreProductEditSession(productId){
   try{
-    if(productId)sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,String(productId));
-    else sessionStorage.removeItem(STORE_PRODUCT_EDIT_SESSION_KEY);
+    if(!productId){sessionStorage.removeItem(STORE_PRODUCT_EDIT_SESSION_KEY);return;}
+    let saved=null;
+    try{saved=JSON.parse(sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||'null');}catch(_){}
+    if(!saved||String(saved.productId)!==String(productId))saved={productId:String(productId),values:{}};
+    sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,JSON.stringify(saved));
+  }catch(_){}
+}
+function saveStoreProductEditDraft(){
+  if(!state.storeProductEditingId)return;
+  try{
+    const saved={productId:String(state.storeProductEditingId),values:{}};
+    STORE_PRODUCT_EDIT_FIELDS.forEach(id=>{
+      const element=document.getElementById(id);
+      if(element)saved.values[id]=element.type==='checkbox'?element.checked:element.value;
+    });
+    sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,JSON.stringify(saved));
   }catch(_){}
 }
 function restoreStoreProductEditSession(){
   if(window.__hamzawyStoreEditRestored||state.tab!=='store')return;
-  let productId='';
-  try{productId=sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||'';}catch(_){}
+  let saved=null;
+  try{
+    const raw=sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||'';
+    if(raw){try{saved=JSON.parse(raw);}catch(_){saved={productId:raw,values:{}};}}
+  }catch(_){}
+  const productId=String(saved?.productId||'');
   if(!productId)return;
-  const product=(state.storeProducts||[]).find(item=>String(item._id)===String(productId));
+  const product=(state.storeProducts||[]).find(item=>String(item._id)===productId);
   if(!product){persistStoreProductEditSession(null);return;}
   window.__hamzawyStoreEditRestored=true;
   editStoreProduct(productId);
+  Object.entries(saved.values||{}).forEach(([id,value])=>{
+    if(!STORE_PRODUCT_EDIT_FIELDS.includes(id))return;
+    const element=document.getElementById(id);
+    if(element){if(element.type==='checkbox')element.checked=!!value;else element.value=String(value??'');}
+  });
+}
+if(!window.__hamzawyStoreEditDraftListener){
+  document.addEventListener('input',saveStoreProductEditDraft,true);
+  document.addEventListener('change',saveStoreProductEditDraft,true);
+  window.__hamzawyStoreEditDraftListener=true;
 }
 let storeProductsLoadSequence=0;
 async function loadStoreProducts(){
