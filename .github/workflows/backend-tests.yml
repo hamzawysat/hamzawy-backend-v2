@@ -50,8 +50,6 @@ jobs:
           filters: |
             backend:
               - 'src/**'
-              - 'scripts/**'
-              - '!scripts/admin-store-edit-smoke.cjs'
             frontend:
               - 'frontend/editor.html'
               - 'frontend/client.html'
