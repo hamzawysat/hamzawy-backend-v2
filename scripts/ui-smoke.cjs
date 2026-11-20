@@ -100,7 +100,7 @@ function verifyAdminDashboardSource() {
     throw new Error('Admin store category and product images must remain fully visible without cropping');
   }
   if (!html.includes('admin-shell.js?v=20261120-admin-scrollfix1') ||
-      !html.includes('admin-store.js?v=20261120-admin-store-edit-restore1')) {
+      !html.includes('admin-store.js?v=20261120-admin-store-scroll-helper1')) {
     throw new Error('Admin visual fix asset cache versions were not refreshed');
   }
 }
