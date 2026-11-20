@@ -49,3 +49,54 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 #app .fanni-wallet-tabs button{min-width:0;min-height:54px;padding:8px 5px;border:1px solid #d8e5e5;border-radius:12px;background:#f7fbfb;color:#31515a;font-size:11px;font-weight:800;line-height:1.35;transition:background .18s,border-color .18s,color .18s}
 #app .fanni-wallet-tabs button.fanni-wallet-tab-active{border-color:#167c80;background:#167c80;color:#fff;box-shadow:0 3px 8px #167c8026}
 @media(max-width:360px){#app .fanni-wallet-tabs{gap:5px;padding:6px}#app .fanni-wallet-tabs button{font-size:9px;padding:6px 2px}}
+
+
+/* Browser technician navigation and referral promo mirror the Android app. */
+@media (max-width: 767px) {
+  .fanni-browser-bottom-nav {
+    position: fixed !important;
+    inset-inline: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    z-index: 80 !important;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .fanni-browser-main { padding-bottom: calc(160px + env(safe-area-inset-bottom, 0px)) !important; }
+  .store-ad-slot { bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
+}
+@keyframes fanni-referral-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 3px 10px rgba(16,31,155,.10); }
+  50% { transform: scale(1.025); box-shadow: 0 5px 16px rgba(16,31,155,.18); }
+}
+.fanni-home-referral {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 9px;
+  padding: 8px;
+  border: 1px solid #C7D2FE;
+  border-radius: 13px;
+  background: #DCE5FF;
+  color: #09145B;
+  text-align: right;
+  animation: fanni-referral-pulse 1.7s ease-in-out infinite;
+}
+.fanni-home-referral-icon { flex: 0 0 auto; font-size: 21px; }
+.fanni-home-referral > span:nth-child(2) { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
+.fanni-home-referral > span:nth-child(2) strong { color: #09145B; font-size: 14px; font-weight: 900; }
+.fanni-home-referral > span:nth-child(2) small { color: #26356E; font-size: 11px; font-weight: 700; }
+.fanni-home-referral > b {
+  flex: 0 0 auto;
+  border-radius: 11px;
+  background: #102A9B;
+  padding: 9px 11px;
+  color: #FFF;
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fanni-home-referral { animation: none; }
+}
