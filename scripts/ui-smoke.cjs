@@ -167,12 +167,17 @@ function apiResponse(pathname) {
         const pageErrors = [];
         const badLocalResponses = [];
         const authResponses = [];
+        const technicianProfileResponses = [];
 
         page.on('pageerror', error => pageErrors.push(error.message));
         page.on('response', response => {
           const url = new URL(response.url());
           if (url.origin === BASE && url.pathname === '/api/client/login' && response.request().method() === 'POST') {
             authResponses.push('POST ' + url.pathname + ' -> ' + response.status());
+          }
+          if (url.origin === BASE && url.pathname === '/api/fanni/me') {
+            const detail = await response.text().catch(() => '');
+            technicianProfileResponses.push(response.request().method() + ' ' + url.pathname + ' -> ' + response.status() + ' ' + detail.slice(0, 350));
           }
           if (url.origin === BASE && (response.status() === 404 || response.status() >= 500)) {
             badLocalResponses.push(response.status() + ' ' + url.pathname);
@@ -557,7 +562,10 @@ function apiResponse(pathname) {
                 await page.getByRole('button', { name: /العروض الجارية/ }).click();
                 await page.getByRole('heading', { name: 'عروضي' }).waitFor({ state: 'visible', timeout: 3000 });
                 await page.evaluate(() => openTechnicianSection('profile'));
-                await page.getByText(/تغيير كلمة المرور/).first().waitFor({ state: 'visible', timeout: 5000 });
+                await page.getByText(/تغيير كلمة المرور/).first().waitFor({ state: 'visible', timeout: 5000 }).catch(async error => {
+                  const state = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), user: (() => { try { return JSON.parse(localStorage.getItem('fanni_user_v4') || 'null'); } catch { return null; } })(), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), app: document.querySelector('#app')?.innerText.slice(0, 700) }));
+                  throw new Error(error.message + ' [profile diagnostic: ' + JSON.stringify({ state, profile: technicianProfileResponses }) + ']');
+                });
                 await page.locator('button[onclick="beginEditProfile()"]').click();
                 await page.locator('#fanniEditPhone').fill('01012345672');
                 await page.locator('button[onclick="saveProfileChanges()"]').click();
@@ -693,7 +701,10 @@ function apiResponse(pathname) {
                 const isActive = await page.evaluate(expected => [...document.querySelectorAll('button')]
                   .some(button => button.getAttribute('onclick') === "openTechnicianSection('" + expected + "')" &&
                     button.classList.contains('is-active')), tab);
-                if (!isActive) failures.push('technician/mobile: navigation did not activate the ' + tab + ' section');
+                if (!isActive) {
+                  const stateDiagnostic = await page.evaluate(() => ({ tab: state.tab, token: !!localStorage.getItem('fanni_token_v4'), nav: !!document.querySelector('nav.fanni-dashboard-tabs'), activeTabs: [...document.querySelectorAll('button.fanni-section-tab')].map(button => ({ text: button.innerText, active: button.classList.contains('is-active') })) }));
+                  failures.push('technician/mobile: navigation did not activate the ' + tab + ' section ' + JSON.stringify({ stateDiagnostic, profile: technicianProfileResponses }));
+                }
               } catch (error) {
                 failures.push('technician/mobile: ' + tab + ' navigation click failed: ' + error.message);
                 throw error;
