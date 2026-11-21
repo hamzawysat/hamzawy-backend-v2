@@ -41,8 +41,8 @@ function renderContent(){
 
  ${renderFanniPublicContent()}<main class="mx-auto max-w-[680px] px-3 fanni-browser-main ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
  ${!authenticated?`
-  <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center" style="background:#EEF2FF;min-height:100vh"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}</style>
-   <div class="w-full max-w-[440px]">
+  <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center justify-center" style="background:#EEF2FF;min-height:100vh;width:100%;margin-inline:auto;box-sizing:border-box"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}</style>
+   <div class="w-full max-w-[440px] mx-auto" style="margin-inline:auto">
     <div class="flex w-full justify-start mb-4"><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
     
     <div class="text-center mb-6">
@@ -53,7 +53,7 @@ function renderContent(){
      <h2 class="mt-4 text-[26px] font-black leading-9" style="color:#101F9B">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
      <p class="mt-1 text-[14px] text-slate-500">${state.tab==='register'?'أنشئ حسابك وابدأ استقبال الطلبات':'سجّل دخولك وتابع فرص الشغل المتاحة ليك.'}</p>
     </div>
-    <section class="fanni-login-panel account-panel mt-4 panel p-5 animate-fade" style="border-radius:28px">
+    <section class="fanni-login-panel account-panel mt-4 panel p-5 animate-fade" style="border-radius:28px;width:100%;margin-inline:auto;box-sizing:border-box">
      <div class="account-tabs fanni-login-tabs flex justify-center gap-2" style="padding:0!important;margin:0 0 20px!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:${state.tab==='register'?'flex':'none'}!important">
        <button type="button" onclick="setTab(state.tab==='register'?'login':'register')" class="account-switch-link h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed border-[#D5DDFE] text-[#172DAD] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#E8EDFF] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #D5DDFE!important;border-radius:9999px!important;background:#F4F6FF!important;background-image:none!important;color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="${state.tab==='register'?'تسجيل الدخول':'تسجيل فني جديد'}"><span style="color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;background:transparent!important;background-image:none!important">${state.tab==='register'?'لتسجيل الدخول':'لتسجيل فني جديد'}</span><small style="color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;background:transparent!important;background-image:none!important;font-size:10px!important;font-weight:700!important;text-decoration:underline dashed;text-underline-offset:2px">اضغط هنا</small></button>
       </div>
@@ -115,12 +115,12 @@ function renderContent(){
     ${state.error?errorBox(state.error):''}
    </div>`:`
    <div class="space-y-4">
-    <div><label class="field-label" style="color:#101F9B">رقم الهاتف</label><input id="fanniLoginPhone" class="field" type="tel" inputmode="numeric" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('fanniLoginPassword')?.focus()}" autocomplete="tel" value="${esc(state.loginPhone)}" oninput="state.loginPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
-    <div><label class="field-label">كلمة السر</label><input id="fanniLoginPassword" type="password" class="field" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin()}" autocomplete="current-password" value="${esc(state.loginPass)}" oninput="state.loginPass=this.value" placeholder="اكتب كلمة السر"></div>
+    <div><label class="field-label" style="color:#101F9B;text-align:left;display:block">رقم الهاتف</label><input id="fanniLoginPhone" class="field" type="tel" inputmode="numeric" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('fanniLoginPassword')?.focus()}" autocomplete="tel" value="${esc(state.loginPhone)}" oninput="state.loginPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
+    <div><label class="field-label" style="text-align:left;display:block">كلمة السر</label><input id="fanniLoginPassword" type="password" class="field" enterkeyhint="go" onkeydown="if(event.key==='Enter'){event.preventDefault();doLogin()}" autocomplete="current-password" value="${esc(state.loginPass)}" oninput="state.loginPass=this.value" placeholder="اكتب كلمة السر"></div>
      
     <div class="mt-1 text-left"><a class="text-[15px] font-extrabold" style="color:#101F9B" href="password.html?role=fanni&mode=recovery">نسيت كلمة السر؟ استعادة</a></div>
-    <button type="button" onclick="doLogin()" ${state.loading?'disabled':''} class="w-full h-[56px] rounded-2xl text-white text-[20px] font-black shadow-lg" style="background:#101F9B">${state.loading?'جاري تسجيل الدخول...':'تسجيل الدخول'}</button>
-    <button type="button" onclick="setTab('register')" class="w-full h-[56px] rounded-2xl text-[18px] font-black" style="background:#EEF2FF;color:#101F9B">إنشاء حساب فني جديد</button>
+    <button type="button" onclick="doLogin()" ${state.loading?'disabled':''} class="w-full h-[56px] rounded-2xl text-[20px] font-black shadow-lg" style="background:#101F9B!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border:1px solid #101F9B!important">${state.loading?'جاري تسجيل الدخول...':'تسجيل الدخول'}</button>
+    <button type="button" onclick="setTab('register')" class="w-full h-[56px] rounded-2xl text-[18px] font-black" style="background:#EEF2FF!important;color:#101F9B!important;-webkit-text-fill-color:#101F9B!important;border:1px solid #D5DDFE!important">إنشاء حساب فني جديد</button>
     ${state.pendingMsg?`<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-[12px] font-bold text-amber-800">${esc(state.pendingMsg)}</div>`:''}
     ${state.error?errorBox(state.error):''}
     ${state.tab==='login'?'<p class="mt-4 text-center text-[14px] leading-5 text-slate-500">بياناتك وحسابك في أمان</p>':''}
