@@ -1,4 +1,4 @@
-'use strict';
+<style id="login-shrink2">.login-shrink{zoom:.88!important;transform-origin:top center!important}.login-shrink img{max-height:84px!important}</style>'use strict';
 
 function renderContent(){
   const isBrowserDashboard=!window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\s*wv\)/i.test(navigator.userAgent||'');
@@ -8,7 +8,7 @@ function renderContent(){
   const specialties=Array.isArray(user?.specialties)?user.specialties:[];
   const areas=Array.isArray(user?.areas)?user.areas:[];
   const authenticated=(!!previewTab&&!['login','register'].includes(previewTab))||(!!getToken()&&!forceTechnicianRegistration);
- document.title=authenticated?'لوحة الفني | حمزاوي سات':(state.tab==='register'?'تسجيل فني جديد | حمزاوي سات':'تسجيل دخول الفني | حمزاوي سات');
+ document.title=authenticated?'لوحة الفني | حمزاوي سات':(state.tab==='register'?'تسجيل فني جديد | لوحة الفني':'تسجيل دخول الفني | حمزاوي سات');
  const balance=state.walletBalance||user?.walletBalance||user?.balance||user?.wallet||0;
  const approved=isApproved();
  const status=user?.status||'غير محدد';
@@ -20,7 +20,7 @@ function renderContent(){
  
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
  <style>.fanni-home-availability-toggle.is-available{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}.fanni-home-availability-toggle.is-paused{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}.fanni-home-availability-toggle.is-available strong{color:#1B7A2E!important;-webkit-text-fill-color:#1B7A2E!important}.fanni-home-availability-toggle.is-paused strong{color:#D32F2F!important;-webkit-text-fill-color:#D32F2F!important}</style><style>[class*="online"],[class*="avail"],[class*="toggle"]{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}[class*="online"].offline,[class*="avail"].offline,[class*="toggle"].offline,[class*="online"].off,[class*="avail"].off{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}</style><style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
-  <style id="login-shrink">.login-shrink{zoom:.90;transform-origin:top center}.login-shrink .login-logo{width:84px!important;height:84px!important}.login-shrink input{height:48px!important}.login-shrink button{height:48px!important}</style><div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-start gap-2" style="direction:rtl">
+  <div class="mx-auto w-full max-w-[640px] login-shrink px-4 pt-2 pb-1 flex items-center justify-start gap-2" style="direction:rtl">
     <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px">S</div>
     <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span>
