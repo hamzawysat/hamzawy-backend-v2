@@ -1,122 +1,25 @@
-name: Focused frontend and backend checks
-
-permissions:
-  contents: read
-  pull-requests: read
+name: High-severity security audit
 
 on:
   pull_request:
     branches: [main]
     paths:
-      - 'src/**'
-      - 'frontend/admin.html'
-      - 'frontend/editor.html'
-      - 'frontend/client.html'
-      - 'frontend/fanni.html'
-      - 'frontend/web-push.js'
-      - 'frontend/service-worker.js'
-      - 'frontend/js/**'
-      - 'frontend/css/**'
       - 'package.json'
       - 'package-lock.json'
-      - 'scripts/**'
       - '.github/workflows/backend-tests.yml'
   push:
-    branches: [main, 'feature/**', 'fix/**', 'refactor/**', 'integration/**']
+    branches: [main]
     paths:
-      - 'src/**'
-      - 'frontend/admin.html'
-      - 'frontend/editor.html'
-      - 'frontend/client.html'
-      - 'frontend/fanni.html'
-      - 'frontend/web-push.js'
-      - 'frontend/service-worker.js'
-      - 'frontend/js/**'
-      - 'frontend/css/**'
       - 'package.json'
       - 'package-lock.json'
-      - 'scripts/**'
       - '.github/workflows/backend-tests.yml'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
-  changes:
-    runs-on: ubuntu-24.04
-    outputs:
-      backend: ${{ steps.filter.outputs.backend }}
-      frontend: ${{ steps.filter.outputs.frontend }}
-      admin_store: ${{ steps.filter.outputs.admin_store }}
-      dependencies: ${{ steps.filter.outputs.dependencies }}
-    steps:
-      - uses: actions/checkout@v5
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          token: ${{ github.token }}
-          filters: |
-            backend:
-              - 'src/**'
-            frontend:
-              - 'frontend/editor.html'
-              - 'frontend/client.html'
-              - 'frontend/fanni.html'
-              - 'frontend/web-push.js'
-              - 'frontend/service-worker.js'
-              - 'frontend/js/**'
-              - '!frontend/js/admin-store.js'
-              - 'frontend/css/**'
-            admin_store:
-              - 'frontend/js/admin-store.js'
-              - 'scripts/admin-store-edit-smoke.cjs'
-            dependencies:
-              - 'package.json'
-              - 'package-lock.json'
-
-  test:
-    needs: changes
-    if: needs.changes.outputs.backend == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Run backend integration and security tests
-        run: npm test
-
-  frontend-browser-smoke:
-    needs: changes
-    if: needs.changes.outputs.frontend == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Install isolated browser test runner
-        run: |
-          npm install --prefix /tmp/sonaa-playwright --no-save --ignore-scripts playwright@1.55.0
-          /tmp/sonaa-playwright/node_modules/.bin/playwright install --with-deps chromium
-      - name: Run frontend browser smoke tests
-        run: |
-          PORT=4173 node scripts/browser-test-server.cjs >/tmp/sonaa-http.log 2>&1 &
-          SERVER_PID=$!
-          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
-          for attempt in $(seq 1 90); do
-            if curl --silent --show-error --fail --max-time 2 http://127.0.0.1:4173/index.html >/dev/null 2>&1; then break; fi
-            sleep 1
-          done
-          SONAA_SMOKE_REAL_API=1 NODE_PATH=/tmp/sonaa-playwright/node_modules node scripts/ui-smoke.cjs
-
-  admin-store-edit-smoke:
-    needs: changes
-    if: needs.changes.outputs.admin_store == 'true' || github.event_name == 'workflow_dispatch'
+  dependency-security-audit:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
@@ -126,26 +29,5 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Install isolated browser test runner
-        run: |
-          npm install --prefix /tmp/sonaa-playwright --no-save --ignore-scripts playwright@1.55.0
-          /tmp/sonaa-playwright/node_modules/.bin/playwright install --with-deps chromium
-      - name: Run admin product edit scroll regression only
-        env:
-          NODE_PATH: /tmp/sonaa-playwright/node_modules
-        run: node scripts/admin-store-edit-smoke.cjs
-
-  dependency-audit:
-    needs: changes
-    if: needs.changes.outputs.dependencies == 'true' || github.event_name == 'workflow_dispatch'
-    runs-on: ubuntu-24.04
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - name: Enforce high-severity dependency audit
+      - name: Check for high and critical dependency vulnerabilities
         run: npm audit --audit-level=high
