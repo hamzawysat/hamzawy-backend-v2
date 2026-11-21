@@ -62,26 +62,10 @@ function render(){
   
   
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
-  <header class="app-header fanni-app-header ${isBrowserDashboard?'':'sticky top-0 z-40'} backdrop-blur-xl">
-   <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-    <div class="flex items-center gap-2 min-w-0 flex-1">
-     <div class="brand-mark h-16 w-16 sm:h-[84px] sm:w-[84px] rounded-xl flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="120" height="120" decoding="async" style="width:100%;height:100%;padding:4px;box-sizing:border-box;object-fit:contain"></div>
-     <div class="min-w-0"><h1 class="font-extrabold text-[16px] leading-tight truncate"><span class="sonaa-brand-shimmer">${escHtml(state.publicContent?.siteName && state.publicContent.siteName !== 'صُنّاع' ? state.publicContent.siteName : 'حمزاوي سات')}</span></h1><p class="client-header-slogan mt-2 text-sm sm:text-base font-black whitespace-nowrap">كل خدمة تبدأ بخطوة</p></div>
-    </div>
-    <div class="flex flex-col items-end gap-1.5 shrink-0">
-     <div class="flex items-center justify-end gap-1">
-      <a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="dashboard-download-btn h-9 px-2 sm:px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold whitespace-nowrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>تحميل التطبيق</span></a>
-      <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-[#D5DDFE] bg-[#EEF2FF] text-[18px] text-[#101F9B] shrink-0">🔔${notificationBadge()}</button>
-      <a href="password.html?role=client&mode=account" aria-label="حسابي" title="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 bg-[#E8EDFF] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</a>
-      <button type="button" onclick="logoutClient()" aria-label="خروج" title="خروج" class="h-9 px-2 rounded-xl bg-red-50 border border-red-100 text-red-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>
-     </div>
-     <a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="client-home-main-btn h-8 px-3 rounded-lg text-white inline-flex items-center justify-center gap-1 text-[10px] font-extrabold whitespace-nowrap"><span aria-hidden="true">⌂</span><span>القائمة الرئيسية</span></a><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" class="dashboard-social-link">🔗 تابعنا على منصات التواصل</a>
-    </div>
-   </div>
-  </header>
+  <header class="bg-white"><div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-center gap-2" style="direction:rtl;position:relative"><div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">S</div><div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div><span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span></div><div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF"><div class="flex items-center gap-1.5 shrink-0"><button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button><div class="flex items-center gap-1.5 shrink-0"><a href="/" class="h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap" style="background:#E8EDFF;color:#101F9B;border:1px solid #D5DDFE">القائمة الرئيسية</a><a href="/download" class="h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap" style="background:#E8F5E9;color:#1B7A2E;border:1px solid #C8E6C9">تحميل التطبيق</a></div></div><div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[17px] leading-none whitespace-nowrap" style="color:#101F9B">لوحة العميل</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">🛰️</span></div></div></header>
 <nav class="${isBrowserDashboard?'client-section-tabs client-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
-    <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
-      ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'new',icon:'＋',label:'طلب جديد'},{id:'orders',icon:'📋',label:'طلباتي'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'subscriptions',icon:'📄',label:'الاشتراكات'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'complaint',icon:'🎧',label:'الشكاوى'}].map(t=>`
+    <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-5 gap-0.5">
+      ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'orders',icon:'📋',label:'الطلبات'},{id:'profile',icon:'👤',label:'حسابي'}].map(t=>`
         <button type="button" onclick="setTab('${t.id}')" class="client-section-tab ${state.tab===t.id?'is-active':''}">
           <span class="client-section-tab-icon">${t.icon}</span><span class="client-section-tab-label">${t.label}</span>
         </button>`).join('')}
@@ -102,7 +86,7 @@ function render(){
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
-        <button type="button" onclick="setTab('new')" class="client-home-hero">
+        <button type="button" onclick="setTab('new')" class="client-home-hero" style="background:#092D9E;color:#FFFFFF">
           <span class="client-home-hero-copy">
             <strong>اطلب خدمتك بسهولة</strong>
             <span>اختار الخدمة المناسبة وهنوصلك بالفني</span>

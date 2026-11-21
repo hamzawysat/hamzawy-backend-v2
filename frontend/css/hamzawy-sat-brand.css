@@ -1898,7 +1898,7 @@ html[data-sonaa-theme="client"] body #app .client-home-referral-cta {
   color:#FFFFFF;
   font-size:12px;
 }
-html[data-sonaa-theme="client"] body #app .client-home-actions {
+html[data-sonaa-theme="client"] body #app .client-home-actions { display:grid; overflow:hidden; 
   gap:0;
   padding:0 12px;
   border-radius:17px;
@@ -2196,3 +2196,10 @@ html[data-sonaa-theme="fanni"] body #app section.account-gate.fanni-login-gate{
 html[data-sonaa-theme="fanni"] body #app section.account-gate.fanni-login-gate>div{
   margin-inline:auto!important; width:100%!important; max-width:440px!important; box-sizing:border-box!important;
 }
+/* Unified client quick actions - single card like fanni */
+html[data-sonaa-theme="client"] body #app .client-home-actions{display:grid !important; gap:0 !important; padding:0 12px !important; border-radius:17px !important; background:#FFFFFF !important; box-shadow:0 3px 9px rgba(16,31,155,.08) !important; overflow:hidden !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action{display:flex !important; align-items:center !important; gap:11px !important; width:100% !important; min-height:52px !important; padding:7px 0 !important; border:0 !important; border-bottom:1px solid #EDF0F5 !important; border-radius:0 !important; background:transparent !important; box-shadow:none !important; text-decoration:none !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action:last-child{border-bottom:0 !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action>span{flex:0 0 28px !important; width:28px !important; height:28px !important; border-radius:0 !important; background:transparent !important; font-size:21px !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action strong{font-size:15px !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action i{color:#0A1EA5 !important; font-size:24px !important;}

@@ -1,0 +1,21 @@
+commit 1b734e5df7a251c60993163c1f9885d1779f62f0
+Author: hmzawysat <abo7mza1988@gmail.com>
+Date:   Sat Nov 21 14:35:52 2026 +0200
+
+    Fix technician login and registration viewport clipping (#188)
+
+diff --git a/frontend/js/fanni-render.js b/frontend/js/fanni-render.js
+index 8e6a969..704bbad 100644
+--- a/frontend/js/fanni-render.js
++++ b/frontend/js/fanni-render.js
+@@ -51,8 +51,8 @@ function renderContent(){
+ 
+  ${renderFanniPublicContent()}<main class="mx-auto max-w-[680px] px-3 fanni-browser-main ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
+  ${!authenticated?`
+-  <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center justify-center" style="background:#EEF2FF;min-height:100vh;width:100%;margin-inline:auto;box-sizing:border-box"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}html,body{overflow-x:hidden!important}main.fanni-browser-main{margin-inline:auto!important;max-width:440px!important;padding-inline:0!important;box-sizing:border-box!important}section.account-gate{margin-inline:auto!important;max-width:440px!important;width:100%!important;box-sizing:border-box!important;overflow-x:hidden!important}section.account-gate>div{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important}section.account-gate .account-panel{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important;transform:none!important}</style>
+-   <div class="w-full max-w-[440px] mx-auto" style="margin-top:-20px;margin-inline:auto">
++  <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center justify-start" style="background:#EEF2FF;min-height:100svh;min-height:100dvh;padding-top:max(1rem,env(safe-area-inset-top));padding-bottom:max(1rem,env(safe-area-inset-bottom));width:100%;margin-inline:auto;box-sizing:border-box"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}html,body{overflow-x:hidden!important}main.fanni-browser-main{margin-inline:auto!important;max-width:440px!important;padding-inline:0!important;box-sizing:border-box!important}section.account-gate{margin-inline:auto!important;max-width:440px!important;width:100%!important;box-sizing:border-box!important;overflow-x:hidden!important}section.account-gate>div{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important}section.account-gate .account-panel{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important;transform:none!important}</style>
++   <div class="w-full max-w-[440px] mx-auto" style="margin-top:auto;margin-bottom:auto;margin-inline:auto">
+     <div class="flex w-full justify-between mb-4"><button type="button" onclick="window.location.href='/'" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold no-yellow-btn" style="background:#FFFFFF!important;color:#101F9B!important">‹ الصفحة الرئيسية</button><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
+     
+     <div class="text-center mb-3">

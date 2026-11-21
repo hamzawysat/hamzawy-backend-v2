@@ -171,7 +171,7 @@ html[data-sonaa-theme] body #app :is(
  button,a.btn,.btn,button.primary,button.primary-btn,button.blue-btn,
  button[type=submit],.btn-primary,.account-submit,.account-nav-btn,
  .fanni-specialty-category-head,.fanni-area-option,.fanni-area-tag
-):not(.danger):not(.success):not(.btn-danger):not(.btn-success){
+):not(.danger):not(.success):not(.btn-danger):not(.btn-success):not(.client-home-hero):not(.client-home-referral):not(.client-home-action){
  background:#F5F7FA!important;background-color:#F5F7FA!important;background-image:none!important;
  border-color:#D5DFED!important;color:#172033!important;-webkit-text-fill-color:#172033!important;
  box-shadow:0 2px 0 #E2E8F0!important;text-shadow:none!important;
@@ -519,3 +519,9 @@ button:active,button.is-active,button.active,a:active,a.is-active{
   background-image:none!important;
   color:#0A1EA5!important;
 }
+
+html[data-sonaa-theme="client"] body #app .client-home-action, html[data-sonaa-theme="client"] body #app a.client-home-action, html[data-sonaa-theme="client"] body #app button.client-home-action{background:transparent !important; background-image:none !important; box-shadow:none !important; border:0 !important; border-bottom:1px solid #EDF0F5 !important; border-radius:0 !important; color:inherit !important; -webkit-text-fill-color:inherit !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action:last-child{border-bottom:0 !important;}
+
+html[data-sonaa-theme="client"] body #app .client-home-actions{display:grid !important; gap:7px !important; padding:0 !important; background:transparent !important; box-shadow:none !important; overflow:visible !important;}
+html[data-sonaa-theme="client"] body #app .client-home-action, html[data-sonaa-theme="client"] body #app a.client-home-action, html[data-sonaa-theme="client"] body #app button.client-home-action{display:flex !important; align-items:center !important; gap:11px !important; width:100% !important; min-height:48px !important; padding:7px 11px !important; border:1px solid #E6EAF2 !important; border-radius:13px !important; background:#FFFFFF !important; background-image:none !important; box-shadow:0 2px 0 #E6EAF2 !important; text-decoration:none !important;}
