@@ -21,7 +21,7 @@
 :where(code, pre, kbd, samp) {
   font-family: "Optimistic Mono", ui-monospace, monospace;
 }
-</style><style>
+.topbar .download-link,.topbar .social-link{background:#101F9B!important;background-image:none!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border:1px solid #101F9B!important;border-radius:12px!important;padding:10px 14px!important;font-size:12px!important;font-weight:900!important;box-shadow:none!important;text-shadow:none!important;animation:none!important}</style><style>
 @font-face {
   font-family: "Optimistic";
   font-style: normal;
@@ -211,55 +211,32 @@ html[data-sonaa-theme="index"] body .hero .eyebrow i {
     <div class="topbar-links" style="display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap;max-width:100%"><a href="/download" class="download-link">⬇ تحميل التطبيق</a><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" class="social-link">🔗 تابعنا على منصات التواصل</a></div>
   </header>
 
-  <main class="shell">
-    <section class="hero">
-      <div class="hero-text">
-        <span class="eyebrow"><i></i> أهلاً بيك في حمزاوي سات</span>
-        <h1>كل خدمة <span>تبدأ بخطوة</span></h1>
-        <p class="hero-copy">تركيب وصيانة الدش والريسيفرات وكاميرات المراقبة والشاشات، مع توفير الأجهزة والمستلزمات.</p>
-      </div>
-      <div class="hero-badge" aria-label="خدمات حمزاوي سات">
-        <details class="services-accordion">
-          <summary class="services-title">خدماتنا</summary>
-          <ul class="services-list">
-            <li>تركيب الدش وصيانته</li>
-            <li>تركيب كاميرات المراقبة وصيانتها</li>
-            <li>صيانة الشاشات</li>
-            <li>توريد جميع الأجهزة والمستلزمات</li>
-          </ul>
-        </details>
-      </div>
-    </section>
-    <section class="choose">
-      <div class="section-head">
-        <h2>تحب تدخل بصفتك إيه؟ <span class="choose-cue-hand" aria-hidden="true">👇</span></h2>
-        <p>اختار عشان نوصّلك للمكان الصح</p>
-      </div>
-      <div class="cards">
-        <a class="entry customer" href="/client">
-          <span class="entry-icon">
-            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21 24 7l17 14"/><path d="M12 19v22h24V19"/><path d="M20 41V28h8v13"/></svg>
-          </span>
-          <span class="entry-action">
-            <span class="action-label">ابدأ كعميل <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5m7 7-7-7 7-7"/></svg></span>
-          </span>
-        </a>
-        <a class="entry technician" href="/fanni.html">
-          <span class="entry-icon">
-            <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M27.5 9.5a12 12 0 0 0-15.8 15.8L5 32l11 11 6.7-6.7a12 12 0 0 0 15.8-15.8L29 30l-11-11 9.5-9.5Z"/></svg>
-          </span>
-          <span class="entry-action">
-            <span class="action-label">ابدأ كفني <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M19 12H5m7 7-7-7 7-7"/></svg></span>
-          </span>
-        </a>
-      </div>
-    </section>
-    <div class="trust-row">
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 12 4 4L19 6"/></svg> خطوات بسيطة</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 12 4 4L19 6"/></svg> خدمات متنوعة</span>
-      <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="m5 12 4 4L19 6"/></svg> متابعة في مكان واحد</span>
-    </div>
-  </main>
+  <main class="shell" style="background:#EEF2FF;padding:24px 16px 32px">
+      <section style="text-align:center;padding:8px 0 20px">
+        <h1 style="color:#101F9B;font-size:38px;font-weight:900;margin:8px 0 4px">حمزاوي سات</h1>
+        <p style="color:#0E9A8B;font-size:20px;font-weight:800;margin:0 0 12px">كل خدمة تبدأ بخطوة</p>
+        <p style="color:#5B6472;font-size:15px;line-height:1.8;margin:0">تركيب وصيانة الدش والريسيفرات وكاميرات المراقبة والشاشات، مع توفير الأجهزة والمستلزمات.</p>
+      </section>
+      <section style="display:flex;flex-direction:column;gap:16px">
+        <div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 8px 24px rgba(16,31,155,.08)">
+          <span style="background:#EEF2FF;border-radius:14px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🏠</span>
+          <div style="flex:1">
+            <h2 style="color:#101F9B;font-size:22px;font-weight:900;margin:0 0 8px">الدخول كعميل</h2>
+            <p style="color:#5B6472;font-size:14px;line-height:1.8;margin:0 0 14px">اطلب تركيب أو صيانة الدش أو الكاميرات أو الشاشات، وتابع عروض الفنيين بسهولة.</p>
+            <a href="/client" style="display:inline-flex;background:#101F9B;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border-radius:999px;padding:10px 20px;font-weight:800;font-size:14px">اطلب الآن ←</a>
+          </div>
+        </div>
+        <div style="background:#FFFFFF;border-radius:20px;padding:20px;display:flex;gap:14px;align-items:flex-start;box-shadow:0 8px 24px rgba(16,31,155,.08)">
+          <span style="background:#EEF2FF;border-radius:14px;width:56px;height:56px;display:flex;align-items:center;justify-content:center;font-size:28px;flex-shrink:0">🛠️</span>
+          <div style="flex:1">
+            <h2 style="color:#101F9B;font-size:22px;font-weight:900;margin:0 0 8px">الدخول كفني</h2>
+            <p style="color:#5B6472;font-size:14px;line-height:1.8;margin:0 0 14px">استقبل طلبات الدش والكاميرات والشاشات، وقدم عروضك وتابع شغلك.</p>
+            <a href="/fanni.html" style="display:inline-flex;background:#101F9B;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border-radius:999px;padding:10px 20px;font-weight:800;font-size:14px">شوف فرص الشغل ←</a>
+          </div>
+        </div>
+      </section>
+      <p style="text-align:center;color:#8A93A6;font-size:13px;margin:20px 0 0">• اختار طريقة الدخول وابدأ مع حمزاوي سات</p>
+    </main>
   <footer><div class="shell">حمزاوي سات — خدمات الدش والكاميرات والشاشات.</div></footer>
 <script src="/js/index-embed-links.js"></script><script src="/js/index-embed-focus.js"></script><script src="/page-visit.js" defer></script>
 <script src="/js/shared-preview-links.js"></script>
