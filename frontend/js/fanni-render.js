@@ -56,13 +56,13 @@ function renderContent(){
     
     <div class="text-center mb-3">
      <div class="mx-auto w-[84px] h-[84px] rounded-[28px] bg-white border border-slate-200 flex items-center justify-center shadow-sm p-3"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
-     <h1 class="mt-4 text-[28px] font-black" style="color:#101F9B">حمزاوي سات</h1>
+     <h1 class="mt-2 text-[28px] font-black" style="color:#101F9B">حمزاوي سات</h1>
      <p class="mt-1 text-[15px] font-bold text-slate-500">خدماتك وشغلك... في مكان واحد</p>
      <div class="mt-4"><span class="inline-block px-4 py-1.5 rounded-full bg-[#E8EDFF] text-[#101F9B] text-[14px] font-extrabold">حساب فني</span></div>
-     <h2 class="mt-4 text-[21px] font-black leading-9" style="color:#101F9B">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
+     <h2 class="mt-2 text-[18px] font-black leading-7" style="color:#101F9B">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
      <p class="mt-1 text-[14px] text-slate-500">${state.tab==='register'?'أنشئ حسابك وابدأ استقبال الطلبات':'سجّل دخولك وتابع فرص الشغل المتاحة ليك.'}</p>
     </div>
-    <section class="fanni-login-panel account-panel mt-4 panel p-5 animate-fade" style="border-radius:28px;width:100%;margin-inline:auto;box-sizing:border-box">
+    <section class="fanni-login-panel account-panel mt-2 panel p-4 animate-fade" style="border-radius:28px;width:100%;margin-inline:auto;box-sizing:border-box">
      <div class="account-tabs fanni-login-tabs flex justify-center gap-2" style="padding:0!important;margin:0 0 20px!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:${state.tab==='register'?'flex':'none'}!important">
        <button type="button" onclick="setTab(state.tab==='register'?'login':'register')" class="account-switch-link h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed border-[#D5DDFE] text-[#172DAD] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#E8EDFF] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #D5DDFE!important;border-radius:9999px!important;background:#F4F6FF!important;background-image:none!important;color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="${state.tab==='register'?'تسجيل الدخول':'تسجيل فني جديد'}"><span style="color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;background:transparent!important;background-image:none!important">${state.tab==='register'?'لتسجيل الدخول':'لتسجيل فني جديد'}</span><small style="color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;background:transparent!important;background-image:none!important;font-size:10px!important;font-weight:700!important;text-decoration:underline dashed;text-underline-offset:2px">اضغط هنا</small></button>
       </div>
