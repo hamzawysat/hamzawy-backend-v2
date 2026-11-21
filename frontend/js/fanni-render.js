@@ -41,7 +41,7 @@ function renderContent(){
 
  ${renderFanniPublicContent()}<main class="mx-auto max-w-[680px] px-3 fanni-browser-main ${isBrowserDashboard?'pb-8':'pb-[160px]'}">
  ${!authenticated?`
-  <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center justify-center" style="background:#EEF2FF;min-height:100vh;width:100%;margin-inline:auto;box-sizing:border-box"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}</style>
+  <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center justify-center" style="background:#EEF2FF;min-height:100vh;width:100%;margin-inline:auto;box-sizing:border-box"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}html,body{overflow-x:hidden!important}main.fanni-browser-main{margin-inline:auto!important;max-width:440px!important;padding-inline:0!important;box-sizing:border-box!important}section.account-gate{margin-inline:auto!important;max-width:440px!important;width:100%!important;box-sizing:border-box!important;overflow-x:hidden!important}section.account-gate>div{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important}section.account-gate .account-panel{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important;transform:none!important}</style>
    <div class="w-full max-w-[440px] mx-auto" style="margin-inline:auto">
     <div class="flex w-full justify-start mb-4"><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
     
