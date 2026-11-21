@@ -163,7 +163,7 @@ function renderContent(){
         </button>
       </div>
 
-      <style>@keyframes referralGlow{0%{box-shadow:0 0 0 0 rgba(10,30,165,0.35)}50%{box-shadow:0 0 0 8px rgba(10,30,165,0.12),0 0 22px rgba(10,30,165,0.35)}100%{box-shadow:0 0 0 0 rgba(10,30,165,0.35)}}</style><button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral w-full" style="background:#DCE6FF;animation:referralGlow 2s ease-in-out infinite;border-radius:16px;padding:14px">
+      <style>@keyframes referralGlow{0%{transform:scale(1);box-shadow:0 0 0 0 rgba(10,30,165,0.35)}50%{transform:scale(1.03);box-shadow:0 0 0 8px rgba(10,30,165,0.12),0 0 22px rgba(10,30,165,0.35)}100%{transform:scale(1);box-shadow:0 0 0 0 rgba(10,30,165,0.35)}}</style><button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral w-full" style="background:#DCE6FF!important;animation:referralGlow 2s ease-in-out infinite;border-radius:16px;padding:14px">
         <span class="fanni-home-referral-icon">🎁</span>
         <span><strong style="color:#0A1030">ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب رصيد لكل صديق ينضم</small></span>
         <b style="background:#0A1EA5!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border-radius:12px;padding:10px 16px;white-space:nowrap">دعوة الآن ←</b>
