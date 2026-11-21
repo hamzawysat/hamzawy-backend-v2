@@ -19,25 +19,20 @@ function renderContent(){
  document.getElementById('app').innerHTML=`
  
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
- <header class="app-header fanni-app-header ${isBrowserDashboard?'':'sticky top-0 z-40'} backdrop-blur-xl">
-  <div class="mx-auto w-full max-w-[640px] px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
-   <div class="flex items-center gap-2 min-w-0 flex-1">
-    <div class="brand-mark h-16 w-16 sm:h-[84px] sm:w-[84px] rounded-xl flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="120" height="120" decoding="async" style="width:100%;height:100%;padding:4px;box-sizing:border-box;object-fit:contain"></div>
-    <div class="min-w-0"><h1 class="font-extrabold text-[16px] leading-tight truncate"><span class="sonaa-brand-shimmer">${esc(state.publicContent?.siteName && !/صُنّاع|صناع|صُنَاع/.test(state.publicContent.siteName) ? state.publicContent.siteName : 'حمزاوي سات')}</span></h1><p class="client-header-slogan mt-2 text-sm sm:text-base font-black whitespace-nowrap">كل خدمة تبدأ بخطوة</p></div>
-   </div>
-   <div class="flex flex-col items-end gap-1.5 shrink-0">
-    <div class="flex items-center justify-end gap-1">
-     <a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="dashboard-download-btn h-9 px-2 sm:px-3 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 inline-flex items-center justify-center gap-1.5 text-[10px] sm:text-[11px] font-extrabold whitespace-nowrap"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg><span>تحميل التطبيق</span></a>
-     <button type="button" onclick="toggleNotifications()" aria-label="الإشعارات" title="الإشعارات" class="relative h-9 w-9 rounded-xl border border-[#D5DDFE] bg-[#EEF2FF] text-[18px] text-[#101F9B] shrink-0">🔔${notificationBadge()}</button>
-     ${authenticated?'<button type="button" onclick="location.href=\'password.html?role=fanni&mode=account\'" aria-label="حسابي" class="h-9 px-2 rounded-xl border border-blue-200 !bg-[#E8EDFF] text-blue-800 inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap">حسابي</button><button type="button" onclick="logout()" aria-label="خروج" class="h-9 px-2 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-extrabold whitespace-nowrap">خروج</button>':''}
-    </div>
-    <a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="client-home-main-btn h-8 px-3 rounded-lg text-white inline-flex items-center justify-center gap-1 text-[10px] font-extrabold whitespace-nowrap"><span aria-hidden="true">⌂</span><span>القائمة الرئيسية</span></a><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" class="dashboard-social-link">🔗 تابعنا على منصات التواصل</a>
-   </div>
+ <header class="bg-white">
+  <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-end gap-2">
+    <span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span>
+    <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
+    <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px">S</div>
   </div>
- </header>
+  <div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF">
+    <button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button>
+    <div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[24px] leading-none" style="color:#101F9B">حمزاوي سات</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">✎</span></div>
+  </div>
+</header>
 <nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
-   <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-7 gap-0.5">
-    ${authenticated?TECHNICIAN_TAB_DEFINITIONS.map(t=>{const info={home:['⌂','الرئيسية'],available:['📋','الطلبات المتاحة'],myOrders:['💼','عروضي'],wallet:['💳','المحفظة'],store:['🛍️','المتجر'],profile:['👤','حسابي'],support:['🎧','الدعم الفني']}[t.id];return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="fanni-section-tab ${state.tab===t.id?'is-active':''}"><span class="fanni-section-tab-icon">${info[0]}</span><span class="fanni-section-tab-label">${info[1]}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
+   <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-5 gap-0.5">
+    ${authenticated?[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'myOrders',icon:'📋',label:'الطلبات'},{id:'profile',icon:'👤',label:'حسابي'}].map(t=>{return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="fanni-section-tab ${state.tab===t.id?'is-active':''}"><span class="fanni-section-tab-icon">${t.icon}</span><span class="fanni-section-tab-label">${t.label}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
        
    </div>
   </nav>
@@ -132,7 +127,7 @@ function renderContent(){
  `:`
   ${state.tab==='home'?`
     <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
-      <div class="fanni-home-profile panel p-3">
+      <div class="fanni-home-profile px-1 py-2" style="background:#F5F5F7">
         <div class="fanni-home-profile-top">
           <div class="fanni-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${esc(String(user?.name||'فني').trim().charAt(0)||'ف')}</b></div>
           <div class="fanni-home-profile-name">
@@ -147,34 +142,34 @@ function renderContent(){
       </div>
       ${user?.acceptingOrders===false?'<div class="fanni-home-offline-note"><span>⚠️</span><span>أنت غير متصل ولن تستقبل طلبات جديدة. فعّل ON لاستقبال الطلبات.</span></div>':''}
 
-      <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner">
+      <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner w-full" style="background:#0A1EA5;color:#FFFFFF;border-radius:24px;padding:20px 16px">
         <span class="fanni-home-jobs-icon">💼</span>
-        <span><strong>فرص عمل متاحة</strong><small>استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em>استكشف الفرص ←</em></span>
+        <span><strong style="color:#FFFFFF">فرص عمل متاحة</strong><small style="color:#E0E7FF">استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em style="background:#FFFFFF;color:#0A1EA5;border-radius:12px;padding:8px 16px;display:inline-block;margin-top:12px">استكشف الفرص ←</em></span>
       </button>
 
-      <div class="fanni-home-section-head"><h3>الإحصائيات</h3></div>
+      <div class="fanni-home-section-head" style="text-align:right;margin:16px 0 12px"><h3 style="color:#0A1030;font-size:24px;font-weight:900;line-height:1.2">الإحصائيات</h3></div>
       <div class="fanni-home-stats">
         <button type="button" onclick="setTab('wallet')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">💳</span><small>رصيد المحفظة</small><strong data-home-stat="wallet">${Number(balance||0).toLocaleString('ar-EG')} ج</strong>
+          <span class="fanni-home-stat-icon" style="background:#E0E7FF;border-radius:9999px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">💳</span><small style="color:#6B7280">رصيد المحفظة</small><strong data-home-stat="wallet">${Number(balance||0).toLocaleString('ar-EG')} ج</strong>
         </button>
         <button type="button" onclick="setTab('available')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">💼</span><small>فرص متاحة</small><strong data-home-stat="available">${state.filteredOrders.length}</strong>
+          <span class="fanni-home-stat-icon" style="background:#E0E7FF;border-radius:9999px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">💼</span><small style="color:#6B7280">فرص متاحة</small><strong data-home-stat="available">${state.filteredOrders.length}</strong>
         </button>
         <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">✓</span><small>مهام مكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
+          <span class="fanni-home-stat-icon" style="background:#E0E7FF;border-radius:9999px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">✓</span><small style="color:#6B7280">مهام مكتملة</small><strong data-home-stat="completed">${state.completedOffers.length}</strong>
         </button>
         <button type="button" onclick="setTab('myOffers')" class="fanni-home-stat-card">
-          <span class="fanni-home-stat-icon">📄</span><small>عروضي</small><strong data-home-stat="offers">${state.myOffers.length}</strong>
+          <span class="fanni-home-stat-icon" style="background:#E0E7FF;border-radius:9999px;width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:22px">📄</span><small style="color:#6B7280">عروضي</small><strong data-home-stat="offers">${state.myOffers.length}</strong>
         </button>
       </div>
 
-      <button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral">
+      <style>@keyframes referralGlow{0%{box-shadow:0 0 0 0 rgba(10,30,165,0.35)}50%{box-shadow:0 0 0 8px rgba(10,30,165,0.12),0 0 22px rgba(10,30,165,0.35)}100%{box-shadow:0 0 0 0 rgba(10,30,165,0.35)}}</style><button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral w-full" style="background:#DCE6FF;animation:referralGlow 2s ease-in-out infinite;border-radius:16px;padding:14px">
         <span class="fanni-home-referral-icon">🎁</span>
-        <span><strong>ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب رصيد لكل صديق ينضم</small></span>
-        <b>دعوة الآن ←</b>
+        <span><strong style="color:#0A1030">ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب رصيد لكل صديق ينضم</small></span>
+        <b style="background:#0A1EA5;color:#FFFFFF;border-radius:12px;padding:10px 16px;white-space:nowrap">دعوة الآن ←</b>
       </button>
 
-      <div class="fanni-home-section-head"><h3>إجراءات سريعة</h3></div>
+      <div class="fanni-home-section-head" style="text-align:right;margin:16px 0 12px"><h3 style="color:#0A1030;font-size:24px;font-weight:900;line-height:1.2">إجراءات سريعة</h3></div>
       <div class="fanni-home-actions">
         <button type="button" onclick="setTab('myOrders');setMyOrdersView('completed')" class="fanni-home-action"><span>📋</span><strong>سجل المهام</strong><i>‹</i></button>
         <button type="button" onclick="setTab('myOffers')" class="fanni-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
@@ -402,7 +397,7 @@ function renderContent(){
 
  
   ${`<style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>`:''}
-  <button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float ${authenticated?'':'prelogin-floating'} ${globalRefreshInProgress?'is-refreshing':''}" ${authenticated?'':'style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#1426A5;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,38,165,.30);"' }><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
+  <style>.global-refresh-float{display:none!important}</style><button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float ${authenticated?'':'prelogin-floating'} ${globalRefreshInProgress?'is-refreshing':''}" ${authenticated?'':'style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#1426A5;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,38,165,.30);"' }><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
  
 }
 
