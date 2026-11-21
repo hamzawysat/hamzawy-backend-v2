@@ -55,8 +55,8 @@ function renderContent(){
     <div class="flex w-full justify-start mb-4"><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
     
     <div class="text-center mb-3">
-     <div class="mx-auto w-[84px] h-[84px] rounded-[28px] bg-white border border-slate-200 flex items-center justify-center shadow-sm p-3"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
-     <h1 class="mt-2 text-[28px] font-black" style="color:#101F9B">حمزاوي سات</h1>
+     <div class="mx-auto w-[68px] h-[68px] rounded-[28px] bg-white border border-slate-200 flex items-center justify-center shadow-sm p-3"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
+     <h1 class="mt-2 text-[24px] font-black" style="color:#101F9B">حمزاوي سات</h1>
      <p class="mt-1 text-[15px] font-bold text-slate-500">خدماتك وشغلك... في مكان واحد</p>
      <div class="mt-4"><span class="inline-block px-4 py-1.5 rounded-full bg-[#E8EDFF] text-[#101F9B] text-[14px] font-extrabold">حساب فني</span></div>
      <h2 class="mt-2 text-[18px] font-black leading-7" style="color:#101F9B">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
@@ -133,7 +133,7 @@ function renderContent(){
     ${state.pendingMsg?`<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-[12px] font-bold text-amber-800">${esc(state.pendingMsg)}</div>`:''}
     ${state.error?errorBox(state.error):''}
     ${state.tab==='login'?'<p class="mt-4 text-center text-[14px] leading-5 text-slate-500">بياناتك وحسابك في أمان</p>':''}
-    ${state.tab==='login'?'<div class="mt-5 flex gap-2"><a href="/download" class="flex-1 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black text-white" style="background:#101F9B!important;color:#FFFFFF!important">⬇ تحميل التطبيق</a><a href="/links" target="_blank" rel="noopener noreferrer" class="flex-1 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black" style="background:#EEF2FF!important;color:#101F9B!important;border:1px solid #D5DDFE!important">🔗 منصات التواصل</a></div>':''}
+    ${state.tab==='login'?'<div class="mt-3 flex gap-2"><a href="/download" class="flex-1 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black text-white" style="background:#101F9B!important;color:#FFFFFF!important">⬇ تحميل التطبيق</a><a href="/links" target="_blank" rel="noopener noreferrer" class="flex-1 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black" style="background:#EEF2FF!important;color:#101F9B!important;border:1px solid #D5DDFE!important">🔗 منصات التواصل</a></div>':''}
    </div>`}
   </section>
    </div>
