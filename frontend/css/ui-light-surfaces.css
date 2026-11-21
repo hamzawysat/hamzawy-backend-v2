@@ -495,3 +495,27 @@ html[data-sonaa-theme="admin"] body #app [role="tab"][aria-selected="true"]:not(
   -webkit-text-fill-color:#3D3424!important;
   box-shadow:0 4px 0 #B88D3A,0 7px 12px rgba(169,130,46,.18),inset 0 1px 0 rgba(255,255,255,.55)!important;
 }
+
+/* === شيل كل الاصفر من الموقع كله - Override عام === */
+:root{
+  --gold:#D5DFED!important;
+  --hs-gold:#D5DFED!important;
+  --sonaa-brand-gold:#D5DFED!important;
+  --sonaa-color-f5b928:#D5DFED!important;
+  --sonaa-color-f59e0b:#D5DFED!important;
+}
+/* اي زرار او تاب اصفر يرجع ابيض */
+button[class*="yellow"],button[class*="amber"],a[class*="yellow"],a[class*="amber"],
+.bg-yellow-100,.bg-yellow-200,.bg-yellow-300,.bg-yellow-400,.bg-yellow-500,
+.bg-amber-100,.bg-amber-200,.bg-amber-300,.bg-amber-400,.bg-amber-500{
+  background:#FFFFFF!important;
+  background-image:none!important;
+  color:#0A1EA5!important;
+  border-color:#D5DFED!important;
+}
+/* لما تدوس على اي زرار - يبقى ازرق فاتح مش اصفر */
+button:active,button.is-active,button.active,a:active,a.is-active{
+  background:#EEF2FF!important;
+  background-image:none!important;
+  color:#0A1EA5!important;
+}
