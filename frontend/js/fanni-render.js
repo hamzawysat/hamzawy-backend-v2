@@ -19,18 +19,18 @@ function renderContent(){
  document.getElementById('app').innerHTML=`
  
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
- <style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
+ <style>.fanni-home-availability-toggle.is-available{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}.fanni-home-availability-toggle.is-paused{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}.fanni-home-availability-toggle.is-available strong{color:#1B7A2E!important;-webkit-text-fill-color:#1B7A2E!important}.fanni-home-availability-toggle.is-paused strong{color:#D32F2F!important;-webkit-text-fill-color:#D32F2F!important}</style><style>[class*="online"],[class*="avail"],[class*="toggle"]{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}[class*="online"].offline,[class*="avail"].offline,[class*="toggle"].offline,[class*="online"].off,[class*="avail"].off{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}</style><style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
   <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-end gap-2">
     <span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span>
     <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
     <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px">S</div>
   </div>
   <div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF">
-    <button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;filter:grayscale(1) opacity(0.65);line-height:1">🔔${notificationBadge()}</button>
+    <button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button>
     <div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[24px] leading-none" style="color:#101F9B">حمزاوي سات</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">✎</span></div>
   </div>
 </header>
-<style>.fanni-section-tab.is-active{background:#FFFFFF!important;background-image:none!important;box-shadow:none!important;color:#0A1EA5!important;border:0!important}.fanni-section-tab{background:transparent!important;border:0!important;box-shadow:none!important}</style><nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
+<style>nav.fanni-browser-bottom-nav button.fanni-section-tab.is-active, nav button.fanni-section-tab.is-active{background:#FFFFFF!important;background-image:none!important;box-shadow:none!important;color:#0A1EA5!important;border:0!important}.fanni-section-tab.is-active{background:#FFFFFF!important;background-image:none!important;box-shadow:none!important;color:#0A1EA5!important;border:0!important}.fanni-section-tab{background:transparent!important;border:0!important;box-shadow:none!important}</style><nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
    <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-5 gap-0.5">
     ${authenticated?[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'myOrders',icon:'📋',label:'الطلبات'},{id:'profile',icon:'👤',label:'حسابي'}].map(t=>{return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="fanni-section-tab ${state.tab===t.id?'is-active':''}"><span class="fanni-section-tab-icon">${t.icon}</span><span class="fanni-section-tab-label">${t.label}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
        
@@ -144,7 +144,7 @@ function renderContent(){
 
       <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner w-full" style="background:#0A1EA5!important;background-image:none!important;color:#FFFFFF!important;border-radius:24px;padding:20px 16px">
         <span class="fanni-home-jobs-icon">💼</span>
-        <span><strong style="color:#FFFFFF">فرص عمل متاحة</strong><small style="color:#E0E7FF">استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em style="background:#FFFFFF;color:#0A1EA5;border-radius:12px;padding:8px 16px;display:inline-block;margin-top:12px">استكشف الفرص ←</em></span>
+        <span><strong style="color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important">فرص عمل متاحة</strong><small style="color:#E0E7FF!important;-webkit-text-fill-color:#E0E7FF!important">استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em style="background:#FFFFFF;color:#0A1EA5;border-radius:12px;padding:8px 16px;display:inline-block;margin-top:12px">استكشف الفرص ←</em></span>
       </button>
 
       <div class="fanni-home-section-head" style="text-align:right;margin:16px 0 12px"><h3 style="color:#0A1030;font-size:24px;font-weight:900;line-height:1.2">الإحصائيات</h3></div>
