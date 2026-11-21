@@ -59,7 +59,7 @@ h+='width:100%;box-sizing:border-box;display:flex;';
 h+='flex-direction:column;align-items:center;';
 h+='justify-content:flex-start">';
 h+='<div class="w-full max-w-[440px] mx-auto px-4" ';
-h+='style="margin-top:auto;margin-bottom:auto;box-sizing:border-box">';
+h+='style="margin-top:auto;margin-bottom:auto;box-sizing:border-box;display:flex;flex-direction:column;justify-content:center">';
 var Q=String.fromCharCode(39);
 h+='<div class="flex w-full justify-between mb-4">';
 h+='<button type="button" onclick="window.location.href=' + Q + '/' + Q + '" ';
