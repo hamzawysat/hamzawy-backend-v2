@@ -2184,3 +2184,15 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-offline-note>span:last-chil
   html[data-sonaa-theme="fanni"] body #app .fanni-home-availability-toggle {min-width:100px;padding:7px 6px}
   html[data-sonaa-theme="fanni"] body #app .fanni-home-availability-toggle strong {font-size:9px}
 }
+
+/* FANNI LOGIN: lock login gate to viewport so it never shifts left after theme loads */
+html[data-sonaa-theme="fanni"] body #app section.account-gate.fanni-login-gate{
+  position:fixed!important; inset:0!important; z-index:10!important;
+  width:100%!important; max-width:100%!important; margin:0 auto!important;
+  overflow-x:hidden!important; overflow-y:auto!important;
+  display:flex!important; flex-direction:column!important; align-items:center!important;
+  box-sizing:border-box!important;
+}
+html[data-sonaa-theme="fanni"] body #app section.account-gate.fanni-login-gate>div{
+  margin-inline:auto!important; width:100%!important; max-width:440px!important; box-sizing:border-box!important;
+}
