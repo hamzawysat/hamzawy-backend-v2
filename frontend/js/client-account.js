@@ -25,7 +25,7 @@ function showToast(message,type='error'){
   </div>`;
   setTimeout(()=>{if(el)el.innerHTML='';},4500);
 }
-function goBack(fromPopState=false){if(typeof CLIENT_TAB_HISTORY==='undefined'||!CLIENT_TAB_HISTORY.length)return false;if(!fromPopState){window.history.back();return true;}const previous=CLIENT_TAB_HISTORY.pop();setTab(previous,true);return true;}
+function goBack(fromPopState=false){if(typeof CLIENT_TAB_HISTORY==='undefined'||!CLIENT_TAB_HISTORY.length){window.location.href='/';return true;}if(!fromPopState){window.history.back();return true;}const previous=CLIENT_TAB_HISTORY.pop();setTab(previous,true);return true;}
 function showLogoutConfirmation(){if(document.getElementById('logoutConfirmOverlay'))return;const overlay=document.createElement('div');overlay.id='logoutConfirmOverlay';overlay.className='logout-confirm-overlay';overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');overlay.setAttribute('aria-labelledby','logoutConfirmTitle');overlay.innerHTML='<div class="logout-confirm-card"><div class="logout-confirm-icon" aria-hidden="true">↪</div><h2 id="logoutConfirmTitle" class="text-xl font-black text-slate-900">تأكيد تسجيل الخروج</h2><p class="mt-3 text-sm leading-6 font-bold text-slate-600">متأكد إنك عايز تسجّل خروج من حسابك؟</p><div class="mt-6 grid grid-cols-2 gap-3"><button type="button" class="logout-confirm-btn logout-confirm-cancel" data-logout-action="cancel">لا، خليك معايا</button><button type="button" class="logout-confirm-btn logout-confirm-yes" data-logout-action="confirm">أيوه، خروج</button></div></div>';document.body.appendChild(overlay);overlay.addEventListener('click',function(e){if(e.target===overlay||e.target.closest('[data-logout-action="cancel"]')){overlay.remove();return;}if(e.target.closest('[data-logout-action="confirm"]')){overlay.remove();performClientLogout();}});overlay.querySelector('[data-logout-action="cancel"]').focus();}
 function performClientLogout(){const token=state.accountToken||(()=>{try{return localStorage.getItem('sonaa_client_account_token')||'';}catch(e){return '';}})();if(token){try{fetch('/api/client/logout',{method:'POST',headers:{Authorization:'Bearer '+token},keepalive:true}).catch(()=>{});}catch(e){}}try{localStorage.removeItem('sonaa_client_account_token');}catch(e){}state.accountToken='';state.account=null;state.notifications=[];state.notificationsUnread=0;state.notificationsOpen=false;state.myOrders=[];state.tracked=null;state.tab='new';state.accountError='';render();}
 function logoutClient(){showLogoutConfirmation();}
@@ -48,17 +48,110 @@ function renderClientReferralCard(){
  return '<section id="clientReferralCard" class="rounded-2xl border border-amber-200 bg-gradient-to-l from-amber-50 to-white p-4"><div class="flex items-center gap-3"><span class="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-2xl">🎁</span><div><h3 class="text-sm font-black text-slate-900">ادعُ صديقك واكسب 50 جنيهًا</h3><p class="mt-1 text-[13px] font-semibold leading-6 text-slate-700">عن كل صديق جديد يسجل من رابط دعوتك ويكمل أول طلب، تحصل أنت وهو على 50 جنيهًا مكافأة.</p></div></div>'+sharing+'<div class="mt-3 text-[12px] font-bold text-slate-700">دعواتك: '+Number(info.totals?.count||history.length)+' • المكتملة: '+Number(info.totals?.completed||0)+'</div>'+rows+'</section>';
 }
 function renderAccountGate(){
-  var reg=state.accountAuthMode==='register';
-  document.title=reg?'تسجيل عميل جديد | حمزاوي سات':'تسجيل دخول العميل | حمزاوي سات';
-  var h='<main class="account-gate min-h-screen px-4 py-6 flex items-center justify-center"><div class="w-full max-w-[400px]"><nav dir="rtl" class="account-top-nav mb-4 flex w-full items-center justify-center gap-2" style="width:100%;display:flex;justify-content:center;align-items:center;gap:8px;direction:rtl"><a href="/" aria-label="القائمة الرئيسية" title="القائمة الرئيسية" class="account-nav-btn account-home-btn h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-black bg-slate-50 border border-slate-200" style="flex:1 1 0;min-width:0;white-space:nowrap">⌂ الرئيسية</a><a href="/download" aria-label="تحميل تطبيق حمزاوي سات" title="تحميل تطبيق حمزاوي سات" class="account-nav-btn account-download-btn h-10 px-2 rounded-xl inline-flex flex-1 items-center justify-center text-xs font-black" style="flex:1 1 0;min-width:0;height:40px;white-space:nowrap;padding-inline:4px">⬇ تحميل التطبيق</a><button type="button" onclick="goBack()" class="account-nav-btn h-9 px-3 rounded-xl border border-slate-200 bg-white text-slate-700 text-[11px] font-extrabold" style="flex:1 1 0;min-width:0;white-space:nowrap">← رجوع</button></nav><div style="display:flex;justify-content:center;margin:0 0 14px"><a href="/links" target="_blank" rel="noopener noreferrer" aria-label="تابعنا على منصات التواصل" title="تابعنا على منصات التواصل" style="display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;min-height:36px!important;padding:7px 11px!important;border:1px solid #172DAD!important;border-radius:11px!important;background:linear-gradient(145deg,#2946C7,#07136E)!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;font-size:10px!important;font-weight:900!important;line-height:1.4!important;text-decoration:none!important;white-space:nowrap!important;box-shadow:0 4px 0 #07136E,0 6px 12px rgba(7,19,110,.14)!important;">🔗 تابعنا على منصات التواصل</a></div><div class="text-center mb-5"><div class="account-brand brand-mark mx-auto h-16 w-16 rounded-xl flex items-center justify-center bg-white border border-slate-100 shadow-sm shrink-0"><img class="sonaa-logo-svg w-12 h-12 object-contain" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="48" height="48" decoding="async"></div><h1 class="mt-3 text-[20px] font-black leading-tight">'+(reg?'تسجيل عميل جديد':'تسجيل دخول العميل')+'</h1><p class="account-slogan mt-1 text-[12px] font-bold text-slate-500">كل خدمة تبدأ بخطوة</p><p class="mt-1.5 text-[12px] leading-5 text-slate-600">'+(reg?'أنشئ حساب عميل جديد علشان تطلب الخدمات وتتابع طلباتك.':'سجّل دخولك علشان تطلب خدمة وتتابع طلباتك من حسابك.')+'</p></div><div class="panel account-panel p-4 pb-[95px] rounded-[18px]"><div class="account-tabs flex justify-center" style="padding:0!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:'+ (reg?'flex':'none') +'!important"><button type="button" onclick="setAccountAuthMode(this.dataset.next)" data-next="'+(reg?'login':'register')+'" class="account-switch-link h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed border-[#D5DDFE] text-[#172DAD] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#E8EDFF] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #D5DDFE!important;border-radius:9999px!important;background:#F4F6FF!important;background-image:none!important;color:#172DAD!important;-webkit-text-fill-color:#172DAD!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="'+(reg?'تسجيل الدخول':'تسجيل عميل جديد')+'"><span>'+(reg?'لتسجيل الدخول':'لتسجيل عميل جديد')+'</span><small class="underline decoration-dashed">اضغط هنا</small></button></div><form class="mt-4 space-y-3" onkeydown="if(state.accountAuthMode===\'login\'&&event.key===\'Enter\'){event.preventDefault();if(event.target&&event.target.id===\'accountPassword\'){window.__sonaaClientLoginIntent=true;submitClientAccount(event);}else{document.getElementById(\'accountPassword\').focus();}}" onsubmit="if(state.accountAuthMode===\'login\'&&!window.__sonaaClientLoginIntent){event.preventDefault();return false;}window.__sonaaClientLoginIntent=false;submitClientAccount(event)">';
-  if(reg&&clientReferralCodeFromUrl())h+='<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold text-emerald-800">تم فتح التسجيل من خلال دعوة صديق. أكمل التسجيل لتفعيل الدعوة.</div>';
-  if(reg)h+='<div><label class="block mb-1.5 text-[11px] font-extrabold">الاسم بالكامل</label><input id="accountName" required minlength="2" maxlength="50" autocomplete="name" class="field h-11 px-3 text-[13px]" placeholder="اكتب اسمك"></div>';
-  h+='<div><label class="block mb-1.5 text-[11px] font-extrabold">رقم الموبايل</label><input id="accountPhone" required type="tel" inputmode="tel" autocomplete="tel" maxlength="20" class="field h-11 px-3 text-[13px]" placeholder="01012345678" value="'+escAttr(reg?'':(state.accountLoginPhone||''))+'" dir="ltr"></div><div><label class="block mb-1.5 text-[11px] font-extrabold">كلمة السر</label><input id="accountPassword" required type="password" minlength="'+(reg?8:1)+'" maxlength="128" autocomplete="'+(reg?'new-password':'current-password')+'" class="field h-11 px-3 text-[13px]" placeholder="'+(reg?'8 أحرف على الأقل':'اكتب كلمة السر')+'" value="'+escAttr(reg?'':(state.accountLoginPassword||''))+'"></div>';
-  if(reg)h+='<div><label class="block mb-1.5 text-[11px] font-extrabold">تأكيد كلمة السر</label><input id="accountConfirmPassword" required type="password" minlength="8" maxlength="128" autocomplete="new-password" class="field h-11 px-3 text-[13px]" placeholder="أعد كتابة كلمة السر"></div>';
-  if(state.accountError)h+='<p class="rounded-xl bg-red-50 border border-red-200 p-3 text-[11px] leading-5 font-bold text-red-700">'+escHtml(state.accountError)+'</p>';
-  h+='<button type="submit" '+(state.accountLoading?'disabled':'')+' onclick="window.__sonaaClientLoginIntent=true" class="account-submit w-full h-11 rounded-xl blue-btn font-black text-[13px] bg-blue-600 text-white hover:bg-blue-700 transition-colors">'+(state.accountLoading?'جاري التنفيذ...':reg?'إنشاء حساب العميل':'دخول إلى حسابي')+'</button></form>'+(reg?'':'<div class="mt-3 flex items-center justify-between gap-3" dir="rtl"><button type="button" onclick="setAccountAuthMode(\'register\')" class="account-register-link text-[11px] font-bold text-black underline decoration-black underline-offset-2 hover:text-black">تسجيل عميل جديد</button><a class="text-[11px] font-bold text-black underline decoration-black underline-offset-2 hover:text-black" href="password.html?role=client&mode=recovery">نسيت كلمة المرور؟</a></div>')+'<p class="mt-3 text-center text-[10px] leading-5 text-slate-400">كلمة السر لا تُشارك مع أي شخص.</p></div></div></main>';
-  document.getElementById('app').innerHTML=h+renderPublicContent()+`<a href="support.html?role=client" aria-label="خدمة العملاء" title="خدمة العملاء" class="support-float prelogin-floating" style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#1426A5;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,38,165,.30);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="22" height="22"><path d="M4 13v-2a8 8 0 0 1 16 0v2"/><rect x="3" y="12" width="4" height="7" rx="2"/><rect x="17" y="12" width="4" height="7" rx="2"/><path d="M17 19a5 5 0 0 1-5 2h-1"/></svg></a><button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float prelogin-floating ${globalRefreshInProgress?'is-refreshing':''}" style="bottom:18px;right:18px;left:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#1426A5;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,38,165,.30);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" width="20" height="20"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
+var reg=state.accountAuthMode==='register';
+document.title=reg?'تسجيل عميل جديد | حمزاوي سات':'تسجيل دخول العميل | حمزاوي سات';
+var h='<main class="account-gate" style="background:#EEF2FF;';
+h+='min-height:100svh;min-height:100dvh;';
+h+='padding-top:max(1rem,env(safe-area-inset-top));';
+h+='padding-bottom:max(1rem,env(safe-area-inset-bottom));';
+h+='width:100%;box-sizing:border-box;display:flex;';
+h+='flex-direction:column;align-items:center;';
+h+='justify-content:flex-start">';
+h+='<div class="w-full max-w-[440px] mx-auto px-4" ';
+h+='style="margin-top:0;margin-bottom:0;box-sizing:border-box;flex:1;display:flex;flex-direction:column;justify-content:center">';
+var Q=String.fromCharCode(39);
+h+='<div class="flex w-full justify-between mb-4">';
+h+='<button type="button" onclick="window.location.href=' + Q + '/' + Q + '" ';
+h+='class="h-10 px-4 rounded-xl border border-slate-200 bg-white ';
+h+='text-[15px] font-extrabold" style="background:#FFFFFF!important;';
+h+='color:#101F9B!important">‹ الصفحة الرئيسية</button>';
+h+='<button type="button" onclick="goBack()" ';
+h+='class="h-10 px-4 rounded-xl border border-slate-200 bg-white ';
+h+='text-[15px] font-extrabold" style="background:#FFFFFF!important;';
+h+='color:#101F9B!important">رجوع ›</button></div>';
+h+='<div class="text-center mb-3"><div class="mx-auto w-[68px] h-[68px] ';
+h+='rounded-[28px] bg-white border border-slate-200 flex ';
+h+='items-center justify-center shadow-sm p-3">';
+h+='<img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" ';
+h+='alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>';
+h+='<h1 class="mt-2 text-[24px] font-black" style="color:#101F9B">حمزاوي سات</h1>';
+h+='<p class="mt-1 text-[15px] font-bold text-slate-500">';
+h+='خدماتك وشغلك... في مكان واحد</p>';
+h+='<div class="mt-4"><span class="inline-block px-4 py-1.5 rounded-full ';
+h+='bg-[#E8EDFF] text-[#101F9B] text-[14px] font-extrabold">حساب عميل</span></div>';
+h+='<h2 class="mt-2 text-[18px] font-black leading-7" ';
+h+='style="color:#101F9B">'+(reg?'تسجيل عميل جديد':'أهلاً بيك في حمزاوي سات')+'</h2>';
+h+='<p class="mt-1 text-[14px] text-slate-500">'+(reg?'أنشئ حساب عميل جديد '+
+'علشان تطلب الخدمات وتتابع طلباتك.':'سجّل دخولك علشان تطلب خدمة '+
+'وتتابع طلباتك من حسابك.')+'</p></div>';
+h+='<section class="account-panel mt-2 panel p-4" ';
+h+='style="border-radius:28px;width:100%;box-sizing:border-box">';
+h+='<div class="account-tabs flex justify-center" ';
+h+='style="padding:0!important;margin:0 0 20px!important;';
+h+='background:transparent!important;border:0!important;';
+h+='display:'+(reg?'flex':'none')+'!important">';
+h+='<button type="button" onclick="setAccountAuthMode(this.dataset.next)" ';
+h+='data-next="'+(reg?'login':'register')+'" ';
+h+='class="h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed ';
+h+='border-[#D5DDFE] text-[#172DAD] text-[12px] font-black ';
+h+='inline-flex items-center justify-center gap-1.5">';
+h+='<span>'+(reg?'لتسجيل الدخول':'لتسجيل عميل جديد')+'</span>';
+h+='<small class="underline decoration-dashed">اضغط هنا</small></button></div>';
+h+='<form class="space-y-4" onsubmit="submitClientAccount(event)">';
+if(reg&&clientReferralCodeFromUrl()){h+='<div class="rounded-xl border ';
+h+='border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold ';
+h+='text-emerald-800">تم فتح التسجيل من خلال دعوة صديق. ';
+h+='أكمل التسجيل لتفعيل الدعوة.</div>';}
+if(reg){h+='<div><label style="color:#101F9B;text-align:left;';
+h+='display:block;font-weight:800;font-size:15px">الاسم بالكامل</label>';
+h+='<input id="accountName" required minlength="2" maxlength="50" ';
+h+='autocomplete="name" class="field" style="height:52px!important;font-size:15px!important" placeholder="اكتب اسمك"></div>';}
+h+='<div><label style="color:#101F9B;text-align:left;';
+h+='display:block;font-weight:800;font-size:15px">رقم الهاتف</label>';
+h+='<input id="accountPhone" required type="tel" inputmode="tel" ';
+h+='autocomplete="tel" maxlength="20" class="field" style="height:52px!important;font-size:15px!important" ';
+h+='placeholder="01xxxxxxxxx" value="'+escAttr(reg?'':(state.accountLoginPhone||''))+'" dir="ltr"></div>';
+h+='<div><label style="color:#101F9B;text-align:left;';
+h+='display:block;font-weight:800;font-size:15px">كلمة السر</label>';
+h+='<input id="accountPassword" required type="password" ';
+h+='minlength="'+(reg?8:1)+'" maxlength="128" ';
+h+='autocomplete="'+(reg?'new-password':'current-password')+'" class="field" style="height:52px!important;font-size:15px!important" ';
+h+='placeholder="'+(reg?'8 أحرف على الأقل':'اكتب كلمة السر')+'" ';
+h+='value="'+escAttr(reg?'':(state.accountLoginPassword||''))+'"></div>';
+if(reg){h+='<div><label style="color:#101F9B;text-align:left;';
+h+='display:block;font-weight:800;font-size:15px">تأكيد كلمة السر</label>';
+h+='<input id="accountConfirmPassword" required type="password" ';
+h+='minlength="8" maxlength="128" autocomplete="new-password" ';
+h+='class="field" style="height:52px!important;font-size:15px!important" placeholder="أعد كتابة كلمة السر"></div>';}
+if(state.accountError){h+='<p class="rounded-xl bg-red-50 border ';
+h+='border-red-200 p-3 text-[11px] leading-5 font-bold text-red-700">';
+h+=escHtml(state.accountError)+'</p>';}
+if(!reg){h+='<div style="text-align:left"><a href="password.html?role=client&mode=recovery" ';
+h+='style="color:#101F9B;font-weight:800;font-size:15px;text-decoration:underline">';
+h+='نسيت كلمة السر؟ استعادة</a></div>';}
+h+='<button type="submit" '+(state.accountLoading?'disabled':'')+' ';
+h+='class="w-full h-[56px] rounded-2xl text-[18px] font-black" ';
+h+='style="background:#101F9B!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important">';
+h+=(state.accountLoading?'جاري التنفيذ...':reg?'إنشاء حساب العميل':'تسجيل الدخول');
+h+='</button></form>';
+if(!reg){h+='<button type="button" onclick="setAccountAuthMode(' + Q + 'register' + Q + ')" ';
+h+='class="w-full h-[56px] mt-4 rounded-2xl text-[18px] font-black" ';
+h+='style="background:#EEF2FF!important;color:#101F9B!important;-webkit-text-fill-color:#101F9B!important;';
+h+='border:1px solid #D5DDFE!important">إنشاء حساب عميل جديد</button>';}
+h+='<p class="mt-3 text-center text-[13px] text-slate-500">بياناتك وحسابك في أمان</p>';
+h+='<div class="mt-3 flex gap-2" ';
+h+='style="padding-bottom:max(0.5rem,env(safe-area-inset-bottom))">';
+h+='<a href="/download" class="flex-1 h-[52px] rounded-2xl ';
+h+='inline-flex items-center justify-center gap-1.5 text-[15px] font-black" ';
+h+='style="background:#101F9B!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important">⬇ تحميل التطبيق</a>';
+h+='<a href="/links" target="_blank" rel="noopener noreferrer" ';
+h+='class="flex-1 h-[52px] rounded-2xl inline-flex items-center ';
+h+='justify-center gap-1.5 text-[15px] font-black border border-slate-200" ';
+h+='style="background:#EEF2FF!important;color:#101F9B!important;-webkit-text-fill-color:#101F9B!important">🔗 منصات التواصل</a></div>';
+h+='</section></div></main>';
+document.getElementById('app').innerHTML=h+renderPublicContent();
 }
+
 function renderPublicContent(){
   const c=state.publicContent||{announcement:'',faqs:[]};
   const faqs=Array.isArray(c.faqs)?c.faqs:[];

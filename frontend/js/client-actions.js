@@ -5,7 +5,7 @@ function rememberClientTab(nextTab,fromBack=false){if(!fromBack&&state.tab!==nex
 function setTab(tab,fromBack=false){if(!['home','new','orders','track','wallet','subscriptions','store','complaint'].includes(tab))return;rememberClientTab(tab,fromBack);if(tab==='new')state.clientNewRequestChoice='';state.tab=tab;if(tab==='subscriptions')state.commerceView='available';render();if((tab==='home'||tab==='orders')&&state.accountToken&&typeof loadMyOrders==='function')loadMyOrders(false);if(tab==='wallet'&&state.accountToken&&typeof loadClientWallet==='function')loadClientWallet();if(tab==='subscriptions'&&state.accountToken&&typeof loadClientCommerce==='function')loadClientCommerce();if(tab==='store'&&state.accountToken&&typeof loadStoreForRole==='function')loadStoreForRole('client');}
 function chooseClientNewRequest(choice){if(choice==='store'){setTab('store');return;}if(choice==='technician'){state.clientNewRequestChoice='technician';render();}}
 function backToClientNewRequestChooser(){state.clientNewRequestChoice='';render();}
-function goBack(fromPopState=false){if(!fromPopState&&CLIENT_TAB_HISTORY.length){window.history.back();return true;}if(fromPopState&&CLIENT_TAB_HISTORY.length){const previous=CLIENT_TAB_HISTORY.pop();setTab(previous,true);return true;}return false;}
+function goBack(fromPopState=false){if(!fromPopState&&CLIENT_TAB_HISTORY.length){window.history.back();return true;}if(fromPopState&&CLIENT_TAB_HISTORY.length){const previous=CLIENT_TAB_HISTORY.pop();setTab(previous,true);return true;}window.location.href='/';return true;}
 function toggleService(){
   if(state.servicesLoading){if(state.servicesError)loadServices();return;}
   if(state.servicesError){loadServices();return;}
