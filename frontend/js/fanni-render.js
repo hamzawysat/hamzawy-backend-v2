@@ -19,18 +19,18 @@ function renderContent(){
  document.getElementById('app').innerHTML=`
  
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
- <header class="bg-white">
+ <style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
   <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-end gap-2">
     <span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span>
     <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
     <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px">S</div>
   </div>
   <div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF">
-    <button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button>
+    <button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;filter:grayscale(1) opacity(0.65);line-height:1">🔔${notificationBadge()}</button>
     <div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[24px] leading-none" style="color:#101F9B">حمزاوي سات</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">✎</span></div>
   </div>
 </header>
-<nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
+<style>.fanni-section-tab.is-active{background:#FFFFFF!important;background-image:none!important;box-shadow:none!important;color:#0A1EA5!important;border:0!important}.fanni-section-tab{background:transparent!important;border:0!important;box-shadow:none!important}</style><nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
    <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-5 gap-0.5">
     ${authenticated?[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'myOrders',icon:'📋',label:'الطلبات'},{id:'profile',icon:'👤',label:'حسابي'}].map(t=>{return `<button type="button" onclick="openTechnicianSection('${t.id}')" class="fanni-section-tab ${state.tab===t.id?'is-active':''}"><span class="fanni-section-tab-icon">${t.icon}</span><span class="fanni-section-tab-label">${t.label}</span></button>`}).join(''):`<button onclick="setTab('login')">🔑<span class="block text-[10px]">دخول</span></button><button onclick="setTab('register')">📝<span class="block text-[10px]">تسجيل</span></button><button onclick="goClient()">👥<span class="block text-[10px]">عميل</span></button><button onclick="setTab('register')">🧑‍🔧<span class="block text-[10px]">فني</span></button>`}
        
@@ -142,7 +142,7 @@ function renderContent(){
       </div>
       ${user?.acceptingOrders===false?'<div class="fanni-home-offline-note"><span>⚠️</span><span>أنت غير متصل ولن تستقبل طلبات جديدة. فعّل ON لاستقبال الطلبات.</span></div>':''}
 
-      <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner w-full" style="background:#0A1EA5;color:#FFFFFF;border-radius:24px;padding:20px 16px">
+      <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner w-full" style="background:#0A1EA5!important;background-image:none!important;color:#FFFFFF!important;border-radius:24px;padding:20px 16px">
         <span class="fanni-home-jobs-icon">💼</span>
         <span><strong style="color:#FFFFFF">فرص عمل متاحة</strong><small style="color:#E0E7FF">استكشف الطلبات المتاحة، واختَر المناسب لك وقدّم عرضك</small><em style="background:#FFFFFF;color:#0A1EA5;border-radius:12px;padding:8px 16px;display:inline-block;margin-top:12px">استكشف الفرص ←</em></span>
       </button>
@@ -166,7 +166,7 @@ function renderContent(){
       <style>@keyframes referralGlow{0%{box-shadow:0 0 0 0 rgba(10,30,165,0.35)}50%{box-shadow:0 0 0 8px rgba(10,30,165,0.12),0 0 22px rgba(10,30,165,0.35)}100%{box-shadow:0 0 0 0 rgba(10,30,165,0.35)}}</style><button type="button" onclick="openFanniReferralPage()" class="fanni-home-referral w-full" style="background:#DCE6FF;animation:referralGlow 2s ease-in-out infinite;border-radius:16px;padding:14px">
         <span class="fanni-home-referral-icon">🎁</span>
         <span><strong style="color:#0A1030">ادعُ صديقك واربح 150 جنيه مكافأة</strong><small>شارك رابط الدعوة واكسب رصيد لكل صديق ينضم</small></span>
-        <b style="background:#0A1EA5;color:#FFFFFF;border-radius:12px;padding:10px 16px;white-space:nowrap">دعوة الآن ←</b>
+        <b style="background:#0A1EA5!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border-radius:12px;padding:10px 16px;white-space:nowrap">دعوة الآن ←</b>
       </button>
 
       <div class="fanni-home-section-head" style="text-align:right;margin:16px 0 12px"><h3 style="color:#0A1030;font-size:24px;font-weight:900;line-height:1.2">إجراءات سريعة</h3></div>
