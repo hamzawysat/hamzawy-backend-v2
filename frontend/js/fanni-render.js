@@ -1,4 +1,4 @@
-
+<style>.no-yellow-btn:active,.no-yellow-btn:focus{background:#FFFFFF!important;color:#101F9B!important;box-shadow:none!important}</style>
 // login-shrink-fix: تصغير صفحة الدخول 12% بالـ JS مش بالـ HTML
 try{
   if(document && !document.getElementById('login-shrink2')){
@@ -52,7 +52,7 @@ function renderContent(){
  ${!authenticated?`
   <section class="account-gate fanni-login-gate mt-0 px-4 py-4 flex flex-col items-center justify-center" style="background:#EEF2FF;min-height:100vh;width:100%;margin-inline:auto;box-sizing:border-box"><style>header.bg-white{display:none!important}nav.fanni-browser-bottom-nav{display:none!important}html,body{overflow-x:hidden!important}main.fanni-browser-main{margin-inline:auto!important;max-width:440px!important;padding-inline:0!important;box-sizing:border-box!important}section.account-gate{margin-inline:auto!important;max-width:440px!important;width:100%!important;box-sizing:border-box!important;overflow-x:hidden!important}section.account-gate>div{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important}section.account-gate .account-panel{margin-inline:auto!important;max-width:100%!important;box-sizing:border-box!important;transform:none!important}</style>
    <div class="w-full max-w-[440px] mx-auto" style="margin-top:-20px;margin-inline:auto">
-    <div class="flex w-full justify-between mb-4"><button type="button" onclick="window.location.href='/'" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">‹ الصفحة الرئيسية</button><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
+    <div class="flex w-full justify-between mb-4"><button type="button" onclick="window.location.href='/'" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold no-yellow-btn" style="background:#FFFFFF!important;color:#101F9B!important">‹ الصفحة الرئيسية</button><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
     
     <div class="text-center mb-3">
      <div class="mx-auto w-[68px] h-[68px] rounded-[28px] bg-white border border-slate-200 flex items-center justify-center shadow-sm p-3"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
