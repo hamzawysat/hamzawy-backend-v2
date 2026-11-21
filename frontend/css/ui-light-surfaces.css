@@ -43,8 +43,8 @@
 :where(input,select,textarea,.field)::placeholder{color:#77736A!important;-webkit-text-fill-color:#77736A!important;opacity:1}
 :where(input,select,textarea,.field):focus{
   background-color:#FFFFFF!important;
-  border-color:#B88D3A!important;
-  outline-color:#B88D3A!important;
+  border-color:#172DAD!important;
+  outline-color:#172DAD!important;
 }
 /* Lighten legacy dark utility surfaces in content areas, not site headers/hero branding. */
 #app main :where(
@@ -96,8 +96,8 @@ html[data-sonaa-theme="fanni"] body #app :is(
   background-color:#F5E7C4!important;
   background-image:linear-gradient(145deg,#FFF7E5 0%,#F5E7C4 100%)!important;
   border-color:#DCC58F!important;
-  color:#3D3424!important;
-  -webkit-text-fill-color:#3D3424!important;
+  color:#FFFFFF!important;
+  -webkit-text-fill-color:#FFFFFF!important;
   text-shadow:none!important;
   box-shadow:0 2px 0 #E2D2AC,0 4px 10px rgba(61,52,36,.08),inset 0 1px 0 rgba(255,255,255,.9)!important;
 }
@@ -131,8 +131,8 @@ html[data-sonaa-theme="fanni"] body #app nav.fanni-dashboard-tabs button[class*=
   background:linear-gradient(145deg,#F9EDCF 0%,#F0E0B8 100%)!important;
   background-color:#F3E5C4!important;
   border-color:#DCC58F!important;
-  color:#3D3424!important;
-  -webkit-text-fill-color:#3D3424!important;
+  color:#FFFFFF!important;
+  -webkit-text-fill-color:#FFFFFF!important;
   box-shadow:0 2px 0 #E2D2AC!important;
 }
 html[data-sonaa-theme="client"] body #app nav.fixed.bottom-0 button *,
@@ -153,8 +153,8 @@ html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs button{
 html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs [aria-selected="true"],
 html[data-sonaa-theme="fanni"] body #app .fanni-wallet-tabs .fanni-wallet-tab-active{
   background:#F3E5C4!important;
-  color:#3D3424!important;
-  -webkit-text-fill-color:#3D3424!important;
+  color:#FFFFFF!important;
+  -webkit-text-fill-color:#FFFFFF!important;
   border-color:#DCC58F!important;
 }
 
@@ -215,7 +215,7 @@ html[data-sonaa-theme] body #app .service-chip .service-icon{
   --sonaa-tab-idle-end:#EAF0F8;
   --sonaa-tab-idle-border:#D5DFED;
   --sonaa-tab-idle-text:#344965;
-  --sonaa-tab-active-start:#FFF1BF;
+  --sonaa-tab-active-start:#2946C7;
   --sonaa-tab-active-end:#E5B65A;
   --sonaa-tab-active-border:#C99A3F;
   --sonaa-tab-active-text:#171A22;
@@ -487,13 +487,13 @@ html[data-sonaa-theme="fanni"] body #app .fanni-section-tab.is-active:not(#sonaa
 html[data-sonaa-theme="fanni"] body #app .fanni-orders-view-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
 html[data-sonaa-theme="admin"] body #app .admin-topup-owner-tab.is-active:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c),
 html[data-sonaa-theme="admin"] body #app [role="tab"][aria-selected="true"]:not(#sonaa-tab-a):not(#sonaa-tab-b):not(#sonaa-tab-c) {
-  background:linear-gradient(145deg,#FFF1BF,#E8C978)!important;
-  background-color:#FFF1BF!important;
-  background-image:linear-gradient(145deg,#FFF1BF,#E8C978)!important;
-  border-color:#B88D3A!important;
-  color:#3D3424!important;
-  -webkit-text-fill-color:#3D3424!important;
-  box-shadow:0 4px 0 #B88D3A,0 7px 12px rgba(169,130,46,.18),inset 0 1px 0 rgba(255,255,255,.55)!important;
+  background:linear-gradient(145deg,#2946C7 0%,#1426A5 60%,#07136E 100%)!important;
+  background-color:#1426A5!important;
+  background-image:linear-gradient(145deg,#2946C7 0%,#1426A5 60%,#07136E 100%)!important;
+  border-color:#172DAD!important;
+  color:#FFFFFF!important;
+  -webkit-text-fill-color:#FFFFFF!important;
+  box-shadow:0 3px 0 #07136E,0 5px 10px rgba(7,19,110,.16)!important;
 }
 
 /* === شيل كل الاصفر من الموقع كله - Override عام === */
