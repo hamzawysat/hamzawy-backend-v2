@@ -1,4 +1,5 @@
-<style>.no-yellow-btn:active,.no-yellow-btn:focus{background:#FFFFFF!important;color:#101F9B!important;box-shadow:none!important}</style>
+try{if(document && !document.getElementById('no-yellow-style')){var s=document.createElement('style');s.id='no-yellow-style';s.textContent='.no-yellow-btn:active,.no-yellow-btn:focus{background:#FFFFFF!important;color:#101F9B!important;box-shadow:none!important}';document.head.appendChild(s);}}catch(e){}
+
 // login-shrink-fix: تصغير صفحة الدخول 12% بالـ JS مش بالـ HTML
 try{
   if(document && !document.getElementById('login-shrink2')){
@@ -408,7 +409,7 @@ function renderContent(){
  </main>
 
  
-  ${`<style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>`:''}
+  ${globalRefreshInProgress?`<style>.global-refresh.is-refreshing svg{animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}</style>`:''}
   <style>.global-refresh-float{display:none!important}</style><button id="global-refresh" type="button" onclick="handleGlobalRefresh()" aria-label="تحديث البيانات" title="تحديث البيانات" class="global-refresh global-refresh-float ${authenticated?'':'prelogin-floating'} ${globalRefreshInProgress?'is-refreshing':''}" ${authenticated?'':'style="bottom:18px;left:18px;right:auto;top:auto;position:fixed;z-index:40;width:48px;height:48px;border-radius:9999px;background:#1426A5;border:2px solid #fff;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 20px rgba(20,38,165,.30);"' }><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 7v5h-5"/><path d="M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 17 5l3 7M4 12l3 7a7 7 0 0 0 11.4-2"/></svg></button>`;
  
 }
