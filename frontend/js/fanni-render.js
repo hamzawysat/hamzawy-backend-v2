@@ -36,7 +36,7 @@ function renderContent(){
   </div>
   <div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF">
     <button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button>
-    <div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[24px] leading-none" style="color:#101F9B">حمزاوي سات</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">🛰️</span></div>
+    <div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[24px] leading-none" style="color:#101F9B">لوحة الفني</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">🛰️</span></div>
   </div>
 </header>
 <style>nav.fanni-browser-bottom-nav button.fanni-section-tab.is-active, nav button.fanni-section-tab.is-active{background:#FFFFFF!important;background-image:none!important;box-shadow:none!important;color:#0A1EA5!important;border:0!important}.fanni-section-tab.is-active{background:#FFFFFF!important;background-image:none!important;box-shadow:none!important;color:#0A1EA5!important;border:0!important}.fanni-section-tab{background:transparent!important;border:0!important;box-shadow:none!important}</style><nav class="${isBrowserDashboard?'fanni-dashboard-tabs fanni-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t bg-white/95 backdrop-blur-xl safe-bottom'}">
@@ -54,12 +54,12 @@ function renderContent(){
    <div class="w-full max-w-[440px] mx-auto" style="margin-inline:auto">
     <div class="flex w-full justify-start mb-4"><button type="button" onclick="goBack()" class="h-10 px-4 rounded-xl border border-slate-200 bg-white text-[#101F9B] text-[15px] font-extrabold">رجوع ›</button></div>
     
-    <div class="text-center mb-6">
-     <div class="mx-auto w-[110px] h-[110px] rounded-[28px] bg-white border border-slate-200 flex items-center justify-center shadow-sm p-3"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
-     <h1 class="mt-4 text-[34px] font-black" style="color:#101F9B">حمزاوي سات</h1>
+    <div class="text-center mb-3">
+     <div class="mx-auto w-[84px] h-[84px] rounded-[28px] bg-white border border-slate-200 flex items-center justify-center shadow-sm p-3"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
+     <h1 class="mt-4 text-[28px] font-black" style="color:#101F9B">حمزاوي سات</h1>
      <p class="mt-1 text-[15px] font-bold text-slate-500">خدماتك وشغلك... في مكان واحد</p>
      <div class="mt-4"><span class="inline-block px-4 py-1.5 rounded-full bg-[#E8EDFF] text-[#101F9B] text-[14px] font-extrabold">حساب فني</span></div>
-     <h2 class="mt-4 text-[26px] font-black leading-9" style="color:#101F9B">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
+     <h2 class="mt-4 text-[21px] font-black leading-9" style="color:#101F9B">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
      <p class="mt-1 text-[14px] text-slate-500">${state.tab==='register'?'أنشئ حسابك وابدأ استقبال الطلبات':'سجّل دخولك وتابع فرص الشغل المتاحة ليك.'}</p>
     </div>
     <section class="fanni-login-panel account-panel mt-4 panel p-5 animate-fade" style="border-radius:28px;width:100%;margin-inline:auto;box-sizing:border-box">
