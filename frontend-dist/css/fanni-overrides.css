@@ -1,1 +1,185 @@
-#app .fanni-app-header .client-home-main-btn,#app .fanni-app-header button[aria-label="حسابي"],#app .fanni-app-header button[onclick="toggleNotifications()"]{transition:transform .16s,box-shadow .16s,filter .16s!important}#app .fanni-app-header button[aria-label="حسابي"]{box-shadow:0 3px 0 var(--sonaa-color-bfdbfe),0 6px 10px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header button[onclick="toggleNotifications()"]{box-shadow:0 3px 0 var(--sonaa-color-e8cf91),0 6px 10px var(--sonaa-color-92400e18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header .client-home-main-btn{box-shadow:0 3px 0 var(--sonaa-color-dbeafe),0 6px 10px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header button[aria-label="حسابي"]:active{transform:translateY(3px)!important;filter:brightness(.98)!important;box-shadow:0 1px 0 var(--sonaa-color-bfdbfe),0 3px 6px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header button[onclick="toggleNotifications()"]:active{transform:translateY(3px)!important;filter:brightness(.98)!important;box-shadow:0 1px 0 var(--sonaa-color-e8cf91),0 3px 6px var(--sonaa-color-92400e18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header .client-home-main-btn:active{filter:brightness(.98)!important;box-shadow:0 1px 0 var(--sonaa-color-dbeafe),0 3px 6px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}.global-refresh-float{opacity:1;transition:opacity .22s,transform .18s!important}.global-refresh-float.is-refreshing,.global-refresh-float:disabled{opacity:.32!important;cursor:wait!important}body .fanni-login-gate .account-switch-link,body .fanni-login-gate .account-switch-link small,body .fanni-login-gate .account-switch-link span,body .fanni-login-gate .fanni-login-tabs button.account-switch-link,body .fanni-login-gate .fanni-login-tabs button.account-switch-link small,body .fanni-login-gate .fanni-login-tabs button.account-switch-link span{background:linear-gradient(145deg,#f4f6ff,#e8edff)!important;background-color:#f4f6ff!important;background-image:linear-gradient(145deg,#f4f6ff,#e8edff)!important;border-color:#d5ddfe!important;color:#172dad!important;-webkit-text-fill-color:#172DAD!important;box-shadow:0 3px 0 #d8c79f,0 5px 10px rgba(23,26,34,.08)!important;text-shadow:none!important}body .fanni-login-gate .account-switch-link small,body .fanni-login-gate .fanni-login-tabs button.account-switch-link small{-webkit-text-fill-color:#61758A!important}#app .fanni-app-header .client-home-main-btn,body .fanni-login-gate .account-top-nav .account-home-btn,body .fanni-login-gate nav .account-home-btn,body .fanni-login-gate nav a{background:linear-gradient(145deg,#d5ddfe 0,#172dad 100%)!important;background-color:#d5ddfe!important;border:1px solid #172dad!important;color:#18324f!important;-webkit-text-fill-color:#18324F!important;box-shadow:0 3px 0 #07136e,0 6px 11px rgba(23,26,34,.12),inset 0 1px 0 rgba(255,255,255,.35)!important}#app .fanni-app-header .client-home-main-btn:active,body .fanni-login-gate .account-home-btn:active,body .fanni-login-gate nav a:active{transform:translateY(2px)!important}body .account-gate .account-switch-link,body .fanni-login-gate .account-switch-link,body .fanni-login-gate .fanni-login-tabs button.account-switch-link{min-height:36px!important;height:36px!important;padding:6px 16px!important;border:1px solid #d5ddfe!important;border-radius:9999px!important;background:linear-gradient(145deg,#f4f6ff 0,#e8edff 100%)!important;background-color:#f4f6ff!important;background-image:linear-gradient(145deg,#f4f6ff 0,#e8edff 100%)!important;color:#18324f!important;-webkit-text-fill-color:#18324F!important;box-shadow:0 3px 0 #172dad,0 6px 12px rgba(41,70,199,.12)!important;text-shadow:none!important;transition:transform .16s,box-shadow .16s,filter .16s!important}body .account-gate .account-switch-link small,body .account-gate .account-switch-link span,body .fanni-login-gate .account-switch-link small,body .fanni-login-gate .account-switch-link span,body .fanni-login-gate .fanni-login-tabs button.account-switch-link small,body .fanni-login-gate .fanni-login-tabs button.account-switch-link span{color:#172dad!important;-webkit-text-fill-color:#172DAD!important;background:0 0!important;text-shadow:none!important}body .account-gate .account-switch-link:hover,body .fanni-login-gate .account-switch-link:hover{filter:brightness(.98)!important;box-shadow:0 4px 0 #172dad,0 8px 15px rgba(41,70,199,.14)!important}body .account-gate .account-switch-link:active,body .fanni-login-gate .account-switch-link:active{transform:translateY(2px)!important;box-shadow:0 1px 0 #172dad!important}body .account-gate .account-switch-link:focus-visible,body .fanni-login-gate .account-switch-link:focus-visible{outline:rgba(41,70,199,.3) solid 3px!important;outline-offset:3px!important}@media(prefers-reduced-motion:reduce){.global-refresh-float,body .account-gate .account-switch-link,body .fanni-login-gate .account-switch-link{transition:none!important}}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel{background:#fff!important;color:#172b3a!important;border-color:#d8e8e8!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel>div:first-child{background:#fff!important;color:#172b3a!important;border-color:#e2ecec!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button.fanni-notification-item{display:block!important;width:100%!important;text-align:right!important;border:0!important;border-bottom:1px solid #e5eeee!important;color:#173344!important;-webkit-text-fill-color:#173344!important;box-shadow:none!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button.fanni-notification-item.is-read{background:#fff!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button.fanni-notification-item.is-unread{background:#eaf5f4!important}html[data-sonaa-theme=fanni] body #app .fanni-notification-item b,html[data-sonaa-theme=fanni] body #app .fanni-notification-item small,html[data-sonaa-theme=fanni] body #app .fanni-notification-item span{color:#173344!important;-webkit-text-fill-color:#173344!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button[onclick="markAllNotificationsRead()"]{color:#087e78!important;-webkit-text-fill-color:#087E78!important;background:#eaf5f4!important;border:1px solid #c6e2df!important;border-radius:999px!important;padding:7px 11px!important}html[data-sonaa-theme=fanni] body #app .fanni-app-header button[onclick="toggleNotifications()"]{background:#eaf5f4!important;color:#087e78!important;-webkit-text-fill-color:#087E78!important;border-color:#c6e2df!important;box-shadow:0 3px 0 #c6e2df,0 6px 10px rgba(8,126,120,.1)!important}html[data-sonaa-theme=fanni] body #app .account-submit,html[data-sonaa-theme=fanni] body #app .primary-btn,html[data-sonaa-theme=fanni] body #app button.primary-btn,html[data-sonaa-theme=fanni] body #app button[type=submit]:not(.danger):not(.success){background:#087e78!important;border-color:#066a65!important;color:#fff!important;-webkit-text-fill-color:#FFFFFF!important;text-shadow:none!important;box-shadow:0 3px 0 #066a65,0 6px 12px rgba(8,126,120,.16)!important}html[data-sonaa-theme=fanni] body #app .primary-btn *,html[data-sonaa-theme=fanni] body #app button.primary-btn *,html[data-sonaa-theme=fanni] body #app button[type=submit]:not(.danger):not(.success) *{color:#fff!important;-webkit-text-fill-color:#FFFFFF!important}html[data-sonaa-theme=fanni] body #app .secondary-btn,html[data-sonaa-theme=fanni] body #app button.secondary-btn{background:#eaf5f4!important;border:1px solid #c6e2df!important;color:#14505a!important;-webkit-text-fill-color:#14505A!important;box-shadow:0 2px 0 #d5e9e7!important}
+#app .fanni-app-header .client-home-main-btn,#app .fanni-app-header button[aria-label="حسابي"],#app .fanni-app-header button[onclick="toggleNotifications()"]{transition:transform .16s,box-shadow .16s,filter .16s!important}#app .fanni-app-header button[aria-label="حسابي"]{box-shadow:0 3px 0 var(--sonaa-color-bfdbfe),0 6px 10px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header button[onclick="toggleNotifications()"]{box-shadow:0 3px 0 var(--sonaa-color-e8cf91),0 6px 10px var(--sonaa-color-92400e18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header .client-home-main-btn{box-shadow:0 3px 0 var(--sonaa-color-dbeafe),0 6px 10px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header button[aria-label="حسابي"]:active{transform:translateY(3px)!important;filter:brightness(.98)!important;box-shadow:0 1px 0 var(--sonaa-color-bfdbfe),0 3px 6px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header button[onclick="toggleNotifications()"]:active{transform:translateY(3px)!important;filter:brightness(.98)!important;box-shadow:0 1px 0 var(--sonaa-color-e8cf91),0 3px 6px var(--sonaa-color-92400e18),inset 0 1px 0 var(--sonaa-color-fff)!important}#app .fanni-app-header .client-home-main-btn:active{filter:brightness(.98)!important;box-shadow:0 1px 0 var(--sonaa-color-dbeafe),0 3px 6px var(--sonaa-color-1e3a8a18),inset 0 1px 0 var(--sonaa-color-fff)!important}.global-refresh-float{opacity:1;transition:opacity .22s,transform .18s!important}.global-refresh-float.is-refreshing,.global-refresh-float:disabled{opacity:.32!important;cursor:wait!important}body .fanni-login-gate .account-switch-link,body .fanni-login-gate .account-switch-link small,body .fanni-login-gate .account-switch-link span,body .fanni-login-gate .fanni-login-tabs button.account-switch-link,body .fanni-login-gate .fanni-login-tabs button.account-switch-link small,body .fanni-login-gate .fanni-login-tabs button.account-switch-link span{background:linear-gradient(145deg,#f4f6ff,#e8edff)!important;background-color:#f4f6ff!important;background-image:linear-gradient(145deg,#f4f6ff,#e8edff)!important;border-color:#d5ddfe!important;color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;box-shadow:0 3px 0 #d8c79f,0 5px 10px rgba(23,26,34,.08)!important;text-shadow:none!important}body .fanni-login-gate .account-switch-link small,body .fanni-login-gate .fanni-login-tabs button.account-switch-link small{-webkit-text-fill-color:#61758A!important}#app .fanni-app-header .client-home-main-btn,body .fanni-login-gate .account-top-nav .account-home-btn,body .fanni-login-gate nav .account-home-btn,body .fanni-login-gate nav a{background:linear-gradient(145deg,#d5ddfe 0,#2E7CF6 100%)!important;background-color:#d5ddfe!important;border:1px solid #2E7CF6!important;color:#18324f!important;-webkit-text-fill-color:#18324F!important;box-shadow:0 3px 0 #1D5ED6,0 6px 11px rgba(23,26,34,.12),inset 0 1px 0 rgba(255,255,255,.35)!important}#app .fanni-app-header .client-home-main-btn:active,body .fanni-login-gate .account-home-btn:active,body .fanni-login-gate nav a:active{transform:translateY(2px)!important}body .account-gate .account-switch-link,body .fanni-login-gate .account-switch-link,body .fanni-login-gate .fanni-login-tabs button.account-switch-link{min-height:36px!important;height:36px!important;padding:6px 16px!important;border:1px solid #d5ddfe!important;border-radius:9999px!important;background:linear-gradient(145deg,#f4f6ff 0,#e8edff 100%)!important;background-color:#f4f6ff!important;background-image:linear-gradient(145deg,#f4f6ff 0,#e8edff 100%)!important;color:#18324f!important;-webkit-text-fill-color:#18324F!important;box-shadow:0 3px 0 #2E7CF6,0 6px 12px rgba(41,70,199,.12)!important;text-shadow:none!important;transition:transform .16s,box-shadow .16s,filter .16s!important}body .account-gate .account-switch-link small,body .account-gate .account-switch-link span,body .fanni-login-gate .account-switch-link small,body .fanni-login-gate .account-switch-link span,body .fanni-login-gate .fanni-login-tabs button.account-switch-link small,body .fanni-login-gate .fanni-login-tabs button.account-switch-link span{color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;background:0 0!important;text-shadow:none!important}body .account-gate .account-switch-link:hover,body .fanni-login-gate .account-switch-link:hover{filter:brightness(.98)!important;box-shadow:0 4px 0 #2E7CF6,0 8px 15px rgba(41,70,199,.14)!important}body .account-gate .account-switch-link:active,body .fanni-login-gate .account-switch-link:active{transform:translateY(2px)!important;box-shadow:0 1px 0 #2E7CF6!important}body .account-gate .account-switch-link:focus-visible,body .fanni-login-gate .account-switch-link:focus-visible{outline:rgba(41,70,199,.3) solid 3px!important;outline-offset:3px!important}@media(prefers-reduced-motion:reduce){.global-refresh-float,body .account-gate .account-switch-link,body .fanni-login-gate .account-switch-link{transition:none!important}}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel{background:#fff!important;color:#172b3a!important;border-color:#d8e8e8!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel>div:first-child{background:#fff!important;color:#172b3a!important;border-color:#e2ecec!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button.fanni-notification-item{display:block!important;width:100%!important;text-align:right!important;border:0!important;border-bottom:1px solid #e5eeee!important;color:#173344!important;-webkit-text-fill-color:#173344!important;box-shadow:none!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button.fanni-notification-item.is-read{background:#fff!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button.fanni-notification-item.is-unread{background:#eaf5f4!important}html[data-sonaa-theme=fanni] body #app .fanni-notification-item b,html[data-sonaa-theme=fanni] body #app .fanni-notification-item small,html[data-sonaa-theme=fanni] body #app .fanni-notification-item span{color:#173344!important;-webkit-text-fill-color:#173344!important}html[data-sonaa-theme=fanni] body #app .fanni-notifications-panel button[onclick="markAllNotificationsRead()"]{color:#087e78!important;-webkit-text-fill-color:#087E78!important;background:#eaf5f4!important;border:1px solid #c6e2df!important;border-radius:999px!important;padding:7px 11px!important}html[data-sonaa-theme=fanni] body #app .fanni-app-header button[onclick="toggleNotifications()"]{background:#eaf5f4!important;color:#087e78!important;-webkit-text-fill-color:#087E78!important;border-color:#c6e2df!important;box-shadow:0 3px 0 #c6e2df,0 6px 10px rgba(8,126,120,.1)!important}html[data-sonaa-theme=fanni] body #app .account-submit,html[data-sonaa-theme=fanni] body #app .primary-btn,html[data-sonaa-theme=fanni] body #app button.primary-btn,html[data-sonaa-theme=fanni] body #app button[type=submit]:not(.danger):not(.success){background:#087e78!important;border-color:#066a65!important;color:#fff!important;-webkit-text-fill-color:#FFFFFF!important;text-shadow:none!important;box-shadow:0 3px 0 #066a65,0 6px 12px rgba(8,126,120,.16)!important}html[data-sonaa-theme=fanni] body #app .primary-btn *,html[data-sonaa-theme=fanni] body #app button.primary-btn *,html[data-sonaa-theme=fanni] body #app button[type=submit]:not(.danger):not(.success) *{color:#fff!important;-webkit-text-fill-color:#FFFFFF!important}html[data-sonaa-theme=fanni] body #app .secondary-btn,html[data-sonaa-theme=fanni] body #app button.secondary-btn{background:#eaf5f4!important;border:1px solid #c6e2df!important;color:#14505a!important;-webkit-text-fill-color:#14505A!important;box-shadow:0 2px 0 #d5e9e7!important}
+
+/* === fix-2026-11-22: الكروت الكبيرة أفتح + زرار الدعوة في الفني === */
+/* الكارت الكبير في العميل والفني */
+.hero-card, .welcome-card, .main-hero, .service-hero, .job-hero,
+[class*="hero-card"], [class*="welcome-card"], [class*="hero-banner"],
+.client-hero, .fanni-hero, .hero, .banner-card {
+  background: #3A86F6 !important;
+  background-image: none !important;
+  border-color: #3A86F6 !important;
+}
+/* زرار الدعوة جوه كارت الدعوة - عميل وفني */
+[class*="invite"] button, [class*="invite"] .btn, [class*="invite"] a,
+[class*="referral"] button, [class*="referral"] .btn, [class*="referral"] a,
+[class*="share"] button, [class*="share"] .btn,
+.invite-btn, .referral-btn, .invite-card button, .referral-card button {
+  background: #2E7CF6 !important;
+  background-image: none !important;
+  border-color: #2E7CF6 !important;
+  color: #fff !important;
+}
+
+
+
+/* الزرار الصغير جوّاهم يبقى شفاف عشان الأبيض يبان */
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.9) !important;
+}
+
+/* === fix-pro-2026-11-22: شكل احترافي للتلاتة بس === */
+.client-home-hero, .fanni-home-jobs-banner {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 10px 24px rgba(30,91,230,.25) !important;
+  border: 0 !important;
+}
+.client-home-hero *, .fanni-home-jobs-banner * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+}
+.client-home-hero strong, .fanni-home-jobs-banner strong {
+  font-size: 20px !important; font-weight: 900 !important; line-height: 1.4 !important;
+}
+.client-home-hero span, .fanni-home-jobs-banner small {
+  font-weight: 600 !important; opacity: .88 !important;
+}
+/* الزرار اللي جوّا الكارت: أبيض سادة وكتابة زرقا */
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: #FFFFFF !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+  border: 0 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
+}
+/* أيقونة الكارت: دايرة شفافة */
+.client-home-hero-icon, .fanni-home-jobs-icon {
+  background: rgba(255,255,255,.18) !important;
+}
+/* زرار دعوة الفني: أزرق سادة وكتابة بيضا صافية من غير توهج */
+.fanni-home-referral b {
+  background: #2E7CF6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(46,124,246,.30) !important;
+}
+
+
+/* نفس لون التلاتة: تدرّج مش فاتح أوي */
+.panel, .client-home-stat-card, .fanni-home-stat-card,
+.client-home-action, .fanni-home-action,
+.client-home-referral, .fanni-home-referral,
+.client-home-dashboard .panel, .fanni-home-dashboard .panel,
+.client-orders-summary, .client-wallet-balance, .fanni-wallet-balance,
+[class*="wallet-balance"], .account-panel,
+.primary-btn, .blue-btn, button[class*="primary"],
+.client-submit-order-btn, .client-complaint-submit-btn, .client-complaint-track-btn {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-image: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(30,91,230,.22) !important;
+  border-radius: 20px !important;
+}
+/* نفس الكتابة: أبيض صافي من غير توهج + عريض */
+.panel *, .client-home-stat-card *, .fanni-home-stat-card *,
+.client-home-action *, .fanni-home-action *,
+.client-home-referral *, .fanni-home-referral *,
+.client-home-dashboard .panel *, .fanni-home-dashboard .panel *,
+.client-orders-summary *, .client-wallet-balance *, .fanni-wallet-balance *,
+[class*="wallet-balance"] *, .account-panel *,
+.primary-btn, .blue-btn, button[class*="primary"],
+.client-submit-order-btn, .client-complaint-submit-btn, .client-complaint-track-btn {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-weight: 800 !important;
+}
+.panel strong, .panel b, .panel h2, .panel h3, .panel h4,
+.client-home-stat-card strong, .fanni-home-stat-card strong,
+.client-home-action strong, .fanni-home-action strong {
+  font-weight: 900 !important;
+}
+/* الزرار اللي جوّه أي كارت: أبيض سادة وكتابته زرقا عشان يبان */
+.panel .primary-btn, .panel .blue-btn,
+.client-home-hero-cta, .fanni-home-jobs-banner em,
+.client-home-referral-cta, .fanni-home-referral b {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
+}
+/* لما تدوس على أي كارت أو زرار: يغمق سِنّة بس */
+.panel:active, .primary-btn:active, .blue-btn:active {
+  background: linear-gradient(135deg, #1A4FD0 0%, #2470E0 100%) !important;
+  background-image: linear-gradient(135deg, #1A4FD0 0%, #2470E0 100%) !important;
+}
+/* شيل أي بلوك قديم كان بيخلي الكروت الفاتحة كتابتها غامقة */
+
+
+/* === fix-readable-2026-11-22: الكروت الصغيرة بيضا وكتابتها غامقة === */
+/* شيل توحيد الأزرق اللي خلّى الكتابة بيضا على خلفية فاتحة */
+.panel, .client-home-stat-card, .fanni-home-stat-card,
+.client-home-action, .fanni-home-action,
+.client-home-dashboard .panel, .fanni-home-dashboard .panel {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border: 1px solid #E5E7EB !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.05) !important;
+}
+.panel *, .client-home-stat-card *, .fanni-home-stat-card *,
+.client-home-action *, .fanni-home-action *,
+.client-home-dashboard .panel *, .fanni-home-dashboard .panel * {
+  color: #1E293B !important;
+  -webkit-text-fill-color: #1E293B !important;
+  text-shadow: none !important;
+}
+.panel strong, .panel b, .panel h2, .panel h3, .panel h4,
+.client-home-stat-card strong, .fanni-home-stat-card strong,
+.client-home-action strong, .fanni-home-action strong {
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+  font-weight: 900 !important;
+}
+/* الأيقونة اللي جوّه الكارت الصغير تفضل فاتحة زي ما هي */
+.client-home-stat-icon, .fanni-home-stat-icon {
+  background: #E8EDFF !important;
+}
+/* كارت الدعوة: فاتح وكتابته غامقة، والزرار بس هو اللي أزرق */
+.client-home-referral, .fanni-home-referral {
+  background: #EEF2FF !important;
+  background-image: none !important;
+  border: 1px solid #D5DDFE !important;
+}
+.client-home-referral *, .fanni-home-referral * {
+  color: #1E293B !important;
+  -webkit-text-fill-color: #1E293B !important;
+}
+.client-home-referral-cta, .fanni-home-referral b {
+  background: linear-gradient(135deg, #1E5BE6, #2E7CF6) !important;
+  background-image: linear-gradient(135deg, #1E5BE6, #2E7CF6) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+/* الكروت الكبيرة التلاتة يفضلوا زي ما هم: أزرق + أبيض */
+.client-home-hero, .fanni-home-jobs-banner {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-image: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border: 0 !important;
+}
+.client-home-hero *, .fanni-home-jobs-banner * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+}

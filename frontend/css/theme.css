@@ -424,15 +424,15 @@
 
 /* Shared palette aligned with the authoritative Android app. */
 :root[data-sonaa-theme] {
-  --navy:#101F9B; --navy2:#07136E; --navy-light:#07136E;
-  --blue:#1426A5; --blue-dark:#2946C7; --blue2:#172DAD; --teal:#16A6A1;
+  --navy:#2E7CF6; --navy2:#1D5ED6; --navy-light:#1D5ED6;
+  --blue:#2E7CF6; --blue-dark:#3A86F6; --blue2:#2E7CF6; --teal:#16A6A1;
   --ink:#18324F; --text:#18324F; --page:#F4F8FC; --paper:#F4F8FC;
   --line:#D8E5F2; --border:#D8E5F2; --gold:#F5B928;
 }
 /* Keep legacy Tailwind arbitrary-color brand classes in sync with the shared palette. */
-:where([class*="bg-[#0b1b3a]"]) { background-color:#171a22!important; }
-:where([class*="text-[#0b1b3a]"]) { color:#171a22!important; }
-:where([class*="from-[#0b1b3a]"]) {
+:where([class*="bg-[#2E7CF6]"]) { background-color:#171a22!important; }
+:where([class*="text-[#2E7CF6]"]) { color:#171a22!important; }
+:where([class*="from-[#2E7CF6]"]) {
   --tw-gradient-from:#171a22!important;
   --tw-gradient-to:rgb(23 26 34 / 0)!important;
   --tw-gradient-stops:var(--tw-gradient-from),var(--tw-gradient-to)!important;
@@ -491,3 +491,188 @@ body{padding-bottom:calc(var(--store-ad-slot-height) + env(safe-area-inset-botto
 .store-ad-slot-link:focus-visible{outline:3px solid #d5aa4c;outline-offset:2px}
 @media(max-width:380px){:root{--store-ad-slot-height:70px}.store-ad-slot{gap:7px;padding-inline:8px}.store-ad-slot-image{flex-basis:46px;width:46px;height:46px}.store-ad-slot-name{font-size:11px}.store-ad-slot-price{font-size:11px}.store-ad-slot-link{min-height:32px;padding-inline:10px;font-size:9px}}
 @media(prefers-reduced-motion:reduce){.store-ad-slot{scroll-behavior:auto}}
+
+
+/* === fix-2026-11-22: الكروت الكبيرة أفتح + زرار الدعوة في الفني === */
+/* الكارت الكبير في العميل والفني */
+.hero-card, .welcome-card, .main-hero, .service-hero, .job-hero,
+[class*="hero-card"], [class*="welcome-card"], [class*="hero-banner"],
+.client-hero, .fanni-hero, .hero, .banner-card {
+  background: #3A86F6 !important;
+  background-image: none !important;
+  border-color: #3A86F6 !important;
+}
+/* زرار الدعوة جوه كارت الدعوة - عميل وفني */
+[class*="invite"] button, [class*="invite"] .btn, [class*="invite"] a,
+[class*="referral"] button, [class*="referral"] .btn, [class*="referral"] a,
+[class*="share"] button, [class*="share"] .btn,
+.invite-btn, .referral-btn, .invite-card button, .referral-card button {
+  background: #2E7CF6 !important;
+  background-image: none !important;
+  border-color: #2E7CF6 !important;
+  color: #fff !important;
+}
+
+
+
+/* الزرار الصغير جوّاهم يبقى شفاف عشان الأبيض يبان */
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.9) !important;
+}
+
+/* === fix-pro-2026-11-22: شكل احترافي للتلاتة بس === */
+.client-home-hero, .fanni-home-jobs-banner {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 10px 24px rgba(30,91,230,.25) !important;
+  border: 0 !important;
+}
+.client-home-hero *, .fanni-home-jobs-banner * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+}
+.client-home-hero strong, .fanni-home-jobs-banner strong {
+  font-size: 20px !important; font-weight: 900 !important; line-height: 1.4 !important;
+}
+.client-home-hero span, .fanni-home-jobs-banner small {
+  font-weight: 600 !important; opacity: .88 !important;
+}
+/* الزرار اللي جوّا الكارت: أبيض سادة وكتابة زرقا */
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: #FFFFFF !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+  border: 0 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
+}
+/* أيقونة الكارت: دايرة شفافة */
+.client-home-hero-icon, .fanni-home-jobs-icon {
+  background: rgba(255,255,255,.18) !important;
+}
+/* زرار دعوة الفني: أزرق سادة وكتابة بيضا صافية من غير توهج */
+.fanni-home-referral b {
+  background: #2E7CF6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(46,124,246,.30) !important;
+}
+
+
+/* نفس لون التلاتة: تدرّج مش فاتح أوي */
+.panel, .client-home-stat-card, .fanni-home-stat-card,
+.client-home-action, .fanni-home-action,
+.client-home-referral, .fanni-home-referral,
+.client-home-dashboard .panel, .fanni-home-dashboard .panel,
+.client-orders-summary, .client-wallet-balance, .fanni-wallet-balance,
+[class*="wallet-balance"], .account-panel,
+.primary-btn, .blue-btn, button[class*="primary"],
+.client-submit-order-btn, .client-complaint-submit-btn, .client-complaint-track-btn {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-image: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(30,91,230,.22) !important;
+  border-radius: 20px !important;
+}
+/* نفس الكتابة: أبيض صافي من غير توهج + عريض */
+.panel *, .client-home-stat-card *, .fanni-home-stat-card *,
+.client-home-action *, .fanni-home-action *,
+.client-home-referral *, .fanni-home-referral *,
+.client-home-dashboard .panel *, .fanni-home-dashboard .panel *,
+.client-orders-summary *, .client-wallet-balance *, .fanni-wallet-balance *,
+[class*="wallet-balance"] *, .account-panel *,
+.primary-btn, .blue-btn, button[class*="primary"],
+.client-submit-order-btn, .client-complaint-submit-btn, .client-complaint-track-btn {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-weight: 800 !important;
+}
+.panel strong, .panel b, .panel h2, .panel h3, .panel h4,
+.client-home-stat-card strong, .fanni-home-stat-card strong,
+.client-home-action strong, .fanni-home-action strong {
+  font-weight: 900 !important;
+}
+/* الزرار اللي جوّه أي كارت: أبيض سادة وكتابته زرقا عشان يبان */
+.panel .primary-btn, .panel .blue-btn,
+.client-home-hero-cta, .fanni-home-jobs-banner em,
+.client-home-referral-cta, .fanni-home-referral b {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
+}
+/* لما تدوس على أي كارت أو زرار: يغمق سِنّة بس */
+.panel:active, .primary-btn:active, .blue-btn:active {
+  background: linear-gradient(135deg, #1A4FD0 0%, #2470E0 100%) !important;
+  background-image: linear-gradient(135deg, #1A4FD0 0%, #2470E0 100%) !important;
+}
+/* شيل أي بلوك قديم كان بيخلي الكروت الفاتحة كتابتها غامقة */
+
+
+/* === fix-readable-2026-11-22: الكروت الصغيرة بيضا وكتابتها غامقة === */
+/* شيل توحيد الأزرق اللي خلّى الكتابة بيضا على خلفية فاتحة */
+.panel, .client-home-stat-card, .fanni-home-stat-card,
+.client-home-action, .fanni-home-action,
+.client-home-dashboard .panel, .fanni-home-dashboard .panel {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border: 1px solid #E5E7EB !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.05) !important;
+}
+.panel *, .client-home-stat-card *, .fanni-home-stat-card *,
+.client-home-action *, .fanni-home-action *,
+.client-home-dashboard .panel *, .fanni-home-dashboard .panel * {
+  color: #1E293B !important;
+  -webkit-text-fill-color: #1E293B !important;
+  text-shadow: none !important;
+}
+.panel strong, .panel b, .panel h2, .panel h3, .panel h4,
+.client-home-stat-card strong, .fanni-home-stat-card strong,
+.client-home-action strong, .fanni-home-action strong {
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+  font-weight: 900 !important;
+}
+/* الأيقونة اللي جوّه الكارت الصغير تفضل فاتحة زي ما هي */
+.client-home-stat-icon, .fanni-home-stat-icon {
+  background: #E8EDFF !important;
+}
+/* كارت الدعوة: فاتح وكتابته غامقة، والزرار بس هو اللي أزرق */
+.client-home-referral, .fanni-home-referral {
+  background: #EEF2FF !important;
+  background-image: none !important;
+  border: 1px solid #D5DDFE !important;
+}
+.client-home-referral *, .fanni-home-referral * {
+  color: #1E293B !important;
+  -webkit-text-fill-color: #1E293B !important;
+}
+.client-home-referral-cta, .fanni-home-referral b {
+  background: linear-gradient(135deg, #1E5BE6, #2E7CF6) !important;
+  background-image: linear-gradient(135deg, #1E5BE6, #2E7CF6) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+/* الكروت الكبيرة التلاتة يفضلوا زي ما هم: أزرق + أبيض */
+.client-home-hero, .fanni-home-jobs-banner {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-image: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border: 0 !important;
+}
+.client-home-hero *, .fanni-home-jobs-banner * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+}

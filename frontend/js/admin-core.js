@@ -86,7 +86,7 @@ let state={
 
 function showToast(msg,type='success'){
   const el=document.getElementById('toast'); if(!el)return;
-  const bg=type==='success'?'background:linear-gradient(135deg,#10b981,#059669)':type==='error'?'background:linear-gradient(135deg,#ef4444,#dc2626)':'background:linear-gradient(135deg,#f59e0b,#d97706)';
+  const bg=type==='success'?'background:linear-gradient(135deg,#2E7CF6,#2E7CF6)':type==='error'?'background:linear-gradient(135deg,#ef4444,#dc2626)':'background:linear-gradient(135deg,#f59e0b,#d97706)';
   el.innerHTML=`<div style="${bg}" class="pointer-events-auto mx-auto max-w-[640px] rounded-[16px] text-white text-[12px] font-bold px-4 py-3.5 shadow-2xl animate-fade flex items-center justify-between gap-3"><span>${escHtml(msg)}</span><button onclick="this.parentElement.remove()" class="shrink-0 h-8 px-3 bg-white/20 rounded-full text-[11px]">إغلاق</button></div>`;
   setTimeout(()=>{if(el.firstElementChild)el.innerHTML=''},4200);
 }

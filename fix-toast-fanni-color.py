@@ -1,0 +1,12 @@
+import pathlib
+p2 = pathlib.Path("frontend/js/client-account.js")
+t2 = p2.read_text(encoding="utf-8")
+t2 = t2.replace("'bg-emerald-600'", "'bg-[#2E7CF6]'")
+p2.write_text(t2, encoding="utf-8")
+p1 = pathlib.Path("frontend/js/admin-core.js")
+t1 = p1.read_text(encoding="utf-8")
+t1 = t1.replace("linear-gradient(135deg,#10b981,#059669)", "linear-gradient(135deg,#2E7CF6,#2E7CF6)")
+t1 = t1.replace("linear-gradient(135deg,#2563EB,#1E40AF)", "linear-gradient(135deg,#2E7CF6,#2E7CF6)")
+p1.write_text(t1, encoding="utf-8")
+print("client:", "bg-[#2E7CF6]" in p2.read_text(encoding="utf-8"))
+print("admin:", "#2E7CF6" in p1.read_text(encoding="utf-8"))

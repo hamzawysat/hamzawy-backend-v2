@@ -46,7 +46,7 @@ function render(){
     }
     renderAccountGate();return;
   }
-  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#101F9B]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
+  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#2E7CF6]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
   const matching=CATEGORIES.map(c=>({
@@ -62,7 +62,7 @@ function render(){
   
   
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
-  <header class="bg-white"><div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-center gap-2" style="direction:rtl;position:relative"><div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">S</div><div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div><span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span></div><div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF"><div class="flex items-center gap-1.5 shrink-0"><button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button><div class="flex items-center gap-1.5 shrink-0"><a href="/" class="h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap" style="background:#E8EDFF;color:#101F9B;border:1px solid #D5DDFE">القائمة الرئيسية</a><a href="/download" class="h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap" style="background:#E8F5E9;color:#1B7A2E;border:1px solid #C8E6C9">تحميل التطبيق</a></div></div><div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[17px] leading-none whitespace-nowrap" style="color:#101F9B">لوحة العميل</span><span aria-hidden="true" style="color:#101F9B;font-size:20px">🛰️</span></div></div></header>
+  <header class="bg-white"><div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-center gap-2" style="direction:rtl;position:relative"><div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#2E7CF6;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">${escHtml(String(state.account?.name||state.clientName||"ح").trim().charAt(0)||"ح")}</div><div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div><span class="font-extrabold text-[20px] leading-none" style="color:#2E7CF6">حمزاوي سات</span></div><div class="mx-auto w-full max-w-[640px] px-4 py-2 flex items-center justify-between gap-2" style="border-top:1px solid #EEF2FF"><div class="flex items-center gap-1.5 shrink-0"><button type="button" onclick="toggleNotifications()" aria-label="الاشعارات" title="الاشعارات" class="relative h-9 w-9 flex items-center justify-center shrink-0" style="color:#94A3B8;font-size:24px;line-height:1">🔔${notificationBadge()}</button><div class="flex items-center gap-1.5 shrink-0"><a href="/" class="h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap" style="background:#E8EDFF;color:#2E7CF6;border:1px solid #D5DDFE">القائمة الرئيسية</a><a href="/download" class="h-9 px-3 rounded-xl inline-flex items-center justify-center text-[11px] font-extrabold whitespace-nowrap" style="background:#E8F5E9;color:#1B7A2E;border:1px solid #C8E6C9">تحميل التطبيق</a></div></div><div class="flex items-center gap-1 min-w-0"><span class="font-extrabold text-[17px] leading-none whitespace-nowrap" style="color:#2E7CF6">لوحة العميل</span><span aria-hidden="true" style="color:#2E7CF6;font-size:20px">🛰️</span></div></div></header>
 <nav class="${isBrowserDashboard?'client-section-tabs client-browser-bottom-nav border-t border-slate-200 bg-white/95 backdrop-blur-xl shadow-sm safe-bottom':'fixed bottom-0 inset-x-0 z-30 border-t border-slate-200 bg-white/95 backdrop-blur-xl safe-bottom'}">
     <div class="mx-auto max-w-[680px] px-1 h-[70px] grid grid-cols-5 gap-0.5">
       ${[{id:'home',icon:'⌂',label:'الرئيسية'},{id:'store',icon:'🛍️',label:'المتجر'},{id:'wallet',icon:'💳',label:'المحفظة'},{id:'orders',icon:'📋',label:'الطلبات'},{id:'profile',icon:'👤',label:'حسابي'}].map(t=>`
@@ -86,7 +86,7 @@ function render(){
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
-        <button type="button" onclick="setTab('new')" class="client-home-hero" style="background:#092D9E;color:#FFFFFF">
+        <button type="button" onclick="setTab('new')" class="client-home-hero" style="background:#2E74E0;color:#FFFFFF">
           <span class="client-home-hero-copy">
             <strong>اطلب خدمتك بسهولة</strong>
             <span>اختار الخدمة المناسبة وهنوصلك بالفني</span>
@@ -295,12 +295,12 @@ function render(){
         <div class="mx-auto h-16 w-16 rounded-2xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-[28px] text-emerald-600">✓</div>
         <h3 class="mt-4 text-[19px] font-extrabold">تم إنشاء طلبك بنجاح!</h3>
         <p class="mt-1 text-[12px] text-slate-500">تقدر تتابع طلبك من حسابك في قسم «طلباتي» من غير ما تدخل الرقم كل مرة</p>
-        <div class="mt-5 rounded-[16px] bg-gradient-to-l from-[#101F9B] to-[#1426A5] p-4 flex items-center justify-between gap-3">
+        <div class="mt-5 rounded-[16px] bg-gradient-to-l from-[#2E7CF6] to-[#2E7CF6] p-4 flex items-center justify-between gap-3">
           <div class="text-right min-w-0">
             <p class="text-[11px] text-[#E8EDFF]">رقم الطلب</p>
             <p class="mt-1 text-[22px] font-black text-white tracking-wider select-all break-all">${escHtml(state.sn)}</p>
           </div>
-          <button type="button" onclick="copySn()" class="shrink-0 h-10 px-4 rounded-xl bg-white text-[#101F9B] font-extrabold text-[12px]">نسخ الكود</button>
+          <button type="button" onclick="copySn()" class="shrink-0 h-10 px-4 rounded-xl bg-white text-[#2E7CF6] font-extrabold text-[12px]">نسخ الكود</button>
         </div>
         <div class="mt-4 rounded-xl bg-[#E8EDFF] border border-[#D5DDFE] p-3 text-[11px] text-blue-900 font-bold leading-6">متابعة الطلبات وقبول العروض متاحان من حسابك في قسم «طلباتي».</div>
         <div class="mt-5 grid grid-cols-2 gap-2">

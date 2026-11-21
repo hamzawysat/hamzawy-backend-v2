@@ -37,7 +37,7 @@
     if(!b){
       b=document.createElement('button');
       b.id='sonaa-web-push-enable';b._sonaaKey=key;b.type='button';
-      b.style.cssText='position:relative;z-index:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:max-content;max-width:calc(100% - 24px);min-height:34px;margin:7px auto;padding:7px 12px;border:1px solid #bfdbfe;border-radius:10px;background:#fff;color:#12305b;font:700 12px system-ui;line-height:1.35;white-space:normal;text-align:center;box-shadow:0 2px 8px #0b1b3a12';
+      b.style.cssText='position:relative;z-index:1;display:flex;align-items:center;justify-content:center;box-sizing:border-box;width:max-content;max-width:calc(100% - 24px);min-height:34px;margin:7px auto;padding:7px 12px;border:1px solid #bfdbfe;border-radius:10px;background:#fff;color:#12305b;font:700 12px system-ui;line-height:1.35;white-space:normal;text-align:center;box-shadow:0 2px 8px #2E7CF612';
       b.onclick=()=>enable(b,a);
       document.body.appendChild(b);
     }
@@ -45,6 +45,8 @@
     b.disabled=false;
     // Keep the opt-in prompt in normal page flow, immediately below the sticky dashboard header.
     // This prevents it from covering header actions or dashboard controls.
+    const settingsSlot=document.getElementById('profile')||[...document.querySelectorAll('section')].find(s=>s.textContent.includes('بيانات حسابي'));
+    if(settingsSlot&&b.parentElement!==settingsSlot){settingsSlot.appendChild(b);b.style.width='100%';b.style.margin='12px 0 0';return;}
     const app=document.getElementById('app');
     const shell=app?.querySelector('.dashboard-top-shell');
     if(app&&b.parentElement!==app){
@@ -107,9 +109,17 @@
       hiddenFor=accountKey(a);checkedFor=hiddenFor;removeButton(hiddenFor);
     }catch(e){checkedFor=accountKey(a);alert(e.message||'تعذر التفعيل.');b.textContent=old;b.disabled=false;}
   }
+  function isSettingsPage(){
+    const path=String(location.pathname||'').toLowerCase();
+    if(path.includes('password')) return true;
+    const active=document.querySelector('button.fanni-section-tab.is-active');
+    if(active && String(active.getAttribute('onclick')||'').includes("'profile'")) return true;
+    return false;
+  }
   function mount(a){
     const b=document.getElementById('sonaa-web-push-enable');
     if(!a){if(b)b.remove();return;}
+    if(!isSettingsPage()){removeButton();return;}
     const key=accountKey(a);
     if(b&&b._sonaaKey!==key){b.remove();}
     if(hiddenFor===key){removeButton(key);return;}

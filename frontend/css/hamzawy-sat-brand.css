@@ -11,10 +11,10 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) {
   --hs-border: #D8E5F2;
   --hs-text: #18324F;
   --hs-muted: #61758A;
-  --hs-navy: #101F9B;
-  --hs-indigo-900: #07136E;
-  --hs-indigo-700: #172DAD;
-  --hs-indigo-500: #2946C7;
+  --hs-navy: #2E7CF6;
+  --hs-indigo-900: #1D5ED6;
+  --hs-indigo-700: #2E7CF6;
+  --hs-indigo-500: #3A86F6;
   --hs-indigo-400: #526BE0;
   --hs-indigo-200: #D5DDFE;
   --hs-indigo-100: #E8EDFF;
@@ -29,30 +29,30 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) {
 
 /* Legacy page tokens mapped to the same semantic palette used by hamzawy-app. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) {
-  --sonaa-color-0b1b3a: #101F9B;
-  --sonaa-color-0b1b3a08: #101F9B08;
-  --sonaa-color-0b1b3a0a: #101F9B0a;
-  --sonaa-color-0b1b3a0b: #101F9B0b;
-  --sonaa-color-0b1b3a0c: #101F9B0c;
-  --sonaa-color-0b1b3a0d: #101F9B0d;
-  --sonaa-color-0b1b3a0e: #101F9B0e;
-  --sonaa-color-0b1b3a10: #101F9B10;
-  --sonaa-color-0b1b3a12: #101F9B12;
-  --sonaa-color-0b1b3a13: #101F9B13;
-  --sonaa-color-0b1b3a14: #101F9B14;
-  --sonaa-color-0b1b3a15: #101F9B15;
-  --sonaa-color-0b1b3a16: #101F9B16;
-  --sonaa-color-0b1b3a18: #101F9B18;
-  --sonaa-color-0b1b3a1c: #101F9B1c;
-  --sonaa-color-0b1b3a20: #101F9B20;
-  --sonaa-color-0b1b3a24: #101F9B24;
-  --sonaa-color-0b1b3a25: #101F9B25;
-  --sonaa-color-0b1b3a28: #101F9B28;
-  --sonaa-color-0b1b3a2c: #101F9B2c;
-  --sonaa-color-0b1b3a30: #101F9B30;
-  --sonaa-color-0b1b3a35: #101F9B35;
-  --sonaa-color-0b1b3a38: #101F9B38;
-  --sonaa-color-0b1b3ab8: #101F9Bb8;
+  --sonaa-color-0b1b3a: #2E7CF6;
+  --sonaa-color-0b1b3a08: #2E7CF608;
+  --sonaa-color-0b1b3a0a: #2E7CF60a;
+  --sonaa-color-0b1b3a0b: #2E7CF60b;
+  --sonaa-color-0b1b3a0c: #2E7CF60c;
+  --sonaa-color-0b1b3a0d: #2E7CF60d;
+  --sonaa-color-0b1b3a0e: #2E7CF60e;
+  --sonaa-color-0b1b3a10: #2E7CF610;
+  --sonaa-color-0b1b3a12: #2E7CF612;
+  --sonaa-color-0b1b3a13: #2E7CF613;
+  --sonaa-color-0b1b3a14: #2E7CF614;
+  --sonaa-color-0b1b3a15: #2E7CF615;
+  --sonaa-color-0b1b3a16: #2E7CF616;
+  --sonaa-color-0b1b3a18: #2E7CF618;
+  --sonaa-color-0b1b3a1c: #2E7CF61c;
+  --sonaa-color-0b1b3a20: #2E7CF620;
+  --sonaa-color-0b1b3a24: #2E7CF624;
+  --sonaa-color-0b1b3a25: #2E7CF625;
+  --sonaa-color-0b1b3a28: #2E7CF628;
+  --sonaa-color-0b1b3a2c: #2E7CF62c;
+  --sonaa-color-0b1b3a30: #2E7CF630;
+  --sonaa-color-0b1b3a35: #2E7CF635;
+  --sonaa-color-0b1b3a38: #2E7CF638;
+  --sonaa-color-0b1b3ab8: #2E7CF6b8;
   --sonaa-color-0d9488: #16A6A1;
   --sonaa-color-0d94881c: #16A6A11c;
   --sonaa-color-0f172a: #18324F;
@@ -69,32 +69,32 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) {
   --sonaa-color-15254412: #18324F12;
   --sonaa-color-15254418: #18324F18;
   --sonaa-color-1525441b: #18324F1b;
-  --sonaa-color-173c6c: #07136E;
-  --sonaa-color-1d4ed8: #2946C7;
-  --sonaa-color-1d4ed810: #2946C710;
-  --sonaa-color-1d4ed814: #2946C714;
-  --sonaa-color-1d4ed818: #2946C718;
-  --sonaa-color-1d4ed81a: #2946C71a;
-  --sonaa-color-1d4ed820: #2946C720;
-  --sonaa-color-1d4ed82b: #2946C72b;
-  --sonaa-color-1d4ed82c: #2946C72c;
-  --sonaa-color-1d4ed82e: #2946C72e;
-  --sonaa-color-1e3a8a: #1426A5;
-  --sonaa-color-1e3a8a10: #1426A510;
-  --sonaa-color-1e3a8a12: #1426A512;
-  --sonaa-color-1e3a8a15: #1426A515;
-  --sonaa-color-1e3a8a18: #1426A518;
-  --sonaa-color-1e3a8a66: #1426A566;
-  --sonaa-color-2563eb: #172DAD;
-  --sonaa-color-2563eb0b: #172DAD0b;
-  --sonaa-color-2563eb15: #172DAD15;
-  --sonaa-color-2563eb18: #172DAD18;
-  --sonaa-color-2563eb1a: #172DAD1a;
-  --sonaa-color-2563eb1f: #172DAD1f;
-  --sonaa-color-2563eb20: #172DAD20;
-  --sonaa-color-2563eb25: #172DAD25;
-  --sonaa-color-2563eb30: #172DAD30;
-  --sonaa-color-2563eb35: #172DAD35;
+  --sonaa-color-173c6c: #1D5ED6;
+  --sonaa-color-1d4ed8: #3A86F6;
+  --sonaa-color-1d4ed810: #3A86F610;
+  --sonaa-color-1d4ed814: #3A86F614;
+  --sonaa-color-1d4ed818: #3A86F618;
+  --sonaa-color-1d4ed81a: #3A86F61a;
+  --sonaa-color-1d4ed820: #3A86F620;
+  --sonaa-color-1d4ed82b: #3A86F62b;
+  --sonaa-color-1d4ed82c: #3A86F62c;
+  --sonaa-color-1d4ed82e: #3A86F62e;
+  --sonaa-color-1e3a8a: #2E7CF6;
+  --sonaa-color-1e3a8a10: #2E7CF610;
+  --sonaa-color-1e3a8a12: #2E7CF612;
+  --sonaa-color-1e3a8a15: #2E7CF615;
+  --sonaa-color-1e3a8a18: #2E7CF618;
+  --sonaa-color-1e3a8a66: #2E7CF666;
+  --sonaa-color-2563eb: #2E7CF6;
+  --sonaa-color-2563eb0b: #2E7CF60b;
+  --sonaa-color-2563eb15: #2E7CF615;
+  --sonaa-color-2563eb18: #2E7CF618;
+  --sonaa-color-2563eb1a: #2E7CF61a;
+  --sonaa-color-2563eb1f: #2E7CF61f;
+  --sonaa-color-2563eb20: #2E7CF620;
+  --sonaa-color-2563eb25: #2E7CF625;
+  --sonaa-color-2563eb30: #2E7CF630;
+  --sonaa-color-2563eb35: #2E7CF635;
   --sonaa-color-3b82f6: #526BE0;
   --sonaa-color-3b82f612: #526BE012;
   --sonaa-color-3b82f625: #526BE025;
@@ -114,12 +114,12 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) {
   --sonaa-color-f5b92818: #F5B92818;
   --sonaa-color-f5b92830: #F5B92830;
   --sonaa-color-f8fafc: #F4F6FF;
-  --navy: #101F9B;
-  --navy2: #07136E;
-  --navy-light: #07136E;
-  --blue: #1426A5;
-  --blue-dark: #2946C7;
-  --blue2: #172DAD;
+  --navy: #2E7CF6;
+  --navy2: #1D5ED6;
+  --navy-light: #1D5ED6;
+  --blue: #2E7CF6;
+  --blue-dark: #3A86F6;
+  --blue2: #2E7CF6;
   --teal: #16A6A1;
   --ink: #18324F;
   --text: #18324F;
@@ -186,14 +186,14 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   button.primary,a.primary,button[type="submit"]:not(.danger):not(.success),
   .account-top-nav .account-home-btn
 ) {
-  background: linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
-  border: 1px solid #172DAD !important;
-  border-bottom: 3px solid #07136E !important;
+  background: linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
+  border: 1px solid #2E7CF6 !important;
+  border-bottom: 3px solid #1D5ED6 !important;
   border-radius: 15px !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
   font-weight: 900;
-  box-shadow: 0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
+  box-shadow: 0 4px 0 #1D5ED6,0 7px 13px rgba(7,19,110,.18) !important;
   text-shadow: none !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
@@ -202,7 +202,7 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .account-top-nav .account-home-btn
 ):active {
   transform: translateY(2px);
-  box-shadow: 0 1px 0 #07136E,0 2px 5px rgba(7,19,110,.15) !important;
+  box-shadow: 0 1px 0 #1D5ED6,0 2px 5px rgba(7,19,110,.15) !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .secondary-btn,.btn.secondary,.btn.light,button.secondary,a.secondary,
@@ -212,8 +212,8 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   border: 1px solid #D5DDFE !important;
   border-bottom: 3px solid #D5DDFE !important;
   border-radius: 13px !important;
-  color: #172DAD !important;
-  -webkit-text-fill-color: #172DAD !important;
+  color: #2E7CF6 !important;
+  -webkit-text-fill-color: #2E7CF6 !important;
   box-shadow: 0 3px 0 #D5DDFE,0 5px 9px rgba(41,70,199,.08) !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
@@ -235,13 +235,13 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   min-height: 44px;
   padding: 11px 14px;
   border-radius: 15px !important;
-  background: linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
-  border: 1px solid #172DAD !important;
-  border-bottom: 3px solid #07136E !important;
+  background: linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
+  border: 1px solid #2E7CF6 !important;
+  border-bottom: 3px solid #1D5ED6 !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
   font-weight: 900;
-  box-shadow: 0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
+  box-shadow: 0 4px 0 #1D5ED6,0 7px 13px rgba(7,19,110,.18) !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   button.btn.secondary,a.btn.secondary,.btn.secondary,
@@ -253,12 +253,12 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   background: linear-gradient(145deg,#FFFFFF 0%,#F4F6FF 100%) !important;
   border: 1px solid #D5DDFE !important;
   border-bottom: 3px solid #D5DDFE !important;
-  color: #172DAD !important;
-  -webkit-text-fill-color: #172DAD !important;
+  color: #2E7CF6 !important;
+  -webkit-text-fill-color: #2E7CF6 !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(button.btn.dark,.btn.dark) {
-  background: linear-gradient(145deg,#101F9B,#07136E) !important;
-  border-color: #07136E !important;
+  background: linear-gradient(145deg,#2E7CF6,#1D5ED6) !important;
+  border-color: #1D5ED6 !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
@@ -290,7 +290,7 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   [class*="bg-blue-600"],[class*="bg-blue-700"],[class*="bg-blue-800"],[class*="bg-indigo-600"],[class*="bg-indigo-700"],[class*="bg-indigo-800"]
 ) {
-  background: linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  background: linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
@@ -304,8 +304,8 @@ html[data-sonaa-theme="support"] body .btn.light,
 html[data-sonaa-theme="password"] body .btn.secondary,
 html[data-sonaa-theme="password"] body .btn.light {
   background: #F4F6FF !important;
-  color: #172DAD !important;
-  -webkit-text-fill-color: #172DAD !important;
+  color: #2E7CF6 !important;
+  -webkit-text-fill-color: #2E7CF6 !important;
   border: 1px solid #D5DDFE !important;
   box-shadow: 0 3px 0 #D5DDFE !important;
 }
@@ -354,7 +354,7 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app .app-header.fan
   border-color: var(--hs-border) !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app .app-header.fanni-app-header .client-home-main-btn {
-  background: linear-gradient(145deg,#2946C7,#07136E) !important;
+  background: linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
@@ -388,11 +388,11 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .account-tabs button.active,.fanni-wallet-tabs button.fanni-wallet-tab-active,
   nav.fixed.bottom-0 button.is-active,nav.fixed.bottom-0 button.active
 ) {
-  background: linear-gradient(145deg,#2946C7 0%,#1426A5 60%,#07136E 100%) !important;
-  border-color: #172DAD !important;
+  background: linear-gradient(145deg,#3A86F6 0%,#2E7CF6 60%,#1D5ED6 100%) !important;
+  border-color: #2E7CF6 !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
-  box-shadow: 0 3px 0 #07136E,0 5px 10px rgba(7,19,110,.16) !important;
+  box-shadow: 0 3px 0 #1D5ED6,0 5px 10px rgba(7,19,110,.16) !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .client-section-tab-icon,.fanni-section-tab-icon
@@ -428,11 +428,11 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   border-radius: 14px !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app .store-ad-slot .store-ad-slot-link {
-  background: linear-gradient(145deg,#2946C7,#07136E) !important;
-  border: 1px solid #172DAD !important;
+  background: linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
+  border: 1px solid #2E7CF6 !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
-  box-shadow: 0 3px 0 #07136E !important;
+  box-shadow: 0 3px 0 #1D5ED6 !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(.store-product-card,.store-order-card) img {
   object-fit: contain;
@@ -448,11 +448,11 @@ html[data-sonaa-theme="client"] body #app .client-home-hero {
   min-height:118px;
   padding:17px;
   text-align:right;
-  border:1px solid #172DAD;
+  border:1px solid #2E7CF6;
   border-radius:20px;
-  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%);
+  background:linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%);
   color:#FFFFFF;
-  box-shadow:0 5px 0 #07136E,0 10px 20px rgba(7,19,110,.16);
+  box-shadow:0 5px 0 #1D5ED6,0 10px 20px rgba(7,19,110,.16);
 }
 html[data-sonaa-theme="client"] body #app .client-home-hero-copy {
   display:flex;
@@ -480,7 +480,7 @@ html[data-sonaa-theme="client"] body #app .client-home-hero-cta {
   padding:7px 13px;
   border-radius:10px;
   background:#FFFFFF;
-  color:#1426A5;
+  color:#2E7CF6;
   font-size:11px;
   font-weight:900;
 }
@@ -605,7 +605,7 @@ html[data-sonaa-theme="client"] body #app .client-home-stat-icon {
   place-items:center;
   border-radius:13px;
   background:#E8EDFF;
-  color:#172DAD;
+  color:#2E7CF6;
   font-size:19px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-stat-label {
@@ -698,7 +698,7 @@ html[data-sonaa-theme="client"] body #app .client-home-action>span {
   place-items:center;
   border-radius:11px;
   background:#E8EDFF;
-  color:#172DAD;
+  color:#2E7CF6;
   font-size:17px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-action strong {
@@ -857,9 +857,9 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-availability button {
   flex:none;
   min-height:36px;
   padding:7px 10px;
-  border:1px solid #172DAD;
+  border:1px solid #2E7CF6;
   border-radius:11px;
-  background:linear-gradient(145deg,#2946C7,#07136E);
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6);
   color:#FFFFFF;
   font-size:10px;
   font-weight:900;
@@ -879,11 +879,11 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner {
   min-height:76px;
   padding:12px;
   text-align:right;
-  border:1px solid #172DAD;
+  border:1px solid #2E7CF6;
   border-radius:18px;
-  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%);
+  background:linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%);
   color:#FFFFFF;
-  box-shadow:0 4px 0 #07136E,0 8px 16px rgba(7,19,110,.14);
+  box-shadow:0 4px 0 #1D5ED6,0 8px 16px rgba(7,19,110,.14);
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-icon {
   display:grid;
@@ -921,7 +921,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner>b {
   place-items:center;
   border-radius:10px;
   background:#FFFFFF;
-  color:#1426A5;
+  color:#2E7CF6;
   font-size:15px;
   font-weight:900;
 }
@@ -965,7 +965,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-icon {
   place-items:center;
   border-radius:12px;
   background:#E8EDFF;
-  color:#172DAD;
+  color:#2E7CF6;
   font-size:18px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-stat-card small {
@@ -1059,7 +1059,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-action>span {
   place-items:center;
   border-radius:11px;
   background:#E8EDFF;
-  color:#172DAD;
+  color:#2E7CF6;
   font-size:17px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-action strong {
@@ -1083,8 +1083,8 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-action i {
 
 /* Wallets, messages, notifications, and support feedback. */
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(.wallet-card,.fanni-wallet-card) {
-  background: linear-gradient(145deg,#101F9B 0%,#07136E 100%) !important;
-  border-color: #172DAD !important;
+  background: linear-gradient(145deg,#2E7CF6 0%,#1D5ED6 100%) !important;
+  border-color: #2E7CF6 !important;
   border-radius: 20px !important;
   color: #FFFFFF !important;
 }
@@ -1130,10 +1130,10 @@ html[data-sonaa-theme="client"] body #app .service-choice {
 }
 html[data-sonaa-theme="client"] body #app .category-tile.active,
 html[data-sonaa-theme="client"] body #app .service-choice.selected {
-  border-color:#172DAD !important;
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  border-color:#2E7CF6 !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color:#FFFFFF !important;
-  box-shadow:0 3px 0 #07136E !important;
+  box-shadow:0 3px 0 #1D5ED6 !important;
 }
 html[data-sonaa-theme="client"] body #app .category-tile.active :where(span,strong,small),
 html[data-sonaa-theme="client"] body #app .service-choice.selected :where(span,strong,small) {
@@ -1230,14 +1230,14 @@ html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body .store-ad-slot-link 
   flex:none;
   min-height:36px;
   padding:7px 10px;
-  border:1px solid #172DAD !important;
+  border:1px solid #2E7CF6 !important;
   border-radius:11px !important;
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color:#FFFFFF !important;
   -webkit-text-fill-color:#FFFFFF !important;
   font-size:10px;
   font-weight:900;
-  box-shadow:0 3px 0 #07136E !important;
+  box-shadow:0 3px 0 #1D5ED6 !important;
 }
 
 /* Notifications and chat messages use the app's readable white/indigo surfaces. */
@@ -1297,10 +1297,10 @@ html[data-sonaa-theme="support"] body .message .body {
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .global-refresh-float,.support-float,.account-support-float,.refresh-float,.refresh-button
 ) {
-  background: linear-gradient(145deg,#2946C7,#07136E) !important;
+  background: linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color: #FFFFFF !important;
   border: 2px solid #FFFFFF !important;
-  box-shadow: 0 4px 0 #07136E,0 8px 18px rgba(7,19,110,.22) !important;
+  box-shadow: 0 4px 0 #1D5ED6,0 8px 18px rgba(7,19,110,.22) !important;
 }
 html[data-sonaa-theme]:not([data-sonaa-theme="admin"]) body #app :where(
   .global-refresh-float,.support-float,.account-support-float,.refresh-float,.refresh-button
@@ -1324,8 +1324,8 @@ html[data-sonaa-theme="support"] body .header,
 html[data-sonaa-theme="customers"] body .hero,
 html[data-sonaa-theme="technicians"] body .hero,
 html[data-sonaa-theme="download"] body .hero {
-  background: linear-gradient(145deg,#101F9B 0%,#1426A5 58%,#07136E 100%) !important;
-  border-color: #172DAD !important;
+  background: linear-gradient(145deg,#2E7CF6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
+  border-color: #2E7CF6 !important;
   color: #FFFFFF !important;
 }
 html[data-sonaa-theme="support"] body .card,
@@ -1344,12 +1344,12 @@ html[data-sonaa-theme="password"] body .btn,
 html[data-sonaa-theme="customers"] body .primary,
 html[data-sonaa-theme="technicians"] body .primary,
 html[data-sonaa-theme="download"] body .download {
-  background: linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
-  border: 1px solid #172DAD !important;
-  border-bottom: 3px solid #07136E !important;
+  background: linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
+  border: 1px solid #2E7CF6 !important;
+  border-bottom: 3px solid #1D5ED6 !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
-  box-shadow: 0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
+  box-shadow: 0 4px 0 #1D5ED6,0 7px 13px rgba(7,19,110,.18) !important;
 }
 html[data-sonaa-theme="support"] body .field,
 html[data-sonaa-theme="password"] body .field {
@@ -1368,24 +1368,24 @@ html[data-sonaa-theme="technicians"] body .navlink {
   box-shadow: 0 3px 0 var(--hs-border),0 5px 10px rgba(16,31,155,.07) !important;
 }
 html[data-sonaa-theme="index"] body .home-nav .download-link {
-  background: linear-gradient(145deg,#2946C7,#07136E) !important;
+  background: linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
-  border-color: #172DAD !important;
-  box-shadow: 0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
+  border-color: #2E7CF6 !important;
+  box-shadow: 0 4px 0 #1D5ED6,0 7px 13px rgba(7,19,110,.18) !important;
 }
 html[data-sonaa-theme="customers"] body .note,
 html[data-sonaa-theme="technicians"] body .note,
 html[data-sonaa-theme="support"] body .notice {
   background: #F4F6FF !important;
   border-color: #D5DDFE !important;
-  color: #172DAD !important;
+  color: #2E7CF6 !important;
 }
 html[data-sonaa-theme="customers"] body .pill,
 html[data-sonaa-theme="technicians"] body .pill {
   background: #E8EDFF !important;
   border-color: #D5DDFE !important;
-  color: #172DAD !important;
+  color: #2E7CF6 !important;
 }
 html[data-sonaa-theme="password"] body .topbar {
   background: #FFFFFF !important;
@@ -1430,9 +1430,9 @@ html[data-sonaa-theme="index"] body .topbar-links .social-link {
   min-height:38px;
   box-sizing:border-box;
   padding:8px 11px;
-  border:1px solid #172DAD !important;
+  border:1px solid #2E7CF6 !important;
   border-radius:12px;
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color:#FFFFFF !important;
   -webkit-text-fill-color:#FFFFFF !important;
   font-size:10px;
@@ -1440,14 +1440,14 @@ html[data-sonaa-theme="index"] body .topbar-links .social-link {
   line-height:1.4;
   text-decoration:none;
   white-space:nowrap;
-  box-shadow:0 4px 0 #07136E,0 6px 12px rgba(7,19,110,.14) !important;
+  box-shadow:0 4px 0 #1D5ED6,0 6px 12px rgba(7,19,110,.14) !important;
 }
 html[data-sonaa-theme="index"] body .hero {
-  border:1px solid #172DAD !important;
+  border:1px solid #2E7CF6 !important;
   border-radius:22px !important;
-  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  background:linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
   color:#FFFFFF !important;
-  box-shadow:0 5px 0 #07136E,0 12px 22px rgba(7,19,110,.16) !important;
+  box-shadow:0 5px 0 #1D5ED6,0 12px 22px rgba(7,19,110,.16) !important;
 }
 html[data-sonaa-theme="index"] body .hero :where(h1,.hero-copy,.eyebrow,.eyebrow i) {
   color:#FFFFFF !important;
@@ -1497,19 +1497,19 @@ html[data-sonaa-theme="index"] body .entry {
 }
 html[data-sonaa-theme="index"] body .entry.customer .entry-icon {
   background:#E8EDFF !important;
-  color:#172DAD !important;
+  color:#2E7CF6 !important;
 }
 html[data-sonaa-theme="index"] body .entry.technician .entry-icon {
   background:#E6F7F5 !important;
   color:#0E8581 !important;
 }
 html[data-sonaa-theme="index"] body .entry-action .action-label {
-  border:1px solid #172DAD !important;
-  border-bottom:3px solid #07136E !important;
-  background:linear-gradient(145deg,#2946C7 0%,#1426A5 58%,#07136E 100%) !important;
+  border:1px solid #2E7CF6 !important;
+  border-bottom:3px solid #1D5ED6 !important;
+  background:linear-gradient(145deg,#3A86F6 0%,#2E7CF6 58%,#1D5ED6 100%) !important;
   color:#FFFFFF !important;
   -webkit-text-fill-color:#FFFFFF !important;
-  box-shadow:0 4px 0 #07136E,0 7px 13px rgba(7,19,110,.18) !important;
+  box-shadow:0 4px 0 #1D5ED6,0 7px 13px rgba(7,19,110,.18) !important;
 }
 html[data-sonaa-theme="index"] body .trust-row {
   color:var(--hs-muted) !important;
@@ -1549,10 +1549,10 @@ html[data-sonaa-theme="download"] body .release-link {
 }
 html[data-sonaa-theme="password"] body .account-support-float,
 html[data-sonaa-theme="support"] body .account-support-float {
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   border-color:#FFFFFF !important;
   color:#FFFFFF !important;
-  box-shadow:0 4px 0 #07136E,0 8px 18px rgba(7,19,110,.2) !important;
+  box-shadow:0 4px 0 #1D5ED6,0 8px 18px rgba(7,19,110,.2) !important;
 }
 html[data-sonaa-theme="links"] body .card {
   display:flex;
@@ -1596,10 +1596,10 @@ html[data-sonaa-theme="links"] body .arr {
 
 /* Admin pages retain their own layout but share the app's core palette. */
 html[data-sonaa-theme="admin"] {
-  --sonaa-color-0b1b3a:#101F9B;
-  --sonaa-color-1e3a8a:#1426A5;
-  --sonaa-color-2563eb:#172DAD;
-  --sonaa-color-1d4ed8:#2946C7;
+  --sonaa-color-0b1b3a:#2E7CF6;
+  --sonaa-color-1e3a8a:#2E7CF6;
+  --sonaa-color-2563eb:#2E7CF6;
+  --sonaa-color-1d4ed8:#3A86F6;
   --sonaa-color-3b82f6:#526BE0;
   --sonaa-color-f59e0b:#F5B928;
   --sonaa-color-f1f5fb:#F4F8FC;
@@ -1610,9 +1610,9 @@ html[data-sonaa-theme="admin"] {
   --sonaa-color-d4deed:#D5DDFE;
   --sonaa-color-f8fafc:#F4F6FF;
   --sonaa-color-102b50:#18324F;
-  --navy:#101F9B;
-  --blue:#1426A5;
-  --blue2:#172DAD;
+  --navy:#2E7CF6;
+  --blue:#2E7CF6;
+  --blue2:#2E7CF6;
   --gold:#F5B928;
   --page:#F4F8FC;
   --card:#FFFFFF;
@@ -1630,7 +1630,7 @@ html[data-sonaa-theme="admin"] body #app :where(.premium-panel,.premium-card,.pa
   box-shadow:0 4px 14px rgba(16,31,155,.07) !important;
 }
 html[data-sonaa-theme="admin"] body #app .premium-card::before {
-  background:linear-gradient(90deg,#1426A5,#16A6A1,#F5B928) !important;
+  background:linear-gradient(90deg,#2E7CF6,#16A6A1,#F5B928) !important;
 }
 html[data-sonaa-theme="admin"] body #app .field,
 html[data-sonaa-theme="admin"] body #app :where(input,select,textarea) {
@@ -1647,10 +1647,10 @@ html[data-sonaa-theme="admin"] body #app .tab-btn {
   box-shadow:0 3px 0 var(--hs-border) !important;
 }
 html[data-sonaa-theme="admin"] body #app .tab-btn.active {
-  border-color:#172DAD !important;
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  border-color:#2E7CF6 !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color:#FFFFFF !important;
-  box-shadow:0 4px 0 #07136E,0 7px 14px rgba(7,19,110,.16) !important;
+  box-shadow:0 4px 0 #1D5ED6,0 7px 14px rgba(7,19,110,.16) !important;
 }
 html[data-sonaa-theme="admin"] body #app .tab-btn.active :where(span,small,b,strong) {
   color:#FFFFFF !important;
@@ -1692,9 +1692,9 @@ html[data-sonaa-theme="admin"] body #app .admin-logout-btn {
 }
 html[data-sonaa-theme="admin"] body #global-refresh {
   border:2px solid #FFFFFF !important;
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color:#FFFFFF !important;
-  box-shadow:0 4px 0 #07136E,0 8px 18px rgba(7,19,110,.2) !important;
+  box-shadow:0 4px 0 #1D5ED6,0 8px 18px rgba(7,19,110,.2) !important;
 }
 html[data-sonaa-theme="admin"] body #toast :where(.toast,.alert,.notice) {
   border-radius:14px !important;
@@ -1754,13 +1754,13 @@ html[data-sonaa-theme="admin-setup"] body button {
   width:100%;
   min-height:46px;
   margin-top:14px;
-  border:1px solid #172DAD !important;
-  border-bottom:3px solid #07136E !important;
+  border:1px solid #2E7CF6 !important;
+  border-bottom:3px solid #1D5ED6 !important;
   border-radius:15px !important;
-  background:linear-gradient(145deg,#2946C7,#07136E) !important;
+  background:linear-gradient(145deg,#3A86F6,#1D5ED6) !important;
   color:#FFFFFF !important;
   font-weight:900;
-  box-shadow:0 4px 0 #07136E !important;
+  box-shadow:0 4px 0 #1D5ED6 !important;
 }
 html[data-sonaa-theme="admin-setup"] body #result {
   color:var(--hs-text);
@@ -1807,7 +1807,7 @@ html[data-sonaa-theme="client"] body #app .client-home-profile-name {
   gap:3px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-profile-name small {
-  color:#09145B;
+  color:#1D5ED6;
   font-size:16px;
   font-weight:900;
 }
@@ -1840,7 +1840,7 @@ html[data-sonaa-theme="client"] body #app .client-home-hero-icon {
   border:0;
   border-radius:27px;
   background:#DCE6FF;
-  color:#102A9B;
+  color:#2E7CF6;
   font-size:26px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-stat-card {
@@ -1884,7 +1884,7 @@ html[data-sonaa-theme="client"] body #app .client-home-referral-icon {
   font-size:21px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-referral-copy strong {
-  color:#09145B;
+  color:#1D5ED6;
   font-size:14px;
 }
 html[data-sonaa-theme="client"] body #app .client-home-referral-copy small {
@@ -1894,7 +1894,7 @@ html[data-sonaa-theme="client"] body #app .client-home-referral-copy small {
 html[data-sonaa-theme="client"] body #app .client-home-referral-cta {
   padding:9px 11px;
   border-radius:11px;
-  background:#102A9B;
+  background:#2E7CF6;
   color:#FFFFFF;
   font-size:12px;
 }
@@ -1960,7 +1960,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-icon {
   border:0;
   border-radius:22px;
   background:#DCE6FF;
-  color:#102A9B;
+  color:#2E7CF6;
   font-size:21px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner strong {
@@ -1977,7 +1977,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-jobs-banner em {
   padding:6px 11px;
   border-radius:9px;
   background:#FFFFFF;
-  color:#102A9B;
+  color:#2E7CF6;
   font-size:11px;
   font-style:normal;
   font-weight:900;
@@ -2023,7 +2023,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-referral-icon {
   font-size:21px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-referral strong {
-  color:#09145B;
+  color:#1D5ED6;
   font-size:14px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-referral small {
@@ -2033,7 +2033,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-referral small {
 html[data-sonaa-theme="fanni"] body #app .fanni-home-referral>b {
   padding:9px 11px;
   border-radius:11px;
-  background:#102A9B;
+  background:#2E7CF6;
   color:#FFFFFF;
   font-size:12px;
 }
@@ -2118,7 +2118,7 @@ html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-avatar b {
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-name h2 {
   margin:0;
-  color:#09145B;
+  color:#1D5ED6;
   font-size:16px;
 }
 html[data-sonaa-theme="fanni"] body #app .fanni-home-profile-name p {
@@ -2203,3 +2203,188 @@ html[data-sonaa-theme="client"] body #app .client-home-action:last-child{border-
 html[data-sonaa-theme="client"] body #app .client-home-action>span{flex:0 0 28px !important; width:28px !important; height:28px !important; border-radius:0 !important; background:transparent !important; font-size:21px !important;}
 html[data-sonaa-theme="client"] body #app .client-home-action strong{font-size:15px !important;}
 html[data-sonaa-theme="client"] body #app .client-home-action i{color:#0A1EA5 !important; font-size:24px !important;}
+
+
+/* === fix-2026-11-22: الكروت الكبيرة أفتح + زرار الدعوة في الفني === */
+/* الكارت الكبير في العميل والفني */
+.hero-card, .welcome-card, .main-hero, .service-hero, .job-hero,
+[class*="hero-card"], [class*="welcome-card"], [class*="hero-banner"],
+.client-hero, .fanni-hero, .hero, .banner-card {
+  background: #3A86F6 !important;
+  background-image: none !important;
+  border-color: #3A86F6 !important;
+}
+/* زرار الدعوة جوه كارت الدعوة - عميل وفني */
+[class*="invite"] button, [class*="invite"] .btn, [class*="invite"] a,
+[class*="referral"] button, [class*="referral"] .btn, [class*="referral"] a,
+[class*="share"] button, [class*="share"] .btn,
+.invite-btn, .referral-btn, .invite-card button, .referral-card button {
+  background: #2E7CF6 !important;
+  background-image: none !important;
+  border-color: #2E7CF6 !important;
+  color: #fff !important;
+}
+
+
+
+/* الزرار الصغير جوّاهم يبقى شفاف عشان الأبيض يبان */
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: transparent !important;
+  border: 1px solid rgba(255,255,255,.9) !important;
+}
+
+/* === fix-pro-2026-11-22: شكل احترافي للتلاتة بس === */
+.client-home-hero, .fanni-home-jobs-banner {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border-radius: 24px !important;
+  box-shadow: 0 10px 24px rgba(30,91,230,.25) !important;
+  border: 0 !important;
+}
+.client-home-hero *, .fanni-home-jobs-banner * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+}
+.client-home-hero strong, .fanni-home-jobs-banner strong {
+  font-size: 20px !important; font-weight: 900 !important; line-height: 1.4 !important;
+}
+.client-home-hero span, .fanni-home-jobs-banner small {
+  font-weight: 600 !important; opacity: .88 !important;
+}
+/* الزرار اللي جوّا الكارت: أبيض سادة وكتابة زرقا */
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: #FFFFFF !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+  border: 0 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
+}
+/* أيقونة الكارت: دايرة شفافة */
+.client-home-hero-icon, .fanni-home-jobs-icon {
+  background: rgba(255,255,255,.18) !important;
+}
+/* زرار دعوة الفني: أزرق سادة وكتابة بيضا صافية من غير توهج */
+.fanni-home-referral b {
+  background: #2E7CF6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(46,124,246,.30) !important;
+}
+
+
+/* نفس لون التلاتة: تدرّج مش فاتح أوي */
+.panel, .client-home-stat-card, .fanni-home-stat-card,
+.client-home-action, .fanni-home-action,
+.client-home-referral, .fanni-home-referral,
+.client-home-dashboard .panel, .fanni-home-dashboard .panel,
+.client-orders-summary, .client-wallet-balance, .fanni-wallet-balance,
+[class*="wallet-balance"], .account-panel,
+.primary-btn, .blue-btn, button[class*="primary"],
+.client-submit-order-btn, .client-complaint-submit-btn, .client-complaint-track-btn {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-image: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border: 0 !important;
+  box-shadow: 0 10px 24px rgba(30,91,230,.22) !important;
+  border-radius: 20px !important;
+}
+/* نفس الكتابة: أبيض صافي من غير توهج + عريض */
+.panel *, .client-home-stat-card *, .fanni-home-stat-card *,
+.client-home-action *, .fanni-home-action *,
+.client-home-referral *, .fanni-home-referral *,
+.client-home-dashboard .panel *, .fanni-home-dashboard .panel *,
+.client-orders-summary *, .client-wallet-balance *, .fanni-wallet-balance *,
+[class*="wallet-balance"] *, .account-panel *,
+.primary-btn, .blue-btn, button[class*="primary"],
+.client-submit-order-btn, .client-complaint-submit-btn, .client-complaint-track-btn {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  text-shadow: none !important;
+  font-weight: 800 !important;
+}
+.panel strong, .panel b, .panel h2, .panel h3, .panel h4,
+.client-home-stat-card strong, .fanni-home-stat-card strong,
+.client-home-action strong, .fanni-home-action strong {
+  font-weight: 900 !important;
+}
+/* الزرار اللي جوّه أي كارت: أبيض سادة وكتابته زرقا عشان يبان */
+.panel .primary-btn, .panel .blue-btn,
+.client-home-hero-cta, .fanni-home-jobs-banner em,
+.client-home-referral-cta, .fanni-home-referral b {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+  font-weight: 900 !important;
+  box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
+}
+/* لما تدوس على أي كارت أو زرار: يغمق سِنّة بس */
+.panel:active, .primary-btn:active, .blue-btn:active {
+  background: linear-gradient(135deg, #1A4FD0 0%, #2470E0 100%) !important;
+  background-image: linear-gradient(135deg, #1A4FD0 0%, #2470E0 100%) !important;
+}
+/* شيل أي بلوك قديم كان بيخلي الكروت الفاتحة كتابتها غامقة */
+
+
+/* === fix-readable-2026-11-22: الكروت الصغيرة بيضا وكتابتها غامقة === */
+/* شيل توحيد الأزرق اللي خلّى الكتابة بيضا على خلفية فاتحة */
+.panel, .client-home-stat-card, .fanni-home-stat-card,
+.client-home-action, .fanni-home-action,
+.client-home-dashboard .panel, .fanni-home-dashboard .panel {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  border: 1px solid #E5E7EB !important;
+  box-shadow: 0 4px 14px rgba(0,0,0,.05) !important;
+}
+.panel *, .client-home-stat-card *, .fanni-home-stat-card *,
+.client-home-action *, .fanni-home-action *,
+.client-home-dashboard .panel *, .fanni-home-dashboard .panel * {
+  color: #1E293B !important;
+  -webkit-text-fill-color: #1E293B !important;
+  text-shadow: none !important;
+}
+.panel strong, .panel b, .panel h2, .panel h3, .panel h4,
+.client-home-stat-card strong, .fanni-home-stat-card strong,
+.client-home-action strong, .fanni-home-action strong {
+  color: #0F172A !important;
+  -webkit-text-fill-color: #0F172A !important;
+  font-weight: 900 !important;
+}
+/* الأيقونة اللي جوّه الكارت الصغير تفضل فاتحة زي ما هي */
+.client-home-stat-icon, .fanni-home-stat-icon {
+  background: #E8EDFF !important;
+}
+/* كارت الدعوة: فاتح وكتابته غامقة، والزرار بس هو اللي أزرق */
+.client-home-referral, .fanni-home-referral {
+  background: #EEF2FF !important;
+  background-image: none !important;
+  border: 1px solid #D5DDFE !important;
+}
+.client-home-referral *, .fanni-home-referral * {
+  color: #1E293B !important;
+  -webkit-text-fill-color: #1E293B !important;
+}
+.client-home-referral-cta, .fanni-home-referral b {
+  background: linear-gradient(135deg, #1E5BE6, #2E7CF6) !important;
+  background-image: linear-gradient(135deg, #1E5BE6, #2E7CF6) !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+/* الكروت الكبيرة التلاتة يفضلوا زي ما هم: أزرق + أبيض */
+.client-home-hero, .fanni-home-jobs-banner {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-image: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  border: 0 !important;
+}
+.client-home-hero *, .fanni-home-jobs-banner * {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+.client-home-hero-cta, .fanni-home-jobs-banner em {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #1E5BE6 !important;
+  -webkit-text-fill-color: #1E5BE6 !important;
+}

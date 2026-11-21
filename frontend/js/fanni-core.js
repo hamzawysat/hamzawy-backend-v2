@@ -113,7 +113,7 @@ function buildUrl(path){
 
 function toast(message,type='success'){
  const el=document.getElementById('toast');
- const bg=type==='success'?'bg-[#2E7CF6]':type==='pending'?'bg-[#2E7CF6]':'bg-[#0b1b3a]';
+ const bg=type==='success'?'bg-[#2E7CF6]':type==='pending'?'bg-[#2E7CF6]':'bg-[#2E7CF6]';
  el.innerHTML=`<div class="pointer-events-auto mx-auto max-w-[640px] rounded-[14px] ${bg} text-white text-[13px] font-bold px-4 py-3 shadow-2xl flex justify-between gap-3"><span class="leading-6">${esc(message)}</span><button onclick="this.parentElement.remove()" class="shrink-0 h-7 px-3 rounded-full bg-white/20">إغلاق</button></div>`;
  setTimeout(()=>{if(el.firstElementChild)el.innerHTML=''},4000);
 }
