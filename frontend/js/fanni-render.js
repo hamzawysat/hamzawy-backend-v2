@@ -20,7 +20,7 @@ function renderContent(){
  
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
  <style>.fanni-home-availability-toggle.is-available{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}.fanni-home-availability-toggle.is-paused{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}.fanni-home-availability-toggle.is-available strong{color:#1B7A2E!important;-webkit-text-fill-color:#1B7A2E!important}.fanni-home-availability-toggle.is-paused strong{color:#D32F2F!important;-webkit-text-fill-color:#D32F2F!important}</style><style>[class*="online"],[class*="avail"],[class*="toggle"]{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}[class*="online"].offline,[class*="avail"].offline,[class*="toggle"].offline,[class*="online"].off,[class*="avail"].off{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}</style><style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
-  <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-end gap-2">
+  <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-start gap-2" style="direction:rtl">
     <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#101F9B;font-weight:900;font-size:18px">S</div>
     <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="font-extrabold text-[20px] leading-none" style="color:#101F9B">حمزاوي سات</span>
@@ -124,6 +124,7 @@ function renderContent(){
     ${state.pendingMsg?`<div class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-[12px] font-bold text-amber-800">${esc(state.pendingMsg)}</div>`:''}
     ${state.error?errorBox(state.error):''}
     ${state.tab==='login'?'<p class="mt-4 text-center text-[14px] leading-5 text-slate-500">بياناتك وحسابك في أمان</p>':''}
+    ${state.tab==='login'?'<div class="mt-5 flex gap-2"><a href="/download" class="flex-1 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black text-white" style="background:#101F9B!important;color:#FFFFFF!important">⬇ تحميل التطبيق</a><a href="/links" target="_blank" rel="noopener noreferrer" class="flex-1 h-12 rounded-2xl flex items-center justify-center text-[15px] font-black" style="background:#EEF2FF!important;color:#101F9B!important;border:1px solid #D5DDFE!important">🔗 منصات التواصل</a></div>':''}
    </div>`}
   </section>
    </div>
