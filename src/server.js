@@ -433,33 +433,6 @@ app.use('/api/admins', adminRouter);
 app.use('/api/auth/admin', adminRouter);
 
 
-function sendHtml(res, filename) {
-  const candidates = [
-    path.join(frontendPath, filename)
-  ];
-
-  const file = candidates.find(
-    p => fs.existsSync(p) && fs.statSync(p).isFile()
-  );
-
-  if (!file) {
-    return res.status(404).send(`الصفحة ${filename} غير موجودة`);
-  }
-
-  return res.sendFile(file);
-}
-
-// Serve download and official social links on the same public domain.
-app.get(['/download', '/download.html'], (req, res) => sendHtml(res, 'download.html'));
-app.get(['/links', '/links/'], (req, res) => sendHtml(res, 'links.html'));
-app.get('/links.html', (req, res) => res.redirect(301, '/links'));
-
-app.get('/', (req, res) => sendHtml(res, 'index.html'));
-app.get('/client', (req, res) => sendHtml(res, 'client.html'));
-app.get('/fanni', (req, res) => sendHtml(res, 'fanni.html'));
-app.get('/technicians', (req, res) => sendHtml(res, 'technicians.html'));
-app.get('/admin', (req, res) => sendHtml(res, 'admin.html'));
-
 app.use('/api', (req, res) => {
   return res.status(404).json({
     message: 'مسار API غير موجود',
@@ -495,6 +468,33 @@ app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images')
   immutable: true,
   maxAge: '7d'
 }));
+
+function sendHtml(res, filename) {
+  const candidates = [
+    path.join(frontendPath, filename)
+  ];
+
+  const file = candidates.find(
+    p => fs.existsSync(p) && fs.statSync(p).isFile()
+  );
+
+  if (!file) {
+    return res.status(404).send(`الصفحة ${filename} غير موجودة`);
+  }
+
+  return res.sendFile(file);
+}
+
+// Serve download and official social links on the same public domain.
+app.get(['/download', '/download.html'], (req, res) => sendHtml(res, 'download.html'));
+app.get(['/links', '/links/'], (req, res) => sendHtml(res, 'links.html'));
+app.get('/links.html', (req, res) => res.redirect(301, '/links'));
+
+app.get('/', (req, res) => sendHtml(res, 'index.html'));
+app.get('/client', (req, res) => sendHtml(res, 'client.html'));
+app.get('/fanni', (req, res) => sendHtml(res, 'fanni.html'));
+app.get('/technicians', (req, res) => sendHtml(res, 'technicians.html'));
+app.get('/admin', (req, res) => sendHtml(res, 'admin.html'));
 
 app.use(errorHandler);
 
