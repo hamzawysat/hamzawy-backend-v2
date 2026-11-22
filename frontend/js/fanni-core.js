@@ -116,11 +116,34 @@ function toast(message,type='success'){
 }
 
 function onRegAreaSearch(value){
- state.regAreaSearch=String(value||'').slice(0,60);
- const cursor=state.regAreaSearch.length;
- render();
  const input=document.getElementById('regAreaSearchInput');
- if(input){input.focus();try{input.setSelectionRange(cursor,cursor);}catch(_){}}
+ if(!input)return;
+
+ // The input is the source of truth for this input event.
+ state.regAreaSearch=input.value;
+
+ const picker=input.closest('.fanni-area-picker');
+ const optionsContainer=picker?.querySelector('.fanni-area-options');
+ if(!optionsContainer)return;
+
+ const query=normalizeFanniAreaSearchText(state.regAreaSearch.trim());
+ const options=[...new Set(AREA_OPTIONS)].filter(
+  area=>!isReservedFanniArea(area)
+ );
+ const visible=options.filter(
+  area=>!query||normalizeFanniAreaSearchText(area).includes(query)
+ ).slice(0,80);
+
+ optionsContainer.innerHTML=visible.map(area=>{
+  const checked=state.regAreas.includes(area);
+  return `<button
+   type="button"
+   data-area="${esc(area)}"
+   onclick="toggleRegArea(this.dataset.area,this)"
+   aria-pressed="${checked?'true':'false'}"
+   class="fanni-area-option ${checked?'is-selected':''}"
+  ><span>${esc(area)}</span><span class="fanni-check">${checked?'✓':''}</span></button>`;
+ }).join('')||'<p class="fanni-picker-no-results">لا توجد مناطق مطابقة للبحث.</p>';
 }
 function toggleRegArea(area,trigger){
  const value=clean(area,60);
