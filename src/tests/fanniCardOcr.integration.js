@@ -6,6 +6,7 @@ process.env.CARD_LEDGER_SECRET = 'synthetic-ocr-test-secret-at-least-32-characte
 const { readFanniCard, terminateWorkerForTests, extractNationalIds, isValidNationalId, isClearArabicName, extractArabicName } = require('../services/fanniCardOcr');
 
 const { execFileSync } = require('node:child_process');
+const { readFileSync } = require('node:fs');
 
 function makeSyntheticCardImage(value) {
   // Render a card-like PNG with a real system font, but entirely fictional content.
@@ -65,6 +66,28 @@ async function main() {
     const degradedResult = await readFanniCard(degradedFixture);
     if (degradedResult.nationalId !== expected) {
       throw new Error('Enhanced OCR did not recover the exact 14-digit ID from a dim, mildly blurred fixture');
+    }
+    // Optional private real-card regression: pass the attachment path and expected
+    // values through local environment variables. The photo and its PII are never
+    // copied into the repository, test artifacts, logs, or CI.
+    if (process.env.FANNI_OCR_FIXTURE) {
+      const realCard = readFileSync(process.env.FANNI_OCR_FIXTURE);
+      const expectedRealId = String(process.env.FANNI_OCR_EXPECTED_ID || '').replace(/\\D/g, '');
+      const expectedRealName = String(process.env.FANNI_OCR_EXPECTED_NAME || '').normalize('NFC').replace(/\\s+/g, ' ').trim();
+      if (!/^\\d{14}$/.test(expectedRealId)) {
+        throw new Error('Private card test requires a 14-digit FANNI_OCR_EXPECTED_ID environment value');
+      }
+      const realCardResult = await readFanniCard(realCard);
+      if (realCardResult.nationalId !== expectedRealId) {
+        throw new Error('Private real-card OCR fixture did not exactly match its expected national ID');
+      }
+      if (expectedRealName && realCardResult.extractedName !== expectedRealName) {
+        throw new Error('Private real-card OCR fixture did not exactly match its expected Arabic name');
+      }
+      if (expectedRealName && !isClearArabicName(realCardResult.extractedName)) {
+        throw new Error('Private real-card OCR fixture did not produce a validated Arabic name');
+      }
+      console.log('Private real-card OCR regression passed (PII values withheld)');
     }
     console.log('Real Tesseract OCR integration test: clean and degraded-image exact 14-digit matches passed');
   } finally {
