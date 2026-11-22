@@ -102,6 +102,7 @@ router.delete('/fannis/:id', auth('admin'), async (req, res, next) => {
     session = await Fanni.db.startSession();
     let fanni;
     let summary;
+    let releasedRejectedIdentityLedger = false;
     await session.withTransaction(async () => {
       fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).session(session);
       if (!fanni) {
@@ -121,9 +122,9 @@ router.delete('/fannis/:id', auth('admin'), async (req, res, next) => {
 
       // Release only card-ledger entries that belong exclusively to this technician.
       // Shared identity ledgers remain reserved for their other linked technicians.
-      const ledgers = await FanniCardLedger.find({
-        $or: [{ fanniId }, { 'linkedTechnicians.fanniId': fanniId }]
-      }).session(session);
+      const ledgers = fanni.status === 'مرفوض'
+        ? await FanniCardLedger.find({ $or: [{ fanniId }, { 'linkedTechnicians.fanniId': fanniId }] }).session(session)
+        : [];
       for (const ledger of ledgers) {
         const remainingLinks = (ledger.linkedTechnicians || []).filter(link => String(link.fanniId || '') !== String(fanniId));
         const wasPrimary = String(ledger.fanniId || '') === String(fanniId);
@@ -134,6 +135,7 @@ router.delete('/fannis/:id', auth('admin'), async (req, res, next) => {
         }
         if (wasPrimary && remainingLinks.length === 0) {
           await FanniCardLedger.deleteOne({ _id: ledger._id }, { session });
+          releasedRejectedIdentityLedger = true;
         } else {
           await ledger.save({ session });
         }
@@ -147,8 +149,11 @@ router.delete('/fannis/:id', auth('admin'), async (req, res, next) => {
       }
     });
     const fanniId = String(fanni._id);
-    await writeAdminAudit(req, 'حذف حساب فني', 'fannis', fanniId, `name=${fanni.name}; balance=${summary.balance}; transactions=${summary.transactionCount}; orders=${summary.relatedOrderCount}; releasedExclusiveCardLedger=true`);
-    return res.json({ message: 'تم حذف حساب الفني. تم تحرير سجل هويته إذا لم يكن مرتبطًا بفني آخر، واحتُفظ بسجلات الطلبات والشحنات والحركات المالية.', deleted: 1, fanniId, summary });
+    await writeAdminAudit(req, 'حذف حساب فني', 'fannis', fanniId, `name=${fanni.name}; balance=${summary.balance}; transactions=${summary.transactionCount}; orders=${summary.relatedOrderCount}; releasedRejectedIdentityLedger=${releasedRejectedIdentityLedger}`);
+    const message = releasedRejectedIdentityLedger
+      ? 'تم حذف الحساب المرفوض وتحرير سجل هويته لإتاحة إعادة التسجيل. احتُفظ بسجلات الطلبات والشحنات والحركات المالية.'
+      : 'تم حذف حساب الفني. احتُفظ بسجل الهوية لمنع إعادة استخدامه، وكذلك بسجلات الطلبات والشحنات والحركات المالية.';
+    return res.json({ message, deleted: 1, fanniId, summary, releasedRejectedIdentityLedger });
   } catch (err) {
     if (err?.status === 404) return res.status(404).json({ message: err.message });
     if (err?.status === 409) return res.status(409).json({ message: err.message });
