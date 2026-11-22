@@ -115,7 +115,7 @@ async function handleRegistrationProfilePhotoUpload(file){
   const optimized=await compressRegistrationIdImage(file);
   const result=await API.uploadRegistrationIdentity('profile',optimized);
   if(!result?.fileId)throw new Error('لم نتمكن من حفظ الصورة الشخصية.');
-  state.regProfilePhotoFileId=result.fileId;state.regProfilePhotoUploadStatus='تم رفع الصورة الشخصية بنجاح ✓';
+  state.regProfilePhotoFileId=result.fileId;state.regProfilePhotoPreview=await readRegistrationIdPreview(optimized);state.regProfilePhotoUploadStatus='تم رفع الصورة الشخصية بنجاح ✓';
   toast('تم رفع الصورة الشخصية بنجاح','success');
  }catch(error){state.regProfilePhotoFileId='';state.regProfilePhotoUploadStatus=error.message||'تعذر رفع الصورة الشخصية.';toast(state.regProfilePhotoUploadStatus,'error');}
  finally{state.regProfilePhotoUploading=false;render();}
