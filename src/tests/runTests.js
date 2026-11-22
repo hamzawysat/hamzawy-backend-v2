@@ -1747,7 +1747,8 @@ async function run() {
         assert.equal(AdminConfig.schema.paths[page + 'UiLayout'], undefined, page + ' must not retain an editor layout schema field');
       }
       assert.doesNotMatch(adminRoutes, /createAdminUiLayoutRouter|ui-layout/);
-      assert.doesNotMatch(adminPage, /editor\.html|editor\.js|palette-preview|preview-bootstrap/);
+      assert.doesNotMatch(adminPage, /editor\.html|editor\.js|palette-preview/);
+      assert.match(adminPage, /preview-bootstrap\.js.*data-sonaa-page=\"admin\"/);
       for (const file of [
         '../../frontend/editor.html', '../../frontend/editor.backup.html',
         '../../frontend/js/editor.js', '../../frontend/palette-preview.html',
