@@ -44,6 +44,9 @@ async function main() {
     if (isClearArabicName('ya pm l sy Sai fe Be in Pres تس Agee v')) {
       throw new Error('Garbled Latin OCR text was accepted as an Arabic name');
     }
+    if (!isClearArabicName('سيد كارم')) {
+      throw new Error('A clear two-part Arabic name was rejected');
+    }
     if (!isClearArabicName('سيد كارم محمد عبد الله')) {
       throw new Error('A clear four-part Arabic name was rejected');
     }
