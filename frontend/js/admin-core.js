@@ -72,7 +72,7 @@ let state={
   tab:'dashboard',pageMode:'home',clientStatusFilter:'all',topupOwnerTab:'fannis',
   adminEmail:'',adminPass:'',currentAdminRoleLabel:'',currentAdminIsRoot:false,currentAdminPermissions:{},loading:false,loadingOrders:false,publishingOrders:[],deletingItems:[],
   dropdowns:{}, pendingActions:{},
-  fannis:[],filtered:[],pendingProfileEdits:[],topups:[],filteredTopups:[],orders:[],filteredOrders:[],complaints:[],filteredComplaints:[],recoveryRequests:[],loadingComplaints:false,
+  fannis:[],filtered:[],pendingProfileEdits:[],pendingFanniRegistrations:[],topups:[],filteredTopups:[],orders:[],filteredOrders:[],complaints:[],filteredComplaints:[],recoveryRequests:[],loadingComplaints:false,
   services:[],filteredServices:[],servicesLoading:false,servicesError:'',openServices:{},
   clients:[],filteredClients:[],clientsLoading:false,clientTopups:[],filteredClientTopups:[],clientTopupsLoading:false,clientWalletFilter:'الكل',clientWalletAccounts:[],clientWalletAccountsLoading:false,clientWalletAccountId:'',clientWalletTransactions:[],clientWalletSelectedId:'',clientWalletLoading:false,commerceItems:[],clientSubscriptions:[],commerceLoading:false,accountCounts:{technicians:0,verifiedTechnicians:0,clients:0},
   adminUsers:[],adminUsersLoading:false,
