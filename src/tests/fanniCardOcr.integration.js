@@ -72,9 +72,9 @@ async function main() {
     // copied into the repository, test artifacts, logs, or CI.
     if (process.env.FANNI_OCR_FIXTURE) {
       const realCard = readFileSync(process.env.FANNI_OCR_FIXTURE);
-      const expectedRealId = String(process.env.FANNI_OCR_EXPECTED_ID || '').replace(/\\D/g, '');
-      const expectedRealName = String(process.env.FANNI_OCR_EXPECTED_NAME || '').normalize('NFC').replace(/\\s+/g, ' ').trim();
-      if (!/^\\d{14}$/.test(expectedRealId)) {
+      const expectedRealId = String(process.env.FANNI_OCR_EXPECTED_ID || '').replace(/\D/g, '');
+      const expectedRealName = String(process.env.FANNI_OCR_EXPECTED_NAME || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+      if (!/^\d{14}$/.test(expectedRealId)) {
         throw new Error('Private card test requires a 14-digit FANNI_OCR_EXPECTED_ID environment value');
       }
       const realCardResult = await readFanniCard(realCard);
