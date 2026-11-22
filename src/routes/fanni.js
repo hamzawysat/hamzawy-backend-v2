@@ -179,7 +179,7 @@ router.get('/me/photo', auth(), requireFanni, async (req, res, next) => {
 router.get('/:id/photo', async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).end();
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'معتمد' }).select('+profilePhotoFileId').lean();
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('+profilePhotoFileId').lean();
     if (!fanni?.profilePhotoFileId || !mongoose.connection.db) return res.status(404).end();
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
     const files = await bucket.find({ _id: fanni.profilePhotoFileId, 'metadata.purpose': 'fanni-profile-photo' }).limit(1).toArray();
@@ -504,7 +504,7 @@ router.get('/me', auth(), requireFanni, async (req, res) => {
   const photoRecord = await Fanni.findById(req.user._id).select('+profilePhotoFileId').lean();
   const activeServiceKeys = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
   safeUser.specialties = (Array.isArray(safeUser.specialties) ? safeUser.specialties : []).filter(value => activeServiceKeys.has(normalizeServiceKey(value)));
-  safeUser.profilePhotoUrl = photoRecord?.profilePhotoFileId ? '/api/fanni/me/photo?v=' + encodeURIComponent(String(req.user.updatedAt?.getTime?.() || Date.now())) : '';
+  safeUser.profilePhotoUrl = photoRecord?.profilePhotoFileId ? '/api/fanni/' + String(req.user._id) + '/photo?v=' + encodeURIComponent(String(req.user.updatedAt?.getTime?.() || Date.now())) : '';
   safeUser.identityReviewStatus = req.user.identityReviewStatus || 'pending';
   safeUser.identityReviewReason = req.user.identityReviewReason || '';
   return res.json(safeUser);
@@ -562,7 +562,7 @@ router.patch('/me/profile-photo', auth(), requireFanni, async (req, res, next) =
     const files = await bucket.find({ _id: new mongoose.Types.ObjectId(fileId), 'metadata.purpose': 'fanni-profile-photo', 'metadata.side': 'profile' }).limit(1).toArray();
     if (!files.length) return res.status(400).json({ message: 'ارفع صورة شخصية صحيحة أولًا.' });
     await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: { profilePhotoFileId: new mongoose.Types.ObjectId(fileId) } });
-    return res.set('Cache-Control', 'no-store').json({ message: 'تم تحديث صورتك الشخصية بنجاح.', profilePhotoUrl: '/api/fanni/me/photo?v=' + Date.now() });
+    return res.set('Cache-Control', 'no-store').json({ message: 'تم تحديث صورتك الشخصية بنجاح.', profilePhotoUrl: '/api/fanni/' + String(req.user._id) + '/photo?v=' + Date.now() });
   } catch (err) { return next(err); }
 });
 
