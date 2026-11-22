@@ -4,7 +4,7 @@ async function removeOffer(sn,idx){if(!confirm('هل تريد إزالة هذا 
 
 
 async function rejectOffer(sn,idx){if(!confirm('رفض هذا العرض مع سبب؟'))return; try{await tryApi([`/api/admin/offers/${encodeURIComponent(sn)}/${idx}/reject`],{method:'POST',body:JSON.stringify({reason:'غير مناسب'})}); showToast('تم رفض العرض'); await loadOrders();}catch(e){showToast(e.message);}}
-\n
+
 async function openFanniRegistrationReview(id){
  const row=(state.pendingFanniRegistrations||[]).find(item=>String(item._id)===String(id));
  if(!row)return showToast('طلب التسجيل غير موجود. حدّث القائمة وحاول مرة أخرى.','error');
