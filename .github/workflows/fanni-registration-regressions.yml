@@ -4,6 +4,20 @@ on:
   push:
     branches:
       - fix/fanni-registration-root-cause-20261122
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'frontend/js/fanni-registration-scroll.js'
+      - 'frontend/js/fanni-render.js'
+      - 'frontend/js/fanni-auth.js'
+      - 'frontend/fanni.html'
+      - 'src/services/fanniCardOcr.js'
+      - 'src/routes/fanni.js'
+      - 'src/models/FanniCardLedger.js'
+      - 'src/tests/**'
+      - 'package.json'
+      - '.github/workflows/fanni-registration-regressions.yml'
   workflow_dispatch:
 
 permissions:
