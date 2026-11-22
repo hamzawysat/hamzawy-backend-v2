@@ -210,6 +210,7 @@ const fanniSchema = new mongoose.Schema({
   profilePhotoFileId: { type: mongoose.Schema.Types.ObjectId, default: null, select: false },
   identityReviewStatus: { type: String, enum: ['pending', 'needs_resubmission', 'approved'], default: 'pending', index: true },
   identityReviewReason: { type: String, maxlength: 500, default: '' },
+  identityReviewImage: { type: String, enum: ['', 'front', 'back', 'both', 'profile'], default: '' },
   technicianGuidelinesAcceptedAt: { type: Date, default: null },
   technicianGuidelinesVersion: { type: String, trim: true, maxlength: 40, default: '' },
   stats: {
