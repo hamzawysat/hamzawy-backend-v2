@@ -413,10 +413,78 @@ function renderContent(){
 }
 
 
+let __fanniLastRenderedTab = null;
+
 function render(){
+  const appRoot = document.getElementById('app');
+  const preserveViewport = __fanniLastRenderedTab === state.tab;
+  const scrollX = window.scrollX || window.pageXOffset || 0;
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const active = appRoot && appRoot.contains(document.activeElement) ? document.activeElement : null;
+  const focusState = active ? {
+    id: active.id || '',
+    specialty: active.getAttribute('data-specialty'),
+    category: active.getAttribute('data-category'),
+    area: active.getAttribute('data-area'),
+    tagName: active.tagName,
+    type: active.getAttribute('type'),
+    selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+    selectionDirection: active.selectionDirection || 'none'
+  } : null;
+
   try {
-    return renderContent();
+    const result = renderContent();
+    __fanniLastRenderedTab = state.tab;
+
+    // renderContent replaces the complete app markup. Keep the user's viewport
+    // and active form control when the current tab is only being updated.
+    if (preserveViewport) {
+      requestAnimationFrame(() => {
+        const root = document.getElementById('app');
+        if (root && focusState) {
+          let target = focusState.id ? document.getElementById(focusState.id) : null;
+          if (!target && focusState.specialty !== null) {
+            target = Array.from(root.querySelectorAll('[data-specialty]')).find(el =>
+              el.getAttribute('data-specialty') === focusState.specialty &&
+              el.tagName === focusState.tagName &&
+              (focusState.type === null || el.getAttribute('type') === focusState.type)
+            ) || null;
+          }
+          if (!target && focusState.category !== null) {
+            target = Array.from(root.querySelectorAll('[data-category]')).find(el =>
+              el.getAttribute('data-category') === focusState.category
+            ) || null;
+          }
+          if (!target && focusState.area !== null) {
+            target = Array.from(root.querySelectorAll('[data-area]')).find(el =>
+              el.getAttribute('data-area') === focusState.area
+            ) || null;
+          }
+          if (target && typeof target.focus === 'function') {
+            try { target.focus({ preventScroll: true }); } catch (_) { target.focus(); }
+            if (focusState.selectionStart !== null && typeof target.setSelectionRange === 'function') {
+              try {
+                target.setSelectionRange(
+                  focusState.selectionStart,
+                  focusState.selectionEnd,
+                  focusState.selectionDirection
+                );
+              } catch (_) {}
+            }
+          }
+        }
+        window.scrollTo(scrollX, scrollY);
+      });
+    }
+    return result;
   } catch (error) {
+    __fanniLastRenderedTab = state.tab;
+    console.error('Technician dashboard render failed:', error);
+    const root = document.getElementById('app');
+    if (root) root.innerHTML = '<main class="mx-auto max-w-[680px] p-6"><section class="empty-state panel p-6 text-center" role="alert"><p class="font-extrabold">تعذر عرض بيانات الصفحة حاليًا.</p><p class="mt-2 text-sm text-slate-500">حاول إعادة تحميل الصفحة.</p><button type="button" onclick="location.reload()" class="primary-btn mt-4 px-5 py-3">إعادة المحاولة</button></section></main>';
+  }
+}
     console.error('Technician dashboard render failed:', error);
     const appRoot = document.getElementById('app');
     if (appRoot) appRoot.innerHTML = '<main class="mx-auto max-w-[680px] p-6"><section class="empty-state panel p-6 text-center" role="alert"><p class="font-extrabold">تعذر عرض بيانات الصفحة حاليًا.</p><p class="mt-2 text-sm text-slate-500">حاول إعادة تحميل الصفحة.</p><button type="button" onclick="location.reload()" class="primary-btn mt-4 px-5 py-3">إعادة المحاولة</button></section></main>';
