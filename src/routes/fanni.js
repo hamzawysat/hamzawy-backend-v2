@@ -322,7 +322,7 @@ router.post(
         status: fanni.status
       });
     } catch (err) {
-      if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ message: 'سجل البطاقات غير مهيأ على الخادم. تواصل مع الإدارة.' });
+      if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ code: 'CARD_LEDGER_SECRET_MISSING', message: 'التسجيل متوقف مؤقتًا بسبب نقص إعداد حماية سجل البطاقات على الخادم. لا تحتاج لإعادة رفع الصور؛ أعد المحاولة بعد استكمال إعدادات الخادم.' });
       if (err?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
       if (err?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للفنيين.' });
       if (err?.message === 'REFERRER_NOT_FOUND') return res.status(400).json({ message: 'صاحب كود الدعوة غير موجود.' });
