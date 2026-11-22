@@ -526,9 +526,10 @@ router.patch('/me/identity-card', auth(), requireFanni, async (req, res, next) =
     const currentIdentity = await Fanni.findById(req.user._id).select('+identityCardFrontFileId +identityCardBackFileId').lean();
     const frontId = String(req.body?.identityCardFrontFileId || (requestedImage === 'back' ? currentIdentity?.identityCardFrontFileId : ''));
     const backId = String(req.body?.identityCardBackFileId || (requestedImage === 'front' ? currentIdentity?.identityCardBackFileId : ''));
-    const nationalId = normalizeNationalId(req.body?.nationalId);
+    const hasNationalId = Boolean(String(req.body?.nationalId || '').trim());
+    const nationalId = hasNationalId ? normalizeNationalId(req.body.nationalId) : '';
     if (!mongoose.Types.ObjectId.isValid(frontId) || !mongoose.Types.ObjectId.isValid(backId) || frontId === backId) return res.status(400).json({ message: 'ارفع صورة البطاقة المطلوبة وتأكد من اكتمال الوجهين.' });
-    if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'اكتب رقمًا قوميًّا مصريًا صحيحًا مكوّنًا من 14 رقمًا.' });
+    if (hasNationalId && !isValidNationalId(nationalId)) return res.status(400).json({ message: 'اكتب رقمًا قوميًّا مصريًا صحيحًا مكوّنًا من 14 رقمًا.' });
     if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
     const ids = [new mongoose.Types.ObjectId(frontId), new mongoose.Types.ObjectId(backId)];
@@ -536,19 +537,22 @@ router.patch('/me/identity-card', auth(), requireFanni, async (req, res, next) =
     const front = uploads.find(file => String(file._id) === frontId && file.metadata?.side === 'front');
     const back = uploads.find(file => String(file._id) === backId && file.metadata?.side === 'back');
     if (!front || !back) return res.status(400).json({ message: 'صور البطاقة المرفوعة غير مكتملة أو غير صالحة.' });
-    const nationalIdHash = cardHash(nationalId);
     const ledger = await FanniCardLedger.findOne({ fanniId: req.user._id }).select('+nationalIdEncrypted');
-    const duplicate = await FanniCardLedger.findOne({ nationalIdHash, ...(ledger ? { _id: { $ne: ledger._id } } : {}) }).select('_id');
-    if (duplicate) return res.status(409).json({ code: 'DUPLICATE_FANNI_CARD_REVIEW', message: 'هذا الرقم القومي مرتبط بسجل آخر، وتم إيقاف إعادة الإرسال لحين مراجعة الإدارة.' });
-    if (ledger) {
-      ledger.nationalIdHash = nationalIdHash;
-      ledger.nationalIdEncrypted = encryptNationalId(nationalId);
-      ledger.fanniName = req.user.name;
-      ledger.extractedName = '';
-      ledger.status = 'مسجلة';
-      await ledger.save();
-    } else {
-      await FanniCardLedger.create({ nationalIdHash, nationalIdEncrypted: encryptNationalId(nationalId), fanniId: req.user._id, fanniName: req.user.name, linkedTechnicians: [{ fanniId: req.user._id, name: req.user.name, phone: req.user.phone }], extractedName: '', status: 'مسجلة' });
+    if (!ledger && !hasNationalId) return res.status(409).json({ message: 'سجل الرقم القومي غير موجود. أدخل الرقم القومي لإعادة إنشاء سجل المراجعة.' });
+    if (hasNationalId) {
+      const nationalIdHash = cardHash(nationalId);
+      const duplicate = await FanniCardLedger.findOne({ nationalIdHash, ...(ledger ? { _id: { $ne: ledger._id } } : {}) }).select('_id');
+      if (duplicate) return res.status(409).json({ code: 'DUPLICATE_FANNI_CARD_REVIEW', message: 'هذا الرقم القومي مرتبط بسجل آخر، وتم إيقاف إعادة الإرسال لحين مراجعة الإدارة.' });
+      if (ledger) {
+        ledger.nationalIdHash = nationalIdHash;
+        ledger.nationalIdEncrypted = encryptNationalId(nationalId);
+        ledger.fanniName = req.user.name;
+        ledger.extractedName = '';
+        ledger.status = 'مسجلة';
+        await ledger.save();
+      } else {
+        await FanniCardLedger.create({ nationalIdHash, nationalIdEncrypted: encryptNationalId(nationalId), fanniId: req.user._id, fanniName: req.user.name, linkedTechnicians: [{ fanniId: req.user._id, name: req.user.name, phone: req.user.phone }], extractedName: '', status: 'مسجلة' });
+      }
     }
     await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: {
       identityCardFrontFileId: ids[0], identityCardBackFileId: ids[1],
