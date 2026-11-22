@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const Fanni = require('../models/Fanni');
 const Client = require('../models/Client');
 const FanniCardLedger = require('../models/FanniCardLedger');
-const { readFanniCard, cardHash } = require('../services/fanniCardOcr');
+const { readFanniCard, cardHash, normalizeNationalId, isValidNationalId, isClearArabicName } = require('../services/fanniCardOcr');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -52,6 +52,7 @@ const registerSchema = Joi.object({
   guidelinesAccepted: Joi.boolean().valid(true).optional(),
   identityCardFrontFileId: Joi.string().hex().length(24).required(),
   identityCardBackFileId: Joi.string().hex().length(24).required(),
+  nationalIdManual: Joi.string().trim().max(30).allow('').optional(),
   referralCode: Joi.string().trim().max(50).allow('').optional()
 });
 
@@ -210,19 +211,43 @@ router.post(
           .on('error', reject)
           .on('end', () => resolve(Buffer.concat(chunks)));
       });
-      let cardData;
+      const manualNationalIdInput = String(req.body.nationalIdManual || '').trim();
+      const manualNationalId = normalizeNationalId(manualNationalIdInput);
+      if (manualNationalIdInput && !isValidNationalId(manualNationalId)) {
+        return res.status(422).json({
+          code: 'CARD_NATIONAL_ID_INVALID',
+          message: 'الرقم القومي المدخل غير صحيح. اكتب 14 رقمًا وتأكد من تاريخ الميلاد والمحافظة.'
+        });
+      }
+
+      let cardData = null;
       try {
         cardData = await readFanniCard(frontImage);
       } catch (ocrError) {
-        if (['CARD_OCR_UNCLEAR', 'CARD_IMAGE_UNREADABLE'].includes(ocrError?.code)) {
-          return res.status(422).json({ code: 'CARD_OCR_UNCLEAR', message: 'مش قادرين نقرأ بيانات البطاقة بوضوح. ارفع صورة أوضح للوجه الأمامي وحاول مرة أخرى.' });
+        if (manualNationalId) {
+          cardData = { nationalId: manualNationalId, extractedName: '' };
+        } else if (['CARD_OCR_UNCLEAR', 'CARD_IMAGE_UNREADABLE'].includes(ocrError?.code)) {
+          return res.status(422).json({
+            code: 'CARD_OCR_UNCLEAR',
+            message: 'مش قادرين نقرأ الرقم القومي بوضوح. اكتب الرقم القومي المكوّن من 14 رقمًا في خانة الإدخال اليدوي ثم أعد المحاولة.'
+          });
+        } else {
+          console.error('Technician card OCR unavailable:', String(ocrError?.code || 'OCR_INTERNAL_ERROR'));
+          return res.status(503).json({ code: 'CARD_OCR_UNAVAILABLE', message: 'خدمة قراءة البطاقة غير متاحة مؤقتًا. اكتب الرقم القومي يدويًا أو حاول مرة أخرى بعد قليل.' });
         }
-        console.error('Technician card OCR unavailable:', String(ocrError?.code || 'OCR_INTERNAL_ERROR'));
-        return res.status(503).json({ code: 'CARD_OCR_UNAVAILABLE', message: 'خدمة قراءة البطاقة غير متاحة مؤقتًا. حاول مرة أخرى بعد قليل.' });
       }
 
+      if (!isValidNationalId(cardData?.nationalId)) {
+        if (manualNationalId) cardData = { nationalId: manualNationalId, extractedName: '' };
+        else return res.status(422).json({
+          code: 'CARD_OCR_UNCLEAR',
+          message: 'مش قادرين نقرأ الرقم القومي المكوّن من 14 رقمًا بوضوح. اكتبه يدويًا في الخانة المخصصة ثم أعد المحاولة.'
+        });
+      }
+
+      const extractedName = isClearArabicName(cardData.extractedName) ? cardData.extractedName : '';
       const nationalIdHash = cardHash(cardData.nationalId);
-      // Keep only a keyed one-way fingerprint for duplicate prevention; discard the OCR value.
+      // Keep only a keyed one-way fingerprint for duplicate prevention; never store the readable ID.
       cardData.nationalId = '';
       const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
       const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة' && !attempt.consumedAt);
@@ -299,7 +324,7 @@ router.post(
               fanniId: fanni._id,
               fanniName: fanni.name,
               linkedTechnicians: [{ fanniId: fanni._id, name: fanni.name, phone }],
-              extractedName: cardData.extractedName,
+              extractedName,
               status: 'مسجلة'
             }], { session });
           }
