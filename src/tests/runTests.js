@@ -262,6 +262,24 @@ async function run() {
       assert.ok(storeUi.includes('ملقيناش منتجات مطابقة للبحث'));
     });
 
+    await test('technician card OCR retries split national-ID digits with numeric recognition', async () => {
+      const cardOcr = require('../services/fanniCardOcr');
+      let recognizeCount = 0;
+      cardOcr.setWorkerFactoryForTests(async () => ({
+        setParameters: async () => {},
+        recognize: async () => ({
+          data: {
+            text: ++recognizeCount === 1
+              ? 'اسم فني الاختبار بدون رقم واضح'
+              : '2900-1012-3456-78'
+          }
+        })
+      }));
+      const result = await cardOcr.readFanniCard(Buffer.from('image-fixture'));
+      assert.equal(result.nationalId, '29001012345678');
+      assert.equal(recognizeCount, 2, 'numeric retry should run after the first pass misses the ID');
+    });
+
     await test('technician card ledger normalizes Egyptian national-ID digits and encrypts the stored number', async () => {
       const cardOcr = require('../services/fanniCardOcr');
       const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
@@ -818,6 +836,7 @@ async function run() {
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=', 'base64');
       const cardOcr = require('../services/fanniCardOcr');
       cardOcr.setWorkerFactoryForTests(async () => ({
+        setParameters: async () => {},
         recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
       }));
       const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
