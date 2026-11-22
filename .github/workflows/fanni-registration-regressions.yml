@@ -3,10 +3,7 @@ name: Technician registration regression checks
 on:
   push:
     branches:
-      - fix/fanni-registration-root-cause-20261122
-      - fix/fanni-card-ocr-validation-browser-feedback-20261122
-      - fix/fanni-card-ocr-image-enhancement-20261122
-      - fix/fanni-remove-manual-card-entry-ui-20261122
+      - feat/fanni-manual-id-review-profile-photo-20261122
   pull_request:
     branches:
       - main
@@ -15,7 +12,13 @@ on:
       - 'frontend/js/fanni-render.js'
       - 'frontend/js/fanni-auth.js'
       - 'frontend/fanni.html'
-      - 'src/services/fanniCardOcr.js'
+      - 'src/services/fanniCardIdentity.js'
+      - 'src/routes/admin/fanniProfiles.js'
+      - 'src/models/Fanni.js'
+      - 'src/models/Order.js'
+      - 'src/routes/order/offers.js'
+      - 'frontend/js/client-account.js'
+      - 'frontend/js/admin/**'
       - 'src/routes/fanni.js'
       - 'src/models/FanniCardLedger.js'
       - 'src/tests/**'
@@ -39,6 +42,4 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:registration-ui
-      - run: sudo apt-get update && sudo apt-get install -y imagemagick
-      - run: npm run test:ocr
       - run: npm test

@@ -2,7 +2,7 @@
 
 const express = require('express');
 const FanniCardLedger = require('../../models/FanniCardLedger');
-const { decryptNationalId } = require('../../services/fanniCardOcr');
+const { decryptNationalId } = require('../../services/fanniCardIdentity');
 const { normalizePhone } = require('../../utils/phone');
 
 function createAdminFanniCardLedgerRouter({ auth, writeAdminAudit, adminName }) {

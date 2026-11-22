@@ -5,6 +5,8 @@ const Service = require('../../models/Service');
 const { getActiveServiceNames } = require('../../services/serviceCatalog');
 const { normalizeArea, getEffectiveAreaOptions } = require('../../config/areas');
 const { normalizePhone } = require('../../utils/phone');
+const FanniCardLedger = require('../../models/FanniCardLedger');
+const { normalizeNationalId, isValidNationalId, cardHash, encryptNationalId, decryptNationalId } = require('../../services/fanniCardIdentity');
 
 function createAdminFanniProfilesRouter({
   Region,
@@ -38,6 +40,83 @@ function createAdminFanniProfilesRouter({
     const historical = (Array.isArray(current) ? current : []).filter(value => !activeKeys.has(normalizeServiceKey(value)));
     return [...new Set([...historical, ...requested])];
   }
+
+
+  router.get('/fanni-registration-requests', auth('admin'), async (req, res, next) => {
+    try {
+      const rows = await Fanni.find({ role: 'fanni', status: 'قيد المراجعة', identityReviewStatus: { $in: ['pending', 'needs_resubmission'] } })
+        .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').sort({ createdAt: 1 }).limit(MAX_LIST_LIMIT).lean();
+      const ids = rows.map(item => item._id);
+      const ledgers = ids.length ? await FanniCardLedger.find({ fanniId: { $in: ids } }).select('+nationalIdEncrypted').lean() : [];
+      const byFanni = new Map(ledgers.map(item => [String(item.fanniId), item]));
+      const requests = rows.map(item => {
+        const ledger = byFanni.get(String(item._id));
+        let nationalId = '';
+        try { nationalId = ledger?.nationalIdEncrypted ? decryptNationalId(ledger.nationalIdEncrypted) : ''; } catch (_) {}
+        return { _id: String(item._id), name: item.name, phone: item.phone, nationalId,
+          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '',
+          createdAt: item.createdAt, frontUrl: '/api/fanni/admin/' + String(item._id) + '/identity/front',
+          backUrl: '/api/fanni/admin/' + String(item._id) + '/identity/back',
+          photoUrl: '/api/fanni/admin/' + String(item._id) + '/photo' };
+      });
+      return res.set('Cache-Control', 'no-store').json({ requests, data: requests });
+    } catch (err) { next(err); }
+  });
+
+  router.post('/fanni-registration-requests/:id/approve', auth('admin'), async (req, res, next) => {
+    try {
+      if (!validId(req.params.id)) return sendBadId(res);
+      const schema = Joi.object({ name: Joi.string().trim().min(2).max(50).required(), nationalId: Joi.string().trim().required() }).required();
+      const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
+      if (error) return res.status(400).json({ message: 'راجع الاسم والرقم القومي قبل الموافقة.' });
+      const nationalId = normalizeNationalId(value.nationalId);
+      if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'الرقم القومي يجب أن يكون صحيحًا ومكوّنًا من 14 رقمًا.' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'قيد المراجعة' });
+      if (!fanni) return res.status(404).json({ message: 'طلب التسجيل غير موجود أو تمت مراجعته.' });
+      const ledger = await FanniCardLedger.findOne({ fanniId: fanni._id }).select('+nationalIdEncrypted');
+      if (!ledger) return res.status(409).json({ message: 'سجل الرقم القومي غير موجود. أعد إرسال بيانات البطاقة.' });
+      const nationalIdHash = cardHash(nationalId);
+      const duplicate = await FanniCardLedger.findOne({ nationalIdHash, _id: { $ne: ledger._id } }).select('_id');
+      if (duplicate) return res.status(409).json({ code: 'DUPLICATE_FANNI_CARD_REVIEW', message: 'الرقم القومي مرتبط بسجل فني آخر. يلزم فحص سجل التكرار قبل الموافقة.' });
+      ledger.nationalIdHash = nationalIdHash;
+      ledger.nationalIdEncrypted = encryptNationalId(nationalId);
+      ledger.fanniName = value.name;
+      ledger.extractedName = value.name;
+      ledger.status = 'مسجلة';
+      await ledger.save();
+      fanni.name = value.name;
+      fanni.status = 'معتمد';
+      fanni.identityReviewStatus = 'approved';
+      fanni.identityReviewReason = '';
+      fanni.rejectionReason = undefined;
+      fanni.decisions.push(decision(req, 'موافقة', 'مطابقة الاسم والرقم القومي يدويًا مع صور البطاقة'));
+      await fanni.save();
+      await writeAdminAudit(req, 'مراجعة واعتماد هوية فني', 'fannis', String(fanni._id), 'تمت مطابقة الاسم والرقم القومي مع صور البطاقة');
+      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'account_approved', title: 'تم اعتماد حسابك', message: 'راجعت الإدارة بيانات بطاقتك وتم اعتماد حسابك. يمكنك الآن استخدام خدمات الفنيين.', link: '/fanni', dedupeKey: 'fanni-manual-id-approved:' + String(fanni._id) });
+      return res.json({ message: 'تمت مطابقة البيانات واعتماد حساب الفني بنجاح.' });
+    } catch (err) {
+      if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ message: 'إعداد حماية سجل البطاقات غير مكتمل على الخادم.' });
+      if (err?.code === 11000) return res.status(409).json({ message: 'هذا الرقم القومي مسجل بالفعل في سجل آخر.' });
+      next(err);
+    }
+  });
+
+  router.post('/fanni-registration-requests/:id/reject', auth('admin'), async (req, res, next) => {
+    try {
+      if (!validId(req.params.id)) return sendBadId(res);
+      const reason = String(req.body?.reason || 'صورة البطاقة غير واضحة. ارفع صورة أوضح للوجهين.').trim().slice(0, 500);
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'قيد المراجعة' });
+      if (!fanni) return res.status(404).json({ message: 'طلب التسجيل غير موجود أو تمت مراجعته.' });
+      fanni.identityReviewStatus = 'needs_resubmission';
+      fanni.identityReviewReason = reason;
+      fanni.rejectionReason = reason;
+      fanni.decisions.push(decision(req, 'إعادة للمراجعة', reason));
+      await fanni.save();
+      await writeAdminAudit(req, 'طلب إعادة رفع صور بطاقة فني', 'fannis', String(fanni._id), reason);
+      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_resubmission_required', title: 'مطلوب إعادة رفع صور البطاقة', message: reason, link: '/fanni', dedupeKey: 'fanni-id-resubmit:' + String(fanni._id) + ':' + Date.now() });
+      return res.json({ message: 'تم طلب صور أوضح. سيظل الحساب قيد المراجعة حتى إعادة الرفع.' });
+    } catch (err) { next(err); }
+  });
 
   router.get('/fannis/:id/profile', auth('admin'), async (req, res, next) => {
     try {

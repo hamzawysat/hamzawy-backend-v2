@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const Fanni = require('../models/Fanni');
 const Client = require('../models/Client');
 const FanniCardLedger = require('../models/FanniCardLedger');
-const { readFanniCard, cardHash, encryptNationalId, isValidNationalId, isClearArabicName } = require('../services/fanniCardOcr');
+const { normalizeNationalId, cardHash, encryptNationalId, isValidNationalId } = require('../services/fanniCardIdentity');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -52,6 +52,8 @@ const registerSchema = Joi.object({
   guidelinesAccepted: Joi.boolean().valid(true).optional(),
   identityCardFrontFileId: Joi.string().hex().length(24).required(),
   identityCardBackFileId: Joi.string().hex().length(24).required(),
+  profilePhotoFileId: Joi.string().hex().length(24).required(),
+  nationalId: Joi.string().trim().required(),
   referralCode: Joi.string().trim().max(50).allow('').optional()
 });
 
@@ -118,7 +120,7 @@ function requireApprovedFanni(req, res, next) {
 router.post('/registration-media', async (req, res, next) => {
   try {
     const side = String(req.query.side || '');
-    if (!['front', 'back'].includes(side)) return res.status(400).json({ message: 'حدد وجه البطاقة الأمامي أو الخلفي.' });
+    if (!['front', 'back', 'profile'].includes(side)) return res.status(400).json({ message: 'حدد نوع الصورة المطلوب رفعها.' });
     const buffer = Buffer.isBuffer(req.body) ? req.body : null;
     const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
     const signatures = {
@@ -132,9 +134,10 @@ router.post('/registration-media', async (req, res, next) => {
     if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
     const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
-    const upload = bucket.openUploadStream('fanni-id-' + side + '-' + crypto.randomBytes(8).toString('hex') + extension, {
+    const purpose = side === 'profile' ? 'fanni-profile-photo' : 'fanni-id-document';
+    const upload = bucket.openUploadStream('fanni-' + (side === 'profile' ? 'profile' : 'id-' + side) + '-' + crypto.randomBytes(8).toString('hex') + extension, {
       contentType,
-      metadata: { purpose: 'fanni-id-document', side, uploadedAt: new Date() }
+      metadata: { purpose, side, uploadedAt: new Date() }
     });
     upload.end(buffer);
     await new Promise((resolve, reject) => { upload.once('finish', resolve); upload.once('error', reject); });
@@ -155,6 +158,47 @@ router.get('/admin/:id/identity/:side', auth('admin'), async (req, res, next) =>
     if (!files.length) return res.status(404).end();
     res.set({ 'Content-Type': files[0].contentType || 'application/octet-stream', 'Content-Length': String(files[0].length), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
     return bucket.openDownloadStream(new mongoose.Types.ObjectId(fileId)).on('error', next).pipe(res);
+  } catch (err) { return next(err); }
+});
+
+
+
+/* Stable public URL for a technician's approved profile photo. The GridFS file can be replaced without changing this URL. */
+router.get('/me/photo', auth(), requireFanni, async (req, res, next) => {
+  try {
+    const fanni = await Fanni.findById(req.user._id).select('+profilePhotoFileId').lean();
+    if (!fanni?.profilePhotoFileId || !mongoose.connection.db) return res.status(404).end();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: fanni.profilePhotoFileId, 'metadata.purpose': 'fanni-profile-photo' }).limit(1).toArray();
+    if (!files.length) return res.status(404).end();
+    res.set({ 'Content-Type': files[0].contentType || 'application/octet-stream', 'Content-Length': String(files[0].length), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+    return bucket.openDownloadStream(fanni.profilePhotoFileId).on('error', next).pipe(res);
+  } catch (err) { return next(err); }
+});
+
+router.get('/:id/photo', async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).end();
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('+profilePhotoFileId').lean();
+    if (!fanni?.profilePhotoFileId || !mongoose.connection.db) return res.status(404).end();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: fanni.profilePhotoFileId, 'metadata.purpose': 'fanni-profile-photo' }).limit(1).toArray();
+    if (!files.length) return res.status(404).end();
+    res.set({ 'Content-Type': files[0].contentType || 'application/octet-stream', 'Content-Length': String(files[0].length), 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
+    return bucket.openDownloadStream(fanni.profilePhotoFileId).on('error', next).pipe(res);
+  } catch (err) { return next(err); }
+});
+
+router.get('/admin/:id/photo', auth('admin'), async (req, res, next) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).end();
+    const fanni = await Fanni.findById(req.params.id).select('+profilePhotoFileId').lean();
+    if (!fanni?.profilePhotoFileId || !mongoose.connection.db) return res.status(404).end();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: fanni.profilePhotoFileId, 'metadata.purpose': 'fanni-profile-photo' }).limit(1).toArray();
+    if (!files.length) return res.status(404).end();
+    res.set({ 'Content-Type': files[0].contentType || 'application/octet-stream', 'Content-Length': String(files[0].length), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+    return bucket.openDownloadStream(fanni.profilePhotoFileId).on('error', next).pipe(res);
   } catch (err) { return next(err); }
 });
 
@@ -202,40 +246,15 @@ router.post(
       const approvedAreas = await validateApprovedAreas(req.body.areas);
       if (!approvedAreas) return res.status(400).json({ message: 'اختار مناطق العمل من قائمة المناطق المعتمدة فقط. لا يمكن تسجيل منطقة غير موجودة بالقائمة.' });
 
-      // Read the national ID locally from the private front-side GridFS image.
-      const frontImage = await new Promise((resolve, reject) => {
-        const chunks = [];
-        identityBucket.openDownloadStream(identityIds[0])
-          .on('data', chunk => chunks.push(chunk))
-          .on('error', reject)
-          .on('end', () => resolve(Buffer.concat(chunks)));
-      });
-      let cardData = null;
-      try {
-        cardData = await readFanniCard(frontImage);
-      } catch (ocrError) {
-        if (['CARD_OCR_UNCLEAR', 'CARD_IMAGE_UNREADABLE'].includes(ocrError?.code)) {
-          return res.status(422).json({
-            code: 'CARD_OCR_UNCLEAR',
-            message: 'مش قادرين نقرأ بيانات البطاقة بوضوح. من فضلك ارفع صورة أوضح للبطاقة، بإضاءة جيدة ومن غير اهتزاز.'
-          });
-        }
-        console.error('Technician card OCR unavailable:', String(ocrError?.code || 'OCR_INTERNAL_ERROR'));
-        return res.status(503).json({ code: 'CARD_OCR_UNAVAILABLE', message: 'خدمة قراءة البطاقة غير متاحة مؤقتًا. حاول رفع الصورة مرة أخرى بعد قليل.' });
-      }
+      const profilePhotoId = new mongoose.Types.ObjectId(req.body.profilePhotoFileId);
+      const profileFiles = await identityBucket.find({ _id: profilePhotoId, 'metadata.purpose': 'fanni-profile-photo', 'metadata.side': 'profile' }).limit(1).toArray();
+      if (!profileFiles.length) return res.status(400).json({ message: 'لازم تلتقط صورة شخصية واضحة بالكاميرا قبل إتمام التسجيل.' });
 
-      if (!isValidNationalId(cardData?.nationalId)) {
-        return res.status(422).json({
-          code: 'CARD_OCR_UNCLEAR',
-          message: 'لم نتمكن من استخراج رقم قومي مصري صحيح من البطاقة. من فضلك ارفع صورة أوضح للوجه الأمامي.'
-        });
-      }
-
-      const extractedName = isClearArabicName(cardData.extractedName) ? cardData.extractedName : '';
-      const nationalIdHash = cardHash(cardData.nationalId);
-      const nationalIdEncrypted = encryptNationalId(cardData.nationalId);
-      // Keep the ID encrypted at rest for authorized admin review; use only the HMAC for duplicate matching.
-      cardData.nationalId = '';
+      const nationalId = normalizeNationalId(req.body.nationalId);
+      if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'اكتب رقمًا قوميًّا مصريًا صحيحًا مكوّنًا من 14 رقمًا.' });
+      const nationalIdHash = cardHash(nationalId);
+      const nationalIdEncrypted = encryptNationalId(nationalId);
+      const extractedName = '';
       const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
       const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة' && !attempt.consumedAt);
       if (existingCard && !approvedDuplicateAttempt) {
@@ -277,7 +296,8 @@ router.post(
           }
           const created = await Fanni.create([{
             name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
-            identityCardFrontFileId: identityIds[0], identityCardBackFileId: identityIds[1],
+            identityCardFrontFileId: identityIds[0], identityCardBackFileId: identityIds[1], profilePhotoFileId: profilePhotoId,
+            identityReviewStatus: 'pending',
             ...(req.body.guidelinesAccepted === true ? {
               technicianGuidelinesAcceptedAt: new Date(),
               technicianGuidelinesVersion: TECHNICIAN_GUIDELINES_VERSION
@@ -330,9 +350,7 @@ router.post(
 
       await notifyAdmins({ type: 'admin_new_technician', title: 'فني جديد يحتاج مراجعة', message: `سجّل فني جديد باسم ${fanni.name} ورقم ${fanni.phone}.`, link: '/admin?tab=fannis', dedupeKey: 'admin-new-technician:' + String(fanni._id) });
       return res.status(201).json({
-        message: extractedName
-          ? 'تم إنشاء الحساب بنجاح. الحساب قيد مراجعة الإدارة.'
-          : 'تم إنشاء الحساب بنجاح. تعذر قراءة الاسم من البطاقة آليًا؛ تم الاعتماد على الاسم الذي أدخلته يدويًا.',
+        message: 'تم إنشاء الحساب بنجاح. الحساب قيد مراجعة الإدارة لحين مطابقة الاسم والرقم القومي مع صور البطاقة.',
         id: String(fanni._id),
         status: fanni.status
       });
@@ -483,9 +501,69 @@ router.patch('/availability', auth(), requireFanni, requireApprovedFanni, async 
 
 router.get('/me', auth(), requireFanni, async (req, res) => {
   const safeUser = req.user.toSafeJSON();
+  const photoRecord = await Fanni.findById(req.user._id).select('+profilePhotoFileId').lean();
   const activeServiceKeys = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
   safeUser.specialties = (Array.isArray(safeUser.specialties) ? safeUser.specialties : []).filter(value => activeServiceKeys.has(normalizeServiceKey(value)));
+  safeUser.profilePhotoUrl = photoRecord?.profilePhotoFileId ? '/api/fanni/' + String(req.user._id) + '/photo?v=' + encodeURIComponent(String(req.user.updatedAt?.getTime?.() || Date.now())) : '';
+  safeUser.identityReviewStatus = req.user.identityReviewStatus || 'pending';
+  safeUser.identityReviewReason = req.user.identityReviewReason || '';
   return res.json(safeUser);
+});
+
+
+
+
+router.patch('/me/identity-card', auth(), requireFanni, async (req, res, next) => {
+  try {
+    const frontId = String(req.body?.identityCardFrontFileId || '');
+    const backId = String(req.body?.identityCardBackFileId || '');
+    const nationalId = normalizeNationalId(req.body?.nationalId);
+    if (!mongoose.Types.ObjectId.isValid(frontId) || !mongoose.Types.ObjectId.isValid(backId) || frontId === backId) return res.status(400).json({ message: 'ارفع صورة جديدة للبطاقة من الأمام والخلف.' });
+    if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'اكتب رقمًا قوميًّا مصريًا صحيحًا مكوّنًا من 14 رقمًا.' });
+    if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const ids = [new mongoose.Types.ObjectId(frontId), new mongoose.Types.ObjectId(backId)];
+    const uploads = await bucket.find({ _id: { $in: ids }, 'metadata.purpose': 'fanni-id-document' }).toArray();
+    const front = uploads.find(file => String(file._id) === frontId && file.metadata?.side === 'front');
+    const back = uploads.find(file => String(file._id) === backId && file.metadata?.side === 'back');
+    if (!front || !back) return res.status(400).json({ message: 'صور البطاقة المرفوعة غير مكتملة أو غير صالحة.' });
+    const nationalIdHash = cardHash(nationalId);
+    const ledger = await FanniCardLedger.findOne({ fanniId: req.user._id }).select('+nationalIdEncrypted');
+    const duplicate = await FanniCardLedger.findOne({ nationalIdHash, ...(ledger ? { _id: { $ne: ledger._id } } : {}) }).select('_id');
+    if (duplicate) return res.status(409).json({ code: 'DUPLICATE_FANNI_CARD_REVIEW', message: 'هذا الرقم القومي مرتبط بسجل آخر، وتم إيقاف إعادة الإرسال لحين مراجعة الإدارة.' });
+    if (ledger) {
+      ledger.nationalIdHash = nationalIdHash;
+      ledger.nationalIdEncrypted = encryptNationalId(nationalId);
+      ledger.fanniName = req.user.name;
+      ledger.extractedName = '';
+      ledger.status = 'مسجلة';
+      await ledger.save();
+    } else {
+      await FanniCardLedger.create({ nationalIdHash, nationalIdEncrypted: encryptNationalId(nationalId), fanniId: req.user._id, fanniName: req.user.name, linkedTechnicians: [{ fanniId: req.user._id, name: req.user.name, phone: req.user.phone }], extractedName: '', status: 'مسجلة' });
+    }
+    await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: {
+      identityCardFrontFileId: ids[0], identityCardBackFileId: ids[1],
+      identityReviewStatus: 'pending', identityReviewReason: '', rejectionReason: '', status: 'قيد المراجعة'
+    } });
+    await notifyAdmins({ type: 'admin_new_technician', title: 'إعادة إرسال صور بطاقة فني', message: 'أعاد الفني ' + String(req.user.name || 'فني') + ' رفع صور البطاقة للمراجعة.', link: '/admin?tab=pending', dedupeKey: 'admin-fanni-identity-resubmitted:' + String(req.user._id) + ':' + Date.now() });
+    return res.json({ message: 'تم استلام صور البطاقة والرقم القومي. الحساب ما زال قيد مراجعة الإدارة.' });
+  } catch (err) {
+    if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ message: 'إعداد حماية سجل البطاقات غير مكتمل على الخادم.' });
+    if (err?.code === 11000) return res.status(409).json({ message: 'هذا الرقم القومي مسجل بالفعل في سجل آخر.' });
+    return next(err);
+  }
+});
+
+router.patch('/me/profile-photo', auth(), requireFanni, async (req, res, next) => {
+  try {
+    const fileId = String(req.body?.profilePhotoFileId || '');
+    if (!mongoose.Types.ObjectId.isValid(fileId) || !mongoose.connection.db) return res.status(400).json({ message: 'صورة الملف الشخصي غير صالحة.' });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: new mongoose.Types.ObjectId(fileId), 'metadata.purpose': 'fanni-profile-photo', 'metadata.side': 'profile' }).limit(1).toArray();
+    if (!files.length) return res.status(400).json({ message: 'ارفع صورة شخصية صحيحة أولًا.' });
+    await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: { profilePhotoFileId: new mongoose.Types.ObjectId(fileId) } });
+    return res.set('Cache-Control', 'no-store').json({ message: 'تم تحديث صورتك الشخصية بنجاح.', profilePhotoUrl: '/api/fanni/' + String(req.user._id) + '/photo?v=' + Date.now() });
+  } catch (err) { return next(err); }
 });
 
 router.patch('/me', auth(), requireFanni, validate(profileUpdateSchema), async (req, res, next) => {

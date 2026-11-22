@@ -29,7 +29,7 @@ function renderContent(){
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
  <style>.fanni-home-availability-toggle.is-available{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}.fanni-home-availability-toggle.is-paused{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}.fanni-home-availability-toggle.is-available strong{color:#1B7A2E!important;-webkit-text-fill-color:#1B7A2E!important}.fanni-home-availability-toggle.is-paused strong{color:#D32F2F!important;-webkit-text-fill-color:#D32F2F!important}</style><style>[class*="online"],[class*="avail"],[class*="toggle"]{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}[class*="online"].offline,[class*="avail"].offline,[class*="toggle"].offline,[class*="online"].off,[class*="avail"].off{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}</style><style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
   <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-center gap-2" style="direction:rtl;position:relative">
-    <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#2E7CF6;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">${esc(String(user?.name||"ف").trim().charAt(0)||"ف")}</div>
+    <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#2E7CF6;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">${user?.profilePhotoUrl?'<img src="'+esc(user.profilePhotoUrl)+'" alt="الصورة الشخصية" class="h-8 w-8 rounded-full object-cover">':esc(String(user?.name||"ف").trim().charAt(0)||"ف")}</div>
     <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="font-extrabold text-[20px] leading-none" style="color:#2E7CF6">حمزاوي سات</span>
   </div>
@@ -67,7 +67,8 @@ function renderContent(){
   ${state.tab==='register'?`
    <div class="space-y-4">
     ${new URLSearchParams(window.location.search).get('ref')?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold text-emerald-800">تم فتح تسجيل الفني من خلال دعوة. أكمل التسجيل لتفعيل الدعوة.</div>':''}
-    <div><label class="field-label">الاسم بالكامل *</label><input id="fanniRegName" class="field" autocomplete="name" enterkeyhint="next" value="${esc(state.regName)}" oninput="state.regName=this.value.slice(0,50)" placeholder="الاسم بالكامل"><p class="mt-1 text-[10px] leading-5 text-slate-500">اكتب اسمك بالعربية كما هو مدوّن على البطاقة. يتم التحقق من الرقم القومي آليًا من صورة البطاقة.</p></div>
+    <div><label class="field-label">الاسم بالكامل *</label><input id="fanniRegName" class="field" autocomplete="name" enterkeyhint="next" value="${esc(state.regName)}" oninput="state.regName=this.value.slice(0,50)" placeholder="الاسم بالكامل"><p class="mt-1 text-[10px] leading-5 text-slate-500">اكتب اسمك كما هو مدوّن على البطاقة. ستراجع الإدارة الاسم والرقم القومي يدويًا مع الصور.</p></div>
+    <div><label class="field-label">الرقم القومي *</label><input id="fanniRegNationalId" class="field" inputmode="numeric" autocomplete="off" maxlength="14" value="${esc(state.regNationalId)}" oninput="state.regNationalId=this.value.replace(/[^0-9٠-٩۰-۹]/g,'').slice(0,14)" placeholder="اكتب 14 رقمًا كما في البطاقة"><p class="mt-1 text-[10px] text-slate-500">اكتب الرقم القومي بنفسك؛ الإدارة ستقارنه بالرقم الموجود في صورة البطاقة.</p></div>
     <div><label class="field-label">رقم التليفون *</label><input id="fanniRegPhone" class="field" inputmode="numeric" autocomplete="tel" enterkeyhint="next" value="${esc(state.regPhone)}" oninput="state.regPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
 
     <div class="rounded-2xl border p-3">
@@ -97,6 +98,15 @@ function renderContent(){
      </div>
     <div><label class="field-label">كلمة السر *</label><input id="fanniRegPassword" type="password" class="field" autocomplete="new-password" enterkeyhint="next" value="${esc(state.regPass)}" oninput="state.regPass=this.value.slice(0,100)" placeholder="6 أحرف على الأقل"></div>
     <div><label class="field-label">تأكيد كلمة السر *</label><input id="fanniRegPasswordConfirm" type="password" class="field" autocomplete="new-password" enterkeyhint="go" value="${esc(state.regPassConfirm)}" oninput="state.regPassConfirm=this.value.slice(0,100)" placeholder="اكتب كلمة السر مرة تانية"><p class="text-[10px] text-slate-500 mt-1">لازم تكون مطابقة لكلمة السر الأولى.</p></div>
+
+<section class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
+      <div><h2 class="font-extrabold text-sm text-slate-900">صورتك الشخصية *</h2><p class="mt-1 text-[11px] leading-5 text-slate-600">التقط صورة واضحة لوجهك بالكاميرا الأمامية. ستظهر صورتك في حسابك وللعملاء مع عروضك.</p></div>
+      <img src="${esc(state.regProfilePhotoPreview||'')}" alt="معاينة الصورة الشخصية" class="mx-auto h-24 w-24 rounded-full object-cover border-2 border-white shadow" style="${state.regProfilePhotoPreview?'':'display:none'}">
+      <label class="block cursor-pointer rounded-xl border border-emerald-300 bg-white px-3 py-3 text-center text-xs font-extrabold text-emerald-800">📷 التقاط الصورة بالكاميرا الأمامية
+        <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="hidden" ${state.regProfilePhotoUploading||state.loading?'disabled':''} onchange="handleRegistrationProfilePhotoUpload(this.files?.[0]);this.value=''">
+      </label>
+      <p class="text-[11px] font-bold ${state.regProfilePhotoFileId?'text-emerald-700':'text-slate-600'}" role="status" aria-live="polite">${state.regProfilePhotoUploading?'جاري رفع الصورة...':esc(state.regProfilePhotoUploadStatus|| (state.regProfilePhotoFileId?'تم رفع الصورة الشخصية ✓':'الصورة الشخصية مطلوبة'))}</p>
+    </section>
 
     <section class="rounded-2xl border border-blue-200 bg-blue-50/60 p-3 space-y-3">
      <div><h2 class="font-extrabold text-sm text-slate-900">صورة بطاقة الرقم القومي *</h2><p class="mt-1 text-[11px] leading-5 text-slate-600">ارفع صورة واضحة للوجه الأمامي والخلفي. الصورتان مطلوبتان ولن يتم إنشاء الحساب بدونهما، وسيتم حفظهما بشكل خاص لمراجعة الإدارة.</p></div>
@@ -142,7 +152,7 @@ function renderContent(){
     <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
       <div class="fanni-home-profile px-1 py-2" style="background:#F5F5F7">
         <div class="fanni-home-profile-top">
-          <div class="fanni-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${esc(String(user?.name||'فني').trim().charAt(0)||'ف')}</b></div>
+          <button type="button" class="fanni-home-profile-avatar relative overflow-hidden" aria-label="تغيير الصورة الشخصية" onclick="document.getElementById('fanniProfilePhotoInput')?.click()">${user?.profilePhotoUrl?'<img src="'+esc(user.profilePhotoUrl)+'" alt="الصورة الشخصية" class="absolute inset-0 h-full w-full rounded-full object-cover">':'<span>✦</span><b>'+esc(String(user?.name||'فني').trim().charAt(0)||'ف')+'</b>'}<input id="fanniProfilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="hidden" onchange="handleFanniProfilePhotoChange(this.files?.[0]);this.value=''"></button>
           <div class="fanni-home-profile-name">
             <h2 id="fanniHomeTitle">مرحباً ${esc(user?.name||'بك')}</h2>
             <p>${esc(user?.level||'مبتدئ')} • ${approved?'معتمد':esc(status)} • ${esc(balance)} جنيه</p>
@@ -153,6 +163,7 @@ function renderContent(){
           </button>
         </div>
       </div>
+      ${user?.identityReviewStatus==='needs_resubmission'?'<section class="rounded-2xl border border-amber-300 bg-amber-50 p-3 space-y-3"><h3 class="text-sm font-black text-amber-900">مطلوب إعادة رفع صور البطاقة</h3><p class="text-xs leading-6 text-amber-800">'+esc(user.identityReviewReason||'يرجى رفع صور أوضح للبطاقة من الأمام والخلف.')+'</p><label class="block text-xs font-bold">الرقم القومي<input class="field mt-1" inputmode="numeric" maxlength="14" value="'+esc(state.regNationalId||'')+'" oninput="state.regNationalId=this.value.replace(/[^0-9٠-٩۰-۹]/g,\'\').slice(0,14)"></label><div class="grid grid-cols-2 gap-2"><label class="rounded-xl bg-white border p-3 text-center text-xs font-bold">📷 صورة أمامية<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden" onchange="handleRegistrationIdUpload(\'front\',this.files?.[0]);this.value=\'\'"></label><label class="rounded-xl bg-white border p-3 text-center text-xs font-bold">📷 صورة خلفية<input type="file" accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden" onchange="handleRegistrationIdUpload(\'back\',this.files?.[0]);this.value=\'\'"></label></div><p class="text-[11px] text-emerald-700">'+(state.regIdFrontFileId?'الأمامية جاهزة ✓':'لم ترفع الصورة الأمامية')+' • '+(state.regIdBackFileId?'الخلفية جاهزة ✓':'لم ترفع الصورة الخلفية')+'</p><button type="button" class="pill-btn primary-pill w-full" onclick="submitFanniIdentityResubmission()">إعادة إرسال البطاقة للمراجعة</button></section>':''}
       ${user?.acceptingOrders===false?'<div class="fanni-home-offline-note"><span>⚠️</span><span>أنت غير متصل ولن تستقبل طلبات جديدة. فعّل ON لاستقبال الطلبات.</span></div>':''}
 
       <button type="button" onclick="setTab('available')" class="fanni-home-jobs-banner w-full" style="background:#2E74E0!important;background-image:none!important;color:#FFFFFF!important;border-radius:24px;padding:20px 16px">

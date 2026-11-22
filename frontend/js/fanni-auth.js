@@ -69,7 +69,7 @@ async function compressRegistrationIdImage(file){
   }
   const width=bitmap.width||bitmap.naturalWidth||0,height=bitmap.height||bitmap.naturalHeight||0;
   if(!width||!height)throw new Error('أبعاد الصورة غير صالحة');
-  // Normalize camera EXIF orientation through canvas and retain more pixels for OCR.
+  // Normalize camera EXIF orientation and prepare a clear image for private review.
   const scale=Math.min(1.5,2560/Math.max(width,height));
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
@@ -104,6 +104,44 @@ async function handleRegistrationIdUpload(side,file){
   toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
  }catch(e){state[idKey]='';state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';toast(state[statusKey],'error');}
  finally{state[loadingKey]=false;render();}
+}
+async function handleRegistrationProfilePhotoUpload(file){
+ if(!file)return;
+ const validTypes=['image/jpeg','image/png','image/webp'];
+ if(!validTypes.includes(file.type)){state.regProfilePhotoUploadStatus='نوع الصورة غير مدعوم.';render();return;}
+ if(file.size>15*1024*1024){state.regProfilePhotoUploadStatus='حجم الصورة أكبر من 15 ميجابايت.';render();return;}
+ state.regProfilePhotoFileId='';state.regProfilePhotoUploading=true;state.regProfilePhotoUploadStatus='جاري تجهيز الصورة الشخصية...';render();
+ try{
+  const optimized=await compressRegistrationIdImage(file);
+  const result=await API.uploadRegistrationIdentity('profile',optimized);
+  if(!result?.fileId)throw new Error('لم نتمكن من حفظ الصورة الشخصية.');
+  state.regProfilePhotoFileId=result.fileId;state.regProfilePhotoPreview=await readRegistrationIdPreview(optimized);state.regProfilePhotoUploadStatus='تم رفع الصورة الشخصية بنجاح ✓';
+  toast('تم رفع الصورة الشخصية بنجاح','success');
+ }catch(error){state.regProfilePhotoFileId='';state.regProfilePhotoUploadStatus=error.message||'تعذر رفع الصورة الشخصية.';toast(state.regProfilePhotoUploadStatus,'error');}
+ finally{state.regProfilePhotoUploading=false;render();}
+}
+async function submitFanniIdentityResubmission(){
+ const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'');
+ if(nationalId.length!==14||!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading)return toast('اكتب الرقم القومي وارفع صورتي البطاقة من الأمام والخلف أولًا.','error');
+ try{
+  const result=await API.updateIdentityCard({nationalId,identityCardFrontFileId:state.regIdFrontFileId,identityCardBackFileId:state.regIdBackFileId});
+  if(typeof currentUser==='object'&&currentUser){currentUser.identityReviewStatus='pending';currentUser.identityReviewReason='';}
+  state.regNationalId='';state.regIdFrontFileId='';state.regIdBackFileId='';state.regIdFrontPreview='';state.regIdBackPreview='';
+  toast(result.message||'تم إرسال الصور للمراجعة.','success');render();
+ }catch(error){toast(error.message||'تعذر إرسال صور البطاقة.','error');}
+}
+async function handleFanniProfilePhotoChange(file){
+ if(!file)return;
+ const validTypes=['image/jpeg','image/png','image/webp'];
+ if(!validTypes.includes(file.type)||file.size>15*1024*1024)return toast('اختار صورة JPG أو PNG أو WebP لا تتجاوز 15 ميجابايت.','error');
+ try{
+  const optimized=await compressRegistrationIdImage(file);
+  const uploaded=await API.uploadRegistrationIdentity('profile',optimized);
+  if(!uploaded?.fileId)throw new Error('تعذر رفع الصورة.');
+  const saved=await API.updateProfilePhoto({profilePhotoFileId:uploaded.fileId});
+  if(typeof currentUser==='object'&&currentUser)currentUser.profilePhotoUrl=saved.profilePhotoUrl||('/api/fanni/'+String(currentUser._id||currentUser.id)+'/photo?v='+Date.now());
+  toast(saved.message||'تم تحديث الصورة الشخصية.','success');render();
+ }catch(error){toast(error.message||'تعذر تحديث الصورة الشخصية.','error');}
 }
 function previewRegistrationIdImage(side){
  const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
@@ -148,7 +186,10 @@ async function doRegister(){
  if(!V.text(state.regPass,6,100)){state.error='كلمة السر لازم تكون 6 أحرف على الأقل';render();return}
  if(state.regPass!==state.regPassConfirm){state.error='تأكيد كلمة السر غير مطابق. اكتب نفس كلمة السر في الخانتين.';render();return}
  if(!state.regGuidelinesAccepted){state.error='لازم تقرأ ميثاق حمزاوي سات للتعامل المهني وتحدد الموافقة قبل إنشاء الحساب.';render();return}
+ const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'');
+ if(nationalId.length!==14){state.error='اكتب الرقم القومي المكوّن من 14 رقمًا.';render();return}
  if(!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading){state.error='لازم ترفع صورة البطاقة من الأمام والخلف وتنتظر اكتمال الرفع قبل التسجيل.';render();return}
+ if(!state.regProfilePhotoFileId||state.regProfilePhotoUploading){state.error='لازم تلتقط صورتك الشخصية بالكاميرا وتنتظر اكتمال الرفع.';render();return}
 
  state.loading=true;
  state.error='';
@@ -164,6 +205,8 @@ async function doRegister(){
    guidelinesAccepted:state.regGuidelinesAccepted,
    identityCardFrontFileId:state.regIdFrontFileId,
    identityCardBackFileId:state.regIdBackFileId,
+   profilePhotoFileId:state.regProfilePhotoFileId,
+   nationalId,
    referralCode:(new URLSearchParams(window.location.search).get('ref')||'').slice(0,50)
   });
 
@@ -175,6 +218,7 @@ async function doRegister(){
   state.regPassConfirm='';
   state.regGuidelinesAccepted=false;
   state.regIdFrontFileId='';state.regIdBackFileId='';state.regIdFrontPreview='';state.regIdBackPreview='';
+  state.regNationalId='';state.regProfilePhotoFileId='';state.regProfilePhotoPreview='';state.regProfilePhotoUploadStatus='';
   state.regSpecialties=[];
   state.regAreas=[];
   state.regAreaSearch='';

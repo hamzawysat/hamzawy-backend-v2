@@ -1,6 +1,13 @@
 'use strict';
 
+function renderPendingFanniRegistrations(){
+  const rows=state.pendingFanniRegistrations||[];
+  return '<section class="mt-4 space-y-3"><div class="premium-panel p-4"><h3 class="text-sm font-black">طلبات تسجيل الفنيين — مراجعة الهوية</h3><p class="mt-1 text-[11px] text-slate-500">راجع صورة البطاقة والرقم القومي والاسم والصورة الشخصية قبل الموافقة.</p></div>'+
+  (rows.length?rows.map(item=>'<article class="premium-card p-4 flex items-center justify-between gap-3"><div class="min-w-0"><p class="font-black text-sm">'+escHtml(item.name||'فني')+'</p><p class="mt-1 text-[11px] text-slate-500" dir="ltr">'+escHtml(item.phone||'')+'</p><p class="mt-1 text-[10px] text-amber-700">'+(item.identityReviewStatus==='needs_resubmission'?'بانتظار إعادة رفع صور أوضح':'بانتظار مطابقة البطاقة')+'</p></div><button type="button" class="pill-btn primary-pill shrink-0" onclick="openFanniRegistrationReview(\''+escHtml(String(item._id||''))+'\')">فتح المراجعة</button></article>').join(''):'<div class="premium-panel p-8 text-center text-xs text-slate-500">لا توجد طلبات هوية معلّقة حاليًا.</div>')+
+  '<button type="button" class="pill-btn soft-btn w-full" onclick="loadAll()">تحديث الطلبات</button></section>';
+}
 function renderFannis(){
+  if(state.tab==='pending')return renderPendingFanniRegistrations();
   return `
   <div class="mt-4 space-y-4">
     <div class="premium-panel p-3 space-y-2"><div class="flex items-center justify-between gap-2"><label class="text-[11px] font-black"><input type="checkbox" onchange="toggleAllBulkSelection('fannis',state.filtered.map(f=>f._id),this.checked)"> تحديد كل الفنيين الظاهرين</label><span class="text-[10px] text-slate-500">المحدد: ${(state.selectedBulkFanniIds||[]).length}</span></div><div class="flex flex-wrap gap-2"><button onclick="runBulkAction('fannis','approve')" class="pill-btn primary-pill">قبول المحدد</button><button onclick="runBulkAction('fannis','reject')" class="pill-btn soft-btn">رفض المحدد</button><button onclick="runBulkAction('fannis','disable')" class="pill-btn danger-pill">تعليق المحدد</button><button onclick="runBulkAction('fannis','enable')" class="pill-btn soft-btn">إعادة تفعيل المحدد</button><button onclick="runBulkAction('fannis','freeze')" class="pill-btn danger-pill">تجميد محافظ المحدد</button><button onclick="runBulkAction('fannis','unfreeze')" class="pill-btn soft-btn">إلغاء تجميد المحافظ</button></div></div>

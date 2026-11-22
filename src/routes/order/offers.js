@@ -222,7 +222,7 @@ function createOrderOfferRouter({
         _id: req.userId,
         role: 'fanni',
         status: 'معتمد'
-      }).select('specialties areas acceptingOrders walletBalance level isFrozen limits badges isVerified isFeatured featuredUntil');
+      }).select('specialties areas acceptingOrders walletBalance level isFrozen limits badges isVerified isFeatured featuredUntil +profilePhotoFileId');
   
       if (!fanni) {
         return res.status(403).json({
@@ -319,6 +319,7 @@ function createOrderOfferRouter({
         fanni: req.userId,
         fanniId: String(req.userId),
         fanniName: req.user.name,
+        fanniPhotoUrl: '/api/fanni/' + String(req.userId) + '/photo',
         fanniLevel: fanni.level || 'مبتدئ',
         fanniBadges: Array.from(offerBadges),
         fanniPhone: req.user.phone,
