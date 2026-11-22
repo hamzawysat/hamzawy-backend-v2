@@ -120,6 +120,16 @@ async function handleRegistrationProfilePhotoUpload(file){
  }catch(error){state.regProfilePhotoFileId='';state.regProfilePhotoUploadStatus=error.message||'تعذر رفع الصورة الشخصية.';toast(state.regProfilePhotoUploadStatus,'error');}
  finally{state.regProfilePhotoUploading=false;render();}
 }
+async function submitFanniIdentityResubmission(){
+ const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\\D/g,'');
+ if(nationalId.length!==14||!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading)return toast('اكتب الرقم القومي وارفع صورتي البطاقة من الأمام والخلف أولًا.','error');
+ try{
+  const result=await API.updateIdentityCard({nationalId,identityCardFrontFileId:state.regIdFrontFileId,identityCardBackFileId:state.regIdBackFileId});
+  if(typeof currentUser==='object'&&currentUser){currentUser.identityReviewStatus='pending';currentUser.identityReviewReason='';}
+  state.regNationalId='';state.regIdFrontFileId='';state.regIdBackFileId='';state.regIdFrontPreview='';state.regIdBackPreview='';
+  toast(result.message||'تم إرسال الصور للمراجعة.','success');render();
+ }catch(error){toast(error.message||'تعذر إرسال صور البطاقة.','error');}
+}
 async function handleFanniProfilePhotoChange(file){
  if(!file)return;
  const validTypes=['image/jpeg','image/png','image/webp'];
