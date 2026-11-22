@@ -175,6 +175,18 @@ function getNumericOcrRegions(imageBuffer) {
   ];
   return regions.filter(region => region.width >= 120 && region.height >= 40);
 }
+function getArabicNameRegions(imageBuffer) {
+  const dimensions = getImageDimensions(imageBuffer);
+  if (!dimensions || !dimensions.width || !dimensions.height) return [];
+  const { width, height } = dimensions;
+  // The printed name is usually above the national-number row. Include a broad
+  // right-hand crop plus a taller crop to tolerate card rotation and framing.
+  return [
+    { left: Math.round(width * 0.28), top: Math.round(height * 0.20), width: Math.round(width * 0.70), height: Math.round(height * 0.48) },
+    { left: Math.round(width * 0.18), top: Math.round(height * 0.16), width: Math.round(width * 0.80), height: Math.round(height * 0.60) }
+  ].filter(region => region.width >= 120 && region.height >= 40);
+}
+
 function buildEnhancedImageVariants(imageBuffer) {
   // ImageMagick is used when available; original bytes always remain a fallback.
   // Bound output dimensions and execution time because uploaded images are untrusted.
@@ -236,6 +248,32 @@ async function readFanniCard(imageBuffer) {
     if (name && nameConfidence > bestNameConfidence) {
       bestName = name;
       bestNameConfidence = nameConfidence;
+    }
+
+    // Read the Arabic name separately so small print is not lost among the
+    // portrait, hologram and bilingual labels on the full card.
+    if (variantIndex < 3) {
+      for (const rectangle of getArabicNameRegions(variant)) {
+        for (const pageSegMode of ['6', '11']) {
+          await worker.setParameters({
+            tessedit_pageseg_mode: pageSegMode,
+            tessedit_char_whitelist: '',
+            user_defined_dpi: '300',
+            preserve_interword_spaces: '1',
+            thresholding_method: '2',
+            thresholding_window_size: '0.33',
+            thresholding_kfactor: '0.34'
+          });
+          const nameResult = await worker.recognize(variant, { rectangle });
+          const regionText = String(nameResult?.data?.text || '');
+          const regionName = extractArabicName(regionText, nameResult?.data?.lines, nameResult?.data?.confidence);
+          const regionConfidence = Number(nameResult?.data?.confidence || 0);
+          if (regionName && regionConfidence > bestNameConfidence) {
+            bestName = regionName;
+            bestNameConfidence = regionConfidence;
+          }
+        }
+      }
     }
     if (candidates.size === 1 && bestName) break;
 
