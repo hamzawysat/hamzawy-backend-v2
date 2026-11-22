@@ -814,6 +814,63 @@ async function run() {
       clientToken = r.body.token;
     });
 
+    await test('suspended clients cannot open or continue password-recovery or support conversations', async () => {
+      const Client = require('../models/Client');
+      const recovery = await request(app).post('/api/password-recovery/request').send({ role: 'client', phone: '01012345678' });
+      assert.equal(recovery.status, 201, JSON.stringify(recovery.body));
+      const account = await Client.findById(clientId);
+      account.status = 'معلق';
+      await account.save();
+      try {
+        const blockedRecovery = await request(app).post('/api/password-recovery/request').send({ role: 'client', phone: '01012345678' });
+        assert.equal(blockedRecovery.status, 403);
+        const blockedRead = await request(app).get('/api/password-recovery/request/' + recovery.body.requestId)
+          .set('X-Recovery-Token', recovery.body.recoveryToken);
+        assert.equal(blockedRead.status, 403);
+        const blockedSupportList = await request(app).get('/api/support/client').set('Authorization', 'Bearer ' + clientToken);
+        assert.equal(blockedSupportList.status, 403);
+        const blockedSupportCreate = await request(app).post('/api/support/client')
+          .set('Authorization', 'Bearer ' + clientToken).send({ text: 'اختبار دعم لحساب موقوف' });
+        assert.equal(blockedSupportCreate.status, 403);
+      } finally {
+        account.status = 'نشط';
+        await account.save();
+      }
+      const existing = await request(app).post('/api/password-recovery/request').send({ role: 'client', phone: '01012345678' });
+      assert.equal(existing.status, 409, 'an active recovery request must not create a duplicate');
+      const restoredConversation = await request(app).get('/api/password-recovery/request/' + recovery.body.requestId)
+        .set('X-Recovery-Token', recovery.body.recoveryToken);
+      assert.equal(restoredConversation.status, 200, 'the original ticket must remain accessible with its original device token');
+    });
+
+    await test('suspended technicians cannot open or continue password-recovery or support conversations', async () => {
+      const Fanni = require('../models/Fanni');
+      const jwt = require('jsonwebtoken');
+      const technician = await Fanni.create({
+        name: 'فني اختبار دعم', phone: '01012345684', passwordHash: 'test-password-hash',
+        specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni'
+      });
+      const token = jwt.sign({ id: String(technician._id), role: 'fanni', tokenVersion: 0 }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const recovery = await request(app).post('/api/password-recovery/request').send({ role: 'fanni', phone: technician.phone });
+      assert.equal(recovery.status, 201, JSON.stringify(recovery.body));
+      technician.status = 'معلق';
+      await technician.save();
+      try {
+        const blockedRecovery = await request(app).post('/api/password-recovery/request').send({ role: 'fanni', phone: technician.phone });
+        assert.equal(blockedRecovery.status, 403);
+        const blockedRead = await request(app).get('/api/password-recovery/request/' + recovery.body.requestId)
+          .set('X-Recovery-Token', recovery.body.recoveryToken);
+        assert.equal(blockedRead.status, 403);
+        const blockedSupportList = await request(app).get('/api/support/fanni').set('Authorization', 'Bearer ' + token);
+        assert.equal(blockedSupportList.status, 403);
+        const blockedSupportCreate = await request(app).post('/api/support/fanni')
+          .set('Authorization', 'Bearer ' + token).send({ text: 'اختبار دعم لفني موقوف' });
+        assert.equal(blockedSupportCreate.status, 403);
+      } finally {
+        await Fanni.deleteOne({ _id: technician._id });
+      }
+    });
+
     await test('web push subscription endpoint validates providers and persists/removes only the client subscription', async () => {
       const WebPushSubscription = require('../models/WebPushSubscription');
       const invalid = await request(app).post('/api/notifications/client/web-subscription')
