@@ -119,6 +119,7 @@ function renderContent(){
      <label class="flex items-start gap-2 text-xs font-bold leading-6 text-slate-800"><input type="checkbox" class="mt-1 shrink-0" ${state.regGuidelinesAccepted?'checked':''} onchange="state.regGuidelinesAccepted=this.checked"> قرأت ميثاق حمزاوي سات للتعامل المهني وفهمته وأوافق على الالتزام به.</label>
     </section>
     <button onclick="doRegister()" ${state.loading||SERVICES_LOADING?'disabled':''} class="primary-btn w-full h-12">${state.loading?'جاري إنشاء الحساب...':SERVICES_LOADING?'جاري تحميل التخصصات...':'إنشاء حساب فني'}</button>
+    ${state.loading?'<div id="fanniRegistrationCheckingMessage" class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center text-sm font-extrabold text-blue-800" role="status" aria-live="polite"><span class="block mb-1">برجاء الانتظار</span>جاري مراجعة بيانات البطاقة والتحقق منها، لا تغلق الصفحة ولا تضغط مرة أخرى.</div>':''}
     ${state.error?`<div id="fanniRegistrationResult" role="alert">${errorBox(state.error)}</div>`:''}
    </div>`:`
    <div class="space-y-4">

@@ -83,21 +83,42 @@ async function readFanniCard(imageBuffer) {
   }
   const worker = await getWorker();
   let text = '';
-  let ids = [];
+  const candidates = new Set();
   // First pass preserves Arabic text for extracting the applicant name.
-  await worker.setParameters({ tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' });
+  await worker.setParameters({
+    tessedit_pageseg_mode: '6',
+    tessedit_char_whitelist: '',
+    user_defined_dpi: '300'
+  });
   const fullResult = await worker.recognize(imageBuffer);
   text = String(fullResult?.data?.text || '');
-  ids = extractNationalIds(text);
-  // Retry with a digit-only classifier when mixed-language OCR misses the ID.
-  if (ids.length !== 1) {
-    await worker.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩' });
-    const numericResult = await worker.recognize(imageBuffer);
-    const numericText = String(numericResult?.data?.text || '');
-    const numericIds = extractNationalIds(numericText);
-    if (numericIds.length === 1) ids = numericIds;
-    await worker.setParameters({ tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' });
+  for (const id of extractNationalIds(text)) candidates.add(id);
+
+  // Card photos vary in rotation, framing and text layout. Retry the same
+  // source image with several numeric-only segmentation modes; never infer
+  // or repair individual digits, and still accept exactly one 14-digit ID.
+  if (candidates.size !== 1) {
+    try {
+      for (const pageSegMode of ['6', '11', '7', '13']) {
+        await worker.setParameters({
+          tessedit_pageseg_mode: pageSegMode,
+          tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
+          user_defined_dpi: '300'
+        });
+        const numericResult = await worker.recognize(imageBuffer);
+        const numericText = String(numericResult?.data?.text || '');
+        for (const id of extractNationalIds(numericText)) candidates.add(id);
+        if (candidates.size === 1) break;
+      }
+    } finally {
+      await worker.setParameters({
+        tessedit_pageseg_mode: '6',
+        tessedit_char_whitelist: '',
+        user_defined_dpi: '300'
+      });
+    }
   }
+  const ids = [...candidates];
   if (ids.length !== 1) {
     const error = new Error('CARD_OCR_UNCLEAR');
     error.code = 'CARD_OCR_UNCLEAR';
