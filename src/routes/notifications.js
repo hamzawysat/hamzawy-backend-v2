@@ -88,9 +88,15 @@ function mountRoleRoutes(role) {
   router.get('/' + role, guard, async (req, res, next) => {
     try {
       const recipientId = owner(req, role);
-      const notifications = await Notification.find({ recipientRole: role, recipientId })
-        .sort({ createdAt: -1 }).limit(50).lean();
-      const unreadCount = await Notification.countDocuments({ recipientRole: role, recipientId, readAt: null });
+      const [unreadNotifications, recentReadNotifications] = await Promise.all([
+        // Return every unread item so login replay never silently drops older
+        // requests/orders simply because the inbox's recent-history window is full.
+        Notification.find({ recipientRole: role, recipientId, readAt: null }).sort({ createdAt: -1 }).lean(),
+        Notification.find({ recipientRole: role, recipientId, readAt: { $ne: null } }).sort({ createdAt: -1 }).limit(50).lean()
+      ]);
+      const notifications = [...unreadNotifications, ...recentReadNotifications]
+        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+      const unreadCount = unreadNotifications.length;
       return res.set('Cache-Control', 'no-store').json({
         notifications: notifications.map(item => ({
           id: String(item._id), type: item.type, title: item.title,

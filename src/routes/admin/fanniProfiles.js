@@ -54,7 +54,7 @@ function createAdminFanniProfilesRouter({
         let nationalId = '';
         try { nationalId = ledger?.nationalIdEncrypted ? decryptNationalId(ledger.nationalIdEncrypted) : ''; } catch (_) {}
         return { _id: String(item._id), name: item.name, phone: item.phone, nationalId,
-          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '',
+          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '', identityReviewImage: item.identityReviewImage || 'both',
           createdAt: item.createdAt, frontUrl: '/api/fanni/admin/' + String(item._id) + '/identity/front',
           backUrl: '/api/fanni/admin/' + String(item._id) + '/identity/back',
           photoUrl: '/api/fanni/admin/' + String(item._id) + '/photo' };
@@ -88,6 +88,7 @@ function createAdminFanniProfilesRouter({
       fanni.status = 'معتمد';
       fanni.identityReviewStatus = 'approved';
       fanni.identityReviewReason = '';
+      fanni.identityReviewImage = '';
       fanni.rejectionReason = undefined;
       fanni.decisions.push(decision(req, 'موافقة', 'مطابقة الاسم والرقم القومي يدويًا مع صور البطاقة'));
       await fanni.save();
@@ -105,15 +106,17 @@ function createAdminFanniProfilesRouter({
     try {
       if (!validId(req.params.id)) return sendBadId(res);
       const reason = String(req.body?.reason || 'صورة البطاقة غير واضحة. ارفع صورة أوضح للوجهين.').trim().slice(0, 500);
+      const imageType = ['front', 'back', 'both', 'profile'].includes(String(req.body?.imageType || '')) ? String(req.body.imageType) : 'both';
       const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'قيد المراجعة' });
       if (!fanni) return res.status(404).json({ message: 'طلب التسجيل غير موجود أو تمت مراجعته.' });
       fanni.identityReviewStatus = 'needs_resubmission';
       fanni.identityReviewReason = reason;
+      fanni.identityReviewImage = imageType;
       fanni.rejectionReason = reason;
       fanni.decisions.push(decision(req, 'إعادة للمراجعة', reason));
       await fanni.save();
       await writeAdminAudit(req, 'طلب إعادة رفع صور بطاقة فني', 'fannis', String(fanni._id), reason);
-      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_resubmission_required', title: 'مطلوب إعادة رفع صور البطاقة', message: reason, link: '/fanni', dedupeKey: 'fanni-id-resubmit:' + String(fanni._id) + ':' + Date.now() });
+      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_resubmission_required', title: 'مطلوب إعادة رفع صورة', message: reason, link: '/fanni', dedupeKey: 'fanni-id-resubmit:' + String(fanni._id) + ':' + Date.now() });
       return res.json({ message: 'تم طلب صور أوضح. سيظل الحساب قيد المراجعة حتى إعادة الرفع.' });
     } catch (err) { next(err); }
   });
