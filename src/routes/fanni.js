@@ -514,8 +514,105 @@ router.get('/me', auth(), requireFanni, async (req, res) => {
   safeUser.identityReviewStatus = req.user.identityReviewStatus || 'pending';
   safeUser.identityReviewReason = req.user.identityReviewReason || '';
   safeUser.identityReviewImage = req.user.identityReviewImage || '';
+  safeUser.identityReviewFields = Array.isArray(req.user.identityReviewFields) ? req.user.identityReviewFields : [];
+  safeUser.identityReviewImages = Array.isArray(req.user.identityReviewImages) && req.user.identityReviewImages.length ? req.user.identityReviewImages : (req.user.identityReviewImage === 'both' ? ['front', 'back'] : req.user.identityReviewImage ? [req.user.identityReviewImage] : []);
   return res.json(safeUser);
 });
+
+router.patch('/me/review-resubmission', auth(), requireFanni, async (req, res, next) => {
+  try {
+    const fanni = await Fanni.findById(req.user._id);
+    if (!fanni || fanni.identityReviewStatus !== 'needs_resubmission') {
+      return res.status(409).json({ message: 'لا يوجد طلب تعديل نشط على حسابك.' });
+    }
+    const allowedFields = ['name', 'phone', 'specialties', 'areas'];
+    const requiredFields = Array.isArray(fanni.identityReviewFields) ? fanni.identityReviewFields : [];
+    const requestedImages = Array.isArray(fanni.identityReviewImages) && fanni.identityReviewImages.length
+      ? fanni.identityReviewImages
+      : (fanni.identityReviewImage === 'both' ? ['front', 'back'] : fanni.identityReviewImage ? [fanni.identityReviewImage] : []);
+    const values = req.body?.fields && typeof req.body.fields === 'object' ? req.body.fields : {};
+    const images = req.body?.images && typeof req.body.images === 'object' ? req.body.images : {};
+    const suppliedFields = Object.keys(values);
+    if (requiredFields.some(field => !allowedFields.includes(field)) ||
+        requiredFields.some(field => !Object.prototype.hasOwnProperty.call(values, field)) ||
+        suppliedFields.some(field => !requiredFields.includes(field))) {
+      return res.status(400).json({ message: 'استكمل كل حقول البيانات التي طلبتها الإدارة فقط.' });
+    }
+    if (!requiredFields.length && !requestedImages.length) {
+      return res.status(409).json({ message: 'طلب المراجعة لا يحتوي على بنود قابلة للتعديل. تواصل مع الإدارة.' });
+    }
+
+    const updates = {};
+    if (requiredFields.includes('name')) {
+      const name = String(values.name || '').trim();
+      if (name.length < 2 || name.length > 50) return res.status(400).json({ message: 'اكتب الاسم بشكل صحيح (من حرفين إلى 50 حرفًا).' });
+      updates.name = name;
+    }
+    if (requiredFields.includes('phone')) {
+      const phone = normalizePhone(values.phone);
+      if (!phone || !/^01[0-9]{9}$/.test(phone)) return res.status(400).json({ message: 'اكتب رقم هاتف مصري صحيحًا.' });
+      const duplicate = await Fanni.findOne({ phone, _id: { $ne: fanni._id } }).select('_id');
+      if (duplicate) return res.status(409).json({ message: 'رقم الهاتف مسجل بالفعل في حساب آخر.' });
+      updates.phone = phone;
+    }
+    if (requiredFields.includes('areas')) {
+      const areas = await validateApprovedAreas(values.areas);
+      if (!areas) return res.status(400).json({ message: 'اختار مناطق العمل من قائمة المناطق المعتمدة.' });
+      updates.areas = areas;
+    }
+    if (requiredFields.includes('specialties')) {
+      const active = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
+      const specialties = [...new Set((Array.isArray(values.specialties) ? values.specialties : []).map(value => String(value || '').normalize('NFC').trim()).filter(value => value && active.has(normalizeServiceKey(value))))];
+      if (!specialties.length || specialties.length !== (Array.isArray(values.specialties) ? values.specialties.length : 0)) {
+        return res.status(400).json({ message: 'اختار تخصصًا واحدًا على الأقل من الخدمات المعتمدة.' });
+      }
+      updates.specialties = specialties;
+    }
+
+    const requiredImageIds = [];
+    for (const side of requestedImages) {
+      if (!['front', 'back', 'profile'].includes(side)) return res.status(400).json({ message: 'نوع صورة مطلوب غير صالح.' });
+      const fileId = String(images[side] || '');
+      if (!mongoose.Types.ObjectId.isValid(fileId)) return res.status(400).json({ message: 'ارفع ' + (side === 'profile' ? 'الصورة الشخصية' : side === 'front' ? 'الوجه الأمامي للبطاقة' : 'الوجه الخلفي للبطاقة') + ' المطلوبة.' });
+      requiredImageIds.push({ side, id: new mongoose.Types.ObjectId(fileId) });
+    }
+    if (Object.keys(images).some(side => !requestedImages.includes(side))) {
+      return res.status(400).json({ message: 'ارفع الصور التي حددتها الإدارة فقط.' });
+    }
+    if (requiredImageIds.length) {
+      if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+      const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+      const files = await bucket.find({ _id: { $in: requiredImageIds.map(item => item.id) } }).toArray();
+      for (const item of requiredImageIds) {
+        const expectedPurpose = item.side === 'profile' ? 'fanni-profile-photo' : 'fanni-id-document';
+        const file = files.find(candidate => String(candidate._id) === String(item.id) && candidate.metadata?.purpose === expectedPurpose && candidate.metadata?.side === item.side);
+        if (!file) return res.status(400).json({ message: 'إحدى الصور المرفوعة غير صالحة. أعد اختيار الصورة المطلوبة.' });
+        if (item.side === 'profile') updates.profilePhotoFileId = item.id;
+        if (item.side === 'front') updates.identityCardFrontFileId = item.id;
+        if (item.side === 'back') updates.identityCardBackFileId = item.id;
+      }
+    }
+
+    Object.assign(fanni, updates);
+    fanni.identityReviewStatus = 'pending';
+    fanni.identityReviewReason = '';
+    fanni.identityReviewImage = '';
+    fanni.identityReviewFields = [];
+    fanni.identityReviewImages = [];
+    fanni.rejectionReason = '';
+    fanni.status = 'قيد المراجعة';
+    await fanni.save();
+    await notifyAdmins({
+      type: 'admin_new_technician',
+      title: 'استكمل فني متطلبات المراجعة',
+      message: 'أرسل الفني ' + String(fanni.name || 'فني') + ' التعديلات المطلوبة على بياناته أو صوره.',
+      link: '/admin?tab=pending',
+      dedupeKey: 'admin-fanni-review-resubmitted:' + String(fanni._id) + ':' + Date.now()
+    });
+    return res.set('Cache-Control', 'no-store').json({ message: 'تم إرسال التعديلات والصور المطلوبة للإدارة. حسابك ما زال قيد المراجعة.' });
+  } catch (err) { return next(err); }
+});
+
 
 
 

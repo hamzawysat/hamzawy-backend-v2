@@ -69,13 +69,23 @@ async function run() {
       const adminProfiles = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniProfiles.js'), 'utf8');
       const model = fs.readFileSync(path.join(__dirname, '../models/Fanni.js'), 'utf8');
       const adminUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/technicians-actions.js'), 'utf8');
-      assert.match(model, /identityReviewImage:.*front.*back.*both.*profile/);
-      assert.match(adminProfiles, /fanni\.identityReviewImage = imageType/);
-      assert.match(adminUi, /fanni-review-image-type/);
-      assert.match(fanniRoute, /requestedImage = req\.user\.identityReviewImage/);
-      assert.match(fanniRoute, /identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: ''/);
-      assert.match(fanniRoute, /isRequestedResubmission/);
-      assert.match(fanniRoute, /notifyAdmins\(\{ type: 'admin_new_technician'/);
+      assert.ok(model.includes("identityReviewImage:"));
+      assert.ok(model.includes("identityReviewFields:"));
+      assert.ok(model.includes("identityReviewImages:"));
+      assert.ok(adminProfiles.includes("fanni.identityReviewFields = fields"));
+      assert.ok(adminProfiles.includes("fanni.identityReviewImages = images"));
+      assert.ok(adminUi.includes("data-review-image"));
+      assert.ok(adminUi.includes("data-review-field"));
+      assert.ok(adminUi.includes("fanni-review-reason"));
+      assert.ok(adminProfiles.includes("identityReviewFields: item.identityReviewFields || []"));
+      assert.ok(adminProfiles.includes("identityReviewImages: item.identityReviewImages || []"));
+      assert.ok(fanniRoute.includes("router.patch('/me/review-resubmission'"));
+      assert.ok(fanniRoute.includes("requiredFields = Array.isArray(fanni.identityReviewFields)"));
+      assert.ok(fanniRoute.includes("requestedImages = Array.isArray(fanni.identityReviewImages)"));
+      assert.ok(fanniRoute.includes("fanni.identityReviewStatus = 'pending'"));
+      assert.ok(fanniRoute.includes("fanni.identityReviewFields = []"));
+      assert.ok(fanniRoute.includes("fanni.identityReviewImages = []"));
+      assert.ok(fanniRoute.includes("notifyAdmins({"));
     });
 
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {

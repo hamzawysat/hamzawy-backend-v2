@@ -10,14 +10,33 @@ async function openFanniRegistrationReview(id){
  if(!row)return showToast('طلب التسجيل غير موجود. حدّث القائمة وحاول مرة أخرى.','error');
  const existing=document.getElementById('fanni-registration-review-modal');if(existing)existing.remove();
  const modal=document.createElement('div');modal.id='fanni-registration-review-modal';modal.className='fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/80 p-3';
- modal.innerHTML='<section dir="rtl" class="w-full max-w-3xl max-h-[94vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl"><header class="flex items-center justify-between border-b pb-3"><div><h2 class="font-black text-base">مراجعة تسجيل الفني</h2><p class="mt-1 text-xs text-slate-500">قارن الاسم والرقم المكتوبين بصور البطاقة.</p></div><button type="button" data-close class="rounded-lg bg-slate-100 px-3 py-2">إغلاق ✕</button></header><div class="grid grid-cols-1 sm:grid-cols-3 gap-3 py-4"><div><p class="mb-2 text-xs font-black">الصورة الشخصية</p><div id="fanni-review-photo" class="rounded-xl bg-slate-50 p-2 text-center text-xs text-slate-500">تحميل...</div></div><div><p class="mb-2 text-xs font-black">وجه البطاقة الأمامي</p><div id="fanni-review-front" class="rounded-xl bg-slate-50 p-2 text-center text-xs text-slate-500">تحميل...</div></div><div><p class="mb-2 text-xs font-black">وجه البطاقة الخلفي</p><div id="fanni-review-back" class="rounded-xl bg-slate-50 p-2 text-center text-xs text-slate-500">تحميل...</div></div></div><div class="grid sm:grid-cols-2 gap-3"><label class="text-xs font-black">الاسم الذي كتبه الفني<input id="fanni-review-name" class="field mt-2" maxlength="50"></label><label class="text-xs font-black">الرقم القومي الذي كتبه الفني<input id="fanni-review-national-id" class="field mt-2" inputmode="numeric" maxlength="14"></label></div><p id="fanni-review-reason" class="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800"></p><label class="mt-3 block text-xs font-black">الصورة المطلوب إعادة رفعها<select id="fanni-review-image-type" class="field mt-2"><option value="both">وجها البطاقة الأمامي والخلفي</option><option value="front">الوجه الأمامي للبطاقة فقط</option><option value="back">الوجه الخلفي للبطاقة فقط</option><option value="profile">الصورة الشخصية فقط</option></select></label><div class="mt-4 grid grid-cols-2 gap-2"><button type="button" id="fanni-review-approve" class="pill-btn primary-pill">موافقة واعتماد</button><button type="button" id="fanni-review-reject" class="pill-btn danger-pill">رفض وطلب صور أوضح</button></div></section>';
+ modal.innerHTML=`<section dir="rtl" class="w-full max-w-4xl max-h-[94vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl">
+ <header class="flex items-center justify-between border-b pb-3"><div><h2 class="font-black text-base">مراجعة تسجيل الفني</h2><p class="mt-1 text-xs text-slate-500">راجع البيانات والصور، ثم حدد المطلوب من الفني بدقة.</p></div><button type="button" data-close class="rounded-lg bg-slate-100 px-3 py-2">إغلاق ✕</button></header>
+ <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 py-4"><div><p class="mb-2 text-xs font-black">الصورة الشخصية</p><div id="fanni-review-photo" class="rounded-xl bg-slate-50 p-2 text-center text-xs text-slate-500">تحميل...</div></div><div><p class="mb-2 text-xs font-black">وجه البطاقة الأمامي</p><div id="fanni-review-front" class="rounded-xl bg-slate-50 p-2 text-center text-xs text-slate-500">تحميل...</div></div><div><p class="mb-2 text-xs font-black">وجه البطاقة الخلفي</p><div id="fanni-review-back" class="rounded-xl bg-slate-50 p-2 text-center text-xs text-slate-500">تحميل...</div></div></div>
+ <div class="grid sm:grid-cols-2 gap-3"><label class="text-xs font-black">الاسم الذي كتبه الفني<input id="fanni-review-name" class="field mt-2" maxlength="50"></label><label class="text-xs font-black">الرقم القومي الذي كتبه الفني<input id="fanni-review-national-id" class="field mt-2" inputmode="numeric" maxlength="14"></label></div>
+ <div class="mt-4 rounded-xl border border-slate-200 p-3"><h3 class="font-black text-sm">لو مطلوب تعديل بيانات</h3><p class="mt-1 text-xs text-slate-500">اختار الحقول التي تريد من الفني تعديلها داخل التطبيق.</p><div class="mt-3 grid grid-cols-2 gap-3 text-sm">
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-field="name"> الاسم</label>
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-field="phone"> رقم الهاتف</label>
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-field="specialties"> التخصصات</label>
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-field="areas"> مناطق العمل</label>
+ </div></div>
+ <div class="mt-3 rounded-xl border border-slate-200 p-3"><h3 class="font-black text-sm">لو مطلوب إعادة رفع صور</h3><p class="mt-1 text-xs text-slate-500">اختار صورة واحدة أو أكثر. الفني لن يرى إلا الصور المحددة.</p><div class="mt-3 grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-image="profile"> الصورة الشخصية</label>
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-image="front"> البطاقة – الوجه الأمامي</label>
+ <label class="flex items-center gap-2"><input type="checkbox" data-review-image="back"> البطاقة – الوجه الخلفي</label>
+ </div></div>
+ <label class="mt-3 block text-xs font-black">رسالة الإدارة للفني<textarea id="fanni-review-reason" class="field mt-2 min-h-[100px]" maxlength="500" placeholder="اكتب المطلوب بوضوح، وسيظهر للفني بخط كبير ولون مميز..."></textarea></label>
+ <div class="mt-4 grid grid-cols-2 gap-2"><button type="button" id="fanni-review-approve" class="pill-btn primary-pill">موافقة واعتماد</button><button type="button" id="fanni-review-reject" class="pill-btn danger-pill">إرسال المطلوب للفني</button></div></section>`;
  document.body.appendChild(modal);
  const urls=[];const close=()=>{urls.forEach(url=>URL.revokeObjectURL(url));modal.remove();};
  modal.querySelector('[data-close]').addEventListener('click',close);modal.addEventListener('click',event=>{if(event.target===modal)close();});
  modal.querySelector('#fanni-review-name').value=row.name||'';
  modal.querySelector('#fanni-review-national-id').value=row.nationalId||'';
- modal.querySelector('#fanni-review-reason').textContent=row.identityReviewReason||'';
- modal.querySelector('#fanni-review-image-type').value=row.identityReviewImage||'both';
+ modal.querySelector('#fanni-review-reason').value=row.identityReviewReason||'';
+ const existingFields=Array.isArray(row.identityReviewFields)?row.identityReviewFields:[];
+ const existingImages=Array.isArray(row.identityReviewImages)&&row.identityReviewImages.length?row.identityReviewImages:(row.identityReviewImage==='both'?['front','back']:row.identityReviewImage?[row.identityReviewImage]:[]);
+ modal.querySelectorAll('[data-review-field]').forEach(input=>{input.checked=existingFields.includes(input.dataset.reviewField);});
+ modal.querySelectorAll('[data-review-image]').forEach(input=>{input.checked=existingImages.includes(input.dataset.reviewImage);});
  try{
   for(const [key,url,alt] of [['photo',row.photoUrl,'الصورة الشخصية'],['front',row.frontUrl,'الوجه الأمامي للبطاقة'],['back',row.backUrl,'الوجه الخلفي للبطاقة']]){
    const response=await fetch(BASE_URL+url,{headers:{Authorization:'Bearer '+getToken()},credentials:'omit'});
@@ -34,8 +53,12 @@ async function openFanniRegistrationReview(id){
   try{const result=await tryApi(['/api/admin/fanni-registration-requests/'+encodeURIComponent(id)+'/approve'],{method:'POST',body:JSON.stringify({name,nationalId})});showToast(result.message||'تم اعتماد الفني.');close();await loadAll();}catch(error){showToast(error.message||'تعذرت الموافقة.','error');}
  });
  modal.querySelector('#fanni-review-reject').addEventListener('click',async()=>{
-  const reason=prompt('اكتب سبب طلب إعادة الرفع:','الصورة غير واضحة. ارفع صورة أوضح بإضاءة جيدة ومن دون اهتزاز.');if(reason===null)return;
-  const imageType=modal.querySelector('#fanni-review-image-type').value;
-  try{const result=await tryApi(['/api/admin/fanni-registration-requests/'+encodeURIComponent(id)+'/reject'],{method:'POST',body:JSON.stringify({reason,imageType})});showToast(result.message||'تم طلب إعادة رفع الصور.');close();await loadAll();}catch(error){showToast(error.message||'تعذر إرسال طلب إعادة الرفع.','error');}
+  const reason=modal.querySelector('#fanni-review-reason').value.trim();
+  const fields=Array.from(modal.querySelectorAll('[data-review-field]:checked')).map(input=>input.dataset.reviewField);
+  const images=Array.from(modal.querySelectorAll('[data-review-image]:checked')).map(input=>input.dataset.reviewImage);
+  if(!reason)return showToast('اكتب رسالة الإدارة التي ستظهر للفني.','error');
+  if(!fields.length&&!images.length)return showToast('حدد حقل بيانات أو صورة واحدة على الأقل.','error');
+  if(!confirm('إرسال المطلوب المحدد للفني؟'))return;
+  try{const result=await tryApi(['/api/admin/fanni-registration-requests/'+encodeURIComponent(id)+'/reject'],{method:'POST',body:JSON.stringify({reason,fields,images})});showToast(result.message||'تم إرسال المطلوب للفني.');close();await loadAll();}catch(error){showToast(error.message||'تعذر إرسال المطلوب للفني.','error');}
  });
 }
