@@ -71,7 +71,7 @@ function extractNationalIds(text) {
   const normalized = normalizeDigits(text);
   // OCR can split printed ID digits with punctuation or line spacing.
   // Accept harmless visual separators, but still require exactly 14 digits.
-  const matches = normalized.match(/(?<!\d)(?:\d[\s\-–—.,،:;|/\\]*){13}\d(?!\d)/g) || [];
+  const matches = normalized.match(/(?<!\d)(?:\d[\s\-–—.,،:;|\/\\]*){13}\d(?!\d)/g) || [];
   return [...new Set(matches.map(normalizeNationalId).filter(Boolean))];
 }
 
