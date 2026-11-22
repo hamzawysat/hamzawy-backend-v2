@@ -19,6 +19,7 @@ function makeSyntheticCardImage(value) {
     '-draw', 'rectangle 1210,220 1510,500',
     '-fill', '#111111', '-stroke', 'none', '-font', 'DejaVu-Sans',
     '-pointsize', '76', '-gravity', 'south', '-annotate', '+0+115', value,
+    '-pointsize', '74', '-gravity', 'north', '-annotate', '+0+210', 'سيد كارم',
     'png:-'
   ], { encoding: null, maxBuffer: 10 * 1024 * 1024 });
 }
@@ -39,7 +40,7 @@ async function main() {
     if (result.nationalId !== expected) {
       throw new Error('OCR did not exactly match the synthetic 14-digit fixture');
     }
-    if (result.extractedName) throw new Error('Digit-only synthetic fixture unexpectedly produced a name');
+    if (result.extractedName !== 'سيد كارم') throw new Error('OCR did not exactly match the synthetic Arabic-name fixture');
     const arabicDigits = extractNationalIds('٢٩٨٠١٠١٠١٠٠٠١٧');
     if (extractNationalIds('1234567890123').length !== 0) {
       throw new Error('OCR accepted a value shorter than 14 digits');
@@ -64,7 +65,7 @@ async function main() {
     }
     const degradedFixture = makeDegradedCardImage(fixture);
     const degradedResult = await readFanniCard(degradedFixture);
-    if (degradedResult.nationalId !== expected) {
+    if (degradedResult.nationalId !== expected || degradedResult.extractedName !== 'سيد كارم') {
       throw new Error('Enhanced OCR did not recover the exact 14-digit ID from a dim, mildly blurred fixture');
     }
     // Optional private real-card regression: pass the attachment path and expected
