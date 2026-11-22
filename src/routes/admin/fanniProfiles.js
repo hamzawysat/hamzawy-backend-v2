@@ -54,7 +54,7 @@ function createAdminFanniProfilesRouter({
         let nationalId = '';
         try { nationalId = ledger?.nationalIdEncrypted ? decryptNationalId(ledger.nationalIdEncrypted) : ''; } catch (_) {}
         return { _id: String(item._id), name: item.name, phone: item.phone, nationalId,
-          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '', identityReviewImage: item.identityReviewImage || 'both',
+          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '', identityReviewImage: item.identityReviewImage || 'both', identityReviewFields: item.identityReviewFields || [], identityReviewImages: item.identityReviewImages || [], areas: item.areas || [], specialties: item.specialties || [],
           createdAt: item.createdAt, frontUrl: '/api/fanni/admin/' + String(item._id) + '/identity/front',
           backUrl: '/api/fanni/admin/' + String(item._id) + '/identity/back',
           photoUrl: '/api/fanni/admin/' + String(item._id) + '/photo' };
@@ -105,19 +105,32 @@ function createAdminFanniProfilesRouter({
   router.post('/fanni-registration-requests/:id/reject', auth('admin'), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
-      const reason = String(req.body?.reason || 'صورة البطاقة غير واضحة. ارفع صورة أوضح للوجهين.').trim().slice(0, 500);
-      const imageType = ['front', 'back', 'both', 'profile'].includes(String(req.body?.imageType || '')) ? String(req.body.imageType) : 'both';
+      const reason = String(req.body?.reason || '').trim().slice(0, 500);
+      const fieldsAllowed = ['name', 'phone', 'specialties', 'areas'];
+      const imagesAllowed = ['profile', 'front', 'back'];
+      const fields = [...new Set((Array.isArray(req.body?.fields) ? req.body.fields : []).filter(value => fieldsAllowed.includes(value)))];
+      const images = [...new Set((Array.isArray(req.body?.images) ? req.body.images : []).filter(value => imagesAllowed.includes(value)))];
+      // Backward compatibility for older admin clients.
+      if (!fields.length && !images.length) {
+        const legacy = String(req.body?.imageType || '');
+        if (['front', 'back', 'profile'].includes(legacy)) images.push(legacy);
+        else if (legacy === 'both' || !legacy) images.push('front', 'back');
+      }
+      if (!reason) return res.status(400).json({ message: 'اكتب رسالة واضحة للفني توضح المطلوب منه.' });
+      if (!fields.length && !images.length) return res.status(400).json({ message: 'حدد بند بيانات أو صورة واحدة على الأقل.' });
       const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'قيد المراجعة' });
       if (!fanni) return res.status(404).json({ message: 'طلب التسجيل غير موجود أو تمت مراجعته.' });
       fanni.identityReviewStatus = 'needs_resubmission';
       fanni.identityReviewReason = reason;
-      fanni.identityReviewImage = imageType;
+      fanni.identityReviewFields = fields;
+      fanni.identityReviewImages = images;
+      fanni.identityReviewImage = images.length === 1 ? images[0] : images.length === 2 && images.includes('front') && images.includes('back') ? 'both' : '';
       fanni.rejectionReason = reason;
       fanni.decisions.push(decision(req, 'إعادة للمراجعة', reason));
       await fanni.save();
-      await writeAdminAudit(req, 'طلب إعادة رفع صور بطاقة فني', 'fannis', String(fanni._id), reason);
-      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_resubmission_required', title: 'مطلوب إعادة رفع صورة', message: reason, link: '/fanni', dedupeKey: 'fanni-id-resubmit:' + String(fanni._id) + ':' + Date.now() });
-      return res.json({ message: 'تم طلب صور أوضح. سيظل الحساب قيد المراجعة حتى إعادة الرفع.' });
+      await writeAdminAudit(req, 'طلب استكمال بيانات أو صور فني', 'fannis', String(fanni._id), reason);
+      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_resubmission_required', title: 'مطلوب استكمال بيانات حسابك', message: reason, link: '/fanni', dedupeKey: 'fanni-review-resubmit:' + String(fanni._id) + ':' + Date.now() });
+      return res.json({ message: 'تم إرسال المطلوب للفني وسيظل الحساب قيد المراجعة حتى استكماله.' });
     } catch (err) { next(err); }
   });
 
