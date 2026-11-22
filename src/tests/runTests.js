@@ -154,8 +154,9 @@ async function run() {
       assert.ok(brandStyles.includes('min-height:108px'), 'dashboard statistic tiles must retain the native-app height');
       assert.ok(brandStyles.includes('background:#DCE5FF'), 'referral strips must use the native-app indigo surface');
       assert.ok(
-        clientAccount.includes('background:#1426A5;color:#fff') && clientAccount.includes('background:#1426A5;border:2px solid #fff') && clientAccount.includes('rgba(20,38,165,.30)'),
-        'client floating support control must use the shared royal-blue palette'
+        clientAccount.includes('background:#2E7CF6!important;color:#FFFFFF!important') &&
+        clientAccount.includes('background:#EEF2FF!important;color:#2E7CF6!important'),
+        'client account entry actions must use the current shared blue palette'
       );
       assert.ok(
         technicianRender.includes('background:#1426A5') && technicianRender.includes('rgba(20,38,165,.30)') &&
@@ -180,8 +181,8 @@ async function run() {
           page + ' must not contain inline style blocks after the shared brand stylesheet'
         );
         assert.ok(
-          source.includes('<meta name="theme-color" content="#101F9B">'),
-          page + ' must use the native app brand color for browser chrome'
+          source.includes('<meta name="theme-color" content="#2E7CF6">'),
+          page + ' must use the current shared browser brand color'
         );
       }
       const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
