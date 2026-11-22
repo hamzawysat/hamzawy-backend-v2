@@ -157,7 +157,7 @@ async function doRegister(){
  render({scrollTargetId:'fanniRegistrationCheckingMessage'});
 
  try{
-  await API.register({
+  const registrationResult = await API.register({
    name:clean(state.regName,50),
    phone:state.regPhone.replace(/\D/g,''),
    password:state.regPass,
@@ -184,7 +184,7 @@ async function doRegister(){
   state.regAreaSearch='';
   state.regAreaCustom='';
   state.tab='login';
-  state.pendingMsg='تم إنشاء حساب بنجاح. حسابك قيد مراجعة الإدارة.';
+  state.pendingMsg=registrationResult?.message||'تم إنشاء حساب بنجاح. حسابك قيد مراجعة الإدارة.';
   state.error='';
 
   render({scrollTargetId:'fanniRegistrationPendingMessage'});
