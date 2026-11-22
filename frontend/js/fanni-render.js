@@ -101,6 +101,7 @@ function renderContent(){
 
 <section class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
       <div><h2 class="font-extrabold text-sm text-slate-900">صورتك الشخصية *</h2><p class="mt-1 text-[11px] leading-5 text-slate-600">التقط صورة واضحة لوجهك بالكاميرا الأمامية. ستظهر صورتك في حسابك وللعملاء مع عروضك.</p></div>
+      <img src="${esc(state.regProfilePhotoPreview||'')}" alt="معاينة الصورة الشخصية" class="mx-auto h-24 w-24 rounded-full object-cover border-2 border-white shadow" style="${state.regProfilePhotoPreview?'':'display:none'}">
       <label class="block cursor-pointer rounded-xl border border-emerald-300 bg-white px-3 py-3 text-center text-xs font-extrabold text-emerald-800">📷 التقاط الصورة بالكاميرا الأمامية
         <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="hidden" ${state.regProfilePhotoUploading||state.loading?'disabled':''} onchange="handleRegistrationProfilePhotoUpload(this.files?.[0]);this.value=''">
       </label>
