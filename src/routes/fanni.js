@@ -522,10 +522,12 @@ router.get('/me', auth(), requireFanni, async (req, res) => {
 
 router.patch('/me/identity-card', auth(), requireFanni, async (req, res, next) => {
   try {
-    const frontId = String(req.body?.identityCardFrontFileId || '');
-    const backId = String(req.body?.identityCardBackFileId || '');
+    const requestedImage = req.user.identityReviewImage || 'both';
+    const currentIdentity = await Fanni.findById(req.user._id).select('+identityCardFrontFileId +identityCardBackFileId').lean();
+    const frontId = String(req.body?.identityCardFrontFileId || (requestedImage === 'back' ? currentIdentity?.identityCardFrontFileId : ''));
+    const backId = String(req.body?.identityCardBackFileId || (requestedImage === 'front' ? currentIdentity?.identityCardBackFileId : ''));
     const nationalId = normalizeNationalId(req.body?.nationalId);
-    if (!mongoose.Types.ObjectId.isValid(frontId) || !mongoose.Types.ObjectId.isValid(backId) || frontId === backId) return res.status(400).json({ message: 'ارفع صورة جديدة للبطاقة من الأمام والخلف.' });
+    if (!mongoose.Types.ObjectId.isValid(frontId) || !mongoose.Types.ObjectId.isValid(backId) || frontId === backId) return res.status(400).json({ message: 'ارفع صورة البطاقة المطلوبة وتأكد من اكتمال الوجهين.' });
     if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'اكتب رقمًا قوميًّا مصريًا صحيحًا مكوّنًا من 14 رقمًا.' });
     if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
