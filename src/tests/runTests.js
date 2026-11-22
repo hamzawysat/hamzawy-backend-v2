@@ -841,7 +841,7 @@ async function run() {
       const cardOcr = require('../services/fanniCardOcr');
       cardOcr.setWorkerFactoryForTests(async () => ({
         setParameters: async () => {},
-        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
+        recognize: async () => ({ data: { text: '29001012345678\nاسم فني الاختبار' } })
       }));
       cardOcr.setPaddleOcrRunnerForTests(() => [
         { text: '29001012345678', confidence: 0.99 },
@@ -857,7 +857,7 @@ async function run() {
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
       cardOcr.setWorkerFactoryForTests(async () => ({
         setParameters: async () => {},
-        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
+        recognize: async () => ({ data: { text: '29001012345678\nاسم فني الاختبار' } })
       }));
       let registration;
       try {
