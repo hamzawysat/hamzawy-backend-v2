@@ -35,8 +35,6 @@ def variants(image):
     lut = np.array([min(255, ((i / 255.0) ** (1.0 / gamma)) * 255) for i in range(256)], dtype=np.uint8)
     lifted = cv2.LUT(gray, lut)
     output.append(cv2.cvtColor(lifted, cv2.COLOR_GRAY2BGR))
-    sharpen_kernel = np.array([[0, -1, 0], [-1, 5, -1], [0, -1, 0]])
-    output.append(cv2.filter2D(output[1], -1, sharpen_kernel))
     return output
 
 
@@ -59,6 +57,10 @@ def main():
     engine = PaddleOCR(
         lang="ar",
         ocr_version="PP-OCRv5",
+        text_detection_model_name="PP-OCRv5_mobile_det",
+        text_recognition_model_name="arabic_PP-OCRv5_mobile_rec",
+        text_det_limit_side_len=960,
+        text_det_limit_type="max",
         device="cpu",
         use_doc_orientation_classify=False,
         use_doc_unwarping=False,
