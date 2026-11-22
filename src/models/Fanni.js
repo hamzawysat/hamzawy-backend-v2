@@ -207,6 +207,9 @@ const fanniSchema = new mongoose.Schema({
   // Private MongoDB GridFS references; never expose the image bytes in public profile JSON.
   identityCardFrontFileId: { type: mongoose.Schema.Types.ObjectId, default: null, select: false },
   identityCardBackFileId: { type: mongoose.Schema.Types.ObjectId, default: null, select: false },
+  profilePhotoFileId: { type: mongoose.Schema.Types.ObjectId, default: null, select: false },
+  identityReviewStatus: { type: String, enum: ['pending', 'needs_resubmission', 'approved'], default: 'pending', index: true },
+  identityReviewReason: { type: String, maxlength: 500, default: '' },
   technicianGuidelinesAcceptedAt: { type: Date, default: null },
   technicianGuidelinesVersion: { type: String, trim: true, maxlength: 40, default: '' },
   stats: {
@@ -243,6 +246,7 @@ fanniSchema.methods.toSafeJSON = function() {
   delete obj.tokenVersion;
   delete obj.identityCardFrontFileId;
   delete obj.identityCardBackFileId;
+  delete obj.profilePhotoFileId;
   return obj;
 };
 
