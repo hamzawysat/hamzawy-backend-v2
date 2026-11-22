@@ -1738,84 +1738,26 @@ async function run() {
       assert.equal(String(duplicate.body.supportCase._id), String(supportCaseId));
     });
 
-    await test('admin button layout is shared, persisted, and safely sanitized', async () => {
-      const unauthorized = await request(app).get('/api/admin/ui-layout/admin');
-      assert.equal(unauthorized.status, 401);
-
-      const saved = await request(app).put('/api/admin/ui-layout/admin')
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ layout: {
-          sectionOrder: [
-            'platform-admin', 'dashboard', 'clients', 'technicians',
-            'finance', 'commerce', 'service-management', 'customer-operations',
-            'unknown-section', 'dashboard'
-          ],
-          tabOrder: { dashboard: ['stats', 'orders', 'dashboard', 'not-a-tab'] },
-          tabGroups: {
-            orders: 'dashboard',
-            clientWallet: 'finance',
-            wallets: 'finance',
-            topups: 'finance',
-            dashboard: 'invalid-section'
-          },
-          sizes: { orders: 'large', dashboard: 'tiny', stats: 'small', unknown: 'large' },
-          elements: {
-            'auto-div-1_button-': {
-              width: '29%', buttonWidth: 29, translateX: 12, translateY: -4,
-              anchor: 'center', fontSize: 16, color: '#142b43', radius: 10,
-              text: 'اختبار العرض', hidden: false, threeD: true, scale: 1
-            }
-          }
-        } });
-      assert.equal(saved.status, 200);
-      assert.deepEqual(saved.body.layout.sectionOrder, [
-        'platform-admin', 'dashboard', 'clients', 'technicians',
-        'finance', 'commerce', 'service-management', 'customer-operations'
-      ], 'all eight configured admin sections must survive sanitization');
-      assert.deepEqual(saved.body.layout.tabOrder.dashboard, ['stats', 'orders', 'dashboard']);
-      assert.equal(saved.body.layout.tabGroups.orders, 'dashboard');
-      assert.equal(saved.body.layout.tabGroups.clientWallet, 'finance');
-      assert.equal(saved.body.layout.tabGroups.wallets, 'finance');
-      assert.equal(saved.body.layout.tabGroups.topups, 'finance');
-      assert.equal(saved.body.layout.tabGroups.dashboard, undefined);
-      assert.equal(saved.body.layout.sizes.orders, 'large');
-      assert.equal(saved.body.layout.sizes.dashboard, undefined);
-      assert.equal(saved.body.layout.sizes.stats, 'small');
-      assert.equal(saved.body.layout.elements['auto-div-1_button-'].width, '29%');
-      assert.equal(saved.body.layout.elements['auto-div-1_button-'].buttonWidth, 29);
-      assert.equal(saved.body.layout.elements['auto-div-1_button-'].translateX, 12);
-      const loaded = await request(app).get('/api/admin/ui-layout/admin')
-        .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(loaded.status, 200);
-      assert.deepEqual(loaded.body.layout, saved.body.layout);
-      assert.equal(loaded.body.layout.elements['auto-div-1_button-'].width, '29%');
-    });
-
-    await test('all five visual-editor layouts preserve version and survive MongoDB save/read round-trips', async () => {
+    await test('visual editor and all editor-only APIs are completely removed', async () => {
       const AdminConfig = require('../models/AdminConfig');
+      const adminRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
+      const adminPage = fs.readFileSync(path.join(__dirname, '../../frontend/admin.html'), 'utf8');
+      const bootstrap = fs.readFileSync(path.join(__dirname, '../../frontend/js/preview-bootstrap.js'), 'utf8');
       for (const page of ['admin', 'client', 'fanni', 'password', 'support']) {
-        assert.ok(AdminConfig.schema.paths[page + 'UiLayout'], 'missing MongoDB schema field for ' + page);
-        const payload = {
-          version: 3, sectionOrder: [], tabOrder: {}, tabGroups: {}, sizes: {},
-          elements: {
-            ['roundtrip-' + page]: {
-              x: 12, y: -8, width: '73%', fontSize: 18,
-              color: '#123456', text: 'حفظ واختبار ' + page,
-              mobile: { x: 4, y: 6, width: 88, text: 'موبايل' }
-            }
-          }
-        };
-        const saved = await request(app).put('/api/admin/ui-layout/' + page)
-          .set('Authorization', 'Bearer ' + adminToken).send({ layout: payload });
-        assert.equal(saved.status, 200, page + ' save failed: ' + JSON.stringify(saved.body));
-        assert.equal(saved.body.layout.version, 3, page + ' version was dropped by sanitizer');
-        const loaded = await request(app).get('/api/admin/ui-layout/' + page)
-          .set('Authorization', 'Bearer ' + adminToken);
-        assert.equal(loaded.status, 200);
-        assert.deepEqual(loaded.body.layout, saved.body.layout, page + ' PUT/GET round-trip mismatch');
-        const persisted = await AdminConfig.findOne({ key: 'main' }).lean();
-        assert.equal(persisted[page + 'UiLayout'].elements['roundtrip-' + page].mobile.width, 88);
+        assert.equal(AdminConfig.schema.paths[page + 'UiLayout'], undefined, page + ' must not retain an editor layout schema field');
       }
+      assert.doesNotMatch(adminRoutes, /createAdminUiLayoutRouter|ui-layout/);
+      assert.doesNotMatch(adminPage, /editor\.html|editor\.js|palette-preview|preview-bootstrap/);
+      for (const file of [
+        '../../frontend/editor.html', '../../frontend/editor.backup.html',
+        '../../frontend/js/editor.js', '../../frontend/palette-preview.html',
+        '../../frontend/js/ui-layout-loader.js', '../../frontend/js/shared-editor-bridge.js',
+        '../../frontend/js/shared-preview-links.js'
+      ]) {
+        assert.equal(fs.existsSync(path.join(__dirname, file)), false, file + ' must be deleted');
+      }
+      assert.match(bootstrap, /window\.__SONAA_PAGE_ROLE__ = 'admin'/);
+      assert.doesNotMatch(bootstrap, /IS_EDITOR_PREVIEW|PREVIEW_REQUESTED_TAB|SONAA_SKIP_AUTH_REDIRECT|SONAA_FORCE_PREVIEW_TAB/);
     });
 
     await test('admin API rejects requests without a token', async () => {
