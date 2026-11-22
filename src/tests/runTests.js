@@ -2907,6 +2907,21 @@ async function run() {
       });
       assert.ok(await FanniCardLedger.exists({ nationalIdHash: exclusiveHash }), 'the released national-ID hash must be reusable');
 
+      const approvedOwner = await Fanni.create({
+        name: 'فني معتمد محذوف', phone: '01000000024', passwordHash: 'test-hash',
+        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni'
+      });
+      const approvedHash = 'test-approved-technician-card-hash-reserved';
+      await FanniCardLedger.create({
+        nationalIdHash: approvedHash, nationalIdEncrypted: 'encrypted-approved-test',
+        fanniId: approvedOwner._id, fanniName: approvedOwner.name,
+        linkedTechnicians: [{ fanniId: approvedOwner._id, name: approvedOwner.name, phone: approvedOwner.phone }]
+      });
+      const approvedRemoval = await request(app).delete('/api/admin/fannis/' + approvedOwner._id)
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(approvedRemoval.status, 200, JSON.stringify(approvedRemoval.body));
+      assert.ok(await FanniCardLedger.exists({ nationalIdHash: approvedHash }), 'deleting an approved technician must not release the identity ledger');
+
       const sharedOwner = await Fanni.create({
         name: 'فني صاحب سجل مشترك', phone: '01000000022', passwordHash: 'test-hash',
         specialties: ['تجربة'], areas: ['القاهرة'], status: 'مرفوض', role: 'fanni'
