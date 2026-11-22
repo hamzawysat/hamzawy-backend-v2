@@ -36,5 +36,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm run test:registration-ui
+      - run: sudo apt-get update && sudo apt-get install -y imagemagick
       - run: npm run test:ocr
       - run: npm test
