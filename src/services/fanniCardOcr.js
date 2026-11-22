@@ -369,7 +369,7 @@ async function readFanniCard(imageBuffer) {
   for (const finding of paddleFindings) {
     const text = String(finding?.text || '');
     for (const id of extractNationalIds(text)) paddleIds.add(id);
-    const name = extractArabicName(text, [], finding?.confidence);
+    const name = extractArabicName(text, [], Number(finding?.confidence || 0) * 100);
     if (name && Number(finding?.confidence || 0) >= 0.55) {
       paddleNames.add(normalizeArabicNameForMatch(name));
     }
