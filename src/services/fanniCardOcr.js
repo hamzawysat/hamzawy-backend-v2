@@ -27,11 +27,41 @@ function normalizeNationalId(value) {
   return digits.length === 14 ? digits : '';
 }
 
+function isValidNationalId(value) {
+  const digits = normalizeNationalId(value);
+  if (!digits || !/^[23]\d{13}$/.test(digits)) return false;
+  const year = (digits[0] === '2' ? 1900 : 2000) + Number(digits.slice(1, 3));
+  const month = Number(digits.slice(3, 5));
+  const day = Number(digits.slice(5, 7));
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) return false;
+  const governorate = digits.slice(7, 9);
+  return new Set(['01','02','03','04','11','12','13','14','15','16','17','18','19','21','22','23','24','25','26','27','28','29','31','32','33','34','35','88']).has(governorate);
+}
+
+function isClearArabicName(value) {
+  const name = String(value || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+  if (!name || name.length < 10 || name.length > 100) return false;
+  if (!/^[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\u0640\u064b-\u065f\u0670\s]+$/u.test(name)) return false;
+  const parts = name.split(' ').filter(Boolean);
+  return parts.length >= 3 && parts.length <= 5 && parts.every(part => part.length >= 2 && /[\u0621-\u064a\u066e-\u06d3]/u.test(part));
+}
+
 function cardHash(nationalId) {
+  if (!isValidNationalId(nationalId)) {
+    const error = new Error('CARD_NATIONAL_ID_INVALID');
+    error.code = 'CARD_NATIONAL_ID_INVALID';
+    throw error;
+  }
   return crypto.createHmac('sha256', getLedgerSecret()).update(normalizeNationalId(nationalId)).digest('hex');
 }
 
 function encryptNationalId(nationalId) {
+  if (!isValidNationalId(nationalId)) {
+    const error = new Error('CARD_NATIONAL_ID_INVALID');
+    error.code = 'CARD_NATIONAL_ID_INVALID';
+    throw error;
+  }
   const key = crypto.createHash('sha256').update(getLedgerSecret()).digest();
   const iv = crypto.randomBytes(12);
   const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -61,10 +91,17 @@ async function getWorker() {
   return workerPromise;
 }
 
-function extractArabicName(text) {
-  const lines = String(text || '').split(/\r?\n/).map(line => line.replace(/[^\p{L}\p{M}\s]/gu, ' ').replace(/\s+/g, ' ').trim()).filter(Boolean);
-  const candidates = lines.filter(line => /[\u0600-\u06ff]/.test(line) && line.length >= 5 && line.length <= 100);
-  return candidates.sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length)[0] || '';
+function extractArabicName(text, confidenceLines = [], overallConfidence = null) {
+  const lines = String(text || '').split(/\r?\n/).map(line => line.normalize('NFC').replace(/\s+/g, ' ').trim()).filter(Boolean);
+  const candidates = lines.filter(isClearArabicName);
+  const scored = candidates.filter(candidate => {
+    if (Array.isArray(confidenceLines) && confidenceLines.length) {
+      const matchingLine = confidenceLines.find(item => String(item?.text || '').normalize('NFC').replace(/\s+/g, ' ').trim() === candidate);
+      return Boolean(matchingLine && Number(matchingLine.confidence) >= 50);
+    }
+    return !Number.isFinite(Number(overallConfidence)) || Number(overallConfidence) >= 50;
+  });
+  return scored.sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length)[0] || '';
 }
 
 function extractNationalIds(text) {
@@ -72,7 +109,7 @@ function extractNationalIds(text) {
   // OCR can split printed ID digits with punctuation or line spacing.
   // Accept harmless visual separators, but still require exactly 14 digits.
   const matches = normalized.match(/(?<!\d)(?:\d[\s\-–—.,،:;|\/\\]*){13}\d(?!\d)/g) || [];
-  return [...new Set(matches.map(normalizeNationalId).filter(Boolean))];
+  return [...new Set(matches.map(normalizeNationalId).filter(isValidNationalId))];
 }
 
 function getImageDimensions(buffer) {
@@ -186,13 +223,16 @@ async function readFanniCard(imageBuffer) {
       });
     }
   }
-  const ids = [...candidates];
+  const ids = [...candidates].filter(isValidNationalId);
   if (ids.length !== 1) {
     const error = new Error('CARD_OCR_UNCLEAR');
     error.code = 'CARD_OCR_UNCLEAR';
     throw error;
   }
-  return { nationalId: ids[0], extractedName: extractArabicName(text) };
+  return {
+    nationalId: ids[0],
+    extractedName: extractArabicName(text, fullResult?.data?.lines, fullResult?.data?.confidence)
+  };
 }
 async function terminateWorkerForTests() {
   if (!workerPromise) return;
@@ -217,5 +257,8 @@ module.exports = {
   decryptNationalId,
   setWorkerFactoryForTests,
   terminateWorkerForTests,
-  extractNationalIds
+  extractNationalIds,
+  isValidNationalId,
+  isClearArabicName,
+  extractArabicName
 };
