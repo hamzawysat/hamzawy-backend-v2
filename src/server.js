@@ -216,11 +216,11 @@ app.use((req, res, next) => {
   return next();
 });
 
-const repositoryFrontendPath = path.join(__dirname, '../frontend');
+// Legacy /frontend URLs must resolve to the freshly built artifact too.
 app.use('/frontend', (req, res, next) => {
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   next();
-}, express.static(repositoryFrontendPath, {
+}, express.static(frontendPath, {
   index: false,
   dotfiles: 'ignore'
 }));
