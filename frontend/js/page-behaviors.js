@@ -34,7 +34,6 @@
       let lastToken = '';
 
       function token() {
-        if (window.IS_EDITOR_PREVIEW) return '';
         try {
           return localStorage.getItem('admin_token_v3') || '';
         } catch (_) {

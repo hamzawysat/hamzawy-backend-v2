@@ -204,8 +204,7 @@ const frontendPath = possibleFrontendPaths.find(
   p => fs.existsSync(p) && fs.statSync(p).isDirectory()
 ) || __dirname;
 
-// Serve the editor and other repository frontend files from an explicit absolute path.
-// The explicit sendFile route is a fallback if static middleware does not resolve the file.
+// Serve repository frontend files from an explicit absolute path.
 // Keep the admin HTML page out of all public static paths.
 // The private route is enabled only when a valid path is configured.
 const adminPanelPath = String(process.env.ADMIN_PANEL_PATH || '').trim();
@@ -220,17 +219,12 @@ app.use((req, res, next) => {
 
 const repositoryFrontendPath = path.join(__dirname, '../frontend');
 app.use('/frontend', (req, res, next) => {
-  // Permit embedding frontend pages only by same-origin editor previews.
-  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
   next();
 }, express.static(repositoryFrontendPath, {
   index: false,
   dotfiles: 'ignore'
 }));
-app.get('/frontend/editor.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/editor.html'));
-});
-
 // Keep the public Hamzawy Sat download page available even when frontend-dist is selected.
 app.get('/download.html', (req, res) => {
   return res.redirect(302, 'https://hamzawysat.github.io/hamzawy-download/');

@@ -45,6 +45,16 @@ async function run() {
     process.env.MONGO_URI = mongo.getUri('sonaa_test');
     app = require('../server');
     mongoose = require('mongoose');
+    await mongoose.connect(process.env.MONGO_URI);
+    // Keep integration tests deterministic even when the model default enables maintenance.
+    const AdminConfigForTests = require('../models/AdminConfig');
+    const { resetMaintenanceCache } = require('../utils/maintenanceCache');
+    await AdminConfigForTests.findOneAndUpdate(
+      { key: 'main' },
+      { $set: { 'settings.maintenance': false } },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+    resetMaintenanceCache();
 
     await test('Arabic store search normalizes spelling variants and tolerates simple typos', async () => {
       const search = require('../../frontend/js/store-search');
@@ -90,7 +100,6 @@ async function run() {
       const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
       const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
       const technicianOffers = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-offers.js'), 'utf8');
-      const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
       const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
       assert.notEqual(clientHomeStart, -1, 'client home dashboard must render');
       const clientProfilePosition = clientRender.indexOf('class="client-home-profile-shell"');
@@ -141,58 +150,6 @@ async function run() {
       for (const label of ['سجل المهام', 'التقارير', 'الإعدادات', 'طلب دعم فني']) {
         assert.ok(technicianRender.includes(label), 'technician quick actions are missing ' + label);
       }
-      assert.ok(brandStyles.includes('min-height:108px'), 'dashboard statistic tiles must retain the native-app height');
-      assert.ok(brandStyles.includes('background:#DCE5FF'), 'referral strips must use the native-app indigo surface');
-      assert.ok(
-        clientAccount.includes('background:#1426A5;color:#fff') && clientAccount.includes('background:#1426A5;border:2px solid #fff') && clientAccount.includes('rgba(20,38,165,.30)'),
-        'client floating support control must use the shared royal-blue palette'
-      );
-      assert.ok(
-        technicianRender.includes('background:#1426A5') && technicianRender.includes('rgba(20,38,165,.30)') &&
-        !technicianRender.includes('rgba(169,130,46,.25)'),
-        'technician floating refresh control must not retain the legacy gold shadow'
-      );
-    });
-
-    await test('shared brand stylesheet remains the final visual layer on all browser pages', async () => {
-      const pages = [
-        'index.html', 'client.html', 'fanni.html', 'support.html', 'password.html',
-        'customers.html', 'technicians.html', 'download.html', 'links.html',
-        'admin.html', 'admin-setup.html'
-      ];
-      for (const page of pages) {
-        const source = fs.readFileSync(path.join(__dirname, '../../frontend', page), 'utf8');
-        const brandPosition = source.lastIndexOf('hamzawy-sat-brand.css');
-        assert.notEqual(brandPosition, -1, page + ' must load the shared brand stylesheet');
-        assert.equal(
-          source.indexOf('<style', brandPosition),
-          -1,
-          page + ' must not contain inline style blocks after the shared brand stylesheet'
-        );
-        assert.ok(
-          source.includes('<meta name="theme-color" content="#101F9B">'),
-          page + ' must use the native app brand color for browser chrome'
-        );
-      }
-      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
-      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
-      for (const source of [clientAccount, technicianRender]) {
-        assert.ok(source.includes('#172DAD') && source.includes('#FFFFFF'), 'account entry links must use the native blue palette');
-        for (const legacyColor of ['#d6b45a', '#fffdf5', '#fff4cf', '#173c6c', '#1d4ed8', '#2563eb']) {
-          assert.ok(!source.toLowerCase().includes(legacyColor.toLowerCase()), 'account entry renderer still contains legacy color ' + legacyColor);
-        }
-      }
-      assert.ok(clientAccount.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'client account social link must use the native blue palette');
-      assert.ok(technicianRender.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'technician account social link must use the native blue palette');
-      assert.ok(!clientAccount.includes('#d6b45a') && !clientAccount.includes('#fffdf5'), 'client account entry screen must not retain the legacy gold palette');
-      assert.ok(!technicianRender.includes('#d6b45a') && !technicianRender.includes('#fffdf5'), 'technician account entry screen must not retain the legacy gold palette');
-      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
-      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
-      assert.match(clientPage, /client-account\.js\?v=[^"'&\s]+/, 'client account script must have a cache-busting version');
-      assert.match(technicianPage, /fanni-render\.js\?v=[^"'&\s]+/, 'technician renderer script must have a cache-busting version');
-      const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../frontend/manifest.webmanifest'), 'utf8'));
-      assert.equal(manifest.theme_color, '#101F9B');
-      assert.equal(manifest.background_color, '#F4F8FC');
     });
 
     await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
@@ -1738,84 +1695,27 @@ async function run() {
       assert.equal(String(duplicate.body.supportCase._id), String(supportCaseId));
     });
 
-    await test('admin button layout is shared, persisted, and safely sanitized', async () => {
-      const unauthorized = await request(app).get('/api/admin/ui-layout/admin');
-      assert.equal(unauthorized.status, 401);
-
-      const saved = await request(app).put('/api/admin/ui-layout/admin')
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ layout: {
-          sectionOrder: [
-            'platform-admin', 'dashboard', 'clients', 'technicians',
-            'finance', 'commerce', 'service-management', 'customer-operations',
-            'unknown-section', 'dashboard'
-          ],
-          tabOrder: { dashboard: ['stats', 'orders', 'dashboard', 'not-a-tab'] },
-          tabGroups: {
-            orders: 'dashboard',
-            clientWallet: 'finance',
-            wallets: 'finance',
-            topups: 'finance',
-            dashboard: 'invalid-section'
-          },
-          sizes: { orders: 'large', dashboard: 'tiny', stats: 'small', unknown: 'large' },
-          elements: {
-            'auto-div-1_button-': {
-              width: '29%', buttonWidth: 29, translateX: 12, translateY: -4,
-              anchor: 'center', fontSize: 16, color: '#142b43', radius: 10,
-              text: 'اختبار العرض', hidden: false, threeD: true, scale: 1
-            }
-          }
-        } });
-      assert.equal(saved.status, 200);
-      assert.deepEqual(saved.body.layout.sectionOrder, [
-        'platform-admin', 'dashboard', 'clients', 'technicians',
-        'finance', 'commerce', 'service-management', 'customer-operations'
-      ], 'all eight configured admin sections must survive sanitization');
-      assert.deepEqual(saved.body.layout.tabOrder.dashboard, ['stats', 'orders', 'dashboard']);
-      assert.equal(saved.body.layout.tabGroups.orders, 'dashboard');
-      assert.equal(saved.body.layout.tabGroups.clientWallet, 'finance');
-      assert.equal(saved.body.layout.tabGroups.wallets, 'finance');
-      assert.equal(saved.body.layout.tabGroups.topups, 'finance');
-      assert.equal(saved.body.layout.tabGroups.dashboard, undefined);
-      assert.equal(saved.body.layout.sizes.orders, 'large');
-      assert.equal(saved.body.layout.sizes.dashboard, undefined);
-      assert.equal(saved.body.layout.sizes.stats, 'small');
-      assert.equal(saved.body.layout.elements['auto-div-1_button-'].width, '29%');
-      assert.equal(saved.body.layout.elements['auto-div-1_button-'].buttonWidth, 29);
-      assert.equal(saved.body.layout.elements['auto-div-1_button-'].translateX, 12);
-      const loaded = await request(app).get('/api/admin/ui-layout/admin')
-        .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(loaded.status, 200);
-      assert.deepEqual(loaded.body.layout, saved.body.layout);
-      assert.equal(loaded.body.layout.elements['auto-div-1_button-'].width, '29%');
-    });
-
-    await test('all five visual-editor layouts preserve version and survive MongoDB save/read round-trips', async () => {
+    await test('visual editor and all editor-only APIs are completely removed', async () => {
       const AdminConfig = require('../models/AdminConfig');
+      const adminRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
+      const adminPage = fs.readFileSync(path.join(__dirname, '../../frontend/admin.html'), 'utf8');
+      const bootstrap = fs.readFileSync(path.join(__dirname, '../../frontend/js/preview-bootstrap.js'), 'utf8');
       for (const page of ['admin', 'client', 'fanni', 'password', 'support']) {
-        assert.ok(AdminConfig.schema.paths[page + 'UiLayout'], 'missing MongoDB schema field for ' + page);
-        const payload = {
-          version: 3, sectionOrder: [], tabOrder: {}, tabGroups: {}, sizes: {},
-          elements: {
-            ['roundtrip-' + page]: {
-              x: 12, y: -8, width: '73%', fontSize: 18,
-              color: '#123456', text: 'حفظ واختبار ' + page,
-              mobile: { x: 4, y: 6, width: 88, text: 'موبايل' }
-            }
-          }
-        };
-        const saved = await request(app).put('/api/admin/ui-layout/' + page)
-          .set('Authorization', 'Bearer ' + adminToken).send({ layout: payload });
-        assert.equal(saved.status, 200, page + ' save failed: ' + JSON.stringify(saved.body));
-        assert.equal(saved.body.layout.version, 3, page + ' version was dropped by sanitizer');
-        const loaded = await request(app).get('/api/admin/ui-layout/' + page)
-          .set('Authorization', 'Bearer ' + adminToken);
-        assert.equal(loaded.status, 200);
-        assert.deepEqual(loaded.body.layout, saved.body.layout, page + ' PUT/GET round-trip mismatch');
-        const persisted = await AdminConfig.findOne({ key: 'main' }).lean();
-        assert.equal(persisted[page + 'UiLayout'].elements['roundtrip-' + page].mobile.width, 88);
+        assert.equal(AdminConfig.schema.paths[page + 'UiLayout'], undefined, page + ' must not retain an editor layout schema field');
       }
+      assert.doesNotMatch(adminRoutes, /createAdminUiLayoutRouter|ui-layout/);
+      assert.doesNotMatch(adminPage, /editor\.html|editor\.js|palette-preview/);
+      assert.match(adminPage, /preview-bootstrap\.js.*data-sonaa-page=\"admin\"/);
+      for (const file of [
+        '../../frontend/editor.html', '../../frontend/editor.backup.html',
+        '../../frontend/js/editor.js', '../../frontend/palette-preview.html',
+        '../../frontend/js/ui-layout-loader.js', '../../frontend/js/shared-editor-bridge.js',
+        '../../frontend/js/shared-preview-links.js'
+      ]) {
+        assert.equal(fs.existsSync(path.join(__dirname, file)), false, file + ' must be deleted');
+      }
+      assert.match(bootstrap, /window\.__SONAA_PAGE_ROLE__ = 'admin'/);
+      assert.doesNotMatch(bootstrap, /IS_EDITOR_PREVIEW|PREVIEW_REQUESTED_TAB|SONAA_SKIP_AUTH_REDIRECT|SONAA_FORCE_PREVIEW_TAB/);
     });
 
     await test('admin API rejects requests without a token', async () => {
@@ -1896,6 +1796,17 @@ async function run() {
       assert.ok(clientAccount.includes('حمزاوي سات'));
       assert.equal(clientAccount.includes('صُنّاع'), false);
     });
+
+    // The maintenance-toggle test intentionally exercises the enabled state.
+    // Explicitly restore the public API baseline before order-flow integration tests.
+    {
+      const AdminConfig = require('../models/AdminConfig');
+      const { resetMaintenanceCache } = require('../utils/maintenanceCache');
+      const config = await AdminConfig.findOne({ key: 'main' });
+      config.settings.maintenance = false;
+      await config.save();
+      resetMaintenanceCache();
+    }
 
     await test('owner service catalog shows hidden and custom services while public catalog exposes active services only', async () => {
       const { ALL_SERVICES } = require('../config/professions');

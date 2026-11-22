@@ -365,12 +365,6 @@ async function sendComplaint(){
 }
 document.addEventListener('DOMContentLoaded',()=>{
   loadServices();loadPublicContent();initializeClientAccount();render();
-  // The editor preview bypasses the shared layout loader's splash timer.
-  // Release the static customer splash after the first preview render.
-  if(window.IS_EDITOR_PREVIEW){
-    const previewSplash=document.getElementById('clientLoadingOverlay');
-    requestAnimationFrame(()=>requestAnimationFrame(()=>previewSplash?.classList.add('is-hidden')));
-  }
   document.addEventListener('click',handleOutsideServiceClick);
   let clientLivePollInFlight=false,clientNotificationPollInFlight=false;
   setInterval(async function(){

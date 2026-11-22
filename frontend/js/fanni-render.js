@@ -12,12 +12,10 @@ try{
 
 function renderContent(){
   const isBrowserDashboard=!window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\s*wv\)/i.test(navigator.userAgent||'');
-  if(window.IS_EDITOR_PREVIEW&&window.PREVIEW_REQUESTED_TAB){state.tab=window.PREVIEW_REQUESTED_TAB;}
-  const user=currentUser||getUser()||(window.IS_EDITOR_PREVIEW&&window.PREVIEW_REQUESTED_TAB&&!['login','register'].includes(window.PREVIEW_REQUESTED_TAB)?{name:'معاينة المحرر',status:'approved',technicianGuidelinesAcceptedAt:'preview',technicianGuidelinesVersion:'2026-10-20-v1',specialties:[],areas:[],walletBalance:0}:null);
-  const previewTab=window.IS_EDITOR_PREVIEW?window.PREVIEW_REQUESTED_TAB:'';
+  const user=currentUser||getUser();
   const specialties=Array.isArray(user?.specialties)?user.specialties:[];
   const areas=Array.isArray(user?.areas)?user.areas:[];
-  const authenticated=(!!previewTab&&!['login','register'].includes(previewTab))||(!!getToken()&&!forceTechnicianRegistration);
+  const authenticated=!!getToken()&&!forceTechnicianRegistration;
  document.title=authenticated?'لوحة الفني | حمزاوي سات':(state.tab==='register'?'تسجيل فني جديد | لوحة الفني':'تسجيل دخول الفني | حمزاوي سات');
  const balance=state.walletBalance||user?.walletBalance||user?.balance||user?.wallet||0;
  const approved=isApproved();
