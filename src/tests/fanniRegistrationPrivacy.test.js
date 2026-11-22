@@ -3,49 +3,14 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const route = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
-const ledger = fs.readFileSync(path.join(__dirname, '../models/FanniCardLedger.js'), 'utf8');
-const ocr = fs.readFileSync(path.join(__dirname, '../services/fanniCardOcr.js'), 'utf8');
-
-if (!/const nationalIdEncrypted = encryptNationalId\(cardData\.nationalId\)/.test(route) || !/nationalIdEncrypted,/.test(route)) {
-  throw new Error('The national ID must be encrypted at rest for authorized admin review');
-}
-const ledgerCreateStart = route.indexOf('FanniCardLedger.create([');
-const ledgerCreateEnd = route.indexOf('], { session });', ledgerCreateStart);
-const ledgerCreateBlock = ledgerCreateStart >= 0 && ledgerCreateEnd > ledgerCreateStart
-  ? route.slice(ledgerCreateStart, ledgerCreateEnd)
-  : '';
-if (!ledgerCreateBlock || /\bnationalId\s*:/.test(ledgerCreateBlock)) {
-  throw new Error('The readable national ID must never be stored as plaintext in the ledger document');
-}
-if (!/cardData\.nationalId\s*=\s*''/.test(route)) {
-  throw new Error('The OCR national ID must be discarded immediately after keyed hashing');
-}
-if (!/console\.error\('Technician card OCR unavailable:',\s*String\(ocrError\?\.code/.test(route)) {
-  throw new Error('OCR error logs must contain only a fixed error code');
-}
-if (!/nationalIdEncrypted:\s*\{\s*type:\s*String,\s*required:\s*false,\s*select:\s*false\s*\}/.test(ledger)) {
-  throw new Error('Legacy encrypted ID field must not be required for new ledger records');
-}
-if (!/if \(!isValidNationalId\(cardData\?\.nationalId\)\)/.test(route)) {
-  throw new Error('Registration must stop before hashing or saving a missing/invalid national ID');
-}
-if (/nationalIdManual|manualNationalId/.test(route)) {
-  throw new Error('Registration must never accept a manually supplied national ID');
-}
-if (!/ارفع صورة أوضح/.test(route)) {
-  throw new Error('Unreadable card OCR must ask for a clearer card image, never manual entry');
-}
-if (!/isClearArabicName\(cardData\.extractedName\) \? cardData\.extractedName : ''/.test(route)) {
-  throw new Error('Unreadable OCR names must be discarded rather than stored in the card ledger');
-}
-if (!/if \(!isValidNationalId\(nationalId\)\)/.test(ocr)) {
-  throw new Error('The card hash helper must reject empty or invalid national IDs');
-}
-const adminLedgerRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniCardLedger.js'), 'utf8');
-if (!/decryptNationalId\(row\.nationalIdEncrypted\)/.test(adminLedgerRoute) || !/canSeeFullNationalId/.test(adminLedgerRoute)) {
-  throw new Error('Only authorized admin roles should be able to see the decrypted national ID');
-}
-if (!/createHmac\('sha256'/.test(ocr)) {
-  throw new Error('Duplicate prevention must retain only a keyed one-way fingerprint');
-}
-console.log('Technician registration privacy checks: passed');
+const identity = fs.readFileSync(path.join(__dirname, '../services/fanniCardIdentity.js'), 'utf8');
+const model = fs.readFileSync(path.join(__dirname, '../models/Fanni.js'), 'utf8');
+const adminProfiles = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniProfiles.js'), 'utf8');
+if (/fanniCardOcr|readFanniCard|CARD_OCR_UNCLEAR|tesseract|PaddleOCR/i.test(route + identity + model + adminProfiles)) throw new Error('Technician registration must not depend on OCR.');
+if (!/nationalId:\\s*Joi\\.string\\(\\)\\.trim\\(\\)\\.required\\(\\)/.test(route)) throw new Error('Registration must accept the technician-entered national ID.');
+if (!/profilePhotoFileId:\\s*Joi\\.string\\(\\)\\.hex\\(\\)\\.length\\(24\\)\\.required\\(\\)/.test(route)) throw new Error('Registration must require a profile photo uploaded to GridFS.');
+if (!/identityCardFrontFileId/.test(route) || !/identityCardBackFileId/.test(route)) throw new Error('Both card sides must remain required.');
+if (!/identityReviewStatus/.test(model) || !/needs_resubmission/.test(model)) throw new Error('Identity review state and resubmission status must be persisted.');
+if (!/createHmac\\('sha256'/.test(identity) || !/aes-256-gcm/.test(identity)) throw new Error('National ID must be fingerprinted and encrypted at rest.');
+if (!/fanni-registration-requests/.test(adminProfiles) || !/decryptNationalId/.test(adminProfiles)) throw new Error('Administrators must have a private pending registration review endpoint.');
+console.log('Technician manual identity registration privacy checks: passed');
