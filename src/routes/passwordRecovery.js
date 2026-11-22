@@ -101,6 +101,21 @@ async function lookupAccount(role, phone) {
   return user.role === 'fanni' ? { user, role: 'fanni' } : null;
 }
 function safeUserRecovery(item) { const data = safeRequest(item); return { id: data.id, status: data.status, messages: (data.messages || []).map(message => ({ ...message, text: decryptRecoveryMessage(message.text) })), lastMessageAt: data.lastMessageAt, expiresAt: data.expiresAt }; }
+async function recoveryAccountBlocked(role, accountId) {
+  if (role === 'client') {
+    const account = await Client.findById(accountId).select('status').lean();
+    return !account || account.status !== 'نشط';
+  }
+  if (role === 'fanni') {
+    const account = await Fanni.findById(accountId).select('status role').lean();
+    return !account || account.role !== 'fanni' || ['معلق', 'مرفوض'].includes(String(account.status || ''));
+  }
+  return false;
+}
+function blockedRecoveryResponse(res) {
+  return res.status(403).json({ message: 'حسابك موقوف حاليًا، ولا يمكنك استخدام الدعم أو دعم استعادة كلمة المرور. تواصل مع الإدارة.' });
+}
+
 function ownerAuth(req, res, next) {
   const role = req.params.role;
   if (role === 'client') return clientAuth(req, res, next);
@@ -200,6 +215,8 @@ router.post('/request', recoveryLimiter, async (req, res, next) => {
       return res.status(400).json({ message: 'الرقم مسجل، لكنه لا يطابق نوع الحساب المحدد.' });
     }
 
+    if (await recoveryAccountBlocked(role, account.user._id)) return blockedRecoveryResponse(res);
+
     const existing = await PasswordRecovery.findOne({
       ownerRole: role, phone, accountId: account.user._id,
       status: { $nin: ['تمت الاستعادة', 'مرفوضة', 'منتهية'] },
@@ -230,6 +247,7 @@ async function findByTicket(req, res) {
   if (!/^[a-f0-9]{24}$/i.test(String(req.params.id || ''))) { res.status(400).json({ message: 'معرّف طلب الاستعادة غير صحيح.' }); return null; }
   const item = await PasswordRecovery.findOne({ _id: req.params.id, accessTokenHash: digest(token), expiresAt: { $gt: new Date() } }).select('+codeHash');
   if (!item) { res.status(404).json({ message: 'طلب الاستعادة غير موجود أو انتهت صلاحيته.' }); return null; }
+  if (await recoveryAccountBlocked(item.ownerRole, item.accountId)) { blockedRecoveryResponse(res); return null; }
   return item;
 }
 router.get('/request/:id', async (req, res, next) => {
