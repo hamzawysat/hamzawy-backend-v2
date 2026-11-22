@@ -1,6 +1,20 @@
 'use strict';
 
 let pageVisitsData={summary:[],recent:[],total:0,filter:'',range:'7d'};
+const ADMIN_NOTIFICATION_CATEGORY_OPTIONS = [
+  ['client_registration','تسجيل عميل جديد'],
+  ['client_activity','دخول وخروج العميل'],
+  ['technician_registration','تسجيل فني جديد'],
+  ['technician_activity','دخول وخروج الفني'],
+  ['technician_profile','تعديلات بيانات الفني'],
+  ['orders','الطلبات والعروض والتقييمات'],
+  ['store_orders','طلبات المتجر'],
+  ['subscriptions','الاشتراكات وتجديدها'],
+  ['password_recovery','استعادة كلمة المرور'],
+  ['support_complaints','الدعم والشكاوى'],
+  ['wallet_topups','طلبات شحن المحفظة'],
+  ['service_payments','حجز قيمة الخدمة والمدفوعات']
+];
 
 function renderSettings(){
   const v=state.settings||{siteName:'حمزاوي سات',maintenance:false,maintenanceMessage:'',maxFanniSignupAttempts:5};
@@ -17,6 +31,12 @@ function renderSettings(){
         <p class="text-[10px] text-slate-500">الأرقام دي هتتربط بواجهة الفني على الموقع والتطبيق في الخطوات التالية. اترك أي خانة فارغة لو الرقم غير متاح.</p>
         <label class="block"><span class="text-[11px] font-black">رقم المحفظة الأول</span><input id="setting-wallet-phone-1" type="tel" inputmode="tel" maxlength="20" value="${escHtml(v.walletPhone1||'')}" placeholder="اكتب رقم المحفظة الأول" class="field mt-2"></label>
         <label class="block"><span class="text-[11px] font-black">رقم المحفظة الثاني</span><input id="setting-wallet-phone-2" type="tel" inputmode="tel" maxlength="20" value="${escHtml(v.walletPhone2||'')}" placeholder="اكتب رقم المحفظة الثاني أو اتركه فارغًا" class="field mt-2"></label>
+      </div>
+      <div class="border-t pt-4 space-y-3">
+        <div><p class="text-[12px] font-black">فئات الإشعارات التي تصل للإدارة</p><p class="text-[10px] text-slate-500 mt-1">كل فئة مستقلة. الفئات الجديدة والقديمة مفعّلة افتراضيًا، وإيقاف فئة لا يؤثر على باقي الفئات.</p></div>
+        <div class="rounded-xl border border-slate-100 divide-y">
+          ${ADMIN_NOTIFICATION_CATEGORY_OPTIONS.map(([key,label])=>'<label class="flex items-center justify-between gap-3 p-3 cursor-pointer"><span class="text-[11px] font-bold">'+escHtml(label)+'</span><input type="checkbox" data-admin-notification-pref="'+key+'" class="h-5 w-5 accent-blue-600" '+(v.adminNotificationPreferences?.[key]===false?'':'checked')+'></label>').join('')}
+        </div>
       </div>
       <button id="save-settings-btn" onclick="saveSettings()" class="w-full h-11 rounded-full bg-slate-900 text-white font-black text-[11px]">حفظ الإعدادات</button>
     </div>
