@@ -6,7 +6,7 @@
     "start": "node src/server.js",
     "test": "node src/tests/runTests.js",
     "test:ocr": "node src/tests/fanniCardOcr.integration.js",
-    "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js",
+    "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js && node src/tests/fanniRegistrationPrivacy.test.js",
     "build": "node scripts/build-frontend.js"
   },
   "dependencies": {
