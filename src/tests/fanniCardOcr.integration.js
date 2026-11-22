@@ -3,7 +3,7 @@
 process.env.NODE_ENV = 'test';
 process.env.CARD_LEDGER_SECRET = 'synthetic-ocr-test-secret-at-least-32-characters';
 
-const { readFanniCard, terminateWorkerForTests, extractNationalIds } = require('../services/fanniCardOcr');
+const { readFanniCard, terminateWorkerForTests, extractNationalIds, isValidNationalId, isClearArabicName, extractArabicName } = require('../services/fanniCardOcr');
 
 const { execFileSync } = require('node:child_process');
 
@@ -23,7 +23,7 @@ function makeSyntheticCardImage(value) {
 }
 
 async function main() {
-  const expected = '12345678901234'; // Synthetic test string; never a real person's ID.
+  const expected = '29801010100017'; // Fictional structure-valid test value; not a real person's ID.
   const fixture = makeSyntheticCardImage(expected);
   try {
     const result = await readFanniCard(fixture);
@@ -31,12 +31,27 @@ async function main() {
       throw new Error('OCR did not exactly match the synthetic 14-digit fixture');
     }
     if (result.extractedName) throw new Error('Digit-only synthetic fixture unexpectedly produced a name');
-    const arabicDigits = extractNationalIds('١٢٣٤٥٦٧٨٩٠١٢٣٤');
+    const arabicDigits = extractNationalIds('٢٩٨٠١٠١٠١٠٠٠١٧');
     if (extractNationalIds('1234567890123').length !== 0) {
       throw new Error('OCR accepted a value shorter than 14 digits');
     }
     if (arabicDigits.length !== 1 || arabicDigits[0] !== expected) {
       throw new Error('Arabic-Indic digit normalization did not match the synthetic expected value');
+    }
+    if (!isValidNationalId(expected) || isValidNationalId('29802300100017')) {
+      throw new Error('Egyptian national ID structure/date validation failed');
+    }
+    if (isClearArabicName('ya pm l sy Sai fe Be in Pres تس Agee v')) {
+      throw new Error('Garbled Latin OCR text was accepted as an Arabic name');
+    }
+    if (!isClearArabicName('سيد كارم')) {
+      throw new Error('A clear two-part Arabic name was rejected');
+    }
+    if (!isClearArabicName('سيد كارم محمد عبد الله')) {
+      throw new Error('A clear four-part Arabic name was rejected');
+    }
+    if (extractArabicName('ya pm l sy Sai fe Be in Pres تس Agee v')) {
+      throw new Error('Garbled OCR text must not be stored as the card name');
     }
     console.log('Real Tesseract OCR integration test: exact synthetic 14-digit match passed');
   } finally {
