@@ -15,7 +15,7 @@ const duplicateAttemptSchema = new mongoose.Schema({
 
 const fanniCardLedgerSchema = new mongoose.Schema({
   nationalIdHash: { type: String, required: true, unique: true },
-  nationalIdEncrypted: { type: String, required: true, select: false },
+  nationalIdEncrypted: { type: String, required: false, select: false },
   fanniId: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null, index: true },
   fanniName: { type: String, required: true, trim: true, maxlength: 100, index: true },
   linkedTechnicians: [{ fanniId: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni' }, name: { type: String, trim: true, maxlength: 100 }, phone: { type: String, trim: true, maxlength: 20 }, linkedAt: { type: Date, default: Date.now } }],
