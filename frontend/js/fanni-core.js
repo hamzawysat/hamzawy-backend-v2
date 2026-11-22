@@ -122,12 +122,74 @@ function onRegAreaSearch(value){
  const input=document.getElementById('regAreaSearchInput');
  if(input){input.focus();try{input.setSelectionRange(cursor,cursor);}catch(_){}}
 }
-function toggleRegArea(area){
- const value=clean(area,60);if(!value||value==='جميع المناطق')return;
- if(state.regAreas.includes(value))state.regAreas=state.regAreas.filter(item=>item!==value);
- else if(state.regAreas.length>=30){state.error='تقدر تختار لحد 30 منطقة فقط.';render();return;}
- else state.regAreas=[...state.regAreas,value];
- state.error='';render();
+function toggleRegArea(area,trigger){
+ const value=clean(area,60);
+ if(!value||value==='جميع المناطق')return;
+
+ const input=document.getElementById('regAreaSearchInput');
+ const picker=input?.closest('.fanni-area-picker');
+ if(!picker)return;
+
+ const wasSelected=state.regAreas.includes(value);
+
+ if(!wasSelected&&state.regAreas.length>=30){
+  if(trigger?.classList?.contains('fanni-area-option')){
+   const selected=state.regAreas.includes(value);
+
+   trigger.setAttribute('aria-pressed',String(selected));
+   trigger.classList.toggle('is-selected',selected);
+
+   const check=trigger.querySelector('.fanni-check');
+   if(check)check.textContent=selected?'✓':'';
+  }
+
+  toast('تقدر تختار لحد 30 منطقة فقط.','error');
+  return;
+ }
+
+ state.regAreas=wasSelected
+  ?state.regAreas.filter(item=>item!==value)
+  :[...state.regAreas,value];
+
+ state.error='';
+
+ const errorElement=document.querySelector(
+  '#app p.text-red-600.bg-red-50.border-red-100.rounded-xl'
+ );
+ if(errorElement){
+  errorElement.remove();
+ }
+
+ const selectedList=picker.querySelector('.fanni-selected-areas');
+
+ if(selectedList){
+  const chosen=state.regAreas.filter(
+   item=>!isReservedFanniArea(item)
+  );
+
+  selectedList.innerHTML=chosen.map(item=>`
+   <button
+    type="button"
+    data-area="${esc(item)}"
+    onclick="toggleRegArea(this.dataset.area,this)"
+    class="fanni-area-tag"
+   >${esc(item)} <span aria-hidden="true">×</span></button>
+  `).join('')||'<span class="fanni-picker-empty">لم تختار مناطق حتى الآن</span>';
+ }
+
+ const optionButtons=picker.querySelectorAll(
+  '.fanni-area-options .fanni-area-option[data-area]'
+ );
+
+ optionButtons.forEach(button=>{
+  const selected=state.regAreas.includes(button.dataset.area);
+
+  button.setAttribute('aria-pressed',String(selected));
+  button.classList.toggle('is-selected',selected);
+
+  const check=button.querySelector('.fanni-check');
+  if(check)check.textContent=selected?'✓':'';
+ });
 }
 function onEditAreaSearch(value){
  state.editAreaSearch=String(value||'').slice(0,60);
@@ -156,8 +218,8 @@ function renderFanniAreaPicker(selected,search,inputId,searchHandler,toggleHandl
  const visible=options.filter(area=>!query||normalizeFanniAreaSearchText(area).includes(query)).slice(0,80);
  return `<div class="fanni-area-picker">
   <div class="fanni-picker-search"><span aria-hidden="true">⌕</span><input id="${esc(inputId)}" value="${esc(search||'')}" oninput="${esc(searchHandler)}(this.value)" placeholder="اكتب اسم المنطقة للبحث..." autocomplete="off"></div>
-  <div class="fanni-selected-areas">${chosen.map(area=>`<button type="button" onclick="${esc(toggleHandler)}('${esc(area)}')" class="fanni-area-tag">${esc(area)} <span aria-hidden="true">×</span></button>`).join('')||'<span class="fanni-picker-empty">لم تختار مناطق حتى الآن</span>'}</div>
-  <div class="fanni-area-options">${visible.map(area=>{const checked=chosen.includes(area);return `<button type="button" onclick="${esc(toggleHandler)}('${esc(area)}')" aria-pressed="${checked?'true':'false'}" class="fanni-area-option ${checked?'is-selected':''}"><span>${esc(area)}</span><span class="fanni-check">${checked?'✓':''}</span></button>`}).join('')||'<p class="fanni-picker-no-results">لا توجد مناطق مطابقة للبحث.</p>'}</div>
+  <div class="fanni-selected-areas">${chosen.map(area=>`<button type="button" data-area="${esc(area)}" onclick="${esc(toggleHandler)}(this.dataset.area,this)" class="fanni-area-tag">${esc(area)} <span aria-hidden="true">×</span></button>`).join('')||'<span class="fanni-picker-empty">لم تختار مناطق حتى الآن</span>'}</div>
+  <div class="fanni-area-options">${visible.map(area=>{const checked=chosen.includes(area);return `<button type="button" data-area="${esc(area)}" onclick="${esc(toggleHandler)}(this.dataset.area,this)" aria-pressed="${checked?'true':'false'}" class="fanni-area-option ${checked?'is-selected':''}"><span>${esc(area)}</span><span class="fanni-check">${checked?'✓':''}</span></button>`}).join('')||'<p class="fanni-picker-no-results">لا توجد مناطق مطابقة للبحث.</p>'}</div>
   <p class="fanni-picker-hint">تقدر تختار أكتر من منطقة. الاختيارات المحددة ظاهرة فوق.</p>
  </div>`;
 }
@@ -386,20 +448,142 @@ function performFanniLogout(){
 }
 
 function toggleSpecialtyCategory(label){
- state.openSpecialtyCategory=state.openSpecialtyCategory===label?'':label;
- render();
+ const previousCategory=state.openSpecialtyCategory;
+ const nextCategory=previousCategory===label?'':label;
+
+ state.openSpecialtyCategory=nextCategory;
+
+ if(previousCategory){
+  const previousHeader=Array.from(
+   document.querySelectorAll('.fanni-specialty-category-head')
+  ).find(el=>el.dataset.category===previousCategory);
+
+  if(previousHeader){
+   previousHeader.setAttribute('aria-expanded','false');
+
+   const previousIcon=previousHeader.querySelector(
+    '.flex.shrink-0 > span:last-child'
+   );
+
+   if(previousIcon){
+    previousIcon.textContent='+';
+   }
+
+   const previousOptions=document.getElementById(
+    previousHeader.getAttribute('aria-controls')
+   );
+
+   if(previousOptions){
+    previousOptions.remove();
+   }
+  }
+ }
+
+ if(!nextCategory)return;
+
+ const category=CATEGORIES.find(
+  cat=>cat.label===nextCategory
+ );
+
+ if(!category)return;
+
+ const header=Array.from(
+  document.querySelectorAll('.fanni-specialty-category-head')
+ ).find(el=>el.dataset.category===nextCategory);
+
+ if(!header)return;
+
+ const categoryIndex=CATEGORIES.indexOf(category);
+ const categoryId='specialty-category-'+categoryIndex;
+
+ const existingOptions=document.getElementById(categoryId);
+ if(existingOptions){
+  existingOptions.remove();
+ }
+
+ const options=document.createElement('div');
+ options.id=categoryId;
+ options.className=
+  'fanni-specialty-options grid grid-cols-3 gap-2 border-t p-3 max-[380px]:grid-cols-2';
+
+ options.innerHTML=category.services.map(s=>`
+  <label class="service-chip ${state.regSpecialties.includes(s)?'selected':''}">
+   <input
+    type="checkbox"
+    data-specialty="${esc(s)}"
+    ${state.regSpecialties.includes(s)?'checked':''}
+    onchange="toggleSpecialty(this.dataset.specialty)"
+   >
+   <span class="service-icon" aria-hidden="true">${serviceIconFor(s)}</span>
+   <span>${esc(s)}</span>
+  </label>
+ `).join('');
+
+ header.after(options);
+
+ header.setAttribute('aria-controls',categoryId);
+ header.setAttribute('aria-expanded','true');
+
+ const icon=header.querySelector(
+  '.flex.shrink-0 > span:last-child'
+ );
+
+ if(icon){
+  icon.textContent='−';
+ }
 }
 
 function toggleSpecialty(s){
- if(state.regSpecialties.includes(s)){
-  state.regSpecialties=state.regSpecialties.filter(x=>x!==s);
+ const input=Array.from(
+  document.querySelectorAll('.fanni-specialty-options input[data-specialty]')
+ ).find(el=>el.dataset.specialty===s);
+
+ const chip=input?.closest('.service-chip');
+ const wasSelected=state.regSpecialties.includes(s);
+
+ if(wasSelected){
+  state.regSpecialties=state.regSpecialties.filter(item=>item!==s);
  }else if(state.regSpecialties.length<20){
-  state.regSpecialties.push(s);
+  state.regSpecialties=[...state.regSpecialties,s];
  }else{
+  if(input){
+   input.checked=false;
+   chip?.classList.remove('selected');
+  }
   toast('يمكنك اختيار 20 تخصصًا كحد أقصى','error');
+  return;
  }
 
- render();
+ const selected=state.regSpecialties.includes(s);
+
+ if(input){
+  input.checked=selected;
+  chip?.classList.toggle('selected',selected);
+ }
+
+ CATEGORIES.filter(category=>category.services.includes(s)).forEach(category=>{
+  const header=Array.from(
+   document.querySelectorAll('.fanni-specialty-category-head')
+  ).find(el=>el.dataset.category===category.label);
+
+  if(!header)return;
+
+  const selectedCount=category.services.filter(
+   service=>state.regSpecialties.includes(service)
+  ).length;
+
+  const countText=header.querySelector('.min-w-0 > span.mt-1');
+  if(countText){
+   countText.textContent=selectedCount
+    ?'تم اختيار '+selectedCount+' خدمة'
+    :'اضغط لعرض الخدمات';
+  }
+
+  const countBadge=header.querySelector('.flex.shrink-0 > span:first-child');
+  if(countBadge){
+   countBadge.textContent=String(selectedCount);
+  }
+ });
 }
 
 function fanniCanHandleServiceFrontend(specialties, serviceName) {
