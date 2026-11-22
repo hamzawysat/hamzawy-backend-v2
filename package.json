@@ -5,7 +5,6 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node src/tests/runTests.js",
-    "postinstall": "node scripts/build-frontend.js",
     "build": "node scripts/build-frontend.js"
   },
   "dependencies": {
