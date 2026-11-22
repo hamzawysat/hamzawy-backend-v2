@@ -124,7 +124,8 @@ function createAdminFanniProfilesRouter({
       fanni.identityReviewReason = reason;
       fanni.identityReviewFields = fields;
       fanni.identityReviewImages = images;
-      fanni.identityReviewImage = images.length === 1 ? images[0] : images.length === 2 && images.includes('front') && images.includes('back') ? 'both' : '';
+      const imageType = images.length === 1 ? images[0] : images.length === 2 && images.includes('front') && images.includes('back') ? 'both' : '';
+      fanni.identityReviewImage = imageType;
       fanni.rejectionReason = reason;
       fanni.decisions.push(decision(req, 'إعادة للمراجعة', reason));
       await fanni.save();
