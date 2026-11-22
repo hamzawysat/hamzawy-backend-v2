@@ -88,6 +88,7 @@ function createAdminFanniProfilesRouter({
       fanni.status = 'معتمد';
       fanni.identityReviewStatus = 'approved';
       fanni.identityReviewReason = '';
+      fanni.identityReviewImage = '';
       fanni.rejectionReason = undefined;
       fanni.decisions.push(decision(req, 'موافقة', 'مطابقة الاسم والرقم القومي يدويًا مع صور البطاقة'));
       await fanni.save();
