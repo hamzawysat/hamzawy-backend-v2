@@ -10,6 +10,7 @@ const mongoose = require('mongoose');
 const crypto = require('crypto');
 
 const Fanni = require('../models/Fanni');
+const FanniCardLedger = require('../models/FanniCardLedger');
 const Client = require('../models/Client');
 const Notification = require('../models/Notification');
 const TopupRequest = require('../models/TopupRequest');
@@ -332,7 +333,7 @@ router.use(createAdminFanniProfilesRouter({
 }));
 
 router.use(createAdminFanniManagementRouter({
-  auth, validate, Joi, reasonSchema, Fanni, Rating, Order,
+  auth, validate, Joi, reasonSchema, Fanni, FanniCardLedger, Rating, Order,
   TopupRequest, WalletTransaction, adminName, decision, publicFanni,
   validId, sendBadId, writeAdminAudit, createNotification
 }));
