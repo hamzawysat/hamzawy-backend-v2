@@ -310,7 +310,6 @@ const API={
 };
 const forceClientRegistration=(new URLSearchParams(window.location.search).get('tab')||'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim().toLowerCase()==='register'||!!new URLSearchParams(window.location.search).get('ref');
 function loadStoreCartState(){
-  if(window.IS_EDITOR_PREVIEW)return {};
   try{
     const raw=localStorage.getItem('sonaa_store_cart_v1');
     const parsed=raw?JSON.parse(raw):{};
@@ -335,7 +334,7 @@ function loadStoreCartState(){
 let state={
   storeCartByRole:loadStoreCartState(),storeProducts:[],myStoreOrders:[],
   commerceItems:[],commerceSubscriptions:[],commerceLoading:false,commerceError:'',commerceSubmitting:'',walletBalance:0,walletFrozen:false,walletTransactions:[],walletTopupRequests:[],walletTransferNumbers:[],walletLoading:false,walletSubmitting:false,walletFromPhone:'',walletAmount:'',walletMethod:'vodafone_cash',walletReference:'',walletIdempotencyKey:'',walletError:'',walletSuccess:'',
-  account:null,accountInitializing:false,accountToken:(()=>{if(window.IS_EDITOR_PREVIEW)return '';try{return localStorage.getItem('sonaa_client_account_token')||'';}catch{return '';}})(),accountAuthMode:forceClientRegistration?'register':'login',accountLoading:false,accountError:'',myOrders:[],accountOrdersLoading:false,accountOrdersTab:'current',notifications:[],notificationsUnread:0,notificationsOpen:false,
+  account:null,accountInitializing:false,accountToken:(()=>{try{return localStorage.getItem('sonaa_client_account_token')||'';}catch{return '';}})(),accountAuthMode:forceClientRegistration?'register':'login',accountLoading:false,accountError:'',myOrders:[],accountOrdersLoading:false,accountOrdersTab:'current',notifications:[],notificationsUnread:0,notificationsOpen:false,
   tab:'home',clientNewRequestChoice:'',service:'',clientName:'',area:'',areaSearch:'',address:'',phone:'',budget:'',desc:'',voiceBlob:null,voiceUrl:'',voiceRecordingData:'',voiceRecorder:null,voiceChunks:[],voiceRecording:false,loading:false,sn:null,
   trackInput:'',tracked:null,trackError:'',trackLoading:false,acceptingOffer:'',
   ratingStars:5,ratingComment:'',ratingSubmitting:false,
@@ -346,15 +345,3 @@ let state={
   
 };
 const CLIENT_TAB_DEFINITIONS=[{id:'new',label:'طلب جديد'},{id:'orders',label:'طلباتي'},{id:'wallet',label:'محفظتي'},{id:'subscriptions',label:'الاشتراكات'},{id:'store',label:'المتجر'},{id:'complaint',label:'شكوى'}];
-if(window.IS_EDITOR_PREVIEW){
-  const previewTab=window.PREVIEW_REQUESTED_TAB||'login';
-  if(previewTab==='register'){
-    state.accountAuthMode='register';
-  }else if(previewTab==='login'){
-    state.accountAuthMode='login';
-  }else{
-    state.tab=previewTab;
-    state.account={name:'معاينة المحرر',phone:''};
-    state.clientName='معاينة المحرر';
-  }
-}

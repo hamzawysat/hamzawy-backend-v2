@@ -73,7 +73,6 @@ router.get('/mobile-panel', auth('admin'), (req, res, next) => {
 const createAdminServicesRouter = require('./admin/services');
 const createAdminPlatformRouter = require('./admin/platform');
 const createAdminOperationsRouter = require('./admin/operations');
-const createAdminUiLayoutRouter = require('./admin/uiLayout');
 const createAdminFanniProfilesRouter = require('./admin/fanniProfiles');
 const createAdminOffersRouter = require('./admin/offers');
 const createAdminOrdersRouter = require('./admin/orders');
