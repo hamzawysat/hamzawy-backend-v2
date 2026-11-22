@@ -70,15 +70,22 @@ async function run() {
       const model = fs.readFileSync(path.join(__dirname, '../models/Fanni.js'), 'utf8');
       const adminUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/technicians-actions.js'), 'utf8');
       assert.match(model, /identityReviewImage:.*front.*back.*both.*profile/);
-      assert.match(adminProfiles, /fanni\.identityReviewImage = imageType/);
+      assert.match(model, /identityReviewFields:.*name.*phone.*specialties.*areas/);
+      assert.match(model, /identityReviewImages:.*front.*back.*profile/);
+      assert.match(adminProfiles, /fanni\\.identityReviewFields = fields/);
+      assert.match(adminProfiles, /fanni\\.identityReviewImages = images/);
       assert.match(adminUi, /data-review-image/);
       assert.match(adminUi, /data-review-field/);
       assert.match(adminUi, /fanni-review-reason/);
-      assert.match(adminProfiles, /identityReviewImage: item\.identityReviewImage \|\| ''/);
-      assert.match(fanniRoute, /requestedImage = req\.user\.identityReviewImage/);
-      assert.match(fanniRoute, /identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: ''/);
-      assert.match(fanniRoute, /isRequestedResubmission/);
-      assert.match(fanniRoute, /notifyAdmins\(\{ type: 'admin_new_technician'/);
+      assert.match(adminProfiles, /identityReviewFields: item\\.identityReviewFields \\|\\| \\[\\]/);
+      assert.match(adminProfiles, /identityReviewImages: item\\.identityReviewImages \\|\\| \\[\\]/);
+      assert.match(fanniRoute, /router\\.patch\\('\\/me\\/review-resubmission'/);
+      assert.match(fanniRoute, /requiredFields = Array\\.isArray\\(fanni\\.identityReviewFields\\)/);
+      assert.match(fanniRoute, /requestedImages = Array\\.isArray\\(fanni\\.identityReviewImages\\)/);
+      assert.match(fanniRoute, /identityReviewStatus = 'pending'/);
+      assert.match(fanniRoute, /identityReviewFields = \\[\\]/);
+      assert.match(fanniRoute, /identityReviewImages = \\[\\]/);
+      assert.match(fanniRoute, /notifyAdmins\\(\\{/);
     });
 
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {
