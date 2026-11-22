@@ -274,13 +274,13 @@ async function run() {
     });
 
     await test('technician card ledger normalizes Egyptian national-ID digits and encrypts the stored number', async () => {
-      const cardOcr = require('../services/fanniCardIdentity');
+      const identityLedger = require('../services/fanniCardIdentity');
       const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
-      assert.equal(cardOcr.normalizeNationalId(nationalId), '29001012345678');
-      const encrypted = cardOcr.encryptNationalId(nationalId);
+      assert.equal(identityLedger.normalizeNationalId(nationalId), '29001012345678');
+      const encrypted = identityLedger.encryptNationalId(nationalId);
       assert.notEqual(encrypted, '29001012345678');
-      assert.equal(cardOcr.decryptNationalId(encrypted), '29001012345678');
-      assert.equal(cardOcr.cardHash(nationalId), cardOcr.cardHash('29001012345678'));
+      assert.equal(identityLedger.decryptNationalId(encrypted), '29001012345678');
+      assert.equal(identityLedger.cardHash(nationalId), identityLedger.cardHash('29001012345678'));
     });
 
     await test('technician card ledger is a separate unique national-ID collection and cross-role referrals are skipped', async () => {
