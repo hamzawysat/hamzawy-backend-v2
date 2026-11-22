@@ -7,6 +7,7 @@ const { createWorker } = require('tesseract.js');
 
 let workerPromise = null;
 let workerFactory = createWorker;
+let paddleOcrRunner = null;
 
 function getLedgerSecret() {
   const secret = String(process.env.CARD_LEDGER_SECRET || '');
@@ -363,7 +364,7 @@ async function readFanniCard(imageBuffer) {
 
   // Require independent agreement between Tesseract and PaddleOCR. A single
   // engine's plausible-looking 14 digits are not enough for a national ID.
-  const paddleFindings = runPaddleOcr(imageBuffer);
+  const paddleFindings = (paddleOcrRunner || runPaddleOcr)(imageBuffer);
   const paddleIds = new Set();
   const paddleNames = new Set();
   for (const finding of paddleFindings) {
@@ -391,6 +392,13 @@ async function terminateWorkerForTests() {
   await worker.terminate();
 }
 
+function setPaddleOcrRunnerForTests(runner) {
+  if (process.env.NODE_ENV !== 'test') {
+    throw new Error('OCR_TEST_HOOK_DISABLED');
+  }
+  paddleOcrRunner = typeof runner === 'function' ? runner : null;
+}
+
 function setWorkerFactoryForTests(factory) {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('OCR_TEST_HOOK_DISABLED');
@@ -406,6 +414,7 @@ module.exports = {
   encryptNationalId,
   decryptNationalId,
   setWorkerFactoryForTests,
+  setPaddleOcrRunnerForTests,
   terminateWorkerForTests,
   extractNationalIds,
   isValidNationalId,
