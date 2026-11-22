@@ -342,7 +342,9 @@ router.post(
 
       await notifyAdmins({ type: 'admin_new_technician', title: 'فني جديد يحتاج مراجعة', message: `سجّل فني جديد باسم ${fanni.name} ورقم ${fanni.phone}.`, link: '/admin?tab=fannis', dedupeKey: 'admin-new-technician:' + String(fanni._id) });
       return res.status(201).json({
-        message: 'تم إنشاء الحساب بنجاح. الحساب قيد مراجعة الإدارة.',
+        message: extractedName
+          ? 'تم إنشاء الحساب بنجاح. الحساب قيد مراجعة الإدارة.'
+          : 'تم إنشاء الحساب بنجاح. تعذر قراءة الاسم من البطاقة آليًا؛ تم الاعتماد على الاسم الذي أدخلته يدويًا.',
         id: String(fanni._id),
         status: fanni.status
       });
