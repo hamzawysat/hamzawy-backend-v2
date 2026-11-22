@@ -159,7 +159,7 @@ async function run() {
         'client account entry actions must use the current shared blue palette'
       );
       assert.ok(
-        technicianRender.includes('background:#1426A5') && technicianRender.includes('rgba(20,38,165,.30)') &&
+        technicianRender.includes('background:#2E7CF6') && technicianRender.includes('rgba(20,38,165,.30)') &&
         !technicianRender.includes('rgba(169,130,46,.25)'),
         'technician floating refresh control must not retain the legacy gold shadow'
       );
