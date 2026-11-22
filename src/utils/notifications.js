@@ -75,6 +75,29 @@ function channelFor(type) {
   ].includes(type)) return 'wallet_charge';
   return 'support';
 }
+// Admin FCM devices use the native admin app's twelve dedicated channels.
+// Keep channelFor() unchanged: it is also used by legacy Expo/client/technician flows.
+function adminChannelFor(type) {
+  const value = String(type || '');
+  if ([
+    'order_new', 'new_order', 'admin_new_order', 'admin_order_offer_accepted',
+    'admin_order_cancelled', 'admin_order_completed', 'admin_fanni_offer',
+    'admin_price_change_requested', 'admin_client_rating'
+  ].includes(value)) return 'admin_orders_v4';
+  if (value === 'admin_store_order') return 'admin_store_orders_v4';
+  if (['fanni_register', 'new_fanni', 'admin_new_technician'].includes(value)) return 'admin_technician_registration_v4';
+  if (['admin_fanni_login', 'admin_fanni_logout'].includes(value)) return 'admin_technician_activity_v4';
+  if (value === 'admin_fanni_profile_edit') return 'admin_technician_profile_v4';
+  if (['client_register', 'new_client', 'admin_new_client'].includes(value)) return 'admin_client_registration_v4';
+  if (['admin_client_login', 'admin_client_logout'].includes(value)) return 'admin_client_activity_v4';
+  if (['admin_subscription_request', 'admin_subscription_renewed'].includes(value)) return 'admin_subscriptions_v4';
+  if (['password_reset', 'admin_password_recovery', 'admin_password_recovery_message'].includes(value)) return 'admin_password_recovery_v4';
+  if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint', 'admin_support_followup'].includes(value)) return 'admin_support_complaints_v4';
+  if (['wallet_charge', 'topup_request', 'admin_new_topup', 'admin_client_topup'].includes(value)) return 'admin_wallet_topups_v4';
+  if (value === 'admin_service_payment_held') return 'admin_service_payments_v4';
+  return 'admin_support_complaints_v4';
+}
+
 function destinationFor(type) {
   const destinations = {
     admin_store_order: 'storeOrders',
@@ -154,6 +177,7 @@ async function sendFirebasePushNotifications(devices, payload) {
   const accessToken = await firebaseAccessToken(account);
   const endpoint = 'https://fcm.googleapis.com/v1/projects/' + encodeURIComponent(account.project_id) + '/messages:send';
   const type = String(payload.type || '');
+  const fcmChannelId = payload.recipientRole === 'admin' ? adminChannelFor(type) : 'hamzawy_official';
   const data = {
     type: type.slice(0, 50),
     link: normalizeNotificationLink(payload.link),
@@ -175,7 +199,7 @@ async function sendFirebasePushNotifications(devices, payload) {
           priority: 'HIGH',
           collapse_key: payload.notificationId ? 'hamzawy-' + String(payload.notificationId) : undefined,
           ttl: '86400s',
-          notification: { channel_id: 'hamzawy_official', click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
+          notification: { channel_id: fcmChannelId, click_action: 'com.sonaa.nativeadmin.OPEN_NOTIFICATION', ...(payload.notificationId ? { tag: 'hamzawy-' + String(payload.notificationId) } : {}) }
         },
         webpush: { headers: { TTL: '86400', Urgency: 'high' } },
         apns: { headers: { 'apns-expiration': String(Math.floor(Date.now() / 1000) + 86400), 'apns-priority': '10' } }
@@ -255,7 +279,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
 
     if (fcm.length) {
       try {
-        const result = await sendFirebasePushNotifications(fcm, { title, message, type, link, notificationId });
+        const result = await sendFirebasePushNotifications(fcm, { recipientRole, title, message, type, link, notificationId });
         if (result && Number.isFinite(result.accepted)) {
           report.fcm.accepted = result.accepted;
           report.fcm.failed = Math.max(0, fcm.length - result.accepted);
@@ -468,4 +492,4 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null 
     return { targeted: 0, created: 0, failed: 1 };
   }
 }
-module.exports = { createNotification, sendPushNotification, notifyAdmins, normalizeNotificationLink, retryPendingNotificationDeliveries };
+module.exports = { createNotification, sendPushNotification, notifyAdmins, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };
