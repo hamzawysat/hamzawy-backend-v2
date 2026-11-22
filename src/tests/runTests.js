@@ -82,6 +82,47 @@ async function run() {
       assert.equal(isAdminNotificationEnabled('future_admin_event', {}), true, 'unknown future events must default to enabled');
     });
 
+    await test('admin FCM channel routing is isolated from Expo client and technician notifications', async () => {
+      const { adminChannelFor } = require('../utils/notifications');
+      const expected = {
+        admin_new_client: 'admin_client_registration_v4',
+        admin_client_login: 'admin_client_activity_v4',
+        admin_client_logout: 'admin_client_activity_v4',
+        admin_new_technician: 'admin_technician_registration_v4',
+        admin_fanni_login: 'admin_technician_activity_v4',
+        admin_fanni_logout: 'admin_technician_activity_v4',
+        admin_fanni_profile_edit: 'admin_technician_profile_v4',
+        admin_new_order: 'admin_orders_v4',
+        admin_order_offer_accepted: 'admin_orders_v4',
+        admin_order_cancelled: 'admin_orders_v4',
+        admin_order_completed: 'admin_orders_v4',
+        admin_fanni_offer: 'admin_orders_v4',
+        admin_price_change_requested: 'admin_orders_v4',
+        admin_client_rating: 'admin_orders_v4',
+        admin_store_order: 'admin_store_orders_v4',
+        admin_subscription_request: 'admin_subscriptions_v4',
+        admin_subscription_renewed: 'admin_subscriptions_v4',
+        admin_password_recovery: 'admin_password_recovery_v4',
+        admin_password_recovery_message: 'admin_password_recovery_v4',
+        admin_support_request: 'admin_support_complaints_v4',
+        admin_support_followup: 'admin_support_complaints_v4',
+        admin_new_complaint: 'admin_support_complaints_v4',
+        admin_new_topup: 'admin_wallet_topups_v4',
+        admin_client_topup: 'admin_wallet_topups_v4',
+        admin_service_payment_held: 'admin_service_payments_v4'
+      };
+      for (const [type, channel] of Object.entries(expected)) {
+        assert.equal(adminChannelFor(type), channel, 'wrong admin channel for ' + type);
+      }
+      assert.equal(adminChannelFor('future_admin_event'), 'admin_support_complaints_v4');
+      const source = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
+      assert.ok(source.includes("payload.recipientRole === 'admin' ? adminChannelFor(type) : 'hamzawy_official'"), 'only admin FCM should use admin-specific channels');
+      assert.ok(source.includes("channel_id: fcmChannelId"), 'FCM must receive the selected role-specific channel');
+      assert.ok(source.includes("sendFirebasePushNotifications(fcm, { recipientRole, title, message, type, link, notificationId })"), 'recipient role must reach the FCM-only sender');
+      assert.ok(source.includes("sound: 'default'"), 'Expo notification sound must remain unchanged');
+      assert.ok(source.includes("channelId: 'hamzawy_official'"), 'Expo channel for client and technician app must remain unchanged');
+    });
+
     await test('notifyAdmins blocks only the disabled category before writing admin notifications', async () => {
       const AdminConfig = require('../models/AdminConfig');
       const Notification = require('../models/Notification');
