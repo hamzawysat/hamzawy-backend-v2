@@ -1835,6 +1835,43 @@ async function run() {
       assert.equal(r.status, 401);
     });
 
+    await test('admin settings save reports the actual maintenance state and persists the toggle', async () => {
+      const AdminConfig = require('../models/AdminConfig');
+      const { resetMaintenanceCache } = require('../utils/maintenanceCache');
+      let config = await AdminConfig.findOne({ key: 'main' });
+      if (!config) config = await AdminConfig.create({ key: 'main' });
+      const previous = config.settings.toObject ? config.settings.toObject() : { ...config.settings };
+      const payload = {
+        siteName: previous.siteName || 'حمزاوي سات',
+        maintenanceMessage: previous.maintenanceMessage || '',
+        maxFanniSignupAttempts: previous.maxFanniSignupAttempts || 5,
+        walletPhone1: previous.walletPhone1 || '',
+        walletPhone2: previous.walletPhone2 || ''
+      };
+      try {
+        const disabled = await request(app).put('/api/admin/settings')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ ...payload, maintenance: false });
+        assert.equal(disabled.status, 200, JSON.stringify(disabled.body));
+        assert.match(disabled.body.message, /وضع الصيانة غير مفعّل/);
+        assert.equal(disabled.body.settings.maintenance, false);
+
+        const enabled = await request(app).put('/api/admin/settings')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ ...payload, maintenance: true });
+        assert.equal(enabled.status, 200, JSON.stringify(enabled.body));
+        assert.match(enabled.body.message, /وضع الصيانة مفعّل/);
+        assert.equal(enabled.body.settings.maintenance, true);
+
+        const persisted = await AdminConfig.findOne({ key: 'main' }).lean();
+        assert.equal(persisted.settings.maintenance, true, 'maintenance toggle must persist to MongoDB');
+      } finally {
+        config.settings = previous;
+        await config.save();
+        resetMaintenanceCache();
+      }
+    });
+
     await test('legacy site name is presented as Hamzawy Sat without mutating stored settings', async () => {
       const AdminConfig = require('../models/AdminConfig');
       let config = await AdminConfig.findOne({ key: 'main' });
