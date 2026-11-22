@@ -29,7 +29,7 @@ All observed application data requests used same-origin `/api/...` paths and ret
 | `POST /api/page-visits` | 5 | 202 |
 | `POST /api/csp-report` | 9 | 204 |
 
-No failing API URL was observed in these HTTP logs. The HTTP log stream records status/path/timing, not response bodies or Content-Type, so it cannot prove the bytes returned for a particular request. A direct external curl attempt from this session could not resolve the public hostname. The route source does show that `/api/areas`, `/api/services`, and `/api/content` finish with Express `res.json(...)`; these are JSON handlers, not static HTML routes.
+No failing API URL was observed in these HTTP logs. The frontend requests are same-origin on `https://www.hamzawy-sat.dynv6.net`: technician startup calls `/api/services`, `/api/areas`, and `/api/content?role=fanni`; client startup calls `/api/services`, `/api/areas`, and `/api/content?role=client`. Railway's HTTP log path field omits query strings, so it records the content request as `/api/content`. The HTTP log stream records status/path/timing, not response bodies or Content-Type, so it cannot prove the exact live response bytes. A direct external curl attempt from this session could not resolve the public hostname. The route source does show that `/api/areas`, `/api/services`, and `/api/content` finish with Express `res.json(...)`: `/api/areas` returns `{ ok, areas, technicianCountByArea }`; `/api/services` returns `{ ok, categories, services }`; `/api/content` returns `{ siteName, maintenance, maintenanceMessage, announcement, faqs }`. These are JSON handlers, not static HTML routes.
 
 ## Root causes found in the frontend
 
