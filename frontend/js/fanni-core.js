@@ -74,14 +74,25 @@ function clean(s,max=1000){
  return String(s??'').trim().slice(0,max).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,'');
 }
 
+function clearStalePreviewAuth(){
+ if(window.IS_EDITOR_PREVIEW)return;
+ try{
+  if(localStorage.getItem(TOKEN_KEY)==='preview'){
+   localStorage.removeItem(TOKEN_KEY);
+   localStorage.removeItem(USER_KEY);
+  }
+ }catch{}
+}
 function getToken(){
  if(window.IS_EDITOR_PREVIEW)return '';
+ clearStalePreviewAuth();
  try{return localStorage.getItem(TOKEN_KEY)||''}catch{return ''}
 }
 async function playOrderVoice(sn,button){let audio=button?.parentElement?.querySelector('audio[data-order-voice]');if(!audio){audio=document.createElement('audio');audio.controls=true;audio.preload='none';audio.dataset.orderVoice='1';audio.className='mt-2 w-full';button?.parentElement?.appendChild(audio)}if(!audio.src){try{button.disabled=true;const response=await fetch('/api/orders/'+encodeURIComponent(sn)+'/voice',{headers:{Authorization:'Bearer '+getToken()}});if(!response.ok)throw Error('تعذر تحميل التسجيل الصوتي.');audio.src=URL.createObjectURL(await response.blob())}catch(e){toast(e.message,'error');return}finally{button.disabled=false}}try{await audio.play()}catch(e){audio.controls=true}}
 
 function getUser(){
  if(window.IS_EDITOR_PREVIEW)return null;
+ clearStalePreviewAuth();
  try{return JSON.parse(localStorage.getItem(USER_KEY)||'null')}catch{return null}
 }
 

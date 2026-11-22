@@ -21,7 +21,7 @@ async function doLogin(){
  render();
 
  try{
-  if(String(state.loginPhone||'').replace(/\D/g,'')==='01152822262' && (await sha256Hex(state.loginPass))==='e14da87ab1af7c81f6b9d07ac8cba5ca5f1c55a06af177a502219f84c83307b7'){ const user={id:'preview-fanni', name:'فني تجريبي', phone:'01152822262', status:'نشط'}; setAuth('preview', user); currentUser=user; forceTechnicianRegistration=false; state.loading=false; state.tab='home'; state.loginPass=''; state.error=''; render(); toast('وضع معاينة - من غير قاعدة بيانات'); return; }
+  if(window.IS_EDITOR_PREVIEW && String(state.loginPhone||'').replace(/\D/g,'')==='01152822262' && (await sha256Hex(state.loginPass))==='e14da87ab1af7c81f6b9d07ac8cba5ca5f1c55a06af177a502219f84c83307b7'){ const user={id:'preview-fanni', name:'فني تجريبي', phone:'01152822262', status:'نشط'}; setAuth('preview', user); currentUser=user; forceTechnicianRegistration=false; state.loading=false; state.tab='home'; state.loginPass=''; state.error=''; render(); toast('وضع معاينة - من غير قاعدة بيانات'); return; }
   const data=await API.login({
    phone:state.loginPhone.replace(/\D/g,''),
    password:state.loginPass
