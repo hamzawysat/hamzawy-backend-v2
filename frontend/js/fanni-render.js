@@ -413,14 +413,76 @@ function renderContent(){
 }
 
 
+let __fanniLastRenderedTab = null;
+
 function render(){
+  const appRoot = document.getElementById('app');
+  const preserveViewport = __fanniLastRenderedTab === state.tab;
+  const scrollX = window.scrollX || window.pageXOffset || 0;
+  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const active = appRoot && appRoot.contains(document.activeElement) ? document.activeElement : null;
+  const focusState = active ? {
+    id: active.id || '',
+    specialty: active.getAttribute('data-specialty'),
+    category: active.getAttribute('data-category'),
+    area: active.getAttribute('data-area'),
+    tagName: active.tagName,
+    type: active.getAttribute('type'),
+    selectionStart: typeof active.selectionStart === 'number' ? active.selectionStart : null,
+    selectionEnd: typeof active.selectionEnd === 'number' ? active.selectionEnd : null,
+    selectionDirection: active.selectionDirection || 'none'
+  } : null;
+
   try {
-    return renderContent();
+    const result = renderContent();
+    __fanniLastRenderedTab = state.tab;
+
+    // renderContent replaces the complete app markup. Keep the user's viewport
+    // and active form control when the current tab is only being updated.
+    if (preserveViewport) {
+      requestAnimationFrame(() => {
+        const root = document.getElementById('app');
+        if (root && focusState) {
+          let target = focusState.id ? document.getElementById(focusState.id) : null;
+          if (!target && focusState.specialty !== null) {
+            target = Array.from(root.querySelectorAll('[data-specialty]')).find(el =>
+              el.getAttribute('data-specialty') === focusState.specialty &&
+              el.tagName === focusState.tagName &&
+              (focusState.type === null || el.getAttribute('type') === focusState.type)
+            ) || null;
+          }
+          if (!target && focusState.category !== null) {
+            target = Array.from(root.querySelectorAll('[data-category]')).find(el =>
+              el.getAttribute('data-category') === focusState.category
+            ) || null;
+          }
+          if (!target && focusState.area !== null) {
+            target = Array.from(root.querySelectorAll('[data-area]')).find(el =>
+              el.getAttribute('data-area') === focusState.area
+            ) || null;
+          }
+          if (target && typeof target.focus === 'function') {
+            try { target.focus({ preventScroll: true }); } catch (_) { target.focus(); }
+            if (focusState.selectionStart !== null && typeof target.setSelectionRange === 'function') {
+              try {
+                target.setSelectionRange(
+                  focusState.selectionStart,
+                  focusState.selectionEnd,
+                  focusState.selectionDirection
+                );
+              } catch (_) {}
+            }
+          }
+        }
+        window.scrollTo(scrollX, scrollY);
+      });
+    }
+    return result;
   } catch (error) {
+    __fanniLastRenderedTab = state.tab;
     console.error('Technician dashboard render failed:', error);
-    const appRoot = document.getElementById('app');
-    if (appRoot) appRoot.innerHTML = '<main class="mx-auto max-w-[680px] p-6"><section class="empty-state panel p-6 text-center" role="alert"><p class="font-extrabold">تعذر عرض بيانات الصفحة حاليًا.</p><p class="mt-2 text-sm text-slate-500">حاول إعادة تحميل الصفحة.</p><button type="button" onclick="location.reload()" class="primary-btn mt-4 px-5 py-3">إعادة المحاولة</button></section></main>';
+    const root = document.getElementById('app');
+    if (root) root.innerHTML = '<main class="mx-auto max-w-[680px] p-6"><section class="empty-state panel p-6 text-center" role="alert"><p class="font-extrabold">تعذر عرض بيانات الصفحة حاليًا.</p><p class="mt-2 text-sm text-slate-500">حاول إعادة تحميل الصفحة.</p><button type="button" onclick="location.reload()" class="primary-btn mt-4 px-5 py-3">إعادة المحاولة</button></section></main>';
   }
 }
-
 function renderFanniPublicContent(){const c=state.publicContent||{announcement:'',faqs:[]};const faqs=Array.isArray(c.faqs)?c.faqs:[];if(!String(c.announcement||'').trim()&&!faqs.length)return '';return '<section class="mx-auto mt-3 w-full max-w-[640px] space-y-2">'+(String(c.announcement||'').trim()?'<div class="panel border-blue-200 bg-blue-50 p-3 text-[12px] font-bold leading-6">'+esc(c.announcement)+'</div>':'')+(faqs.length?'<details class="panel p-3"><summary class="cursor-pointer text-[12px] font-extrabold">الأسئلة الشائعة</summary><div class="mt-3 space-y-3">'+faqs.map(f=>'<div class="border-t pt-2"><p class="text-[11px] font-extrabold">'+esc(f.question)+'</p><p class="mt-1 text-[11px] leading-5 text-slate-600">'+esc(f.answer)+'</p></div>').join('')+'</div></details>':'')+'</section>';}
