@@ -56,6 +56,62 @@ async function run() {
     );
     resetMaintenanceCache();
 
+    await test('admin notification categories cover the real admin event types and default to enabled', async () => {
+      const {
+        ADMIN_NOTIFICATION_CATEGORIES,
+        adminNotificationCategoryForType,
+        isAdminNotificationEnabled
+      } = require('../utils/adminNotificationPreferences');
+      const expectedTypes = [
+        'admin_new_client','admin_client_login','admin_client_logout',
+        'admin_new_technician','admin_fanni_login','admin_fanni_logout','admin_fanni_profile_edit',
+        'admin_new_order','admin_order_offer_accepted','admin_order_cancelled','admin_order_completed',
+        'admin_fanni_offer','admin_price_change_requested','admin_client_rating','admin_store_order',
+        'admin_subscription_request','admin_subscription_renewed','admin_password_recovery',
+        'admin_password_recovery_message','admin_support_request','admin_support_followup',
+        'admin_new_complaint','admin_new_topup','admin_client_topup','admin_service_payment_held'
+      ];
+      assert.ok(ADMIN_NOTIFICATION_CATEGORIES.length > 6, 'all missing categories must be visible beyond the original six');
+      for (const type of expectedTypes) {
+        assert.ok(adminNotificationCategoryForType(type), 'missing category mapping for ' + type);
+        assert.equal(isAdminNotificationEnabled(type, {}), true, 'legacy preferences must preserve ' + type);
+      }
+      assert.equal(isAdminNotificationEnabled('admin_new_client', { client_registration: false }), false);
+      assert.equal(isAdminNotificationEnabled('admin_client_login', { client_registration: false }), true, 'client activity must remain independent');
+      assert.equal(isAdminNotificationEnabled('admin_fanni_login', { technician_registration: false }), true, 'technician activity must remain independent');
+      assert.equal(isAdminNotificationEnabled('future_admin_event', {}), true, 'unknown future events must default to enabled');
+    });
+
+    await test('notifyAdmins blocks only the disabled category before writing admin notifications', async () => {
+      const AdminConfig = require('../models/AdminConfig');
+      const Notification = require('../models/Notification');
+      const { notifyAdmins } = require('../utils/notifications');
+      await AdminConfig.findOneAndUpdate(
+        { key: 'main' },
+        { $set: { 'settings.adminNotificationPreferences.client_registration': false } },
+        { upsert: true, setDefaultsOnInsert: true }
+      );
+      const before = await Notification.countDocuments({ recipientRole: 'admin', type: 'admin_new_client' });
+      const result = await notifyAdmins({ type: 'admin_new_client', title: 'اختبار', message: 'اختبار' });
+      const after = await Notification.countDocuments({ recipientRole: 'admin', type: 'admin_new_client' });
+      assert.equal(result.disabled, true);
+      assert.equal(after, before, 'disabled event must not create an admin inbox record');
+      assert.equal(require('../utils/adminNotificationPreferences').isAdminNotificationEnabled('admin_client_login', { client_registration: false }), true);
+      await AdminConfig.updateOne({ key: 'main' }, { $unset: { 'settings.adminNotificationPreferences.client_registration': 1 } });
+    });
+
+    await test('admin notification preference settings are rendered, submitted, validated, and persisted', async () => {
+      const renderer = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/system-render.js'), 'utf8');
+      const actions = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/system-actions.js'), 'utf8');
+      const platform = fs.readFileSync(path.join(__dirname, '../routes/admin/platform.js'), 'utf8');
+      const model = fs.readFileSync(path.join(__dirname, '../models/AdminConfig.js'), 'utf8');
+      assert.match(renderer, /data-admin-notification-pref=/);
+      assert.match(actions, /adminNotificationPreferences/);
+      assert.match(platform, /ADMIN_NOTIFICATION_CATEGORY_KEYS/);
+      assert.match(platform, /valueToSave/);
+      assert.match(model, /adminNotificationPreferences: \{ type: mongoose\.Schema\.Types\.Mixed/);
+    });
+
     await test('Arabic store search normalizes spelling variants and tolerates simple typos', async () => {
       const search = require('../../frontend/js/store-search');
       assert.equal(search.normalizeArabicStoreSearch('إشــتراك مُميّز'), 'اشتراك مميز');

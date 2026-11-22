@@ -35,7 +35,8 @@ const adminConfigSchema = new mongoose.Schema({
     maintenanceMessage: { type: String, trim: true, maxlength: 500, default: '' },
     maxFanniSignupAttempts: { type: Number, min: 1, max: 100, default: 5 },
     walletPhone1: { type: String, trim: true, maxlength: 20, default: '' },
-    walletPhone2: { type: String, trim: true, maxlength: 20, default: '' }
+    walletPhone2: { type: String, trim: true, maxlength: 20, default: '' },
+    adminNotificationPreferences: { type: mongoose.Schema.Types.Mixed, default: () => ({}) }
   },
   content: {
     announcement: { type: String, trim: true, maxlength: 1000, default: '' },

@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { resetMaintenanceCache } = require('../../utils/maintenanceCache');
+const { ADMIN_NOTIFICATION_CATEGORY_KEYS } = require('../../utils/adminNotificationPreferences');
 
 function createAdminPlatformRouter({
   auth,
@@ -38,19 +39,24 @@ function createAdminPlatformRouter({
         maintenanceMessage: Joi.string().trim().max(500).allow('').required(),
         maxFanniSignupAttempts: Joi.number().integer().min(1).max(100).required(),
         walletPhone1: Joi.string().trim().max(20).allow('').default(''),
-        walletPhone2: Joi.string().trim().max(20).allow('').default('')
+        walletPhone2: Joi.string().trim().max(20).allow('').default(''),
+        adminNotificationPreferences: Joi.object()
+          .pattern(Joi.string().valid(...ADMIN_NOTIFICATION_CATEGORY_KEYS), Joi.boolean())
+          .max(ADMIN_NOTIFICATION_CATEGORY_KEYS.length)
+          .optional()
       }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'بيانات الإعدادات غير صحيحة' });
       const config = await getAdminConfig();
       const before = config.settings.toObject ? config.settings.toObject() : { ...config.settings };
-      config.settings = value;
-      config.history.push({ key: 'settings', before, after: value, by: adminName(req), byId: String(req.user?._id || ''), reason: 'تعديل إعدادات النظام', createdAt: new Date() });
+      const valueToSave = { ...before, ...value, adminNotificationPreferences: value.adminNotificationPreferences || before.adminNotificationPreferences || {} };
+      config.settings = valueToSave;
+      config.history.push({ key: 'settings', before, after: valueToSave, by: adminName(req), byId: String(req.user?._id || ''), reason: 'تعديل إعدادات النظام', createdAt: new Date() });
       if (config.history.length > 200) config.history = config.history.slice(-200);
       await config.save();
       if (Boolean(before.maintenance) !== Boolean(value.maintenance) || String(before.maintenanceMessage || '') !== String(value.maintenanceMessage || '')) resetMaintenanceCache();
-      await writeAdminAudit(req, 'حفظ إعدادات النظام', 'settings', 'settings', JSON.stringify({ before, after: value }));
-      const maintenanceStatus = value.maintenance ? 'مفعّل' : 'غير مفعّل';
+      await writeAdminAudit(req, 'حفظ إعدادات النظام', 'settings', 'settings', JSON.stringify({ before, after: valueToSave }));
+      const maintenanceStatus = valueToSave.maintenance ? 'مفعّل' : 'غير مفعّل';
       return res.json({ message: `تم حفظ الإعدادات. وضع الصيانة ${maintenanceStatus} على طلبات العملاء والفنيين؛ حد محاولات تسجيل الفني لكل IP خلال 15 دقيقة مطبق.`, settings: config.settings });
     } catch (err) { next(err); }
   });

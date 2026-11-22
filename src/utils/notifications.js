@@ -5,6 +5,8 @@ const Notification = require('../models/Notification');
 const NotificationDelivery = require('../models/NotificationDelivery');
 const PushToken = require('../models/PushToken');
 const Fanni = require('../models/Fanni');
+const AdminConfig = require('../models/AdminConfig');
+const { isAdminNotificationEnabled } = require('./adminNotificationPreferences');
 const { sendWebPushNotification } = require('./webPush');
 
 const CURRENT_PUBLIC_ORIGIN = 'https://www.hamzawy-sat.dynv6.net';
@@ -426,6 +428,12 @@ async function retryPendingNotificationDeliveries(limit = 25) {
 
 async function notifyAdmins({ type, title, message, link = '', dedupeKey = null }) {
   try {
+    // Missing legacy preferences and config read failures default to enabled.
+    const config = await AdminConfig.findOne({ key: 'main' }).select('settings.adminNotificationPreferences').lean().catch(() => null);
+    const preferences = config?.settings?.adminNotificationPreferences || {};
+    if (!isAdminNotificationEnabled(type, preferences)) {
+      return { targeted: 0, created: 0, failed: 0, disabled: true };
+    }
     const admins = await Fanni.find({
       $or: [
         { role: 'admin' },
