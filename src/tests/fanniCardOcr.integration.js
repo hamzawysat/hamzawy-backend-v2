@@ -22,6 +22,14 @@ function makeSyntheticCardImage(value) {
   ], { encoding: null, maxBuffer: 10 * 1024 * 1024 });
 }
 
+function makeDegradedCardImage(image) {
+  // Simulate a dim, low-resolution phone capture with mild hand movement.
+  return execFileSync('convert', [
+    'png:-', '-resize', '42%', '-brightness-contrast', '-28x-12',
+    '-blur', '0x0.45', '-resize', '1600x760!', 'png:-'
+  ], { input: image, encoding: null, maxBuffer: 10 * 1024 * 1024 });
+}
+
 async function main() {
   const expected = '29801010100017'; // Fictional structure-valid test value; not a real person's ID.
   const fixture = makeSyntheticCardImage(expected);
@@ -53,7 +61,12 @@ async function main() {
     if (extractArabicName('ya pm l sy Sai fe Be in Pres تس Agee v')) {
       throw new Error('Garbled OCR text must not be stored as the card name');
     }
-    console.log('Real Tesseract OCR integration test: exact synthetic 14-digit match passed');
+    const degradedFixture = makeDegradedCardImage(fixture);
+    const degradedResult = await readFanniCard(degradedFixture);
+    if (degradedResult.nationalId !== expected) {
+      throw new Error('Enhanced OCR did not recover the exact 14-digit ID from a dim, mildly blurred fixture');
+    }
+    console.log('Real Tesseract OCR integration test: clean and degraded-image exact 14-digit matches passed');
   } finally {
     await terminateWorkerForTests();
   }
