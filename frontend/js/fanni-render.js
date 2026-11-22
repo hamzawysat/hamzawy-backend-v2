@@ -67,7 +67,8 @@ function renderContent(){
   ${state.tab==='register'?`
    <div class="space-y-4">
     ${new URLSearchParams(window.location.search).get('ref')?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold text-emerald-800">تم فتح تسجيل الفني من خلال دعوة. أكمل التسجيل لتفعيل الدعوة.</div>':''}
-    <div><label class="field-label">الاسم بالكامل *</label><input id="fanniRegName" class="field" autocomplete="name" enterkeyhint="next" value="${esc(state.regName)}" oninput="state.regName=this.value.slice(0,50)" placeholder="الاسم بالكامل"><p class="mt-1 text-[10px] leading-5 text-slate-500">اكتب اسمك بالعربية كما هو مدوّن على البطاقة. يتم التحقق من الرقم القومي آليًا من صورة البطاقة.</p></div>
+    <div><label class="field-label">الاسم بالكامل *</label><input id="fanniRegName" class="field" autocomplete="name" enterkeyhint="next" value="${esc(state.regName)}" oninput="state.regName=this.value.slice(0,50)" placeholder="الاسم بالكامل"><p class="mt-1 text-[10px] leading-5 text-slate-500">اكتب اسمك كما هو مدوّن على البطاقة. ستراجع الإدارة الاسم والرقم القومي يدويًا مع الصور.</p></div>
+    <div><label class="field-label">الرقم القومي *</label><input id="fanniRegNationalId" class="field" inputmode="numeric" autocomplete="off" maxlength="14" value="${esc(state.regNationalId)}" oninput="state.regNationalId=this.value.replace(/[^0-9٠-٩۰-۹]/g,'').slice(0,14)" placeholder="اكتب 14 رقمًا كما في البطاقة"><p class="mt-1 text-[10px] text-slate-500">اكتب الرقم القومي بنفسك؛ الإدارة ستقارنه بالرقم الموجود في صورة البطاقة.</p></div>
     <div><label class="field-label">رقم التليفون *</label><input id="fanniRegPhone" class="field" inputmode="numeric" autocomplete="tel" enterkeyhint="next" value="${esc(state.regPhone)}" oninput="state.regPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
 
     <div class="rounded-2xl border p-3">
@@ -97,6 +98,14 @@ function renderContent(){
      </div>
     <div><label class="field-label">كلمة السر *</label><input id="fanniRegPassword" type="password" class="field" autocomplete="new-password" enterkeyhint="next" value="${esc(state.regPass)}" oninput="state.regPass=this.value.slice(0,100)" placeholder="6 أحرف على الأقل"></div>
     <div><label class="field-label">تأكيد كلمة السر *</label><input id="fanniRegPasswordConfirm" type="password" class="field" autocomplete="new-password" enterkeyhint="go" value="${esc(state.regPassConfirm)}" oninput="state.regPassConfirm=this.value.slice(0,100)" placeholder="اكتب كلمة السر مرة تانية"><p class="text-[10px] text-slate-500 mt-1">لازم تكون مطابقة لكلمة السر الأولى.</p></div>
+
+<section class="rounded-2xl border border-emerald-200 bg-emerald-50/60 p-3 space-y-3">
+      <div><h2 class="font-extrabold text-sm text-slate-900">صورتك الشخصية *</h2><p class="mt-1 text-[11px] leading-5 text-slate-600">التقط صورة واضحة لوجهك بالكاميرا الأمامية. ستظهر صورتك في حسابك وللعملاء مع عروضك.</p></div>
+      <label class="block cursor-pointer rounded-xl border border-emerald-300 bg-white px-3 py-3 text-center text-xs font-extrabold text-emerald-800">📷 التقاط الصورة بالكاميرا الأمامية
+        <input type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="hidden" ${state.regProfilePhotoUploading||state.loading?'disabled':''} onchange="handleRegistrationProfilePhotoUpload(this.files?.[0]);this.value=''">
+      </label>
+      <p class="text-[11px] font-bold ${state.regProfilePhotoFileId?'text-emerald-700':'text-slate-600'}" role="status" aria-live="polite">${state.regProfilePhotoUploading?'جاري رفع الصورة...':esc(state.regProfilePhotoUploadStatus|| (state.regProfilePhotoFileId?'تم رفع الصورة الشخصية ✓':'الصورة الشخصية مطلوبة'))}</p>
+    </section>
 
     <section class="rounded-2xl border border-blue-200 bg-blue-50/60 p-3 space-y-3">
      <div><h2 class="font-extrabold text-sm text-slate-900">صورة بطاقة الرقم القومي *</h2><p class="mt-1 text-[11px] leading-5 text-slate-600">ارفع صورة واضحة للوجه الأمامي والخلفي. الصورتان مطلوبتان ولن يتم إنشاء الحساب بدونهما، وسيتم حفظهما بشكل خاص لمراجعة الإدارة.</p></div>
