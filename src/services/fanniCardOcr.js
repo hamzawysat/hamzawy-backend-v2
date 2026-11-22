@@ -2,6 +2,7 @@
 
 const crypto = require('crypto');
 const { spawnSync } = require('node:child_process');
+const path = require('node:path');
 const { createWorker } = require('tesseract.js');
 
 let workerPromise = null;
@@ -215,6 +216,40 @@ function buildEnhancedImageVariants(imageBuffer) {
   return variants;
 }
 
+function runPaddleOcr(imageBuffer) {
+  const scriptPath = path.join(__dirname, '../../scripts/paddle_ocr_card.py');
+  const result = spawnSync('python3', [scriptPath], {
+    input: imageBuffer,
+    encoding: null,
+    timeout: 120000,
+    maxBuffer: 12 * 1024 * 1024
+  });
+  if (result.error || result.status !== 0) {
+    const error = new Error('PADDLE_OCR_UNAVAILABLE');
+    error.code = 'PADDLE_OCR_UNAVAILABLE';
+    throw error;
+  }
+  try {
+    const payload = JSON.parse(String(result.stdout || ''));
+    if (!Array.isArray(payload.findings)) throw new Error('PADDLE_OCR_INVALID_RESULT');
+    return payload.findings;
+  } catch (_) {
+    const error = new Error('PADDLE_OCR_INVALID_RESULT');
+    error.code = 'PADDLE_OCR_INVALID_RESULT';
+    throw error;
+  }
+}
+
+function normalizeArabicNameForMatch(value) {
+  return String(value || '')
+    .normalize('NFC')
+    .replace(/[\u064b-\u065f\u0670\u0640]/g, '')
+    .replace(/[أإآ]/g, 'ا')
+    .replace(/ى/g, 'ي')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 async function readFanniCard(imageBuffer) {
   if (!Buffer.isBuffer(imageBuffer) || !imageBuffer.length) {
     const error = new Error('CARD_IMAGE_UNREADABLE');
@@ -326,13 +361,28 @@ async function readFanniCard(imageBuffer) {
     }
   }
 
-  const ids = [...candidates].filter(isValidNationalId);
-  if (ids.length !== 1) {
+  // Require independent agreement between Tesseract and PaddleOCR. A single
+  // engine's plausible-looking 14 digits are not enough for a national ID.
+  const paddleFindings = runPaddleOcr(imageBuffer);
+  const paddleIds = new Set();
+  const paddleNames = new Set();
+  for (const finding of paddleFindings) {
+    const text = String(finding?.text || '');
+    for (const id of extractNationalIds(text)) paddleIds.add(id);
+    const name = extractArabicName(text, [], finding?.confidence);
+    if (name && Number(finding?.confidence || 0) >= 0.55) {
+      paddleNames.add(normalizeArabicNameForMatch(name));
+    }
+  }
+  const agreedIds = [...candidates].filter(id => isValidNationalId(id) && paddleIds.has(id));
+  const tesseractName = normalizeArabicNameForMatch(bestName);
+  const nameAgreed = Boolean(tesseractName && paddleNames.has(tesseractName));
+  if (agreedIds.length !== 1 || !nameAgreed) {
     const error = new Error('CARD_OCR_UNCLEAR');
     error.code = 'CARD_OCR_UNCLEAR';
     throw error;
   }
-  return { nationalId: ids[0], extractedName: bestName };
+  return { nationalId: agreedIds[0], extractedName: bestName };
 }
 async function terminateWorkerForTests() {
   if (!workerPromise) return;
