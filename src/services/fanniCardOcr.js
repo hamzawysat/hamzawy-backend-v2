@@ -44,7 +44,7 @@ function isClearArabicName(value) {
   if (!name || name.length < 10 || name.length > 100) return false;
   if (!/^[\u0600-\u06ff\u0750-\u077f\u08a0-\u08ff\u0640\u064b-\u065f\u0670\s]+$/u.test(name)) return false;
   const parts = name.split(' ').filter(Boolean);
-  return parts.length >= 3 && parts.length <= 5 && parts.every(part => part.length >= 2 && /[\u0621-\u064a\u066e-\u06d3]/u.test(part));
+  return parts.length >= 2 && parts.length <= 5 && parts.every(part => part.length >= 2 && /[\u0621-\u064a\u066e-\u06d3]/u.test(part));
 }
 
 function cardHash(nationalId) {
