@@ -7,7 +7,7 @@
     "test": "node src/tests/runTests.js",
     "test:ocr": "node src/tests/fanniCardOcr.integration.js",
     "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js && node src/tests/fanniRegistrationPrivacy.test.js",
-    "build": "node scripts/build-frontend.js"
+    "build": "python3 scripts/warmup_paddleocr.py && node scripts/build-frontend.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
