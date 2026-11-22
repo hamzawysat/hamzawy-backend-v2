@@ -1850,6 +1850,17 @@ async function run() {
       assert.equal(clientAccount.includes('صُنّاع'), false);
     });
 
+    // The maintenance-toggle test intentionally exercises the enabled state.
+    // Explicitly restore the public API baseline before order-flow integration tests.
+    {
+      const AdminConfig = require('../models/AdminConfig');
+      const { resetMaintenanceCache } = require('../utils/maintenanceCache');
+      const config = await AdminConfig.findOne({ key: 'main' });
+      config.settings.maintenance = false;
+      await config.save();
+      resetMaintenanceCache();
+    }
+
     await test('owner service catalog shows hidden and custom services while public catalog exposes active services only', async () => {
       const { ALL_SERVICES } = require('../config/professions');
       const Service = require('../models/Service');
