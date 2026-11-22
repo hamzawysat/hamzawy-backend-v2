@@ -45,7 +45,7 @@ async function run() {
     process.env.MONGO_URI = mongo.getUri('sonaa_test');
     app = require('../server');
     mongoose = require('mongoose');
-    await mongoose.connection.asPromise();
+    await mongoose.connect(process.env.MONGO_URI);
     // Keep integration tests deterministic even when the model default enables maintenance.
     const AdminConfigForTests = require('../models/AdminConfig');
     const { resetMaintenanceCache } = require('../utils/maintenanceCache');
