@@ -58,24 +58,6 @@ async function doLogin(){
  }
 }
 
-function scrollToFanniRegistrationTarget(targetId){
- const scroll=()=>{
-  const target=document.getElementById(targetId);
-  if(!target)return false;
-  const scroller=document.scrollingElement||document.documentElement;
-  const current=Math.max(window.scrollY||window.pageYOffset||0,scroller.scrollTop||0,document.body?.scrollTop||0);
-  const top=Math.max(0,target.getBoundingClientRect().top+current-Math.max(90,Math.round(window.innerHeight*0.18)));
-  const html=document.documentElement;
-  const previous=html.style.scrollBehavior;
-  html.style.scrollBehavior='auto';
-  scroller.scrollTop=top;
-  if(document.body)document.body.scrollTop=top;
-  window.scrollTo(0,top);
-  requestAnimationFrame(()=>{html.style.scrollBehavior=previous;});
-  return true;
- };
- requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(scroll)));
-}
 async function compressRegistrationIdImage(file){
  try{
   let bitmap;
@@ -122,7 +104,7 @@ async function handleRegistrationIdUpload(side,file){
   state[idKey]=result.fileId;state[statusKey]='تم رفع الصورة بنجاح ✓';
   toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
  }catch(e){state[idKey]='';state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';toast(state[statusKey],'error');}
- finally{state[loadingKey]=false;render();scrollToFanniRegistrationTarget('registrationIdCard-'+side);}
+ finally{state[loadingKey]=false;render({scrollTargetId:'registrationIdCard-'+side});}
 }
 function previewRegistrationIdImage(side){
  const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
@@ -171,8 +153,7 @@ async function doRegister(){
 
  state.loading=true;
  state.error='';
- render();
- scrollToFanniRegistrationTarget('fanniRegistrationCheckingMessage');
+ render({scrollTargetId:'fanniRegistrationCheckingMessage'});
 
  try{
   await API.register({
@@ -203,14 +184,12 @@ async function doRegister(){
   state.pendingMsg='تم إنشاء حساب بنجاح. حسابك قيد مراجعة الإدارة.';
   state.error='';
 
-  render();
-  scrollToFanniRegistrationTarget('fanniRegistrationPendingMessage');
+  render({scrollTargetId:'fanniRegistrationPendingMessage'});
   toast('تم التسجيل - الحساب بانتظار مراجعة الإدارة','pending');
  }catch(e){
   state.loading=false;
   state.error=e.message;
-  render();
-  scrollToFanniRegistrationTarget('fanniRegistrationResult');
+  render({scrollTargetId:'fanniRegistrationResult'});
  }
 }
 
