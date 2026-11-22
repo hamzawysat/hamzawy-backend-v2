@@ -74,6 +74,7 @@ async function run() {
       assert.match(adminUi, /data-review-image/);
       assert.match(adminUi, /data-review-field/);
       assert.match(adminUi, /fanni-review-reason/);
+      assert.match(adminProfiles, /identityReviewImage: item\.identityReviewImage \|\| ''/);
       assert.match(fanniRoute, /requestedImage = req\.user\.identityReviewImage/);
       assert.match(fanniRoute, /identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: ''/);
       assert.match(fanniRoute, /isRequestedResubmission/);
