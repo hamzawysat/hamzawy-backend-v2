@@ -270,11 +270,15 @@ async function run() {
         recognize: async () => ({
           data: {
             text: ++recognizeCount === 1
-              ? 'اسم فني الاختبار بدون رقم واضح'
+              ? 'سيد كارم'
               : '2900-1012-3456-78'
           }
         })
       }));
+      cardOcr.setPaddleOcrRunnerForTests(() => [
+        { text: '29001012345678', confidence: 0.99 },
+        { text: 'سيد كارم', confidence: 0.99 }
+      ]);
       const result = await cardOcr.readFanniCard(Buffer.from('image-fixture'));
       assert.equal(result.nationalId, '29001012345678');
       assert.equal(recognizeCount, 2, 'numeric retry should run after the first pass misses the ID');
