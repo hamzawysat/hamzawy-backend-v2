@@ -231,7 +231,7 @@ async function readFanniCard(imageBuffer) {
 
     // Numeric-focused OCR on the full card and overlapping regions.
     try {
-      for (const pageSegMode of ['6', '11', '7', '13']) {
+      for (const pageSegMode of ['6', '11']) {
         await worker.setParameters({
           tessedit_pageseg_mode: pageSegMode,
           tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
@@ -244,7 +244,7 @@ async function readFanniCard(imageBuffer) {
         for (const id of extractNationalIds(String(numericResult?.data?.text || ''))) candidates.add(id);
         if (candidates.size === 1) break;
       }
-      if (candidates.size !== 1) {
+      if (candidates.size !== 1 && variantIndex < 2) {
         for (const rectangle of getNumericOcrRegions(variant)) {
           await worker.setParameters({
             tessedit_pageseg_mode: '7',
