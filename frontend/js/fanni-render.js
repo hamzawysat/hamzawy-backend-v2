@@ -306,10 +306,11 @@ function renderContent(){
    <div class="fanni-wallet-tabs" role="tablist" aria-label="أقسام المحفظة">${[{id:"topup",label:"شحن المحفظة",icon:"＋"},{id:"requests",label:"طلبات الشحن",icon:"📥"},{id:"transactions",label:"سجل العمليات",icon:"📄"}].map(tab=>'<button type="button" role="tab" aria-selected="'+((state.walletTab||"topup")===tab.id?"true":"false")+'" onclick="setFanniWalletTab(\''+tab.id+'\')" class="'+((state.walletTab||"topup")===tab.id?"fanni-wallet-tab is-active":"fanni-wallet-tab")+'"><span class="fanni-wallet-tab-icon">'+tab.icon+'</span>'+tab.label+'</button>').join("")}</div>
     <div class="panel p-4 ${((state.walletTab||"topup")==="topup")?"":"hidden"}">
 
-     <div class="mt-4 rounded-2xl bg-[#E8EDFF] border border-[#D5DDFE] 100 p-4 space-y-4">
-      <p class="text-[11px] font-extrabold text-[#18324F] 900">أرقام التحويل المعتمدة</p>
-      ${[1,2].map(index=>{const number=String(state['walletPhone'+index]||'').trim();const available=/^01[0-9]{9}$/.test(number);return '<div class="rounded-xl border border-[#D5DDFE] 100 bg-white p-3"><p class="text-[11px] font-bold text-slate-600">رقم المحفظة '+(index===1?'الأول':'الثاني')+'</p><div class="mt-2 flex flex-wrap items-center gap-3"><p id="wallet-transfer-number-'+index+'" class="text-[17px] font-black text-[#18324F] 800 font-mono" dir="ltr">'+(available?esc(number):'غير متاح')+'</p>'+(available?'<button type="button" onclick="copyWalletNumber('+index+')" class="secondary-btn px-4 py-2 text-[11px]" aria-label="نسخ رقم المحفظة '+index+'">📋 نسخ الرقم</button>':'')+'</div></div>';}).join('')}
-      <p class="text-[10px] text-[#18324F] 800/80 leading-5">راجع الرقم وبيانات التحويل قبل إرسال أي مبلغ. طلب الشحن يحتاج مراجعة الإدارة.</p>
+     <div class="rounded-xl border border-blue-100 bg-blue-50 p-3 space-y-2">
+      <p class="text-[11px] font-extrabold text-[#2E7CF6]">أرقام التحويل المعتمدة</p>
+      ${[[1,state.walletPhone1],[2,state.walletPhone2]].map(([index,value])=>({index,number:String(value||'').trim()})).filter(item=>/^01[0-9]{9}$/.test(item.number)).map(({index,number})=>'<div class="flex items-center justify-between gap-2 rounded-lg bg-white border border-blue-100 p-3"><span id="wallet-transfer-number-'+index+'" class="font-mono font-black text-[16px] text-slate-900" dir="ltr">'+esc(number)+'</span><button type="button" onclick="copyWalletNumber('+index+')" class="rounded-lg bg-blue-50 px-3 py-2 text-[10px] font-extrabold text-blue-800" aria-label="نسخ رقم التحويل">نسخ</button></div>').join('')}
+      ${[[state.walletPhone1],[state.walletPhone2]].every(([value])=>!/^01[0-9]{9}$/.test(String(value||'').trim()))?'<p class="text-[11px] text-amber-800">أرقام التحويل غير متاحة حاليًا. تواصل مع خدمة العملاء قبل التحويل.</p>':''}
+      <p class="text-[10px] text-slate-600 leading-5">راجع الرقم وبيانات التحويل قبل إرسال أي مبلغ. طلب الشحن يحتاج مراجعة الإدارة.</p>
      </div>
 
      ${!approved?'<div class="mt-3 rounded-xl bg-amber-50 border border-amber-200 p-3 text-[11px] text-amber-800">لا يمكن تقديم طلب شحن قبل اعتماد حسابك.</div>':''}
