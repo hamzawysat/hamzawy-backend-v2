@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const Fanni = require('../models/Fanni');
 const Client = require('../models/Client');
 const FanniCardLedger = require('../models/FanniCardLedger');
-const { readFanniCard, cardHash, normalizeNationalId, isValidNationalId, isClearArabicName } = require('../services/fanniCardOcr');
+const { readFanniCard, cardHash, encryptNationalId, normalizeNationalId, isValidNationalId, isClearArabicName } = require('../services/fanniCardOcr');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -247,7 +247,8 @@ router.post(
 
       const extractedName = isClearArabicName(cardData.extractedName) ? cardData.extractedName : '';
       const nationalIdHash = cardHash(cardData.nationalId);
-      // Keep only a keyed one-way fingerprint for duplicate prevention; never store the readable ID.
+      const nationalIdEncrypted = encryptNationalId(cardData.nationalId);
+      // Keep the ID encrypted at rest for authorized admin review; use only the HMAC for duplicate matching.
       cardData.nationalId = '';
       const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
       const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة' && !attempt.consumedAt);
@@ -321,6 +322,7 @@ router.post(
           } else {
             await FanniCardLedger.create([{
               nationalIdHash,
+              nationalIdEncrypted,
               fanniId: fanni._id,
               fanniName: fanni.name,
               linkedTechnicians: [{ fanniId: fanni._id, name: fanni.name, phone }],
