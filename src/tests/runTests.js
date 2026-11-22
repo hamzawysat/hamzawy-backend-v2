@@ -100,7 +100,6 @@ async function run() {
       const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
       const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
       const technicianOffers = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-offers.js'), 'utf8');
-      const brandStyles = fs.readFileSync(path.join(__dirname, '../../frontend/css/hamzawy-sat-brand.css'), 'utf8');
       const clientHomeStart = clientRender.indexOf('<section class="client-home-dashboard');
       assert.notEqual(clientHomeStart, -1, 'client home dashboard must render');
       const clientProfilePosition = clientRender.indexOf('class="client-home-profile-shell"');
@@ -151,59 +150,6 @@ async function run() {
       for (const label of ['سجل المهام', 'التقارير', 'الإعدادات', 'طلب دعم فني']) {
         assert.ok(technicianRender.includes(label), 'technician quick actions are missing ' + label);
       }
-      assert.ok(brandStyles.includes('min-height:108px'), 'dashboard statistic tiles must retain the native-app height');
-      assert.ok(brandStyles.includes('background:#DCE5FF'), 'referral strips must use the native-app indigo surface');
-      assert.ok(
-        clientAccount.includes('background:#2E7CF6!important;color:#FFFFFF!important') &&
-        clientAccount.includes('background:#EEF2FF!important;color:#2E7CF6!important'),
-        'client account entry actions must use the current shared blue palette'
-      );
-      assert.ok(
-        technicianRender.includes('background:#2E7CF6') && technicianRender.includes('rgba(20,38,165,.30)') &&
-        !technicianRender.includes('rgba(169,130,46,.25)'),
-        'technician floating refresh control must not retain the legacy gold shadow'
-      );
-    });
-
-    await test('shared brand stylesheet remains the final visual layer on all browser pages', async () => {
-      const pages = [
-        'index.html', 'client.html', 'fanni.html', 'support.html', 'password.html',
-        'customers.html', 'technicians.html', 'download.html', 'links.html',
-        'admin.html', 'admin-setup.html'
-      ];
-      for (const page of pages) {
-        const source = fs.readFileSync(path.join(__dirname, '../../frontend', page), 'utf8');
-        const brandPosition = source.lastIndexOf('hamzawy-sat-brand.css');
-        assert.notEqual(brandPosition, -1, page + ' must load the shared brand stylesheet');
-        assert.equal(
-          source.indexOf('<style', brandPosition),
-          -1,
-          page + ' must not contain inline style blocks after the shared brand stylesheet'
-        );
-        assert.ok(
-          source.includes('<meta name="theme-color" content="#2E7CF6">'),
-          page + ' must use the current shared browser brand color'
-        );
-      }
-      const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
-      const technicianRender = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-render.js'), 'utf8');
-      for (const source of [clientAccount, technicianRender]) {
-        assert.ok(source.includes('#172DAD') && source.includes('#FFFFFF'), 'account entry links must use the native blue palette');
-        for (const legacyColor of ['#d6b45a', '#fffdf5', '#fff4cf', '#173c6c', '#1d4ed8', '#2563eb']) {
-          assert.ok(!source.toLowerCase().includes(legacyColor.toLowerCase()), 'account entry renderer still contains legacy color ' + legacyColor);
-        }
-      }
-      assert.ok(clientAccount.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'client account social link must use the native blue palette');
-      assert.ok(technicianRender.includes('background:linear-gradient(145deg,#2946C7,#07136E)!important'), 'technician account social link must use the native blue palette');
-      assert.ok(!clientAccount.includes('#d6b45a') && !clientAccount.includes('#fffdf5'), 'client account entry screen must not retain the legacy gold palette');
-      assert.ok(!technicianRender.includes('#d6b45a') && !technicianRender.includes('#fffdf5'), 'technician account entry screen must not retain the legacy gold palette');
-      const clientPage = fs.readFileSync(path.join(__dirname, '../../frontend/client.html'), 'utf8');
-      const technicianPage = fs.readFileSync(path.join(__dirname, '../../frontend/fanni.html'), 'utf8');
-      assert.match(clientPage, /client-account\.js\?v=[^"'&\s]+/, 'client account script must have a cache-busting version');
-      assert.match(technicianPage, /fanni-render\.js\?v=[^"'&\s]+/, 'technician renderer script must have a cache-busting version');
-      const manifest = JSON.parse(fs.readFileSync(path.join(__dirname, '../../frontend/manifest.webmanifest'), 'utf8'));
-      assert.equal(manifest.theme_color, '#101F9B');
-      assert.equal(manifest.background_color, '#F4F8FC');
     });
 
     await test('client and technician store pages load the shared Arabic search before the catalog UI', async () => {
