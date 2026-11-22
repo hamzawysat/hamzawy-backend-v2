@@ -172,6 +172,8 @@ function clearRegistrationIdImage(side){
 }
 
 async function doRegister(){
+ toast('تسجيل الفنيين متاح من تطبيق حمزاوي سات فقط. حمّل التطبيق لإكمال التسجيل.','error');
+ return;
  if(state.loading)return;
 
  if(!V.text(state.regName,2,50)){state.error='الاسم لازم يكون حرفين على الأقل';render();return}
