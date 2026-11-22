@@ -379,7 +379,7 @@ let state={
  tab:forceTechnicianRegistration?'register':'login',myOrdersView:'active',
  loginPhone:'',loginPass:'',loginSubmitAllowed:false,
  regName:'',regPhone:'',regPass:'',regPassConfirm:'',regGuidelinesAccepted:false,
- regNationalId:'',regIdFrontFileId:'',regIdBackFileId:'',regIdFrontPreview:'',regIdBackPreview:'',regIdFrontUploading:false,regIdBackUploading:false,
+regIdFrontFileId:'',regIdBackFileId:'',regIdFrontPreview:'',regIdBackPreview:'',regIdFrontUploading:false,regIdBackUploading:false,
  regSpecialties:[],regAreas:[],regAreaSearch:'',regAreaCustom:'',openSpecialtyCategory:'',
  editProfileMode:false,editPhone:'',editAreas:[],editAreaSearch:'',editSpecialties:[],editSaving:false,
  loading:false,checkingSession:false,availabilitySaving:false,
