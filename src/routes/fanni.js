@@ -207,6 +207,12 @@ router.get('/admin/:id/photo', auth('admin'), async (req, res, next) => {
  */
 router.post(
   '/register',
+  (req, res, next) => {
+    // Native React Native requests do not carry a browser Origin header.
+    // Prevent technician account creation through the web dashboard/browser.
+    if (req.get('origin')) return res.status(403).json({ message: 'تسجيل الفنيين متاح من تطبيق حمزاوي سات فقط.' });
+    return next();
+  },
   validate(registerSchema),
   async (req, res, next) => {
     try {
