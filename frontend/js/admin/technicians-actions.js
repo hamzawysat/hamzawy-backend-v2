@@ -6,8 +6,10 @@ async function removeOffer(sn,idx){if(!confirm('هل تريد إزالة هذا 
 async function rejectOffer(sn,idx){if(!confirm('رفض هذا العرض مع سبب؟'))return; try{await tryApi([`/api/admin/offers/${encodeURIComponent(sn)}/${idx}/reject`],{method:'POST',body:JSON.stringify({reason:'غير مناسب'})}); showToast('تم رفض العرض'); await loadOrders();}catch(e){showToast(e.message);}}
 
 async function openFanniRegistrationReview(id){
- const row=(state.pendingFanniRegistrations||[]).find(item=>String(item._id)===String(id));
- if(!row)return showToast('طلب التسجيل غير موجود. حدّث القائمة وحاول مرة أخرى.','error');
+ const row=(state.pendingFanniRegistrations||[]).find(item=>String(item._id)===String(id))||(state.filtered||[]).find(item=>String(item._id)===String(id));
+ if(!row)return showToast('بيانات الفني غير موجودة. حدّث القائمة وحاول مرة أخرى.','error');
+ const approvedReview=!!(row.isApproved||row.actualStatus==='معتمد');
+ if(approvedReview){row.photoUrl=row.photoUrl||('/api/fanni/admin/'+encodeURIComponent(id)+'/photo');row.frontUrl=row.frontUrl||('/api/fanni/admin/'+encodeURIComponent(id)+'/identity/front');row.backUrl=row.backUrl||('/api/fanni/admin/'+encodeURIComponent(id)+'/identity/back');}
  const existing=document.getElementById('fanni-registration-review-modal');if(existing)existing.remove();
  const modal=document.createElement('div');modal.id='fanni-registration-review-modal';modal.className='fixed inset-0 z-[220] flex items-center justify-center bg-slate-950/80 p-3';
  modal.innerHTML=`<section dir="rtl" class="w-full max-w-4xl max-h-[94vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl">
@@ -46,7 +48,8 @@ async function openFanniRegistrationReview(id){
    const image=document.createElement('img');image.src=objectUrl;image.alt=alt;image.className='mx-auto max-h-[48vh] w-full rounded-lg object-contain';target.appendChild(image);
   }
  }catch(error){showToast(error.message||'تعذر تحميل صور المراجعة.','error');}
- modal.querySelector('#fanni-review-approve').addEventListener('click',async()=>{
+ if(approvedReview)modal.querySelector('#fanni-review-approve').remove();
+ modal.querySelector('#fanni-review-approve')?.addEventListener('click',async()=>{
   const name=modal.querySelector('#fanni-review-name').value.trim();const nationalId=modal.querySelector('#fanni-review-national-id').value.trim();
   if(name.length<2||nationalId.replace(/[^0-9٠-٩۰-۹]/g,'').length!==14)return showToast('راجع الاسم واكتب الرقم القومي المكوّن من 14 رقمًا.','error');
   if(!confirm('هل قارنت البيانات بصور البطاقة وتريد اعتماد الفني؟'))return;
@@ -59,6 +62,19 @@ async function openFanniRegistrationReview(id){
   if(!reason)return showToast('اكتب رسالة الإدارة التي ستظهر للفني.','error');
   if(!fields.length&&!images.length)return showToast('حدد حقل بيانات أو صورة واحدة على الأقل.','error');
   if(!confirm('إرسال المطلوب المحدد للفني؟'))return;
-  try{const result=await tryApi(['/api/admin/fanni-registration-requests/'+encodeURIComponent(id)+'/reject'],{method:'POST',body:JSON.stringify({reason,fields,images})});showToast(result.message||'تم إرسال المطلوب للفني.');close();await loadAll();}catch(error){showToast(error.message||'تعذر إرسال المطلوب للفني.','error');}
+  try{const reviewUrl=approvedReview?'/api/admin/fannis/'+encodeURIComponent(id)+'/request-changes':'/api/admin/fanni-registration-requests/'+encodeURIComponent(id)+'/reject';const result=await tryApi([reviewUrl],{method:'POST',body:JSON.stringify({reason,fields,images})});showToast(result.message||'تم إرسال المطلوب للفني.');close();await loadAll();}catch(error){showToast(error.message||'تعذر إرسال المطلوب للفني.','error');}
  });
+}
+
+
+async function returnFanniToReview(id){
+ if(!id||!confirm('إعادة الفني المعتمد إلى قيد المراجعة؟ ستتوقف خدمات الفني المعتمد حتى موافقة الإدارة.'))return;
+ try{const result=await tryApi(['/api/admin/fannis/'+encodeURIComponent(id)+'/reopen-review'],{method:'POST'});showToast(result.message||'تمت إعادة الفني للمراجعة');await loadAll();}
+ catch(error){showToast(error.message||'تعذرت إعادة الفني للمراجعة','error');}
+}
+
+function requestFanniChanges(id){
+ const row=(state.filtered||[]).find(item=>String(item._id)===String(id));
+ if(!row||!(row.isApproved||row.actualStatus==='معتمد'))return showToast('الفني غير موجود أو ليس معتمدًا. حدّث القائمة.','error');
+ openFanniRegistrationReview(id);
 }

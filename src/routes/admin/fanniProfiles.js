@@ -135,6 +135,57 @@ function createAdminFanniProfilesRouter({
     } catch (err) { next(err); }
   });
 
+  // Return an already-approved technician to the same gated review state used for new registrations.
+  router.post('/fannis/:id/reopen-review', auth('admin'), async (req, res, next) => {
+    try {
+      if (!validId(req.params.id)) return sendBadId(res);
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'معتمد' });
+      if (!fanni) return res.status(404).json({ message: 'الفني المعتمد غير موجود أو ليس في حالة اعتماد.' });
+      if (fanni.pendingProfileChange?.requestedAt) return res.status(409).json({ message: 'لدى الفني طلب تعديل بيانات آخر قيد المراجعة. راجعه أولًا.' });
+      fanni.status = 'قيد المراجعة';
+      fanni.identityReviewStatus = 'pending';
+      fanni.identityReviewReason = '';
+      fanni.identityReviewImage = '';
+      fanni.identityReviewFields = [];
+      fanni.identityReviewImages = [];
+      fanni.rejectionReason = undefined;
+      fanni.decisions.push(decision(req, 'إعادة للمراجعة', 'إعادة فني معتمد إلى مراجعة الإدارة'));
+      await fanni.save();
+      await writeAdminAudit(req, 'إعادة فني معتمد إلى المراجعة', 'fannis', String(fanni._id), 'status=قيد المراجعة');
+      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_review_reopened', title: 'حسابك قيد المراجعة مرة أخرى', message: 'أعادت الإدارة حسابك إلى المراجعة. لن تتمكن من استخدام خدمات الفني المعتمد حتى تنتهي المراجعة وتتم الموافقة.', link: '/fanni', dedupeKey: 'fanni-review-reopened:' + String(fanni._id) + ':' + Date.now() });
+      return res.json({ message: 'تمت إعادة الفني إلى قيد المراجعة، وأصبحت خدمات الفني المعتمد متوقفة حتى موافقة الإدارة.' });
+    } catch (err) { next(err); }
+  });
+
+  // Ask an approved technician to correct selected fields or resubmit selected images.
+  router.post('/fannis/:id/request-changes', auth('admin'), async (req, res, next) => {
+    try {
+      if (!validId(req.params.id)) return sendBadId(res);
+      const reason = String(req.body?.reason || '').trim().slice(0, 500);
+      const allowedFields = ['name', 'phone', 'specialties', 'areas'];
+      const allowedImages = ['profile', 'front', 'back'];
+      const fields = [...new Set((Array.isArray(req.body?.fields) ? req.body.fields : []).filter(value => allowedFields.includes(value)))];
+      const images = [...new Set((Array.isArray(req.body?.images) ? req.body.images : []).filter(value => allowedImages.includes(value)))];
+      if (!reason) return res.status(400).json({ message: 'اكتب رسالة واضحة للفني توضح المطلوب منه.' });
+      if (!fields.length && !images.length) return res.status(400).json({ message: 'حدد بند بيانات أو صورة واحدة على الأقل.' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'معتمد' });
+      if (!fanni) return res.status(404).json({ message: 'الفني المعتمد غير موجود أو تمت مراجعته بالفعل.' });
+      if (fanni.pendingProfileChange?.requestedAt) return res.status(409).json({ message: 'لدى الفني طلب تعديل بيانات آخر قيد المراجعة. راجعه أولًا.' });
+      fanni.status = 'قيد المراجعة';
+      fanni.identityReviewStatus = 'needs_resubmission';
+      fanni.identityReviewReason = reason;
+      fanni.identityReviewFields = fields;
+      fanni.identityReviewImages = images;
+      fanni.identityReviewImage = images.length === 1 ? images[0] : images.length === 2 && images.includes('front') && images.includes('back') ? 'both' : '';
+      fanni.rejectionReason = reason;
+      fanni.decisions.push(decision(req, 'إعادة للمراجعة', reason));
+      await fanni.save();
+      await writeAdminAudit(req, 'طلب تعديل بيانات أو صور فني معتمد', 'fannis', String(fanni._id), JSON.stringify({ reason, fields, images }));
+      await createNotification({ recipientRole: 'fanni', recipientId: fanni._id, type: 'identity_resubmission_required', title: 'مطلوب تعديل بيانات حسابك', message: reason, link: '/fanni', dedupeKey: 'fanni-approved-changes:' + String(fanni._id) + ':' + Date.now() });
+      return res.json({ message: 'تم إرسال المطلوب للفني وإعادته إلى قيد المراجعة. ستظل خدمات الفني المعتمد متوقفة حتى استكمال المطلوب وموافقة الإدارة.' });
+    } catch (err) { next(err); }
+  });
+
   router.get('/fannis/:id/profile', auth('admin'), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
