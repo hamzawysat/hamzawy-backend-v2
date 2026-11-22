@@ -37,8 +37,9 @@ router.delete('/fannis/:id/force-password-change', auth('admin'), async (req, re
 router.post('/fannis/:id/approve', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('+identityCardFrontFileId');
     if (!fanni) { return res.status(404).json({ message: 'الفني غير موجود' }); }
+    if (fanni.identityCardFrontFileId && fanni.identityReviewStatus !== 'approved') return res.status(409).json({ message: 'لا يمكن اعتماد الفني قبل مراجعة صور البطاقة والرقم القومي من شاشة انتظار الاعتماد.' });
     if (fanni.status === 'معلق') { return res.status(409).json({ message: 'الفني معلق. أعد تفعيله أولاً قبل القبول' }); }
     if (fanni.status === 'معتمد') { return res.json({ message: 'الفني معتمد بالفعل', fanni: publicFanni(fanni) }); }
     fanni.status = 'معتمد'; fanni.rejectionReason = undefined; fanni.suspensionReason = undefined; fanni.suspendedAt = undefined;
