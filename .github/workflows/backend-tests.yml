@@ -12,7 +12,7 @@ on:
       - 'package-lock.json'
       - '.github/workflows/**'
   push:
-    branches: [main]
+    branches: [main, feat/fanni-manual-id-review-profile-photo-20261122]
     paths:
       - 'frontend/**'
       - 'frontend-dist/**'
