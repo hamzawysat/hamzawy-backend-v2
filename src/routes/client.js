@@ -92,6 +92,7 @@ function safeOrder(order, clientRating = null, ratingsByFanni = new Map(), compl
         return {
           _id: offer._id,
           fanniName: offer.fanniName || 'فني',
+          fanniPhotoUrl: offer.fanniPhotoUrl || (id ? '/api/fanni/' + id + '/photo' : ''),
           fanniLevel: offer.fanniLevel || 'مبتدئ',
           fanniBadges: Array.isArray(offer.fanniBadges) ? offer.fanniBadges : [],
           price: offer.price,
