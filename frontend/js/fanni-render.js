@@ -16,7 +16,7 @@ function renderContent(){
   const specialties=Array.isArray(user?.specialties)?user.specialties:[];
   const areas=Array.isArray(user?.areas)?user.areas:[];
   const authenticated=!!getToken()&&!forceTechnicianRegistration;
- document.title=authenticated?'لوحة الفني | حمزاوي سات':(state.tab==='register'?'تسجيل فني جديد | لوحة الفني':'تسجيل دخول الفني | حمزاوي سات');
+ document.title=authenticated?'لوحة الفني | حمزاوي سات':(false?'تسجيل فني جديد | لوحة الفني':'تسجيل دخول الفني | حمزاوي سات');
  const balance=state.walletBalance||user?.walletBalance||user?.balance||user?.wallet||0;
  const approved=isApproved();
  const status=user?.status||'غير محدد';
@@ -57,14 +57,14 @@ function renderContent(){
      <h1 class="mt-2 text-[24px] font-black" style="color:#2E7CF6">حمزاوي سات</h1>
      <p class="mt-1 text-[15px] font-bold text-slate-500">خدماتك وشغلك... في مكان واحد</p>
      <div class="mt-4"><span class="inline-block px-4 py-1.5 rounded-full bg-[#E8EDFF] text-[#2E7CF6] text-[14px] font-extrabold">حساب فني</span></div>
-     <h2 class="mt-2 text-[18px] font-black leading-7" style="color:#2E7CF6">${state.tab==='register'?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
-     <p class="mt-1 text-[14px] text-slate-500">${state.tab==='register'?'أنشئ حسابك وابدأ استقبال الطلبات':'سجّل دخولك وتابع فرص الشغل المتاحة ليك.'}</p>
+     <h2 class="mt-2 text-[18px] font-black leading-7" style="color:#2E7CF6">${false?'تسجيل فني جديد':'أهلاً بيك يا فني حمزاوي سات'}</h2>
+     <p class="mt-1 text-[14px] text-slate-500">${false?'أنشئ حسابك وابدأ استقبال الطلبات':'سجّل دخولك وتابع فرص الشغل المتاحة ليك.'}</p>
     </div>
     <section class="fanni-login-panel account-panel mt-2 panel p-4 animate-fade" style="border-radius:28px;width:100%;margin-inline:auto;box-sizing:border-box">
-     <div class="account-tabs fanni-login-tabs flex justify-center gap-2" style="padding:0!important;margin:0 0 20px!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:${state.tab==='register'?'flex':'none'}!important">
-       <button type="button" onclick="setTab(state.tab==='register'?'login':'register')" class="account-switch-link h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed border-[#D5DDFE] text-[#2E7CF6] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#E8EDFF] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #D5DDFE!important;border-radius:9999px!important;background:#F4F6FF!important;background-image:none!important;color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="${state.tab==='register'?'تسجيل الدخول':'تسجيل فني جديد'}"><span style="color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;background:transparent!important;background-image:none!important">${state.tab==='register'?'لتسجيل الدخول':'لتسجيل فني جديد'}</span><small style="color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;background:transparent!important;background-image:none!important;font-size:10px!important;font-weight:700!important;text-decoration:underline dashed;text-underline-offset:2px">اضغط هنا</small></button>
+     <div class="account-tabs fanni-login-tabs flex justify-center gap-2" style="padding:0!important;margin:0 0 20px!important;background:transparent!important;border:0!important;border-radius:0!important;box-shadow:none!important;display:${false?'flex':'none'}!important">
+       <button type="button" onclick="setTab(false?'login':'register')" class="account-switch-link h-9 px-4 rounded-full bg-[#F4F6FF] border border-dashed border-[#D5DDFE] text-[#2E7CF6] text-[12px] font-black inline-flex items-center justify-center gap-1.5 hover:bg-[#E8EDFF] transition-colors" style="width:auto!important;min-height:36px!important;height:36px!important;display:inline-flex!important;flex-direction:row!important;align-items:center!important;justify-content:center!important;gap:6px!important;padding:6px 16px!important;border:1px dashed #D5DDFE!important;border-radius:9999px!important;background:#F4F6FF!important;background-image:none!important;color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;box-shadow:none!important;font-size:12px!important;font-weight:900!important;white-space:nowrap!important" aria-label="${false?'تسجيل الدخول':'تسجيل فني جديد'}"><span style="color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;background:transparent!important;background-image:none!important">${false?'لتسجيل الدخول':'لتسجيل فني جديد'}</span><small style="color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;background:transparent!important;background-image:none!important;font-size:10px!important;font-weight:700!important;text-decoration:underline dashed;text-underline-offset:2px">اضغط هنا</small></button>
       </div>
-  ${state.tab==='register'?`
+  ${false?`
    <div class="space-y-4">
     ${new URLSearchParams(window.location.search).get('ref')?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-[11px] font-bold text-emerald-800">تم فتح تسجيل الفني من خلال دعوة. أكمل التسجيل لتفعيل الدعوة.</div>':''}
     <div><label class="field-label">الاسم بالكامل *</label><input id="fanniRegName" class="field" autocomplete="name" enterkeyhint="next" value="${esc(state.regName)}" oninput="state.regName=this.value.slice(0,50)" placeholder="الاسم بالكامل"><p class="mt-1 text-[10px] leading-5 text-slate-500">اكتب اسمك كما هو مدوّن على البطاقة. ستراجع الإدارة الاسم والرقم القومي يدويًا مع الصور.</p></div>
@@ -138,7 +138,7 @@ function renderContent(){
      
     <div class="mt-1 text-left"><a class="text-[15px] font-extrabold" style="color:#2E7CF6" href="password.html?role=fanni&mode=recovery">نسيت كلمة السر؟ استعادة</a></div>
     <button type="button" onclick="doLogin()" ${state.loading?'disabled':''} class="w-full h-[56px] rounded-2xl text-[20px] font-black shadow-lg" style="background:#2E7CF6!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important;border:1px solid #2E7CF6!important">${state.loading?'جاري تسجيل الدخول...':'تسجيل الدخول'}</button>
-    <button type="button" onclick="setTab('register')" class="w-full h-[56px] rounded-2xl text-[18px] font-black" style="background:#EEF2FF!important;color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;border:1px solid #D5DDFE!important">إنشاء حساب فني جديد</button>
+    <a href="/download" class="w-full h-[56px] rounded-2xl flex items-center justify-center text-[16px] font-black" style="background:#EEF2FF!important;color:#2E7CF6!important;-webkit-text-fill-color:#2E7CF6!important;border:1px solid #D5DDFE!important">⬇ تحميل التطبيق لتسجيل حساب فني جديد</a>
     ${state.pendingMsg?`<div id="fanniRegistrationPendingMessage" class="rounded-xl bg-amber-50 border border-amber-200 p-3 text-center text-[12px] font-bold text-amber-800">${esc(state.pendingMsg)}</div>`:''}
     ${state.error?errorBox(state.error):''}
     ${state.tab==='login'?'<p class="mt-4 text-center text-[14px] leading-5 text-slate-500">بياناتك وحسابك في أمان</p>':''}
