@@ -513,6 +513,7 @@ router.get('/me', auth(), requireFanni, async (req, res) => {
   safeUser.profilePhotoUrl = photoRecord?.profilePhotoFileId ? '/api/fanni/' + String(req.user._id) + '/photo?v=' + encodeURIComponent(String(req.user.updatedAt?.getTime?.() || Date.now())) : '';
   safeUser.identityReviewStatus = req.user.identityReviewStatus || 'pending';
   safeUser.identityReviewReason = req.user.identityReviewReason || '';
+  safeUser.identityReviewImage = req.user.identityReviewImage || '';
   return res.json(safeUser);
 });
 
@@ -549,7 +550,7 @@ router.patch('/me/identity-card', auth(), requireFanni, async (req, res, next) =
     }
     await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: {
       identityCardFrontFileId: ids[0], identityCardBackFileId: ids[1],
-      identityReviewStatus: 'pending', identityReviewReason: '', rejectionReason: '', status: 'قيد المراجعة'
+      identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: '', rejectionReason: '', status: 'قيد المراجعة'
     } });
     await notifyAdmins({ type: 'admin_new_technician', title: 'إعادة إرسال صور بطاقة فني', message: 'أعاد الفني ' + String(req.user.name || 'فني') + ' رفع صور البطاقة للمراجعة.', link: '/admin?tab=pending', dedupeKey: 'admin-fanni-identity-resubmitted:' + String(req.user._id) + ':' + Date.now() });
     return res.json({ message: 'تم استلام صور البطاقة والرقم القومي. الحساب ما زال قيد مراجعة الإدارة.' });
@@ -567,8 +568,15 @@ router.patch('/me/profile-photo', auth(), requireFanni, async (req, res, next) =
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
     const files = await bucket.find({ _id: new mongoose.Types.ObjectId(fileId), 'metadata.purpose': 'fanni-profile-photo', 'metadata.side': 'profile' }).limit(1).toArray();
     if (!files.length) return res.status(400).json({ message: 'ارفع صورة شخصية صحيحة أولًا.' });
-    await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: { profilePhotoFileId: new mongoose.Types.ObjectId(fileId) } });
-    return res.set('Cache-Control', 'no-store').json({ message: 'تم تحديث صورتك الشخصية بنجاح.', profilePhotoUrl: '/api/fanni/' + String(req.user._id) + '/photo?v=' + Date.now() });
+    const isRequestedResubmission = req.user.identityReviewStatus === 'needs_resubmission' && req.user.identityReviewImage === 'profile';
+    await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: {
+      profilePhotoFileId: new mongoose.Types.ObjectId(fileId),
+      ...(isRequestedResubmission ? { identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: '', rejectionReason: '', status: 'قيد المراجعة' } : {})
+    } });
+    if (isRequestedResubmission) {
+      await notifyAdmins({ type: 'admin_new_technician', title: 'إعادة إرسال الصورة الشخصية لفني', message: 'أعاد الفني ' + String(req.user.name || 'فني') + ' رفع الصورة الشخصية المطلوبة للمراجعة.', link: '/admin?tab=pending', dedupeKey: 'admin-fanni-profile-resubmitted:' + String(req.user._id) + ':' + Date.now() });
+    }
+    return res.set('Cache-Control', 'no-store').json({ message: isRequestedResubmission ? 'تم استلام الصورة الشخصية الجديدة. الحساب ما زال قيد مراجعة الإدارة.' : 'تم تحديث صورتك الشخصية بنجاح.', profilePhotoUrl: '/api/fanni/' + String(req.user._id) + '/photo?v=' + Date.now(), identityReviewStatus: isRequestedResubmission ? 'pending' : req.user.identityReviewStatus });
   } catch (err) { return next(err); }
 });
 
