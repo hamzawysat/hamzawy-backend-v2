@@ -50,7 +50,8 @@ function createAdminPlatformRouter({
       await config.save();
       if (Boolean(before.maintenance) !== Boolean(value.maintenance) || String(before.maintenanceMessage || '') !== String(value.maintenanceMessage || '')) resetMaintenanceCache();
       await writeAdminAudit(req, 'حفظ إعدادات النظام', 'settings', 'settings', JSON.stringify({ before, after: value }));
-      return res.json({ message: 'تم حفظ الإعدادات. وضع الصيانة مفعل على طلبات العملاء والفنيين؛ حد محاولات تسجيل الفني لكل IP خلال 15 دقيقة مطبق.', settings: config.settings });
+      const maintenanceStatus = value.maintenance ? 'مفعّل' : 'غير مفعّل';
+      return res.json({ message: `تم حفظ الإعدادات. وضع الصيانة ${maintenanceStatus} على طلبات العملاء والفنيين؛ حد محاولات تسجيل الفني لكل IP خلال 15 دقيقة مطبق.`, settings: config.settings });
     } catch (err) { next(err); }
   });
   router.delete('/content/faqs/:index', auth('admin'), async (req, res, next) => {
