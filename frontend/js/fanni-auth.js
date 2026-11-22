@@ -58,6 +58,14 @@ async function doLogin(){
  }
 }
 
+function scrollToFanniRegistrationTarget(targetId){
+ requestAnimationFrame(()=>requestAnimationFrame(()=>{
+  const target=document.getElementById(targetId);
+  if(!target)return;
+  try{target.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});}
+  catch(_){target.scrollIntoView();}
+ }));
+}
 async function compressRegistrationIdImage(file){
  try{
   let bitmap;
@@ -104,7 +112,7 @@ async function handleRegistrationIdUpload(side,file){
   state[idKey]=result.fileId;state[statusKey]='تم رفع الصورة بنجاح ✓';
   toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
  }catch(e){state[idKey]='';state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';toast(state[statusKey],'error');}
- finally{state[loadingKey]=false;render();}
+ finally{state[loadingKey]=false;render();scrollToFanniRegistrationTarget('registrationIdCard-'+side);}
 }
 function previewRegistrationIdImage(side){
  const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
@@ -185,11 +193,13 @@ async function doRegister(){
   state.error='';
 
   render();
+  scrollToFanniRegistrationTarget('fanniRegistrationPendingMessage');
   toast('تم التسجيل - الحساب بانتظار مراجعة الإدارة','pending');
  }catch(e){
   state.loading=false;
   state.error=e.message;
   render();
+  scrollToFanniRegistrationTarget('fanniRegistrationResult');
  }
 }
 

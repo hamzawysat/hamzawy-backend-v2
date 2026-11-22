@@ -67,6 +67,14 @@ function extractArabicName(text) {
   return candidates.sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length)[0] || '';
 }
 
+function extractNationalIds(text) {
+  const normalized = normalizeDigits(text);
+  // OCR can split printed ID digits with punctuation or line spacing.
+  // Accept harmless visual separators, but still require exactly 14 digits.
+  const matches = normalized.match(/(?<!\d)(?:\d[\s\-–—.,،:;|\/\\]*){13}\d(?!\d)/g) || [];
+  return [...new Set(matches.map(normalizeNationalId).filter(Boolean))];
+}
+
 async function readFanniCard(imageBuffer) {
   if (!Buffer.isBuffer(imageBuffer) || !imageBuffer.length) {
     const error = new Error('CARD_IMAGE_UNREADABLE');
@@ -74,11 +82,22 @@ async function readFanniCard(imageBuffer) {
     throw error;
   }
   const worker = await getWorker();
-  const result = await worker.recognize(imageBuffer);
-  const text = String(result?.data?.text || '');
-  const normalized = normalizeDigits(text);
-  const matches = normalized.match(/(?<!\d)(?:\d[\s-]*){13}\d(?!\d)/g) || [];
-  const ids = [...new Set(matches.map(normalizeNationalId).filter(Boolean))];
+  let text = '';
+  let ids = [];
+  // First pass preserves Arabic text for extracting the applicant name.
+  await worker.setParameters({ tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' });
+  const fullResult = await worker.recognize(imageBuffer);
+  text = String(fullResult?.data?.text || '');
+  ids = extractNationalIds(text);
+  // Retry with a digit-only classifier when mixed-language OCR misses the ID.
+  if (ids.length !== 1) {
+    await worker.setParameters({ tessedit_pageseg_mode: '11', tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩' });
+    const numericResult = await worker.recognize(imageBuffer);
+    const numericText = String(numericResult?.data?.text || '');
+    const numericIds = extractNationalIds(numericText);
+    if (numericIds.length === 1) ids = numericIds;
+    await worker.setParameters({ tessedit_pageseg_mode: '6', tessedit_char_whitelist: '' });
+  }
   if (ids.length !== 1) {
     const error = new Error('CARD_OCR_UNCLEAR');
     error.code = 'CARD_OCR_UNCLEAR';
@@ -86,7 +105,6 @@ async function readFanniCard(imageBuffer) {
   }
   return { nationalId: ids[0], extractedName: extractArabicName(text) };
 }
-
 function setWorkerFactoryForTests(factory) {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('OCR_TEST_HOOK_DISABLED');
