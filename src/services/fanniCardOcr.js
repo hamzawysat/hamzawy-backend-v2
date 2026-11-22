@@ -94,9 +94,9 @@ async function readFanniCard(imageBuffer) {
   text = String(fullResult?.data?.text || '');
   for (const id of extractNationalIds(text)) candidates.add(id);
 
-  // Card photos vary in rotation, framing and text layout. Retry the same
-  // source image with several numeric-only segmentation modes; never infer
-  // or repair individual digits, and still accept exactly one 14-digit ID.
+  // Retry the full image with numeric-only segmentation, then inspect
+  // overlapping upper, lower and central card regions. This reduces
+  // background/layout noise without inventing or repairing any digit.
   if (candidates.size !== 1) {
     try {
       for (const pageSegMode of ['6', '11', '7', '13']) {
@@ -106,9 +106,20 @@ async function readFanniCard(imageBuffer) {
           user_defined_dpi: '300'
         });
         const numericResult = await worker.recognize(imageBuffer);
-        const numericText = String(numericResult?.data?.text || '');
-        for (const id of extractNationalIds(numericText)) candidates.add(id);
+        for (const id of extractNationalIds(String(numericResult?.data?.text || ''))) candidates.add(id);
         if (candidates.size === 1) break;
+      }
+      if (candidates.size !== 1) {
+        for (const rectangle of getNumericOcrRegions(imageBuffer)) {
+          await worker.setParameters({
+            tessedit_pageseg_mode: '7',
+            tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
+            user_defined_dpi: '300'
+          });
+          const regionResult = await worker.recognize(imageBuffer, { rectangle });
+          for (const id of extractNationalIds(String(regionResult?.data?.text || ''))) candidates.add(id);
+          if (candidates.size === 1) break;
+        }
       }
     } finally {
       await worker.setParameters({
@@ -126,6 +137,13 @@ async function readFanniCard(imageBuffer) {
   }
   return { nationalId: ids[0], extractedName: extractArabicName(text) };
 }
+async function terminateWorkerForTests() {
+  if (!workerPromise) return;
+  const worker = await workerPromise;
+  workerPromise = null;
+  await worker.terminate();
+}
+
 function setWorkerFactoryForTests(factory) {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('OCR_TEST_HOOK_DISABLED');
@@ -140,5 +158,7 @@ module.exports = {
   cardHash,
   encryptNationalId,
   decryptNationalId,
-  setWorkerFactoryForTests
+  setWorkerFactoryForTests,
+  terminateWorkerForTests,
+  extractNationalIds
 };
