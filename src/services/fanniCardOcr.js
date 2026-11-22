@@ -175,7 +175,7 @@ function buildEnhancedImageVariants(imageBuffer) {
   // Bound output dimensions and execution time because uploaded images are untrusted.
   const variants = [imageBuffer];
   const recipes = [
-    ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-deskew', '40%', '-brightness-contrast', '12x24', '-contrast-stretch', '1%x1%', '-unsharp', '0x1.2+1.0+0.02'],
+    ['-auto-orient', '-resize', '2400x2400>', '-resize', '150%', '-colorspace', 'Gray', '-deskew', '40%', '-brightness-contrast', '12x24', '-contrast-stretch', '1%x1%', '-unsharp', '0x1.2+1.0+0.02'],
     ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-deskew', '40%', '-normalize', '-despeckle', '-sharpen', '0x1.0'],
     ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-gamma', '1.35', '-contrast', '-unsharp', '0x1.5+0.8+0.02']
   ];
