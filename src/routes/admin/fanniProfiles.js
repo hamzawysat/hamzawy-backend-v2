@@ -54,7 +54,7 @@ function createAdminFanniProfilesRouter({
         let nationalId = '';
         try { nationalId = ledger?.nationalIdEncrypted ? decryptNationalId(ledger.nationalIdEncrypted) : ''; } catch (_) {}
         return { _id: String(item._id), name: item.name, phone: item.phone, nationalId,
-          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '', identityReviewImage: item.identityReviewImage || 'both', identityReviewFields: item.identityReviewFields || [], identityReviewImages: item.identityReviewImages || [], areas: item.areas || [], specialties: item.specialties || [],
+          identityReviewStatus: item.identityReviewStatus || 'pending', identityReviewReason: item.identityReviewReason || '', identityReviewImage: item.identityReviewImage || '', identityReviewFields: item.identityReviewFields || [], identityReviewImages: item.identityReviewImages || [], areas: item.areas || [], specialties: item.specialties || [],
           createdAt: item.createdAt, frontUrl: '/api/fanni/admin/' + String(item._id) + '/identity/front',
           backUrl: '/api/fanni/admin/' + String(item._id) + '/identity/back',
           photoUrl: '/api/fanni/admin/' + String(item._id) + '/photo' };
