@@ -262,26 +262,19 @@ async function run() {
       assert.ok(storeUi.includes('ملقيناش منتجات مطابقة للبحث'));
     });
 
-    await test('technician card OCR retries split national-ID digits with numeric recognition', async () => {
-      const cardOcr = require('../services/fanniCardOcr');
-      let recognizeCount = 0;
-      cardOcr.setWorkerFactoryForTests(async () => ({
-        setParameters: async () => {},
-        recognize: async () => ({
-          data: {
-            text: ++recognizeCount === 1
-              ? 'اسم فني الاختبار بدون رقم واضح'
-              : '2900-1012-3456-78'
-          }
-        })
-      }));
-      const result = await cardOcr.readFanniCard(Buffer.from('image-fixture'));
-      assert.equal(result.nationalId, '29001012345678');
-      assert.equal(recognizeCount, 2, 'numeric retry should run after the first pass misses the ID');
+    await test('manual national-ID validation normalizes Arabic digits and protects the card ledger', async () => {
+      const identity = require('../services/fanniCardIdentity');
+      const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
+      assert.equal(identity.normalizeNationalId(nationalId), '29001012345678');
+      assert.equal(identity.isValidNationalId(nationalId), true);
+      const encrypted = identity.encryptNationalId(nationalId);
+      assert.notEqual(encrypted, '29001012345678');
+      assert.equal(identity.decryptNationalId(encrypted), '29001012345678');
+      assert.equal(identity.cardHash(nationalId), identity.cardHash('29001012345678'));
     });
 
     await test('technician card ledger normalizes Egyptian national-ID digits and encrypts the stored number', async () => {
-      const cardOcr = require('../services/fanniCardOcr');
+      const cardOcr = require('../services/fanniCardIdentity');
       const nationalId = '٢٩٠٠١٠١٢٣٤٥٦٧٨';
       assert.equal(cardOcr.normalizeNationalId(nationalId), '29001012345678');
       const encrypted = cardOcr.encryptNationalId(nationalId);
@@ -831,40 +824,30 @@ async function run() {
       });
       assert.equal(missingIdentity.status, 400, 'registration must reject missing identity card images');
 
-      // Use a complete PNG fixture. OCR is stubbed here because this test covers
-      // registration workflow, not OCR accuracy or external language-data downloads.
+      // Use the same valid image fixture for the private card sides and the technician's selfie.
       const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR4nGP4DwQACfsD/fteaysAAAAASUVORK5CYII=', 'base64');
-      const cardOcr = require('../services/fanniCardOcr');
-      cardOcr.setWorkerFactoryForTests(async () => ({
-        setParameters: async () => {},
-        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
-      }));
       const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
         .set('Content-Type', 'image/png').send(png);
       assert.equal(frontUpload.status, 201, JSON.stringify(frontUpload.body));
       const backUpload = await request(app).post('/api/fanni/registration-media?side=back')
         .set('Content-Type', 'image/png').send(png);
       assert.equal(backUpload.status, 201, JSON.stringify(backUpload.body));
+      const profileUpload = await request(app).post('/api/fanni/registration-media?side=profile')
+        .set('Content-Type', 'image/png').send(png);
+      assert.equal(profileUpload.status, 201, JSON.stringify(profileUpload.body));
       const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
-      cardOcr.setWorkerFactoryForTests(async () => ({
-        setParameters: async () => {},
-        recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
-      }));
-      let registration;
-      try {
-        registration = await request(app).post('/api/fanni/register').send({
-          name: 'فني اختبار التسجيل',
-          phone,
-          password: 'FanniTestPass123',
-          specialties: ['صيانة دش'],
-          areas: ['المعادي'],
-          identityCardFrontFileId: frontUpload.body.fileId,
-          identityCardBackFileId: backUpload.body.fileId
-        });
-      } finally {
-        cardOcr.setWorkerFactoryForTests(null);
-      }
+      const registration = await request(app).post('/api/fanni/register').send({
+        name: 'فني اختبار التسجيل',
+        phone,
+        password: 'FanniTestPass123',
+        specialties: ['صيانة دش'],
+        areas: ['المعادي'],
+        nationalId: '29001012345678',
+        identityCardFrontFileId: frontUpload.body.fileId,
+        identityCardBackFileId: backUpload.body.fileId,
+        profilePhotoFileId: profileUpload.body.fileId
+      });
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
@@ -881,7 +864,7 @@ async function run() {
 
       const duplicate = await request(app).post('/api/fanni/register').send({
         name: 'فني مكرر', phone, password: 'FanniTestPass123', specialties: ['صيانة دش'], areas: ['المعادي'],
-        identityCardFrontFileId: frontUpload.body.fileId, identityCardBackFileId: backUpload.body.fileId
+        identityCardFrontFileId: frontUpload.body.fileId, identityCardBackFileId: backUpload.body.fileId, profilePhotoFileId: profileUpload.body.fileId, nationalId: '29001012345678'
       });
       assert.equal(duplicate.status, 409);
 
