@@ -441,18 +441,6 @@ router.use(createAdminClientsRouter({ auth, Joi, Client, normalizePhone, adminNa
 // Its response merges registered accounts with order-only customers and sets registered=true.
 
 
-const ADMIN_LAYOUT_SECTIONS = {
-  dashboard: ['dashboard', 'stats'],
-  clients: ['clients', 'orders', 'clientWallet'],
-  commerce: ['commercePlans', 'commerceSubscriptions', 'store', 'storeOrders'],
-  technicians: ['fannis', 'pending', 'profileEdits', 'disabled', 'levels', 'offers', 'wallets', 'topups'],
-  'service-management': ['services', 'regions'],
-  'customer-operations': ['complaints', 'support', 'notifications', 'content'],
-  'platform-admin': ['pricing', 'reports', 'pageVisits', 'security', 'settings', 'roles']
-};
-const ADMIN_LAYOUT_TABS = Object.values(ADMIN_LAYOUT_SECTIONS).flat();
-router.use(createAdminUiLayoutRouter({ Joi, auth, getAdminConfig, adminName, writeAdminAudit }));
-
 router.use(createAdminServicesRouter({
   Service,
   CATEGORIES,
