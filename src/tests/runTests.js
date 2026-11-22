@@ -848,6 +848,7 @@ async function run() {
       const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
       cardOcr.setWorkerFactoryForTests(async () => ({
+        setParameters: async () => {},
         recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
       }));
       let registration;
