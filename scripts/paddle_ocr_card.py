@@ -15,8 +15,10 @@ def unpack_result(item):
     if not isinstance(payload, dict):
         payload = {}
     payload = payload.get("res", payload)
-    texts = payload.get("rec_texts") or []
-    scores = payload.get("rec_scores") or []
+    texts = payload.get("rec_texts")
+    scores = payload.get("rec_scores")
+    texts = list(texts) if texts is not None else []
+    scores = list(scores) if scores is not None else []
     return [
         {"text": str(text), "confidence": float(scores[i]) if i < len(scores) else 0.0}
         for i, text in enumerate(texts)
