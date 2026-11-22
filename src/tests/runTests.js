@@ -843,6 +843,10 @@ async function run() {
         setParameters: async () => {},
         recognize: async () => ({ data: { text: '29001012345678\\nاسم فني الاختبار' } })
       }));
+      cardOcr.setPaddleOcrRunnerForTests(() => [
+        { text: '29001012345678', confidence: 0.99 },
+        { text: 'اسم فني الاختبار', confidence: 0.99 }
+      ]);
       const frontUpload = await request(app).post('/api/fanni/registration-media?side=front')
         .set('Content-Type', 'image/png').send(png);
       assert.equal(frontUpload.status, 201, JSON.stringify(frontUpload.body));
@@ -868,6 +872,7 @@ async function run() {
         });
       } finally {
         cardOcr.setWorkerFactoryForTests(null);
+        cardOcr.setPaddleOcrRunnerForTests(null);
       }
       assert.equal(registration.status, 201);
       assert.equal(registration.body.status, 'قيد المراجعة');
