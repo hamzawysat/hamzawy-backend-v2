@@ -9,8 +9,13 @@ const ocr = fs.readFileSync(path.join(__dirname, '../services/fanniCardOcr.js'),
 if (!/const nationalIdEncrypted = encryptNationalId\(cardData\.nationalId\)/.test(route) || !/nationalIdEncrypted,/.test(route)) {
   throw new Error('The national ID must be encrypted at rest for authorized admin review');
 }
-if (/nationalId:\s*cardData\.nationalId|nationalId:\s*manualNationalId/.test(route)) {
-  throw new Error('The readable national ID must never be stored as plaintext');
+const ledgerCreateStart = route.indexOf('FanniCardLedger.create([');
+const ledgerCreateEnd = route.indexOf('], { session });', ledgerCreateStart);
+const ledgerCreateBlock = ledgerCreateStart >= 0 && ledgerCreateEnd > ledgerCreateStart
+  ? route.slice(ledgerCreateStart, ledgerCreateEnd)
+  : '';
+if (!ledgerCreateBlock || /\bnationalId\s*:/.test(ledgerCreateBlock)) {
+  throw new Error('The readable national ID must never be stored as plaintext in the ledger document');
 }
 if (!/cardData\.nationalId\s*=\s*''/.test(route)) {
   throw new Error('The OCR national ID must be discarded immediately after keyed hashing');
