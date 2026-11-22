@@ -19,11 +19,28 @@ const DIGITS = {
 };
 
 function makeSyntheticPbm(value) {
-  const scale = 16, marginX = 48, marginY = 48, digitWidth = 6;
-  const width = marginX * 2 + value.length * digitWidth * scale;
-  const height = marginY * 2 + 7 * scale;
+  const scale = 16, marginX = 80, digitWidth = 6;
+  const width = 1600, height = 760;
   const rowBytes = Math.ceil(width / 8);
   const pixels = Buffer.alloc(rowBytes * height);
+  const setBlack = (x, y) => {
+    if (x >= 0 && x < width && y >= 0 && y < height) pixels[y * rowBytes + (x >> 3)] |= 1 << (7 - (x & 7));
+  };
+  const horizontal = (x1, x2, y, thickness = 3) => {
+    for (let yOffset = 0; yOffset < thickness; yOffset++) for (let x = x1; x <= x2; x++) setBlack(x, y + yOffset);
+  };
+  const vertical = (x, y1, y2, thickness = 3) => {
+    for (let xOffset = 0; xOffset < thickness; xOffset++) for (let y = y1; y <= y2; y++) setBlack(x + xOffset, y);
+  };
+  // Plain synthetic card geometry; no real names, photographs, or card data.
+  horizontal(24, width - 24, 24); horizontal(24, width - 24, height - 28);
+  vertical(24, 24, height - 28); vertical(width - 28, 24, height - 28);
+  horizontal(60, width - 60, 170, 2);
+  horizontal(60, 1120, 480, 2);
+  const portraitLeft = 1210, portraitTop = 220, portraitRight = 1510, portraitBottom = 500;
+  horizontal(portraitLeft, portraitRight, portraitTop); horizontal(portraitLeft, portraitRight, portraitBottom);
+  vertical(portraitLeft, portraitTop, portraitBottom); vertical(portraitRight, portraitTop, portraitBottom);
+  const digitTop = 560;
   for (let index = 0; index < value.length; index++) {
     const glyph = DIGITS[value[index]];
     for (let row = 0; row < 7; row++) {
@@ -32,8 +49,8 @@ function makeSyntheticPbm(value) {
         for (let dy = 0; dy < scale; dy++) {
           for (let dx = 0; dx < scale; dx++) {
             const x = marginX + index * digitWidth * scale + col * scale + dx;
-            const y = marginY + row * scale + dy;
-            pixels[y * rowBytes + (x >> 3)] |= 1 << (7 - (x & 7));
+            const y = digitTop + row * scale + dy;
+            setBlack(x, y);
           }
         }
       }
@@ -41,7 +58,6 @@ function makeSyntheticPbm(value) {
   }
   return Buffer.concat([Buffer.from('P4\n' + width + ' ' + height + '\n', 'ascii'), pixels]);
 }
-
 async function main() {
   const expected = '12345678901234'; // Synthetic test string; never a real person's ID.
   const fixture = makeSyntheticPbm(expected);
@@ -52,6 +68,9 @@ async function main() {
     }
     if (result.extractedName) throw new Error('Digit-only synthetic fixture unexpectedly produced a name');
     const arabicDigits = extractNationalIds('١٢٣٤٥٦٧٨٩٠١٢٣٤');
+    if (extractNationalIds('1234567890123').length !== 0) {
+      throw new Error('OCR accepted a value shorter than 14 digits');
+    }
     if (arabicDigits.length !== 1 || arabicDigits[0] !== expected) {
       throw new Error('Arabic-Indic digit normalization did not match the synthetic expected value');
     }
