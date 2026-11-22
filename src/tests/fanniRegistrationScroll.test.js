@@ -34,4 +34,11 @@ const renderSource = fs.readFileSync(path.join(__dirname, '../../frontend/js/fan
 assert.match(renderSource, /function render\(options = \{\}\)/, 'render must accept a registration anchor');
 assert.match(renderSource, /if \(scrollTargetId\)[\s\S]*?scrollFanniRegistrationTarget\(scrollTargetId\)/, 'explicit registration anchor must bypass old viewport restoration');
 
+const authSource = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-auth.js'), 'utf8');
+const registrationResultIndex = renderSource.indexOf('${state.error?');
+const submitButtonIndex = renderSource.indexOf('onclick="doRegister()"');
+assert.ok(registrationResultIndex >= 0 && submitButtonIndex > registrationResultIndex, 'registration result must render above the submit button');
+assert.match(authSource, /finally\{state\[loadingKey\]=false;render\(\);\}/, 'upload completion must preserve the current viewport instead of jumping to an upload anchor');
+assert.match(authSource, /nationalIdManual:state\.regNationalId/, 'manual national ID must be sent to the registration API');
+
 console.log('Technician registration scroll tests: passed');
