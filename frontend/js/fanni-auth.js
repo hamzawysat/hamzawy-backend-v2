@@ -112,7 +112,7 @@ async function handleRegistrationIdUpload(side,file){
   state[idKey]=result.fileId;state[statusKey]='تم رفع الصورة بنجاح ✓';
   toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
  }catch(e){state[idKey]='';state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';toast(state[statusKey],'error');}
- finally{state[loadingKey]=false;render();scrollToFanniRegistrationTarget(side==='front'?'registrationIdFrontCard':'registrationIdBackCard');}
+ finally{state[loadingKey]=false;render();scrollToFanniRegistrationTarget('registrationIdCard-'+side);}
 }
 function previewRegistrationIdImage(side){
  const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
