@@ -56,6 +56,28 @@ async function run() {
     );
     resetMaintenanceCache();
 
+    await test('technician inbox returns every unread notification for login replay', async () => {
+      const notificationsRoute = fs.readFileSync(path.join(__dirname, '../routes/notifications.js'), 'utf8');
+      assert.match(notificationsRoute, /readAt: null/);
+      assert.match(notificationsRoute, /unreadNotifications/);
+      assert.match(notificationsRoute, /recentReadNotifications/);
+      assert.match(notificationsRoute, /unreadCount = unreadNotifications\.length/);
+    });
+
+    await test('technician image resubmission is scoped to the requested private image and re-enters review', async () => {
+      const fanniRoute = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
+      const adminProfiles = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniProfiles.js'), 'utf8');
+      const model = fs.readFileSync(path.join(__dirname, '../models/Fanni.js'), 'utf8');
+      const adminUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/technicians-actions.js'), 'utf8');
+      assert.match(model, /identityReviewImage:.*front.*back.*both.*profile/);
+      assert.match(adminProfiles, /fanni\.identityReviewImage = imageType/);
+      assert.match(adminUi, /fanni-review-image-type/);
+      assert.match(fanniRoute, /requestedImage = req\.user\.identityReviewImage/);
+      assert.match(fanniRoute, /identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: ''/);
+      assert.match(fanniRoute, /isRequestedResubmission/);
+      assert.match(fanniRoute, /notifyAdmins\(\{ type: 'admin_new_technician'/);
+    });
+
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {
       const {
         ADMIN_NOTIFICATION_CATEGORIES,
