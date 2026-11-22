@@ -489,9 +489,10 @@ router.patch('/availability', auth(), requireFanni, requireApprovedFanni, async 
 
 router.get('/me', auth(), requireFanni, async (req, res) => {
   const safeUser = req.user.toSafeJSON();
+  const photoRecord = await Fanni.findById(req.user._id).select('+profilePhotoFileId').lean();
   const activeServiceKeys = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
   safeUser.specialties = (Array.isArray(safeUser.specialties) ? safeUser.specialties : []).filter(value => activeServiceKeys.has(normalizeServiceKey(value)));
-  safeUser.profilePhotoUrl = req.user.profilePhotoFileId ? '/api/fanni/' + String(req.user._id) + '/photo?v=' + encodeURIComponent(String(req.user.updatedAt?.getTime?.() || Date.now())) : '';
+  safeUser.profilePhotoUrl = photoRecord?.profilePhotoFileId ? '/api/fanni/' + String(req.user._id) + '/photo?v=' + encodeURIComponent(String(req.user.updatedAt?.getTime?.() || Date.now())) : '';
   safeUser.identityReviewStatus = req.user.identityReviewStatus || 'pending';
   safeUser.identityReviewReason = req.user.identityReviewReason || '';
   return res.json(safeUser);
