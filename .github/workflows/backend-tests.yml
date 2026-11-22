@@ -1,27 +1,35 @@
-name: High-severity security audit
+name: Backend integration and dependency security tests
 
 on:
   pull_request:
     branches: [main]
     paths:
+      - 'frontend/**'
+      - 'frontend-dist/**'
+      - 'src/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
-      - '.github/workflows/backend-tests.yml'
+      - '.github/workflows/**'
   push:
     branches: [main]
     paths:
+      - 'frontend/**'
+      - 'frontend-dist/**'
+      - 'src/**'
+      - 'scripts/**'
       - 'package.json'
       - 'package-lock.json'
-      - '.github/workflows/backend-tests.yml'
+      - '.github/workflows/**'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  dependency-security-audit:
+  backend-tests:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -29,5 +37,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Run integration and security tests
+        run: npm test
       - name: Check for high and critical dependency vulnerabilities
         run: npm audit --audit-level=high
