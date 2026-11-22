@@ -318,6 +318,8 @@ const apiPost=(path,body)=>api(path,{method:'POST',body:JSON.stringify(body)});
 const API={
  register:p=>apiPost('/api/fanni/register',p),
  uploadRegistrationIdentity:(side,file)=>api('/api/fanni/registration-media?side='+encodeURIComponent(side),{method:'POST',body:file,headers:{'Content-Type':file.type},timeoutMs:90000}),
+  updateProfilePhoto:p=>api('/api/fanni/me/profile-photo',{method:'PATCH',body:JSON.stringify(p),timeoutMs:15000}),
+  updateIdentityCard:p=>api('/api/fanni/me/identity-card',{method:'PATCH',body:JSON.stringify(p),timeoutMs:20000}),
  login:p=>api('/api/fanni/login',{method:'POST',body:JSON.stringify(p),timeoutMs:15000}),
  profile:()=>apiGet('/api/fanni/me'),
  availability:acceptingOrders=>api('/api/fanni/availability',{method:'PATCH',body:JSON.stringify({acceptingOrders})}),
@@ -380,6 +382,7 @@ let state={
  loginPhone:'',loginPass:'',loginSubmitAllowed:false,
  regName:'',regPhone:'',regPass:'',regPassConfirm:'',regGuidelinesAccepted:false,
 regIdFrontFileId:'',regIdBackFileId:'',regIdFrontPreview:'',regIdBackPreview:'',regIdFrontUploading:false,regIdBackUploading:false,
+ regNationalId:'',regProfilePhotoFileId:'',regProfilePhotoPreview:'',regProfilePhotoUploading:false,regProfilePhotoUploadStatus:'',
  regSpecialties:[],regAreas:[],regAreaSearch:'',regAreaCustom:'',openSpecialtyCategory:'',
  editProfileMode:false,editPhone:'',editAreas:[],editAreaSearch:'',editSpecialties:[],editSaving:false,
  loading:false,checkingSession:false,availabilitySaving:false,
