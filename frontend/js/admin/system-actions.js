@@ -24,7 +24,32 @@ async function savePricing(){const raw={check:document.getElementById('price-che
 async function loadSettings(){try{const data=await tryApi(['/api/admin/settings'],{method:'GET'});state.settings=data.settings||state.settings;if(state.tab==='settings')render();}catch(e){showToast(e.message||'تعذر تحميل الإعدادات','error');}}
 
 
-async function saveSettings(){const value={siteName:String(document.getElementById('setting-site-name')?.value||'').trim(),maintenance:!!document.getElementById('setting-maintenance')?.checked,maintenanceMessage:String(document.getElementById('setting-maintenance-message')?.value||'').trim(),maxFanniSignupAttempts:Number(document.getElementById('setting-signup-attempts')?.value),walletPhone1:String(document.getElementById('setting-wallet-phone-1')?.value||'').trim(),walletPhone2:String(document.getElementById('setting-wallet-phone-2')?.value||'').trim()};if(value.siteName.length<2||value.maxFanniSignupAttempts<1||value.maxFanniSignupAttempts>100||!Number.isInteger(value.maxFanniSignupAttempts))return showToast('راجع اسم المنصة وحد محاولات التسجيل من 1 إلى 100','error');if(value.walletPhone1.length>20||value.walletPhone2.length>20)return showToast('رقم المحفظة لا يمكن أن يزيد عن 20 حرفًا','error');const btn=document.getElementById('save-settings-btn');if(btn)btn.disabled=true;try{const data=await tryApi(['/api/admin/settings'],{method:'PUT',body:JSON.stringify(value)});state.settings=data.settings||value;showToast(data.message||'تم حفظ الإعدادات');render();}catch(e){showToast(e.message||'تعذر حفظ الإعدادات','error');}finally{if(btn)btn.disabled=false;}}
+async function saveSettings(){
+  const adminNotificationPreferences={};
+  document.querySelectorAll('[data-admin-notification-pref]').forEach(input=>{
+    const key=String(input.dataset.adminNotificationPref||'');
+    if(key)adminNotificationPreferences[key]=input.checked===true;
+  });
+  const value={
+    siteName:String(document.getElementById('setting-site-name')?.value||'').trim(),
+    maintenance:!!document.getElementById('setting-maintenance')?.checked,
+    maintenanceMessage:String(document.getElementById('setting-maintenance-message')?.value||'').trim(),
+    maxFanniSignupAttempts:Number(document.getElementById('setting-signup-attempts')?.value),
+    walletPhone1:String(document.getElementById('setting-wallet-phone-1')?.value||'').trim(),
+    walletPhone2:String(document.getElementById('setting-wallet-phone-2')?.value||'').trim(),
+    adminNotificationPreferences
+  };
+  if(value.siteName.length<2||value.maxFanniSignupAttempts<1||value.maxFanniSignupAttempts>100||!Number.isInteger(value.maxFanniSignupAttempts))return showToast('راجع اسم المنصة وحد محاولات التسجيل من 1 إلى 100','error');
+  if(value.walletPhone1.length>20||value.walletPhone2.length>20)return showToast('رقم المحفظة لا يمكن أن يزيد عن 20 حرفًا','error');
+  const btn=document.getElementById('save-settings-btn');if(btn)btn.disabled=true;
+  try{
+    const data=await tryApi(['/api/admin/settings'],{method:'PUT',body:JSON.stringify(value)});
+    state.settings=data.settings||value;
+    showToast(data.message||'تم حفظ الإعدادات');
+    render();
+  }catch(e){showToast(e.message||'تعذر حفظ الإعدادات','error');}
+  finally{if(btn)btn.disabled=false;}
+}
 
 
 function renderReportResults(report){const root=document.getElementById('report-results');if(!root)return;const s=report?.summary;if(!s){root.innerHTML='<div class="premium-panel p-4 col-span-2 text-[11px] text-slate-500">لا توجد بيانات تقرير معروضة.</div>';return;}const cards=[['إجمالي الطلبات',s.totalOrders],['طلبات مكتملة',s.completedOrders],['طلبات ملغاة',s.cancelledOrders],['قيد المراجعة',s.pendingOrders],['منشورة / تستقبل عروضًا',s.publishedOrders],['الفنيون المعتمدون',s.approvedTechnicians],['العملاء النشطون',s.activeClients]];root.innerHTML=cards.map(([label,value])=>'<div class="stat-card"><p class="text-[22px] font-black">'+Number(value||0)+'</p><p class="text-[10px] font-bold text-slate-500">'+escHtml(label)+'</p></div>').join('')+'<div class="premium-panel p-4 col-span-2"><p class="text-[12px] font-black mb-3">أكثر الخدمات طلبًا</p>'+((report.topServices||[]).length?(report.topServices||[]).map(x=>'<div class="flex justify-between gap-3 py-2 border-b last:border-0 text-[11px]"><span>'+escHtml(x.service)+'</span><strong>'+Number(x.count||0)+'</strong></div>').join(''):'<p class="text-[11px] text-slate-500">لا توجد طلبات ضمن الفلاتر المحددة.</p>')+'</div>';}
