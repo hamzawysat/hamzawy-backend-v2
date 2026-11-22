@@ -416,9 +416,10 @@ function renderContent(){
 
 let __fanniLastRenderedTab = null;
 
-function render(){
+function render(options = {}){
   const appRoot = document.getElementById('app');
-  const preserveViewport = __fanniLastRenderedTab === state.tab;
+  const scrollTargetId = String(options?.scrollTargetId || '');
+  const preserveViewport = !scrollTargetId && __fanniLastRenderedTab === state.tab;
   const pageScroller = document.scrollingElement || document.documentElement;
   const scrollX = window.scrollX || window.pageXOffset || pageScroller.scrollLeft || 0;
   const scrollY = Math.max(
@@ -446,7 +447,13 @@ function render(){
     // renderContent replaces #app. Restore the document scroller after the
     // replacement has settled; Android WebView may report its position through
     // document.scrollingElement rather than window.scrollY.
-    if (preserveViewport) {
+    if (scrollTargetId) {
+      // Registration transitions own their destination. Do not also restore
+      // the previous viewport, which would race this explicit anchor scroll.
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        scrollFanniRegistrationTarget(scrollTargetId);
+      }));
+    } else if (preserveViewport) {
       requestAnimationFrame(() => requestAnimationFrame(() => {
         const root = document.getElementById('app');
         if (root && focusState) {

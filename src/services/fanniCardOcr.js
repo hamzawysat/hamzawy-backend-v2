@@ -75,6 +75,63 @@ function extractNationalIds(text) {
   return [...new Set(matches.map(normalizeNationalId).filter(Boolean))];
 }
 
+function getImageDimensions(buffer) {
+  if (buffer.length >= 24 && buffer.toString('ascii', 1, 4) === 'PNG') {
+    return { width: buffer.readUInt32BE(16), height: buffer.readUInt32BE(20) };
+  }
+  if (buffer.length >= 30 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+    const kind = buffer.toString('ascii', 12, 16);
+    if (kind === 'VP8X') return { width: 1 + buffer[24] + (buffer[25] << 8) + (buffer[26] << 16), height: 1 + buffer[27] + (buffer[28] << 8) + (buffer[29] << 16) };
+    if (kind === 'VP8 ') {
+      const marker = buffer.indexOf(Buffer.from([0x9d, 0x01, 0x2a]), 20);
+      if (marker >= 0 && marker + 7 <= buffer.length) return { width: buffer.readUInt16LE(marker + 3) & 0x3fff, height: buffer.readUInt16LE(marker + 5) & 0x3fff };
+    }
+    if (kind === 'VP8L' && buffer.length >= 25 && buffer[20] === 0x2f) {
+      const b1 = buffer[21], b2 = buffer[22], b3 = buffer[23], b4 = buffer[24];
+      return { width: 1 + b1 + ((b2 & 0x3f) << 8), height: 1 + ((b2 >> 6) | (b3 << 2) | ((b4 & 0x0f) << 10)) };
+    }
+  }
+  if (buffer.length >= 4 && buffer[0] === 0xff && buffer[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 4 < buffer.length) {
+      if (buffer[offset] !== 0xff) { offset++; continue; }
+      const marker = buffer[offset + 1]; offset += 2;
+      if (marker === 0xd8 || marker === 0xd9 || (marker >= 0xd0 && marker <= 0xd7)) continue;
+      if (offset + 2 > buffer.length) break;
+      const length = buffer.readUInt16BE(offset);
+      if (length < 2 || offset + length > buffer.length) break;
+      if ([0xc0,0xc1,0xc2,0xc3,0xc5,0xc6,0xc7,0xc9,0xca,0xcb,0xcd,0xce,0xcf].includes(marker)) return { height: buffer.readUInt16BE(offset + 3), width: buffer.readUInt16BE(offset + 5) };
+      offset += length;
+    }
+  }
+  if (buffer.length >= 4 && buffer.toString('ascii', 0, 2) === 'P4') {
+    let offset = 2;
+    const token = () => {
+      while (offset < buffer.length) {
+        if (buffer[offset] === 35) { while (offset < buffer.length && buffer[offset] !== 10) offset++; }
+        else if (buffer[offset] <= 32) offset++;
+        else break;
+      }
+      const start = offset; while (offset < buffer.length && buffer[offset] > 32) offset++;
+      return buffer.toString('ascii', start, offset);
+    };
+    const width = Number(token()), height = Number(token());
+    if (Number.isInteger(width) && Number.isInteger(height) && width > 0 && height > 0) return { width, height };
+  }
+  return null;
+}
+
+function getNumericOcrRegions(imageBuffer) {
+  const dimensions = getImageDimensions(imageBuffer);
+  if (!dimensions || !dimensions.width || !dimensions.height) return [];
+  const { width, height } = dimensions;
+  const split = Math.round(height * 0.32);
+  return [
+    { left: 0, top: 0, width, height: Math.round(height * 0.68) },
+    { left: 0, top: split, width, height: height - split },
+    { left: Math.round(width * 0.08), top: Math.round(height * 0.12), width: Math.round(width * 0.84), height: Math.round(height * 0.76) }
+  ].filter(region => region.width >= 120 && region.height >= 40);
+}
 async function readFanniCard(imageBuffer) {
   if (!Buffer.isBuffer(imageBuffer) || !imageBuffer.length) {
     const error = new Error('CARD_IMAGE_UNREADABLE');
@@ -94,9 +151,9 @@ async function readFanniCard(imageBuffer) {
   text = String(fullResult?.data?.text || '');
   for (const id of extractNationalIds(text)) candidates.add(id);
 
-  // Card photos vary in rotation, framing and text layout. Retry the same
-  // source image with several numeric-only segmentation modes; never infer
-  // or repair individual digits, and still accept exactly one 14-digit ID.
+  // Retry the full image with numeric-only segmentation, then inspect
+  // overlapping upper, lower and central card regions. This reduces
+  // background/layout noise without inventing or repairing any digit.
   if (candidates.size !== 1) {
     try {
       for (const pageSegMode of ['6', '11', '7', '13']) {
@@ -106,9 +163,20 @@ async function readFanniCard(imageBuffer) {
           user_defined_dpi: '300'
         });
         const numericResult = await worker.recognize(imageBuffer);
-        const numericText = String(numericResult?.data?.text || '');
-        for (const id of extractNationalIds(numericText)) candidates.add(id);
+        for (const id of extractNationalIds(String(numericResult?.data?.text || ''))) candidates.add(id);
         if (candidates.size === 1) break;
+      }
+      if (candidates.size !== 1) {
+        for (const rectangle of getNumericOcrRegions(imageBuffer)) {
+          await worker.setParameters({
+            tessedit_pageseg_mode: '7',
+            tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
+            user_defined_dpi: '300'
+          });
+          const regionResult = await worker.recognize(imageBuffer, { rectangle });
+          for (const id of extractNationalIds(String(regionResult?.data?.text || ''))) candidates.add(id);
+          if (candidates.size === 1) break;
+        }
       }
     } finally {
       await worker.setParameters({
@@ -126,6 +194,13 @@ async function readFanniCard(imageBuffer) {
   }
   return { nationalId: ids[0], extractedName: extractArabicName(text) };
 }
+async function terminateWorkerForTests() {
+  if (!workerPromise) return;
+  const worker = await workerPromise;
+  workerPromise = null;
+  await worker.terminate();
+}
+
 function setWorkerFactoryForTests(factory) {
   if (process.env.NODE_ENV !== 'test') {
     throw new Error('OCR_TEST_HOOK_DISABLED');
@@ -140,5 +215,7 @@ module.exports = {
   cardHash,
   encryptNationalId,
   decryptNationalId,
-  setWorkerFactoryForTests
+  setWorkerFactoryForTests,
+  terminateWorkerForTests,
+  extractNationalIds
 };

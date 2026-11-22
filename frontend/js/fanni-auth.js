@@ -58,24 +58,6 @@ async function doLogin(){
  }
 }
 
-function scrollToFanniRegistrationTarget(targetId){
- const scroll=()=>{
-  const target=document.getElementById(targetId);
-  if(!target)return false;
-  const scroller=document.scrollingElement||document.documentElement;
-  const current=Math.max(window.scrollY||window.pageYOffset||0,scroller.scrollTop||0,document.body?.scrollTop||0);
-  const top=Math.max(0,target.getBoundingClientRect().top+current-Math.max(90,Math.round(window.innerHeight*0.18)));
-  const html=document.documentElement;
-  const previous=html.style.scrollBehavior;
-  html.style.scrollBehavior='auto';
-  scroller.scrollTop=top;
-  if(document.body)document.body.scrollTop=top;
-  window.scrollTo(0,top);
-  requestAnimationFrame(()=>{html.style.scrollBehavior=previous;});
-  return true;
- };
- requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(scroll)));
-}
 async function compressRegistrationIdImage(file){
  try{
   let bitmap;
@@ -87,16 +69,15 @@ async function compressRegistrationIdImage(file){
   }
   const width=bitmap.width||bitmap.naturalWidth||0,height=bitmap.height||bitmap.naturalHeight||0;
   if(!width||!height)throw new Error('أبعاد الصورة غير صالحة');
-  const scale=Math.min(1,1920/Math.max(width,height));
-  if(scale===1&&file.size<=1200*1024){if(bitmap.close)bitmap.close();return file;}
+  // Normalize camera EXIF orientation through canvas and retain more pixels for OCR.
+  const scale=Math.min(1.5,2560/Math.max(width,height));
   const canvas=document.createElement('canvas');
   canvas.width=Math.max(1,Math.round(width*scale));canvas.height=Math.max(1,Math.round(height*scale));
   const context=canvas.getContext('2d',{alpha:false});
   if(!context)throw new Error('تعذر تجهيز الصورة');
   context.fillStyle='#FFFFFF';context.fillRect(0,0,canvas.width,canvas.height);context.drawImage(bitmap,0,0,canvas.width,canvas.height);
   if(bitmap.close)bitmap.close();
-  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('تعذر ضغط الصورة')),'image/jpeg',0.82));
-  if(blob.size>=file.size)return file;
+  const blob=await new Promise((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error('تعذر ضغط الصورة')),'image/jpeg',0.90));
   return new File([blob],(file.name||'identity').replace(/\.[^.]+$/,'')+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
  }catch(error){console.warn('تعذر ضغط صورة البطاقة، سيتم رفع الأصل:',error);return file;}
 }
@@ -122,7 +103,7 @@ async function handleRegistrationIdUpload(side,file){
   state[idKey]=result.fileId;state[statusKey]='تم رفع الصورة بنجاح ✓';
   toast(side==='front'?'تم رفع صورة الوجه الأمامي بنجاح':'تم رفع صورة الوجه الخلفي بنجاح','success');
  }catch(e){state[idKey]='';state[statusKey]=e.message||'تعذر رفع الصورة. تحقق من الاتصال وحاول مرة أخرى.';toast(state[statusKey],'error');}
- finally{state[loadingKey]=false;render();scrollToFanniRegistrationTarget('registrationIdCard-'+side);}
+ finally{state[loadingKey]=false;render({scrollTargetId:'registrationIdCard-'+side});}
 }
 function previewRegistrationIdImage(side){
  const previewKey=side==='front'?'regIdFrontPreview':side==='back'?'regIdBackPreview':'';
@@ -171,8 +152,7 @@ async function doRegister(){
 
  state.loading=true;
  state.error='';
- render();
- scrollToFanniRegistrationTarget('fanniRegistrationCheckingMessage');
+ render({scrollTargetId:'fanniRegistrationCheckingMessage'});
 
  try{
   await API.register({
@@ -203,14 +183,12 @@ async function doRegister(){
   state.pendingMsg='تم إنشاء حساب بنجاح. حسابك قيد مراجعة الإدارة.';
   state.error='';
 
-  render();
-  scrollToFanniRegistrationTarget('fanniRegistrationPendingMessage');
+  render({scrollTargetId:'fanniRegistrationPendingMessage'});
   toast('تم التسجيل - الحساب بانتظار مراجعة الإدارة','pending');
  }catch(e){
   state.loading=false;
   state.error=e.message;
-  render();
-  scrollToFanniRegistrationTarget('fanniRegistrationResult');
+  render({scrollTargetId:'fanniRegistrationResult'});
  }
 }
 

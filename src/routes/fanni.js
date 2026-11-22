@@ -10,7 +10,7 @@ const mongoose = require('mongoose');
 const Fanni = require('../models/Fanni');
 const Client = require('../models/Client');
 const FanniCardLedger = require('../models/FanniCardLedger');
-const { readFanniCard, cardHash, encryptNationalId } = require('../services/fanniCardOcr');
+const { readFanniCard, cardHash } = require('../services/fanniCardOcr');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -217,11 +217,13 @@ router.post(
         if (['CARD_OCR_UNCLEAR', 'CARD_IMAGE_UNREADABLE'].includes(ocrError?.code)) {
           return res.status(422).json({ code: 'CARD_OCR_UNCLEAR', message: 'مش قادرين نقرأ بيانات البطاقة بوضوح. ارفع صورة أوضح للوجه الأمامي وحاول مرة أخرى.' });
         }
-        console.error('Technician card OCR unavailable:', ocrError?.message || ocrError);
+        console.error('Technician card OCR unavailable:', String(ocrError?.code || 'OCR_INTERNAL_ERROR'));
         return res.status(503).json({ code: 'CARD_OCR_UNAVAILABLE', message: 'خدمة قراءة البطاقة غير متاحة مؤقتًا. حاول مرة أخرى بعد قليل.' });
       }
 
       const nationalIdHash = cardHash(cardData.nationalId);
+      // Keep only a keyed one-way fingerprint for duplicate prevention; discard the OCR value.
+      cardData.nationalId = '';
       const existingCard = await FanniCardLedger.findOne({ nationalIdHash });
       const approvedDuplicateAttempt = existingCard?.duplicateAttempts?.find(attempt => attempt.applicantPhone === phone && attempt.status === 'تم السماح بعد المراجعة' && !attempt.consumedAt);
       if (existingCard && !approvedDuplicateAttempt) {
@@ -294,7 +296,6 @@ router.post(
           } else {
             await FanniCardLedger.create([{
               nationalIdHash,
-              nationalIdEncrypted: encryptNationalId(cardData.nationalId),
               fanniId: fanni._id,
               fanniName: fanni.name,
               linkedTechnicians: [{ fanniId: fanni._id, name: fanni.name, phone }],
