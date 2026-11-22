@@ -499,6 +499,48 @@ router.get('/me', auth(), requireFanni, async (req, res) => {
 
 
 
+
+router.patch('/me/identity-card', auth(), requireFanni, async (req, res, next) => {
+  try {
+    const frontId = String(req.body?.identityCardFrontFileId || '');
+    const backId = String(req.body?.identityCardBackFileId || '');
+    const nationalId = normalizeNationalId(req.body?.nationalId);
+    if (!mongoose.Types.ObjectId.isValid(frontId) || !mongoose.Types.ObjectId.isValid(backId) || frontId === backId) return res.status(400).json({ message: 'ارفع صورة جديدة للبطاقة من الأمام والخلف.' });
+    if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'اكتب رقمًا قوميًّا مصريًا صحيحًا مكوّنًا من 14 رقمًا.' });
+    if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const ids = [new mongoose.Types.ObjectId(frontId), new mongoose.Types.ObjectId(backId)];
+    const uploads = await bucket.find({ _id: { $in: ids }, 'metadata.purpose': 'fanni-id-document' }).toArray();
+    const front = uploads.find(file => String(file._id) === frontId && file.metadata?.side === 'front');
+    const back = uploads.find(file => String(file._id) === backId && file.metadata?.side === 'back');
+    if (!front || !back) return res.status(400).json({ message: 'صور البطاقة المرفوعة غير مكتملة أو غير صالحة.' });
+    const nationalIdHash = cardHash(nationalId);
+    const ledger = await FanniCardLedger.findOne({ fanniId: req.user._id }).select('+nationalIdEncrypted');
+    const duplicate = await FanniCardLedger.findOne({ nationalIdHash, ...(ledger ? { _id: { $ne: ledger._id } } : {}) }).select('_id');
+    if (duplicate) return res.status(409).json({ code: 'DUPLICATE_FANNI_CARD_REVIEW', message: 'هذا الرقم القومي مرتبط بسجل آخر، وتم إيقاف إعادة الإرسال لحين مراجعة الإدارة.' });
+    if (ledger) {
+      ledger.nationalIdHash = nationalIdHash;
+      ledger.nationalIdEncrypted = encryptNationalId(nationalId);
+      ledger.fanniName = req.user.name;
+      ledger.extractedName = '';
+      ledger.status = 'مسجلة';
+      await ledger.save();
+    } else {
+      await FanniCardLedger.create({ nationalIdHash, nationalIdEncrypted: encryptNationalId(nationalId), fanniId: req.user._id, fanniName: req.user.name, linkedTechnicians: [{ fanniId: req.user._id, name: req.user.name, phone: req.user.phone }], extractedName: '', status: 'مسجلة' });
+    }
+    await Fanni.updateOne({ _id: req.user._id, role: 'fanni' }, { $set: {
+      identityCardFrontFileId: ids[0], identityCardBackFileId: ids[1],
+      identityReviewStatus: 'pending', identityReviewReason: '', rejectionReason: '', status: 'قيد المراجعة'
+    } });
+    await notifyAdmins({ type: 'admin_new_technician', title: 'إعادة إرسال صور بطاقة فني', message: 'أعاد الفني ' + String(req.user.name || 'فني') + ' رفع صور البطاقة للمراجعة.', link: '/admin?tab=pending', dedupeKey: 'admin-fanni-identity-resubmitted:' + String(req.user._id) + ':' + Date.now() });
+    return res.json({ message: 'تم استلام صور البطاقة والرقم القومي. الحساب ما زال قيد مراجعة الإدارة.' });
+  } catch (err) {
+    if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ message: 'إعداد حماية سجل البطاقات غير مكتمل على الخادم.' });
+    if (err?.code === 11000) return res.status(409).json({ message: 'هذا الرقم القومي مسجل بالفعل في سجل آخر.' });
+    return next(err);
+  }
+});
+
 router.patch('/me/profile-photo', auth(), requireFanni, async (req, res, next) => {
   try {
     const fileId = String(req.body?.profilePhotoFileId || '');
