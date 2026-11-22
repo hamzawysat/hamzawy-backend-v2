@@ -226,7 +226,12 @@ function runPaddleOcr(imageBuffer) {
     maxBuffer: 12 * 1024 * 1024
   });
   if (result.error || result.status !== 0) {
-    const error = new Error('PADDLE_OCR_UNAVAILABLE');
+    let diagnostic = '';
+    try {
+      const payload = JSON.parse(String(result.stdout || ''));
+      diagnostic = String(payload?.error || '') + (payload?.message ? ': ' + String(payload.message) : '');
+    } catch (_) {}
+    const error = new Error('PADDLE_OCR_UNAVAILABLE' + (diagnostic ? ': ' + diagnostic.slice(0, 220) : ''));
     error.code = 'PADDLE_OCR_UNAVAILABLE';
     throw error;
   }
