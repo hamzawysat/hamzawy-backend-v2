@@ -816,6 +816,7 @@ async function run() {
 
     await test('suspended clients cannot open or continue password-recovery or support conversations', async () => {
       const Client = require('../models/Client');
+      const PasswordRecovery = require('../models/PasswordRecovery');
       const recovery = await request(app).post('/api/password-recovery/request').send({ role: 'client', phone: '01012345678' });
       assert.equal(recovery.status, 201, JSON.stringify(recovery.body));
       const account = await Client.findById(clientId);
@@ -841,10 +842,12 @@ async function run() {
       const restoredConversation = await request(app).get('/api/password-recovery/request/' + recovery.body.requestId)
         .set('X-Recovery-Token', recovery.body.recoveryToken);
       assert.equal(restoredConversation.status, 200, 'the original ticket must remain accessible with its original device token');
+      await PasswordRecovery.deleteOne({ _id: recovery.body.requestId });
     });
 
     await test('suspended technicians cannot open or continue password-recovery or support conversations', async () => {
       const Fanni = require('../models/Fanni');
+      const PasswordRecovery = require('../models/PasswordRecovery');
       const jwt = require('jsonwebtoken');
       const technician = await Fanni.create({
         name: 'فني اختبار دعم', phone: '01012345684', passwordHash: 'test-password-hash',
@@ -867,6 +870,7 @@ async function run() {
           .set('Authorization', 'Bearer ' + token).send({ text: 'اختبار دعم لفني موقوف' });
         assert.equal(blockedSupportCreate.status, 403);
       } finally {
+        await PasswordRecovery.deleteOne({ _id: recovery.body.requestId });
         await Fanni.deleteOne({ _id: technician._id });
       }
     });
