@@ -5,6 +5,7 @@ on:
     branches:
       - fix/fanni-registration-root-cause-20261122
       - fix/fanni-card-ocr-validation-browser-feedback-20261122
+      - fix/fanni-card-ocr-image-enhancement-20261122
   pull_request:
     branches:
       - main
