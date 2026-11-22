@@ -163,21 +163,31 @@ function getNumericOcrRegions(imageBuffer) {
   const dimensions = getImageDimensions(imageBuffer);
   if (!dimensions || !dimensions.width || !dimensions.height) return [];
   const { width, height } = dimensions;
-  const split = Math.round(height * 0.32);
-  return [
-    { left: 0, top: 0, width, height: Math.round(height * 0.68) },
-    { left: 0, top: split, width, height: height - split },
-    { left: Math.round(width * 0.08), top: Math.round(height * 0.12), width: Math.round(width * 0.84), height: Math.round(height * 0.76) }
-  ].filter(region => region.width >= 120 && region.height >= 40);
+  // Egyptian national-ID digits are printed in the lower band of the front.
+  // Overlapping bottom crops prevent names, portrait and hologram artwork from
+  // confusing the numeric recognizer when the uploaded frame contains a card.
+  const regions = [
+    { left: 0, top: Math.round(height * 0.48), width, height: Math.round(height * 0.52) },
+    { left: Math.round(width * 0.04), top: Math.round(height * 0.56), width: Math.round(width * 0.92), height: Math.round(height * 0.34) },
+    { left: Math.round(width * 0.08), top: Math.round(height * 0.62), width: Math.round(width * 0.84), height: Math.round(height * 0.28) },
+    { left: 0, top: Math.round(height * 0.34), width, height: Math.round(height * 0.66) },
+    { left: Math.round(width * 0.05), top: Math.round(height * 0.10), width: Math.round(width * 0.90), height: Math.round(height * 0.82) }
+  ];
+  return regions.filter(region => region.width >= 120 && region.height >= 40);
 }
 function buildEnhancedImageVariants(imageBuffer) {
   // ImageMagick is used when available; original bytes always remain a fallback.
   // Bound output dimensions and execution time because uploaded images are untrusted.
   const variants = [imageBuffer];
   const recipes = [
-    ['-auto-orient', '-resize', '2400x2400>', '-resize', '150%', '-colorspace', 'Gray', '-deskew', '40%', '-brightness-contrast', '12x24', '-contrast-stretch', '1%x1%', '-unsharp', '0x1.2+1.0+0.02'],
-    ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-deskew', '40%', '-normalize', '-despeckle', '-sharpen', '0x1.0'],
-    ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-gamma', '1.35', '-contrast', '-unsharp', '0x1.5+0.8+0.02']
+    // Local contrast + restrained exposure lift for dim industrial phone photos.
+    ['-auto-orient', '-resize', '2600x2600>', '-resize', '180%', '-colorspace', 'Gray', '-deskew', '40%', '-brightness-contrast', '18x30', '-clahe', '24x24+128+3', '-unsharp', '0x1.4+1.0+0.02'],
+    // Normalize uneven illumination and reduce low-frequency glare/shadow.
+    ['-auto-orient', '-resize', '2600x2600>', '-resize', '160%', '-colorspace', 'Gray', '-deskew', '40%', '-lat', '35x35+8%', '-contrast-stretch', '1%x1%', '-despeckle', '-adaptive-sharpen', '0x1.2'],
+    // Gamma lift retains faint strokes while recovering dark print.
+    ['-auto-orient', '-resize', '2600x2600>', '-resize', '180%', '-colorspace', 'Gray', '-gamma', '1.45', '-brightness-contrast', '8x28', '-unsharp', '0x1.8+0.8+0.02'],
+    // Alternate local-contrast path for glare and washed-out card backgrounds.
+    ['-auto-orient', '-resize', '2600x2600>', '-colorspace', 'Gray', '-clahe', '18x18+160+4', '-gamma', '1.2', '-contrast', '-sharpen', '0x1.3']
   ];
   for (const recipe of recipes) {
     try {
@@ -231,10 +241,13 @@ async function readFanniCard(imageBuffer) {
 
     // Numeric-focused OCR on the full card and overlapping regions.
     try {
-      for (const pageSegMode of ['6', '11']) {
+      for (const pageSegMode of ['6', '11', '7', '13']) {
         await worker.setParameters({
           tessedit_pageseg_mode: pageSegMode,
-          tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
+          tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹',
+          classify_bln_numeric_mode: '1',
+          load_system_dawg: '0',
+          load_freq_dawg: '0',
           user_defined_dpi: '300',
           thresholding_method: '2',
           thresholding_window_size: '0.33',
@@ -244,11 +257,14 @@ async function readFanniCard(imageBuffer) {
         for (const id of extractNationalIds(String(numericResult?.data?.text || ''))) candidates.add(id);
         if (candidates.size === 1) break;
       }
-      if (candidates.size !== 1 && variantIndex < 2) {
+      if (candidates.size !== 1 && variantIndex < 4) {
         for (const rectangle of getNumericOcrRegions(variant)) {
           await worker.setParameters({
             tessedit_pageseg_mode: '7',
-            tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
+            tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩۰۱۲۳۴۵۶۷۸۹',
+            classify_bln_numeric_mode: '1',
+            load_system_dawg: '0',
+            load_freq_dawg: '0',
             user_defined_dpi: '300',
             thresholding_method: '2',
             thresholding_window_size: '0.33',
