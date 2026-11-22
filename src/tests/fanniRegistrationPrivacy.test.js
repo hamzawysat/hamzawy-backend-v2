@@ -29,8 +29,11 @@ if (!/nationalIdEncrypted:\s*\{\s*type:\s*String,\s*required:\s*false,\s*select:
 if (!/if \(!isValidNationalId\(cardData\?\.nationalId\)\)/.test(route)) {
   throw new Error('Registration must stop before hashing or saving a missing/invalid national ID');
 }
-if (!/nationalIdManual: Joi\.string\(\)/.test(route) || !/manualNationalId/.test(route)) {
-  throw new Error('Registration must provide a validated manual national ID fallback');
+if (/nationalIdManual|manualNationalId/.test(route)) {
+  throw new Error('Registration must never accept a manually supplied national ID');
+}
+if (!/ارفع صورة أوضح/.test(route)) {
+  throw new Error('Unreadable card OCR must ask for a clearer card image, never manual entry');
 }
 if (!/isClearArabicName\(cardData\.extractedName\) \? cardData\.extractedName : ''/.test(route)) {
   throw new Error('Unreadable OCR names must be discarded rather than stored in the card ledger');

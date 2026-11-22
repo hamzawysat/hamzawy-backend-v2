@@ -1,6 +1,7 @@
 'use strict';
 
 const crypto = require('crypto');
+const { spawnSync } = require('node:child_process');
 const { createWorker } = require('tesseract.js');
 
 let workerPromise = null;
@@ -169,6 +170,29 @@ function getNumericOcrRegions(imageBuffer) {
     { left: Math.round(width * 0.08), top: Math.round(height * 0.12), width: Math.round(width * 0.84), height: Math.round(height * 0.76) }
   ].filter(region => region.width >= 120 && region.height >= 40);
 }
+function buildEnhancedImageVariants(imageBuffer) {
+  // ImageMagick is used when available; original bytes always remain a fallback.
+  // Bound output dimensions and execution time because uploaded images are untrusted.
+  const variants = [imageBuffer];
+  const recipes = [
+    ['-auto-orient', '-resize', '2400x2400>', '-resize', '150%', '-colorspace', 'Gray', '-deskew', '40%', '-brightness-contrast', '12x24', '-contrast-stretch', '1%x1%', '-unsharp', '0x1.2+1.0+0.02'],
+    ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-deskew', '40%', '-normalize', '-despeckle', '-sharpen', '0x1.0'],
+    ['-auto-orient', '-resize', '2400x2400>', '-colorspace', 'Gray', '-gamma', '1.35', '-contrast', '-unsharp', '0x1.5+0.8+0.02']
+  ];
+  for (const recipe of recipes) {
+    try {
+      const result = spawnSync('convert', [
+        '-limit', 'memory', '256MiB', '-limit', 'map', '512MiB',
+        '-limit', 'disk', '512MiB', '-', ...recipe, 'png:-'
+      ], { input: imageBuffer, encoding: null, timeout: 12000, maxBuffer: 24 * 1024 * 1024 });
+      if (!result.error && result.status === 0 && result.stdout?.length > 100) variants.push(result.stdout);
+    } catch (_) {
+      // Keep the original image path operational on hosts without ImageMagick.
+    }
+  }
+  return variants;
+}
+
 async function readFanniCard(imageBuffer) {
   if (!Buffer.isBuffer(imageBuffer) || !imageBuffer.length) {
     const error = new Error('CARD_IMAGE_UNREADABLE');
@@ -176,41 +200,61 @@ async function readFanniCard(imageBuffer) {
     throw error;
   }
   const worker = await getWorker();
-  let text = '';
   const candidates = new Set();
-  // First pass preserves Arabic text for extracting the applicant name.
-  await worker.setParameters({
-    tessedit_pageseg_mode: '6',
-    tessedit_char_whitelist: '',
-    user_defined_dpi: '300'
-  });
-  const fullResult = await worker.recognize(imageBuffer);
-  text = String(fullResult?.data?.text || '');
-  for (const id of extractNationalIds(text)) candidates.add(id);
+  let bestName = '';
+  let bestNameConfidence = -1;
+  const variants = buildEnhancedImageVariants(imageBuffer);
 
-  // Retry the full image with numeric-only segmentation, then inspect
-  // overlapping upper, lower and central card regions. This reduces
-  // background/layout noise without inventing or repairing any digit.
-  if (candidates.size !== 1) {
+  // Try the untouched image and several bounded enhancement passes. Tesseract's
+  // adaptive thresholding handles uneven lighting; alternate PSM modes help
+  // cards photographed at angles or with busy backgrounds.
+  for (let variantIndex = 0; variantIndex < variants.length; variantIndex++) {
+    const variant = variants[variantIndex];
+    await worker.setParameters({
+      tessedit_pageseg_mode: '6',
+      tessedit_char_whitelist: '',
+      user_defined_dpi: '300',
+      thresholding_method: '2',
+      thresholding_window_size: '0.33',
+      thresholding_kfactor: '0.34'
+    });
+    const fullResult = await worker.recognize(variant);
+    const fullText = String(fullResult?.data?.text || '');
+    for (const id of extractNationalIds(fullText)) candidates.add(id);
+    const name = extractArabicName(fullText, fullResult?.data?.lines, fullResult?.data?.confidence);
+    const nameConfidence = Number(fullResult?.data?.confidence || 0);
+    if (name && nameConfidence > bestNameConfidence) {
+      bestName = name;
+      bestNameConfidence = nameConfidence;
+    }
+    if (candidates.size === 1 && bestName) break;
+
+    // Numeric-focused OCR on the full card and overlapping regions.
     try {
-      for (const pageSegMode of ['6', '11', '7', '13']) {
+      for (const pageSegMode of ['6', '11']) {
         await worker.setParameters({
           tessedit_pageseg_mode: pageSegMode,
           tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
-          user_defined_dpi: '300'
+          user_defined_dpi: '300',
+          thresholding_method: '2',
+          thresholding_window_size: '0.33',
+          thresholding_kfactor: '0.34'
         });
-        const numericResult = await worker.recognize(imageBuffer);
+        const numericResult = await worker.recognize(variant);
         for (const id of extractNationalIds(String(numericResult?.data?.text || ''))) candidates.add(id);
         if (candidates.size === 1) break;
       }
-      if (candidates.size !== 1) {
-        for (const rectangle of getNumericOcrRegions(imageBuffer)) {
+      if (candidates.size !== 1 && variantIndex < 2) {
+        for (const rectangle of getNumericOcrRegions(variant)) {
           await worker.setParameters({
             tessedit_pageseg_mode: '7',
             tessedit_char_whitelist: '0123456789٠١٢٣٤٥٦٧٨٩',
-            user_defined_dpi: '300'
+            user_defined_dpi: '300',
+            thresholding_method: '2',
+            thresholding_window_size: '0.33',
+            thresholding_kfactor: '0.34'
           });
-          const regionResult = await worker.recognize(imageBuffer, { rectangle });
+          const regionResult = await worker.recognize(variant, { rectangle });
           for (const id of extractNationalIds(String(regionResult?.data?.text || ''))) candidates.add(id);
           if (candidates.size === 1) break;
         }
@@ -219,20 +263,22 @@ async function readFanniCard(imageBuffer) {
       await worker.setParameters({
         tessedit_pageseg_mode: '6',
         tessedit_char_whitelist: '',
-        user_defined_dpi: '300'
+        user_defined_dpi: '300',
+        thresholding_method: '2',
+        thresholding_window_size: '0.33',
+        thresholding_kfactor: '0.34'
       });
     }
+    if (candidates.size > 1) break;
   }
+
   const ids = [...candidates].filter(isValidNationalId);
   if (ids.length !== 1) {
     const error = new Error('CARD_OCR_UNCLEAR');
     error.code = 'CARD_OCR_UNCLEAR';
     throw error;
   }
-  return {
-    nationalId: ids[0],
-    extractedName: extractArabicName(text, fullResult?.data?.lines, fullResult?.data?.confidence)
-  };
+  return { nationalId: ids[0], extractedName: bestName };
 }
 async function terminateWorkerForTests() {
   if (!workerPromise) return;
