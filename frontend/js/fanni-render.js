@@ -104,6 +104,12 @@ function renderContent(){
      <p class="text-[10px] leading-5 text-slate-500">الصيغ المقبولة: JPG وPNG وWebP — الحد الأقصى 15 ميجابايت لكل صورة.</p>
     </section>
 
+    <div id="registrationNationalIdManual" class="rounded-xl border border-blue-200 bg-white p-3 space-y-2">
+     <label for="fanniRegNationalId" class="field-label">الرقم القومي — إدخال يدوي عند تعذر القراءة</label>
+     <input id="fanniRegNationalId" class="field" type="text" inputmode="numeric" autocomplete="off" maxlength="18" value="${esc(state.regNationalId||'')}" oninput="state.regNationalId=this.value.slice(0,18)" placeholder="اكتب 14 رقمًا كما هي على البطاقة">
+     <p class="text-[10px] leading-5 text-slate-600">اترك الخانة فارغة إذا تمت قراءة الرقم من الصورة. إذا تعذرت القراءة، اكتبه يدويًا؛ لن يُقبل التسجيل إلا بعد التحقق من 14 رقمًا صحيحًا.</p>
+    </div>
+
     <section class="rounded-2xl border border-amber-200 bg-amber-50 p-3 space-y-3">
      <h2 class="font-extrabold text-sm text-slate-900">ميثاق حمزاوي سات للتعامل المهني مع العملاء</h2>
      <p class="text-xs leading-6 text-slate-700">اقرأ الميثاق التالي قبل إنشاء حسابك. الموافقة مطلوبة لإتمام التسجيل.</p>
@@ -118,9 +124,9 @@ function renderContent(){
      </div>
      <label class="flex items-start gap-2 text-xs font-bold leading-6 text-slate-800"><input type="checkbox" class="mt-1 shrink-0" ${state.regGuidelinesAccepted?'checked':''} onchange="state.regGuidelinesAccepted=this.checked"> قرأت ميثاق حمزاوي سات للتعامل المهني وفهمته وأوافق على الالتزام به.</label>
     </section>
-    <button onclick="doRegister()" ${state.loading||SERVICES_LOADING?'disabled':''} class="primary-btn w-full h-12">${state.loading?'جاري إنشاء الحساب...':SERVICES_LOADING?'جاري تحميل التخصصات...':'إنشاء حساب فني'}</button>
     ${state.loading?'<div id="fanniRegistrationCheckingMessage" class="rounded-xl border border-blue-200 bg-blue-50 p-4 text-center text-sm font-extrabold text-blue-800" role="status" aria-live="polite"><span class="block mb-1">برجاء الانتظار</span>جاري مراجعة بيانات البطاقة والتحقق منها، لا تغلق الصفحة ولا تضغط مرة أخرى.</div>':''}
-    ${state.error?`<div id="fanniRegistrationResult" role="alert">${errorBox(state.error)}</div>`:''}
+    ${state.error?`<div id="fanniRegistrationResult" class="scroll-mt-24" role="alert" aria-live="assertive">${errorBox(state.error)}</div>`:''}
+    <button onclick="doRegister()" ${state.loading||SERVICES_LOADING?'disabled':''} class="primary-btn w-full h-12">${state.loading?'جاري إنشاء الحساب...':SERVICES_LOADING?'جاري تحميل التخصصات...':'إنشاء حساب فني'}</button>
    </div>`:`
    <div class="space-y-4">
     <div><label class="field-label" style="color:#2E7CF6;text-align:left;display:block">رقم الهاتف</label><input id="fanniLoginPhone" class="field" type="tel" inputmode="numeric" enterkeyhint="next" onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('fanniLoginPassword')?.focus()}" autocomplete="tel" value="${esc(state.loginPhone)}" oninput="state.loginPhone=this.value.replace(/\\D/g,'').slice(0,11)" placeholder="01xxxxxxxxx"></div>
