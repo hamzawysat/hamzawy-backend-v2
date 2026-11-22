@@ -71,7 +71,9 @@ async function run() {
       const adminUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/technicians-actions.js'), 'utf8');
       assert.match(model, /identityReviewImage:.*front.*back.*both.*profile/);
       assert.match(adminProfiles, /fanni\.identityReviewImage = imageType/);
-      assert.match(adminUi, /fanni-review-image-type/);
+      assert.match(adminUi, /data-review-image/);
+      assert.match(adminUi, /data-review-field/);
+      assert.match(adminUi, /fanni-review-reason/);
       assert.match(fanniRoute, /requestedImage = req\.user\.identityReviewImage/);
       assert.match(fanniRoute, /identityReviewStatus: 'pending', identityReviewReason: '', identityReviewImage: ''/);
       assert.match(fanniRoute, /isRequestedResubmission/);
