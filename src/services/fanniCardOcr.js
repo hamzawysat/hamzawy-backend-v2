@@ -99,7 +99,7 @@ function extractArabicName(text, confidenceLines = [], overallConfidence = null)
       const matchingLine = confidenceLines.find(item => String(item?.text || '').normalize('NFC').replace(/\s+/g, ' ').trim() === candidate);
       return Boolean(matchingLine && Number(matchingLine.confidence) >= 50);
     }
-    return !Number.isFinite(Number(overallConfidence)) || Number(overallConfidence) >= 50;
+    return overallConfidence == null || !Number.isFinite(Number(overallConfidence)) || Number(overallConfidence) >= 50;
   });
   return scored.sort((a, b) => b.split(/\s+/).length - a.split(/\s+/).length || b.length - a.length)[0] || '';
 }
