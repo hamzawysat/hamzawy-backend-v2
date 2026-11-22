@@ -39,6 +39,7 @@ const registrationResultIndex = renderSource.indexOf('${state.error?');
 const submitButtonIndex = renderSource.indexOf('onclick="doRegister()"');
 assert.ok(registrationResultIndex >= 0 && submitButtonIndex > registrationResultIndex, 'registration result must render above the submit button');
 assert.match(authSource, /finally\{state\[loadingKey\]=false;render\(\);\}/, 'upload completion must preserve the current viewport instead of jumping to an upload anchor');
-assert.match(authSource, /nationalIdManual:state\.regNationalId/, 'manual national ID must be sent to the registration API');
+assert.doesNotMatch(authSource, /nationalIdManual|regNationalId|manualNationalIdDigits/, 'registration must never collect or send a manually entered national ID');
+assert.doesNotMatch(renderSource, /registrationNationalIdManual|fanniRegNationalId|الرقم القومي.*إدخال يدوي|اكتبه يدويًا/, 'registration UI must not show manual national ID entry or instructions');
 
 console.log('Technician registration scroll tests: passed');
