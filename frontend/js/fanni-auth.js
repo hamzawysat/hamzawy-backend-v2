@@ -121,7 +121,7 @@ async function handleRegistrationProfilePhotoUpload(file){
  finally{state.regProfilePhotoUploading=false;render();}
 }
 async function submitFanniIdentityResubmission(){
- const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\\D/g,'');
+ const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'');
  if(nationalId.length!==14||!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading)return toast('اكتب الرقم القومي وارفع صورتي البطاقة من الأمام والخلف أولًا.','error');
  try{
   const result=await API.updateIdentityCard({nationalId,identityCardFrontFileId:state.regIdFrontFileId,identityCardBackFileId:state.regIdBackFileId});
@@ -186,7 +186,7 @@ async function doRegister(){
  if(!V.text(state.regPass,6,100)){state.error='كلمة السر لازم تكون 6 أحرف على الأقل';render();return}
  if(state.regPass!==state.regPassConfirm){state.error='تأكيد كلمة السر غير مطابق. اكتب نفس كلمة السر في الخانتين.';render();return}
  if(!state.regGuidelinesAccepted){state.error='لازم تقرأ ميثاق حمزاوي سات للتعامل المهني وتحدد الموافقة قبل إنشاء الحساب.';render();return}
- const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\\D/g,'');
+ const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'');
  if(nationalId.length!==14){state.error='اكتب الرقم القومي المكوّن من 14 رقمًا.';render();return}
  if(!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading){state.error='لازم ترفع صورة البطاقة من الأمام والخلف وتنتظر اكتمال الرفع قبل التسجيل.';render();return}
  if(!state.regProfilePhotoFileId||state.regProfilePhotoUploading){state.error='لازم تلتقط صورتك الشخصية بالكاميرا وتنتظر اكتمال الرفع.';render();return}
