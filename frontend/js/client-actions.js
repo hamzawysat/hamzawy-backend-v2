@@ -364,7 +364,9 @@ async function sendComplaint(){
   }catch(error){showToast(error.message||'تعذر إرسال الشكوى حاليًا.');}finally{state.complaintLoading=false;render();}
 }
 document.addEventListener('DOMContentLoaded',()=>{
-  loadServices();loadPublicContent();initializeClientAccount();render();
+  const startupTasks=Promise.allSettled([loadServices(),loadPublicContent(),initializeClientAccount()]);
+  render();
+  startupTasks.finally(()=>{const overlay=document.getElementById('clientLoadingOverlay');if(overlay)overlay.classList.add('is-hidden');});
   document.addEventListener('click',handleOutsideServiceClick);
   let clientLivePollInFlight=false,clientNotificationPollInFlight=false;
   setInterval(async function(){
