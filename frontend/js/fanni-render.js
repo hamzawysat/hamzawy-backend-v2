@@ -418,8 +418,13 @@ let __fanniLastRenderedTab = null;
 function render(){
   const appRoot = document.getElementById('app');
   const preserveViewport = __fanniLastRenderedTab === state.tab;
-  const scrollX = window.scrollX || window.pageXOffset || 0;
-  const scrollY = window.scrollY || window.pageYOffset || 0;
+  const pageScroller = document.scrollingElement || document.documentElement;
+  const scrollX = window.scrollX || window.pageXOffset || pageScroller.scrollLeft || 0;
+  const scrollY = Math.max(
+    window.scrollY || window.pageYOffset || 0,
+    pageScroller.scrollTop || 0,
+    document.body?.scrollTop || 0
+  );
   const active = appRoot && appRoot.contains(document.activeElement) ? document.activeElement : null;
   const focusState = active ? {
     id: active.id || '',
@@ -437,10 +442,11 @@ function render(){
     const result = renderContent();
     __fanniLastRenderedTab = state.tab;
 
-    // renderContent replaces the complete app markup. Keep the user's viewport
-    // and active form control when the current tab is only being updated.
+    // renderContent replaces #app. Restore the document scroller after the
+    // replacement has settled; Android WebView may report its position through
+    // document.scrollingElement rather than window.scrollY.
     if (preserveViewport) {
-      requestAnimationFrame(() => {
+      requestAnimationFrame(() => requestAnimationFrame(() => {
         const root = document.getElementById('app');
         if (root && focusState) {
           let target = focusState.id ? document.getElementById(focusState.id) : null;
@@ -474,8 +480,22 @@ function render(){
             }
           }
         }
+
+        const html = document.documentElement;
+        const previousScrollBehavior = html.style.scrollBehavior;
+        html.style.scrollBehavior = 'auto';
+        const scroller = document.scrollingElement || html;
+        scroller.scrollLeft = scrollX;
+        scroller.scrollTop = scrollY;
+        if (document.body) {
+          document.body.scrollLeft = scrollX;
+          document.body.scrollTop = scrollY;
+        }
         window.scrollTo(scrollX, scrollY);
-      });
+        requestAnimationFrame(() => {
+          html.style.scrollBehavior = previousScrollBehavior;
+        });
+      }));
     }
     return result;
   } catch (error) {
