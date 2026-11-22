@@ -45,6 +45,15 @@ async function run() {
     process.env.MONGO_URI = mongo.getUri('sonaa_test');
     app = require('../server');
     mongoose = require('mongoose');
+    // Keep integration tests deterministic even when the model default enables maintenance.
+    const AdminConfigForTests = require('../models/AdminConfig');
+    const { resetMaintenanceCache } = require('../utils/maintenanceCache');
+    await AdminConfigForTests.findOneAndUpdate(
+      { key: 'main' },
+      { $set: { 'settings.maintenance': false } },
+      { upsert: true, setDefaultsOnInsert: true }
+    );
+    resetMaintenanceCache();
 
     await test('Arabic store search normalizes spelling variants and tolerates simple typos', async () => {
       const search = require('../../frontend/js/store-search');
