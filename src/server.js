@@ -216,32 +216,6 @@ app.use((req, res, next) => {
   return next();
 });
 
-// Legacy /frontend URLs must resolve to the freshly built artifact too.
-app.use('/frontend', (req, res, next) => {
-    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-  next();
-}, express.static(frontendPath, {
-  index: false,
-  dotfiles: 'ignore'
-}));
-// Keep the public Hamzawy Sat download page available even when frontend-dist is selected.
-app.get('/download.html', (req, res) => {
-  return res.redirect(302, 'https://hamzawysat.github.io/hamzawy-download/');
-});
-
-app.use(express.static(frontendPath, {
-  index: false,
-  dotfiles: 'ignore'
-}));
-
-// Serve official Sonaa brand assets from the repository public folder.
-app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images'), {
-  dotfiles: 'ignore',
-  fallthrough: false,
-  immutable: true,
-  maxAge: '7d'
-}));
-
 // اختبار قاعدة البيانات فعليًا، وليس الاكتفاء بحالة الاتصال.
 async function checkDatabase(req, res) {
   try {
@@ -459,6 +433,42 @@ app.use('/api/admins', adminRouter);
 app.use('/api/auth/admin', adminRouter);
 
 
+app.use('/api', (req, res) => {
+  return res.status(404).json({
+    message: 'مسار API غير موجود',
+    path: req.originalUrl
+  });
+});
+
+// All API routers and the API 404 handler are registered above.
+// Keep every static-file middleware below them so /api/* can never be
+// answered by a frontend file with the same path.
+app.use('/frontend', (req, res, next) => {
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  next();
+}, express.static(frontendPath, {
+  index: false,
+  dotfiles: 'ignore'
+}));
+
+// Keep the public Hamzawy Sat download page available on the main domain.
+app.get('/download.html', (req, res) => {
+  return res.redirect(302, 'https://hamzawysat.github.io/hamzawy-download/');
+});
+
+app.use(express.static(frontendPath, {
+  index: false,
+  dotfiles: 'ignore'
+}));
+
+// Serve official Sonaa brand assets from the repository public folder.
+app.use('/images', express.static(path.join(__dirname, '..', 'public', 'images'), {
+  dotfiles: 'ignore',
+  fallthrough: false,
+  immutable: true,
+  maxAge: '7d'
+}));
+
 function sendHtml(res, filename) {
   const candidates = [
     path.join(frontendPath, filename)
@@ -485,13 +495,6 @@ app.get('/client', (req, res) => sendHtml(res, 'client.html'));
 app.get('/fanni', (req, res) => sendHtml(res, 'fanni.html'));
 app.get('/technicians', (req, res) => sendHtml(res, 'technicians.html'));
 app.get('/admin', (req, res) => sendHtml(res, 'admin.html'));
-
-app.use('/api', (req, res) => {
-  return res.status(404).json({
-    message: 'مسار API غير موجود',
-    path: req.originalUrl
-  });
-});
 
 app.use(errorHandler);
 
