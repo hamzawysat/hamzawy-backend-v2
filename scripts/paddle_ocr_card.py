@@ -42,9 +42,8 @@ def regions(image):
     height, width = image.shape[:2]
     return [
         ("full", image),
-        ("national_id_band", image[int(height * 0.48):int(height * 0.94), int(width * 0.02):int(width * 0.98)]),
         ("national_id_line", image[int(height * 0.60):int(height * 0.90), int(width * 0.05):int(width * 0.95)]),
-        ("arabic_name_band", image[int(height * 0.20):int(height * 0.67), int(width * 0.20):int(width * 0.98)]),
+        ("arabic_name_line", image[int(height * 0.20):int(height * 0.67), int(width * 0.20):int(width * 0.98)]),
     ]
 
 
