@@ -3,7 +3,7 @@
 const express = require('express');
 
 function createAdminFanniManagementRouter({
-  auth, validate, Joi, reasonSchema, Fanni, Rating, Order,
+  auth, validate, Joi, reasonSchema, Fanni, FanniCardLedger, Rating, Order,
   TopupRequest, WalletTransaction, adminName, decision, publicFanni,
   validId, sendBadId, writeAdminAudit, createNotification
 }) {
@@ -96,24 +96,71 @@ router.post('/fannis/:id/enable', auth('admin'), async (req, res, next) => {
 });
 
 router.delete('/fannis/:id', auth('admin'), async (req, res, next) => {
+  let session;
   try {
     if (!validId(req.params.id)) { return sendBadId(res); }
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
-    if (!fanni) { return res.status(404).json({ message: 'الفني غير موجود' }); }
-    const fanniId = fanni._id;
-    const [topupCount, pendingTopupCount, transactionCount, relatedOrderCount, activeOrderCount] = await Promise.all([
-      TopupRequest.countDocuments({ fanni: fanniId }),
-      TopupRequest.countDocuments({ fanni: fanniId, status: 'قيد المراجعة' }),
-      WalletTransaction.countDocuments({ fanni: fanniId }),
-      Order.countDocuments({ $or: [{ assignedFanni: fanniId }, { 'offers.fanni': fanniId }] }),
-      Order.countDocuments({ status: { $in: ['قيد المراجعة', 'تم النشر', 'وصلتك عروض', 'تم اختيار فني'] }, $or: [{ assignedFanni: fanniId }, { 'offers.fanni': fanniId }] })
-    ]);
-    const summary = { balance: Number(fanni.walletBalance || 0), topupCount, pendingTopupCount, transactionCount, relatedOrderCount, activeOrderCount };
-    const deleted = await Fanni.deleteOne({ _id: fanniId, role: 'fanni' });
-    if (deleted.deletedCount !== 1) { return res.status(409).json({ message: 'لم يتم حذف حساب الفني. حدّث القائمة وحاول مرة أخرى.' }); }
-    await writeAdminAudit(req, 'حذف حساب فني', 'fannis', String(fanniId), `name=${fanni.name}; balance=${summary.balance}; transactions=${summary.transactionCount}; orders=${summary.relatedOrderCount}`);
-    return res.json({ message: 'تم حذف حساب الفني. احتُفظ بسجلات الطلبات والشحنات والحركات المالية.', deleted: 1, fanniId: String(fanniId), summary });
-  } catch (err) { next(err); }
+    session = await Fanni.db.startSession();
+    let fanni;
+    let summary;
+    let releasedRejectedIdentityLedger = false;
+    await session.withTransaction(async () => {
+      fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).session(session);
+      if (!fanni) {
+        const error = new Error('الفني غير موجود');
+        error.status = 404;
+        throw error;
+      }
+      const fanniId = fanni._id;
+      const [topupCount, pendingTopupCount, transactionCount, relatedOrderCount, activeOrderCount] = await Promise.all([
+        TopupRequest.countDocuments({ fanni: fanniId }).session(session),
+        TopupRequest.countDocuments({ fanni: fanniId, status: 'قيد المراجعة' }).session(session),
+        WalletTransaction.countDocuments({ fanni: fanniId }).session(session),
+        Order.countDocuments({ $or: [{ assignedFanni: fanniId }, { 'offers.fanni': fanniId }] }).session(session),
+        Order.countDocuments({ status: { $in: ['قيد المراجعة', 'تم النشر', 'وصلتك عروض', 'تم اختيار فني'] }, $or: [{ assignedFanni: fanniId }, { 'offers.fanni': fanniId }] }).session(session)
+      ]);
+      summary = { balance: Number(fanni.walletBalance || 0), topupCount, pendingTopupCount, transactionCount, relatedOrderCount, activeOrderCount };
+
+      // Release only card-ledger entries that belong exclusively to this technician.
+      // Shared identity ledgers remain reserved for their other linked technicians.
+      const ledgers = fanni.status === 'مرفوض'
+        ? await FanniCardLedger.find({ $or: [{ fanniId }, { 'linkedTechnicians.fanniId': fanniId }] }).session(session)
+        : [];
+      for (const ledger of ledgers) {
+        const remainingLinks = (ledger.linkedTechnicians || []).filter(link => String(link.fanniId || '') !== String(fanniId));
+        const wasPrimary = String(ledger.fanniId || '') === String(fanniId);
+        ledger.linkedTechnicians = remainingLinks;
+        if (wasPrimary) {
+          ledger.fanniId = remainingLinks[0]?.fanniId || null;
+          if (remainingLinks[0]?.name) ledger.fanniName = remainingLinks[0].name;
+        }
+        if (wasPrimary && remainingLinks.length === 0) {
+          await FanniCardLedger.deleteOne({ _id: ledger._id }, { session });
+          releasedRejectedIdentityLedger = true;
+        } else {
+          await ledger.save({ session });
+        }
+      }
+
+      const deleted = await Fanni.deleteOne({ _id: fanniId, role: 'fanni' }, { session });
+      if (deleted.deletedCount !== 1) {
+        const error = new Error('لم يتم حذف حساب الفني. حدّث القائمة وحاول مرة أخرى.');
+        error.status = 409;
+        throw error;
+      }
+    });
+    const fanniId = String(fanni._id);
+    await writeAdminAudit(req, 'حذف حساب فني', 'fannis', fanniId, `name=${fanni.name}; balance=${summary.balance}; transactions=${summary.transactionCount}; orders=${summary.relatedOrderCount}; releasedRejectedIdentityLedger=${releasedRejectedIdentityLedger}`);
+    const message = releasedRejectedIdentityLedger
+      ? 'تم حذف الحساب المرفوض وتحرير سجل هويته لإتاحة إعادة التسجيل. احتُفظ بسجلات الطلبات والشحنات والحركات المالية.'
+      : 'تم حذف حساب الفني. احتُفظ بسجل الهوية لمنع إعادة استخدامه، وكذلك بسجلات الطلبات والشحنات والحركات المالية.';
+    return res.json({ message, deleted: 1, fanniId, summary, releasedRejectedIdentityLedger });
+  } catch (err) {
+    if (err?.status === 404) return res.status(404).json({ message: err.message });
+    if (err?.status === 409) return res.status(409).json({ message: err.message });
+    next(err);
+  } finally {
+    if (session) await session.endSession();
+  }
 });
 
 const VALID_LEVELS = ['مبتدئ', 'ممارس', 'محترف', 'خبير مبتدئ', 'خبير', 'خبير أول', 'استشاري فني', 'نخبة', 'أسطوري'];
