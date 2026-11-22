@@ -275,7 +275,8 @@ async function readFanniCard(imageBuffer) {
         }
       }
     }
-    if (candidates.size === 1 && bestName) break;
+    // Do not stop after a single full-card hit: continue through isolated
+    // number-line crops and enhanced variants to avoid accepting a false read.
 
     // Numeric-focused OCR on the full card and overlapping regions.
     try {
@@ -323,7 +324,6 @@ async function readFanniCard(imageBuffer) {
         thresholding_kfactor: '0.34'
       });
     }
-    if (candidates.size > 1) break;
   }
 
   const ids = [...candidates].filter(isValidNationalId);
