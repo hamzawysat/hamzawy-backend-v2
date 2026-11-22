@@ -59,12 +59,22 @@ async function doLogin(){
 }
 
 function scrollToFanniRegistrationTarget(targetId){
- requestAnimationFrame(()=>requestAnimationFrame(()=>{
+ const scroll=()=>{
   const target=document.getElementById(targetId);
-  if(!target)return;
-  try{target.scrollIntoView({behavior:'auto',block:'center',inline:'nearest'});}
-  catch(_){target.scrollIntoView();}
- }));
+  if(!target)return false;
+  const scroller=document.scrollingElement||document.documentElement;
+  const current=Math.max(window.scrollY||window.pageYOffset||0,scroller.scrollTop||0,document.body?.scrollTop||0);
+  const top=Math.max(0,target.getBoundingClientRect().top+current-Math.max(90,Math.round(window.innerHeight*0.18)));
+  const html=document.documentElement;
+  const previous=html.style.scrollBehavior;
+  html.style.scrollBehavior='auto';
+  scroller.scrollTop=top;
+  if(document.body)document.body.scrollTop=top;
+  window.scrollTo(0,top);
+  requestAnimationFrame(()=>{html.style.scrollBehavior=previous;});
+  return true;
+ };
+ requestAnimationFrame(()=>requestAnimationFrame(()=>requestAnimationFrame(scroll)));
 }
 async function compressRegistrationIdImage(file){
  try{
@@ -162,6 +172,7 @@ async function doRegister(){
  state.loading=true;
  state.error='';
  render();
+ scrollToFanniRegistrationTarget('fanniRegistrationCheckingMessage');
 
  try{
   await API.register({
