@@ -29,7 +29,7 @@ function renderContent(){
   <div class="${isBrowserDashboard?'dashboard-top-shell sticky top-0 z-50':'dashboard-top-shell'}">
  <style>.fanni-home-availability-toggle.is-available{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}.fanni-home-availability-toggle.is-paused{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}.fanni-home-availability-toggle.is-available strong{color:#1B7A2E!important;-webkit-text-fill-color:#1B7A2E!important}.fanni-home-availability-toggle.is-paused strong{color:#D32F2F!important;-webkit-text-fill-color:#D32F2F!important}</style><style>[class*="online"],[class*="avail"],[class*="toggle"]{background:#E8F5E9!important;color:#1B7A2E!important;border:1px solid #4CAF50!important}[class*="online"].offline,[class*="avail"].offline,[class*="toggle"].offline,[class*="online"].off,[class*="avail"].off{background:#FFEBEE!important;color:#D32F2F!important;border:1px solid #EF5350!important}</style><style>#sonaa-web-push-enable{display:none!important}</style><header class="bg-white">
   <div class="mx-auto w-full max-w-[640px] px-4 pt-2 pb-1 flex items-center justify-center gap-2" style="direction:rtl;position:relative">
-    <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#2E7CF6;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">${esc(String(user?.name||"ف").trim().charAt(0)||"ف")}</div>
+    <div class="h-8 w-8 flex items-center justify-center shrink-0" style="color:#2E7CF6;font-weight:900;font-size:18px;position:absolute;right:16px;top:50%;transform:translateY(-50%)">${user?.profilePhotoUrl?'<img src="'+esc(user.profilePhotoUrl)+'" alt="الصورة الشخصية" class="h-8 w-8 rounded-full object-cover">':esc(String(user?.name||"ف").trim().charAt(0)||"ف")}</div>
     <div class="brand-mark h-10 w-10 rounded-lg flex items-center justify-center shrink-0"><img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" style="width:100%;height:100%;object-fit:contain"></div>
     <span class="font-extrabold text-[20px] leading-none" style="color:#2E7CF6">حمزاوي سات</span>
   </div>
@@ -151,7 +151,7 @@ function renderContent(){
     <section class="fanni-home-dashboard mt-4 space-y-3" aria-labelledby="fanniHomeTitle">
       <div class="fanni-home-profile px-1 py-2" style="background:#F5F5F7">
         <div class="fanni-home-profile-top">
-          <div class="fanni-home-profile-avatar" aria-hidden="true"><span>✦</span><b>${esc(String(user?.name||'فني').trim().charAt(0)||'ف')}</b></div>
+          <button type="button" class="fanni-home-profile-avatar relative overflow-hidden" aria-label="تغيير الصورة الشخصية" onclick="document.getElementById('fanniProfilePhotoInput')?.click()">${user?.profilePhotoUrl?'<img src="'+esc(user.profilePhotoUrl)+'" alt="الصورة الشخصية" class="absolute inset-0 h-full w-full rounded-full object-cover">':'<span>✦</span><b>'+esc(String(user?.name||'فني').trim().charAt(0)||'ف')+'</b>'}<input id="fanniProfilePhotoInput" type="file" accept="image/jpeg,image/png,image/webp" capture="user" class="hidden" onchange="handleFanniProfilePhotoChange(this.files?.[0]);this.value=''"></button>
           <div class="fanni-home-profile-name">
             <h2 id="fanniHomeTitle">مرحباً ${esc(user?.name||'بك')}</h2>
             <p>${esc(user?.level||'مبتدئ')} • ${approved?'معتمد':esc(status)} • ${esc(balance)} جنيه</p>
