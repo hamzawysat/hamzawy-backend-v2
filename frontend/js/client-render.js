@@ -377,7 +377,7 @@ function render(){
               const orderSN=String(state.tracked.sn||'');
               return `<div class="mt-3 rounded-[14px] border border-slate-200 p-4">
                 <div class="flex justify-between items-center gap-2">
-                  <span class="font-extrabold text-[13px]">${escHtml(offer.fanniName||'فني')}</span>
+                  <div class="flex items-center gap-2 min-w-0">${offer.fanniPhotoUrl?`<img src="${escAttr(offer.fanniPhotoUrl)}" alt="صورة الفني" class="h-12 w-12 rounded-full object-cover shrink-0">`:''}<span class="font-extrabold text-[13px]">${escHtml(offer.fanniName||'فني')}</span></div>
                   <span class="inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-extrabold text-amber-800">${escHtml(offer.fanniLevel||'المستوى غير متاح')}</span>
                   <span class="font-black text-[15px] text-blue-700">${escHtml(offer.price==null?'':String(offer.price))} جنيه</span>
                 </div>
