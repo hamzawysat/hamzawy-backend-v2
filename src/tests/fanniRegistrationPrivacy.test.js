@@ -6,8 +6,11 @@ const route = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8'
 const ledger = fs.readFileSync(path.join(__dirname, '../models/FanniCardLedger.js'), 'utf8');
 const ocr = fs.readFileSync(path.join(__dirname, '../services/fanniCardOcr.js'), 'utf8');
 
-if (/encryptNationalId|nationalIdEncrypted\s*:/.test(route)) {
-  throw new Error('New technician registrations must not write reversible national ID data');
+if (!/const nationalIdEncrypted = encryptNationalId\(cardData\.nationalId\)/.test(route) || !/nationalIdEncrypted,/.test(route)) {
+  throw new Error('The national ID must be encrypted at rest for authorized admin review');
+}
+if (/nationalId:\s*cardData\.nationalId|nationalId:\s*manualNationalId/.test(route)) {
+  throw new Error('The readable national ID must never be stored as plaintext');
 }
 if (!/cardData\.nationalId\s*=\s*''/.test(route)) {
   throw new Error('The OCR national ID must be discarded immediately after keyed hashing');
@@ -29,6 +32,10 @@ if (!/isClearArabicName\(cardData\.extractedName\) \? cardData\.extractedName : 
 }
 if (!/if \(!isValidNationalId\(nationalId\)\)/.test(ocr)) {
   throw new Error('The card hash helper must reject empty or invalid national IDs');
+}
+const adminLedgerRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniCardLedger.js'), 'utf8');
+if (!/decryptNationalId\(row\.nationalIdEncrypted\)/.test(adminLedgerRoute) || !/canSeeFullNationalId/.test(adminLedgerRoute)) {
+  throw new Error('Only authorized admin roles should be able to see the decrypted national ID');
 }
 if (!/createHmac\('sha256'/.test(ocr)) {
   throw new Error('Duplicate prevention must retain only a keyed one-way fingerprint');
