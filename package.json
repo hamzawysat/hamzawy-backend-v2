@@ -5,6 +5,7 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node src/tests/runTests.js",
+    "test:ocr": "node src/tests/fanniCardOcr.integration.js",
     "build": "node scripts/build-frontend.js"
   },
   "dependencies": {
