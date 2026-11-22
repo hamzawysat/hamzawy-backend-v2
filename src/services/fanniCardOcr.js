@@ -183,7 +183,7 @@ function buildEnhancedImageVariants(imageBuffer) {
     try {
       const result = spawnSync('convert', [
         '-limit', 'memory', '256MiB', '-limit', 'map', '512MiB',
-        '-limit', 'disk', '512MiB', 'stdin[0]', ...recipe, 'png:-'
+        '-limit', 'disk', '512MiB', '-', ...recipe, 'png:-'
       ], { input: imageBuffer, encoding: null, timeout: 12000, maxBuffer: 24 * 1024 * 1024 });
       if (!result.error && result.status === 0 && result.stdout?.length > 100) variants.push(result.stdout);
     } catch (_) {
