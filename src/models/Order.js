@@ -20,6 +20,8 @@ trim: true,
 maxlength: 50
 },
 
+fanniPhotoUrl: { type: String, trim: true, maxlength: 300, default: '' },
+
 fanniLevel: {
 type: String,
 trim: true,
