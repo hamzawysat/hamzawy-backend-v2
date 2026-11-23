@@ -210,6 +210,7 @@ router.post('/admin/:id/reject', auth('admin'), async (req, res, next) => {
       await session.withTransaction(async () => {
         referral = await Referral.findOneAndUpdate({
           _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible'] },
+          riskFlags: { $in: [[], null] },
           'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
         }, {
           $set: { status: 'rejected', rejectedAt: new Date(), rejectedBy: req.user?._id || null, rejectionReason: reason, reviewedAt: new Date(), reviewedBy: req.user?._id || null }
