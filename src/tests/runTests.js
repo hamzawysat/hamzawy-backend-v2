@@ -3330,6 +3330,10 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken);
       assert.equal(orderOnly.status, 200, JSON.stringify(orderOnly.body));
       assert.equal(orderOnly.body.total, 0, 'an order phone must not create a synthetic client account');
+      const orderCodeSearch = await request(app).get('/api/admin/clients?search=' + encodeURIComponent(orderOnlySn))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(orderCodeSearch.status, 200);
+      assert.equal(orderCodeSearch.body.total, 0, 'an order number without a registered Client account must not create a synthetic row');
     });
 
     await test('unknown API route returns JSON 404', async () => {
