@@ -3313,7 +3313,7 @@ async function run() {
       assert.equal(archivedFanniLogin.status, 403);
       assert.equal(archivedFanniLogin.body.code, 'ACCOUNT_ARCHIVED');
       const archivedFanniToken = require('jsonwebtoken').sign({
-        id: String(fanni._id), tokenVersion: 0
+        id: String(fanni._id), role: 'fanni', tokenVersion: 0
       }, process.env.JWT_SECRET, { expiresIn: '1h' });
       const archivedFanniOperation = await request(app).get('/api/store/fanni/orders')
         .set('Authorization', 'Bearer ' + archivedFanniToken);
