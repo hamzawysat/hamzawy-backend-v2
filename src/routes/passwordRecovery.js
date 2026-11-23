@@ -88,7 +88,7 @@ function safeRequest(item, includeMessages = true) {
 }
 async function lookupAccount(role, phone) {
   if (role === 'client') {
-    const user = await Client.findOne({ phone }).select('+passwordHash');
+    const user = await Client.findOne({ phone, archivedAt: null }).select('+passwordHash');
     return user ? { user, role } : null;
   }
   const user = await Fanni.findOne({
@@ -103,12 +103,12 @@ async function lookupAccount(role, phone) {
 function safeUserRecovery(item) { const data = safeRequest(item); return { id: data.id, status: data.status, messages: (data.messages || []).map(message => ({ ...message, text: decryptRecoveryMessage(message.text) })), lastMessageAt: data.lastMessageAt, expiresAt: data.expiresAt }; }
 async function recoveryAccountBlocked(role, accountId) {
   if (role === 'client') {
-    const account = await Client.findById(accountId).select('status').lean();
-    return !account || account.status !== 'نشط';
+    const account = await Client.findById(accountId).select('status archivedAt').lean();
+    return !account || Boolean(account.archivedAt) || account.status !== 'نشط';
   }
   if (role === 'fanni') {
-    const account = await Fanni.findById(accountId).select('status role').lean();
-    return !account || account.role !== 'fanni' || ['معلق', 'مرفوض'].includes(String(account.status || ''));
+    const account = await Fanni.findById(accountId).select('status role archivedAt').lean();
+    return !account || Boolean(account.archivedAt) || account.role !== 'fanni' || ['معلق', 'مرفوض'].includes(String(account.status || ''));
   }
   return false;
 }
@@ -308,6 +308,7 @@ router.post('/request/:id/reset-password', async (req, res, next) => {
     if (item.ownerRole === 'client') account = await Client.findById(item.accountId).select('+passwordHash');
     else account = await Fanni.findById(item.accountId).select('+passwordHash');
     if (!account) return res.status(404).json({ message: 'الحساب غير موجود.' });
+    if (Boolean(account.archivedAt)) return blockedRecoveryResponse(res);
     account.passwordHash = await bcrypt.hash(newPassword, 12);
     account.tokenVersion = Number(account.tokenVersion || 0) + 1;
     await account.save();
