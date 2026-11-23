@@ -39,8 +39,8 @@ async function openFanniUnifiedProfile(id) {
         <button onclick="setForcedPasswordChange('fanni','${id}',true)" class="pill-btn soft-btn">إلزام تغيير كلمة المرور</button>
         <button onclick="setForcedPasswordChange('fanni','${id}',false)" class="pill-btn soft-btn">إلغاء الإلزام</button>
         <button onclick="issueSupportPassword('fanni','${id}')" class="pill-btn soft-btn">كلمة الدعم</button>
-        <button onclick="updateFanniLevel('${id}')" class="pill-btn soft-btn">تغيير المستوى</button>
-        <button onclick="saveFanniNote('${id}')" class="pill-btn soft-btn">الملاحظات الداخلية</button>
+        <button onclick="changeFanniProfileLevel('${id}','${val(f.level)}')" class="pill-btn soft-btn">تغيير المستوى</button>
+        <button onclick="saveFanniProfileNote('${id}')" class="pill-btn soft-btn">الملاحظات الداخلية</button>
         <button onclick="archiveAccount('fanni','${id}','${val(f.name)}')" class="pill-btn danger-pill">أرشفة الفني</button>
       </div>
       <div class="grid md:grid-cols-2 gap-3">
@@ -59,4 +59,24 @@ async function openFanniUnifiedProfile(id) {
     if (modal.isConnected) modal.querySelector('.premium-panel').innerHTML = '<div class="flex justify-between"><strong>تعذر تحميل ملف الفني</strong><button data-close class="pill-btn soft-btn">إغلاق</button></div><p class="text-sm mt-3">' + escHtml(error.message || 'حدث خطأ') + '</p>';
     modal.querySelector('[data-close]')?.addEventListener('click', close);
   }
+}
+
+async function changeFanniProfileLevel(id, currentLevel) {
+  const levels = ['مبتدئ','ممارس','محترف','خبير مبتدئ','خبير','خبير أول','استشاري فني','نخبة','أسطوري'];
+  const level = prompt('اكتب المستوى الجديد من القائمة التالية:\n' + levels.join('، '), currentLevel || 'مبتدئ');
+  if (level === null) return;
+  if (!levels.includes(level.trim())) return showToast('المستوى المختار غير صحيح', 'error');
+  await updateFanniLevel(id, level.trim());
+}
+async function saveFanniProfileNote(id) {
+  const note = prompt('اكتب الملاحظة الداخلية الجديدة على ملف الفني:');
+  if (note === null) return;
+  if (!note.trim()) return showToast('اكتب الملاحظة قبل الحفظ', 'error');
+  try {
+    const result = await tryApi(['/api/admin/fannis/' + encodeURIComponent(id) + '/note'], {
+      method: 'PATCH', body: JSON.stringify({ note: note.trim() })
+    });
+    showToast(result.message || 'تم حفظ الملاحظة');
+    await openFanniUnifiedProfile(id);
+  } catch (error) { showToast(error.message || 'تعذر حفظ الملاحظة', 'error'); }
 }
