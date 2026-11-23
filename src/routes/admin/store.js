@@ -411,7 +411,8 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         await Notification.updateMany({
           recipientRole: 'admin',
           dedupeKey: new RegExp('^store-order:' + String(order._id) + ':')
-        }, { $set: { isActive: false, readAt: new Date() } });
+        }, { $set: { isActive: false, readAt: new Date() } })
+          .catch(error => console.error('Could not retire terminal store-order notification:', error.message));
       }
       const refundMessage = refundAmount > 0
         ? ' وتم استرداد مبلغ ' + refundAmount.toLocaleString('ar-EG') + ' جنيه إلى محفظتك.'
