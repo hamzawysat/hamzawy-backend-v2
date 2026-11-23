@@ -56,6 +56,25 @@ async function run() {
     );
     resetMaintenanceCache();
 
+    await test('global phone identity blocks duplicate and cross-role concurrent account reservations', async () => {
+      const PhoneIdentity = require('../models/PhoneIdentity');
+      await PhoneIdentity.init();
+      const phone = '01077776666';
+      const attempts = await Promise.allSettled([
+        PhoneIdentity.create({ phone, ownerRole: 'client', ownerId: new mongoose.Types.ObjectId() }),
+        PhoneIdentity.create({ phone, ownerRole: 'fanni', ownerId: new mongoose.Types.ObjectId() })
+      ]);
+      assert.equal(attempts.filter(item => item.status === 'fulfilled').length, 1);
+      assert.equal(attempts.filter(item => item.status === 'rejected' && item.reason?.code === 11000).length, 1);
+      assert.equal(await PhoneIdentity.countDocuments({ phone }), 1);
+      const clientRoute = fs.readFileSync(path.join(__dirname, '../routes/client.js'), 'utf8');
+      const fanniRoute = fs.readFileSync(path.join(__dirname, '../routes/fanni.js'), 'utf8');
+      assert.match(clientRoute, /PhoneIdentity\.create\(\[\{ phone, ownerRole: 'client', ownerId: clientId \}\], \{ session \}\)/);
+      assert.match(fanniRoute, /PhoneIdentity\.create\(\[\{ phone, ownerRole: 'fanni', ownerId: fanniId \}\], \{ session \}\)/);
+      assert.match(clientRoute, /Fanni\.findOne\(\{ phone, role: 'fanni' \}\)[\s\S]*?\.session\(session\)/);
+      assert.match(fanniRoute, /Client\.findOne\(\{ phone \}\)[\s\S]*?\.session\(session\)/);
+    });
+
     await test('technician inbox returns every unread notification for login replay', async () => {
       const notificationsRoute = fs.readFileSync(path.join(__dirname, '../routes/notifications.js'), 'utf8');
       assert.match(notificationsRoute, /readAt: null/);
