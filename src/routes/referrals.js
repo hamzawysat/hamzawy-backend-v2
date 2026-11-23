@@ -101,7 +101,7 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
   try {
     const filter = {};
     if (['client', 'fanni'].includes(String(req.query.kind))) filter.kind = String(req.query.kind);
-    if (['pending', 'in_progress', 'eligible', 'completed', 'rejected'].includes(String(req.query.status))) filter.status = String(req.query.status);
+    if (['pending', 'in_progress', 'eligible', 'completed', 'rejected', 'cancelled'].includes(String(req.query.status))) filter.status = String(req.query.status);
     if (req.query.from || req.query.to) {
       filter.invitedAt = {};
       if (req.query.from && !Number.isNaN(Date.parse(req.query.from))) filter.invitedAt.$gte = new Date(req.query.from);
@@ -194,6 +194,38 @@ router.patch('/admin/settings', auth('admin'), async (req, res, next) => {
       adminName: actorName(req), adminId: String(req.user?._id || ''), ip: String(req.ip || '').slice(0, 80)
     });
     return res.json({ enabled: config.settings.referralsEnabled !== false });
+  } catch (err) { next(err); }
+});
+
+router.post('/admin/:id/cancel', auth('admin'), async (req, res, next) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
+  if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب سبب إلغاء واضحًا من 3 إلى 500 حرف.' });
+  try {
+    const referral = await Referral.findOneAndUpdate({
+      _id: req.params.id,
+      status: { $in: ['pending', 'in_progress', 'eligible'] },
+      'inviterReward.paidAt': null,
+      'inviteeReward.paidAt': null
+    }, {
+      $set: {
+        status: 'cancelled',
+        cancelledAt: new Date(),
+        cancelledBy: req.user?._id || null,
+        cancellationReason: reason
+      }
+    }, { new: true, runValidators: true });
+    if (!referral) return res.status(409).json({ message: 'لا يمكن إلغاء الدعوة بعد اكتمالها أو رفضها أو إلغائها أو صرف أي مكافأة منها.' });
+    await AdminAuditLog.create({
+      action: 'إلغاء دعوة',
+      category: 'referrals',
+      target: String(referral._id),
+      details: 'number=' + referral.number + '; previous eligible progress=' + Number(referral.completedCount || 0) + '/' + Number(referral.requiredCount || 0) + '; reason=' + reason,
+      adminName: actorName(req),
+      adminId: String(req.user?._id || ''),
+      ip: String(req.ip || '').slice(0, 80)
+    });
+    return res.json({ message: 'تم إلغاء الدعوة وإيقاف احتساب أي إنجازات أو مكافآت مستقبلية لها.', referral });
   } catch (err) { next(err); }
 });
 
