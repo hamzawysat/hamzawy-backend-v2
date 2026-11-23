@@ -10,7 +10,8 @@ async function openFanniUnifiedProfile(id) {
   modal.className = 'fixed inset-0 z-[125] bg-slate-950/75 p-3 sm:p-6 overflow-y-auto';
   modal.innerHTML = '<div class="max-w-5xl mx-auto premium-panel p-5 mt-4"><div class="flex justify-between"><strong>ملف الفني الموحد</strong><button data-close class="pill-btn soft-btn">إغلاق</button></div><p class="py-10 text-center">جاري تحميل بيانات الفني وسجلاته...</p></div>';
   document.body.appendChild(modal);
-  const close = () => modal.remove();
+  const profileImageUrls = [];
+  const close = () => { profileImageUrls.forEach(url => URL.revokeObjectURL(url)); modal.remove(); };
   modal.querySelector('[data-close]').addEventListener('click', close);
   modal.addEventListener('click', event => { if (event.target === modal) close(); });
   try {
@@ -27,7 +28,7 @@ async function openFanniUnifiedProfile(id) {
     const topups = list(data.topups, x => '<article class="rounded-lg bg-slate-50 p-2 text-xs"><strong>' + val(x.amount) + ' ج • ' + val(x.status) + '</strong><p>' + val(x.method) + ' • ' + val(x.senderNumber) + '</p><p class="text-slate-500">' + date(x.createdAt) + '</p></article>', 'لا توجد طلبات شحن');
     const decisions = list(data.decisions, x => '<article class="rounded-lg bg-slate-50 p-2 text-xs"><strong>' + val(x.action) + '</strong><p>' + val(x.reason) + '</p><p class="text-slate-500">' + val(x.by) + ' • ' + date(x.date) + '</p></article>', 'لا يوجد سجل قرارات');
     const audits = list(data.auditLogs, x => '<article class="rounded-lg bg-slate-50 p-2 text-xs"><strong>' + val(x.action) + '</strong><p>' + val(x.details) + '</p><p class="text-slate-500">' + val(x.adminName) + ' • ' + date(x.createdAt) + '</p></article>', 'لا يوجد سجل تدقيق');
-    const image = (key, title) => f.identityImages?.[key] ? '<div><p class="text-xs font-bold mb-1">' + title + '</p><img src="' + escHtml(BASE_URL + f.identityImages[key]) + '" alt="' + title + '" class="w-full max-h-64 rounded-xl border object-contain bg-slate-50" onerror="this.replaceWith(document.createTextNode(\'تعذر تحميل الصورة\'))"></div>' : '<div class="text-xs text-slate-400">' + title + ': غير متاحة</div>';
+    const image = (key, title) => f.identityImages?.[key] ? '<div><p class="text-xs font-bold mb-1">' + title + '</p><div id="fanni-profile-image-' + key + '" class="w-full min-h-24 rounded-xl border bg-slate-50 flex items-center justify-center text-xs text-slate-400">تحميل الصورة...</div></div>' : '<div class="text-xs text-slate-400">' + title + ': غير متاحة</div>';
     const id = escHtml(String(f._id || id));
     modal.querySelector('.premium-panel').innerHTML = `
       <div class="flex items-start justify-between gap-3"><div><h2 class="font-black text-lg">${val(f.name)}</h2><p dir="ltr" class="text-sm text-slate-600 mt-1">${val(f.phone)}</p><p class="text-xs mt-2">${val(f.status)} • ${val(f.level)} • الرصيد ${val(f.walletBalance)} ج</p></div><button data-close class="pill-btn soft-btn">إغلاق</button></div>
@@ -63,6 +64,23 @@ async function openFanniUnifiedProfile(id) {
         ${section('سجل التدقيق',audits)}
       </div>`;
     modal.querySelector('[data-close]').addEventListener('click', close);
+    for (const [key, title] of [['profile', 'الصورة الشخصية'], ['front', 'البطاقة الأمامية'], ['back', 'البطاقة الخلفية']]) {
+      const imagePath = f.identityImages?.[key];
+      const target = modal.querySelector('#fanni-profile-image-' + key);
+      if (!imagePath || !target) continue;
+      try {
+        const response = await fetch(BASE_URL + imagePath, {
+          headers: { Authorization: 'Bearer ' + getToken() }, credentials: 'omit'
+        });
+        if (!response.ok) throw new Error('تعذر تحميل ' + title);
+        const objectUrl = URL.createObjectURL(await response.blob());
+        profileImageUrls.push(objectUrl);
+        const img = document.createElement('img');
+        img.src = objectUrl; img.alt = title;
+        img.className = 'w-full max-h-64 rounded-xl object-contain';
+        target.innerHTML = ''; target.appendChild(img);
+      } catch (_) { target.textContent = 'تعذر تحميل الصورة'; }
+    }
   } catch (error) {
     if (modal.isConnected) modal.querySelector('.premium-panel').innerHTML = '<div class="flex justify-between"><strong>تعذر تحميل ملف الفني</strong><button data-close class="pill-btn soft-btn">إغلاق</button></div><p class="text-sm mt-3">' + escHtml(error.message || 'حدث خطأ') + '</p>';
     modal.querySelector('[data-close]')?.addEventListener('click', close);
