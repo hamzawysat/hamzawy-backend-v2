@@ -3292,6 +3292,13 @@ async function run() {
         .send({ phone: fanni.phone, password: archiveTestPassword });
       assert.equal(archivedFanniLogin.status, 403);
       assert.equal(archivedFanniLogin.body.code, 'ACCOUNT_ARCHIVED');
+      const archivedFanniToken = require('jsonwebtoken').sign({
+        id: String(fanni._id), tokenVersion: 0
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const archivedFanniOperation = await request(app).get('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + archivedFanniToken);
+      assert.equal(archivedFanniOperation.status, 403);
+      assert.equal(archivedFanniOperation.body.code, 'ACCOUNT_ARCHIVED');
 
       const restoredFanni = await request(app)
         .post('/api/admin/fannis/' + fanni._id + '/restore')
