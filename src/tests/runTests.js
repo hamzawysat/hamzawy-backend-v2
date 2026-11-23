@@ -3041,6 +3041,17 @@ async function run() {
       assert.ok(heldReferral.riskFlags.includes('shared_technician_national_id'));
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 0);
 
+      const reviewApproval = await request(app)
+        .post('/api/referrals/admin/' + String(heldReferral._id) + '/approve-risk')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'تمت مراجعة الهوية والمستندات يدويًا في الاختبار.' });
+      assert.equal(reviewApproval.status, 200, JSON.stringify(reviewApproval.body));
+      const reviewedReferral = await Referral.findById(heldReferral._id).lean();
+      assert.equal(reviewedReferral.status, 'completed');
+      assert.deepEqual(reviewedReferral.riskFlags, []);
+      assert.ok(reviewedReferral.riskReviewedAt);
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 2);
+
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
