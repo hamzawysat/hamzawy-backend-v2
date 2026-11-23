@@ -47,7 +47,7 @@ router.post('/clients/:phone/block', auth('admin'), async (req, res, next) => {
     const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
     if (error) return res.status(400).json({ message: 'اكتب سبب الحظر من حرفين إلى 500 حرف' });
     const client = await Client.findOne({ phone, archivedAt: null });
-    if (!client) return res.status(404).json({ message: 'لا يوجد حساب عميل مسجل بهذا الرقم. الطلبات المنشأة دون حساب لا يمكن حظرها من هذه الخاصية.' });
+    if (!client) return res.status(404).json({ message: 'حساب العميل غير موجود أو مؤرشف.' });
     if (client.status === 'معلق') return res.json({ message: 'حساب العميل معلق بالفعل', client: { id: String(client._id), name: client.name, phone: client.phone, status: client.status } });
     client.status = 'معلق';
     await client.save();
