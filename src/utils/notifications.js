@@ -466,18 +466,7 @@ async function retryPendingNotificationDeliveries(limit = 25) {
 }
 
 function escapeNotificationRegex(value) {
-  return String(value || '').replace(/[.*+?^$()|[\]\\{}]/g, '\\async function dismissOrderNotifications(orderId) {
-  const id = String(orderId || '').trim();
-  if (!/^[a-f0-9]{24}$/i.test(id)) return { modifiedCount: 0 };
-  const match = [
-    { relatedEntityType: 'order', relatedEntityId: orderId },
-    { dedupeKey: { $regex: '^admin-new-order:' + id + '(:|$)' } }
-  ];
-  return Notification.updateMany(
-    { recipientRole: 'admin', isActive: { $ne: false }, $or: match },
-    { $set: { isActive: false, readAt: new Date() } }
-  );
-}');
+  return String(value || '').replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
 }
 
 function buildOrderNotificationFilter(orderId, orderSN = '', orderMeta = {}) {
