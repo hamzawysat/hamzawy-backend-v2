@@ -319,7 +319,7 @@ async function createNotification({
       link: normalizeNotificationLink(link, type),
       isActive: true,
       ...(relatedEntityType ? { relatedEntityType: String(relatedEntityType).slice(0, 50) } : {}),
-      ...(relatedEntityId && mongoose.isValidObjectId(relatedEntityId) ? { relatedEntityId } : {})
+      ...(relatedEntityId && /^[a-f0-9]{24}$/i.test(String(relatedEntityId)) ? { relatedEntityId } : {})
     };
     let notification, isNew = true;
     if (dedupeKey) {
