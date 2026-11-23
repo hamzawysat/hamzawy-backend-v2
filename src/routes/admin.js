@@ -420,7 +420,7 @@ async function writeAdminAudit(req, action, category, target, details) {
       action: String(action || '').slice(0, 100),
       category: String(category || 'admin').slice(0, 50),
       target: String(target || '').slice(0, 200),
-      details: String(details || '').slice(0, 1000),
+      details: String(details || '').slice(0, 3000),
       adminName: adminName(req),
       adminId: String(req.user?._id || ''),
       ip: String(req.ip || '').slice(0, 80)
