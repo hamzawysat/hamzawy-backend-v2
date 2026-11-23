@@ -579,8 +579,12 @@ async function run() {
     await test('wallet balance mutations are governed by wallet permissions, not technician-list permissions', async () => {
       const user = { role: 'fanni', adminRole: 'مدير', adminPermissions: { __customOverrides: true, fannis: { read: false, write: false }, wallet: { read: true, write: true } } };
       assert.equal(canAccessAdmin(user, { path: '/fannis/507f1f77bcf86cd799439011/set-balance', method: 'POST' }), true);
+      assert.equal(canAccessAdmin(user, { path: '/fannis/507f1f77bcf86cd799439011/deduct-balance', method: 'POST' }), true, 'technician deductions must use wallet permission');
       user.adminPermissions.wallet.write = false;
       assert.equal(canAccessAdmin(user, { path: '/fannis/507f1f77bcf86cd799439011/set-balance', method: 'POST' }), false);
+      const identityReader = { role: 'fanni', adminRole: 'مدير', adminPermissions: { __customOverrides: true, fannis: { read: true, write: false }, wallet: { read: false, write: false } } };
+      assert.equal(canAccessAdmin(identityReader, { path: '/admin/507f1f77bcf86cd799439011/identity/front', method: 'GET' }), true, 'identity images must use fanni read permission');
+      assert.equal(canAccessAdmin({ ...identityReader, adminPermissions: { __customOverrides: true, fannis: { read: false, write: false } } }, { path: '/admin/507f1f77bcf86cd799439011/identity/front', method: 'GET' }), false);
     });
 
     await test('browser push assets are wired without removing Expo notifications', async () => {
