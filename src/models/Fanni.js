@@ -67,6 +67,9 @@ const fanniSchema = new mongoose.Schema({
       message: 'رقم الهاتف يجب أن يكون 01xxxxxxxxx'
     }
   },
+  // HMAC-only signup signals used for referral fraud review; raw IP/UA are never persisted.
+  registrationIpHash: { type: String, default: '', select: false },
+  registrationUserAgentHash: { type: String, default: '', select: false },
   passwordHash: {
     type: String,
     required: true,

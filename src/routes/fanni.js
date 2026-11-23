@@ -26,6 +26,7 @@ const WalletTransaction = require('../models/WalletTransaction');
 const { auth } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { normalizePhone } = require('../utils/phone');
+const { referralFingerprint } = require('../utils/referralFingerprint');
 const { notifyAdmins } = require('../utils/notifications');
 
 const router = express.Router();
@@ -334,6 +335,7 @@ router.post(
           }
           const created = await Fanni.create([{
             _id: fanniId, name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
+            ...referralFingerprint(req),
             identityCardFrontFileId: identityIds[0], identityCardBackFileId: identityIds[1], profilePhotoFileId: profilePhotoId,
             identityReviewStatus: 'pending',
             ...(req.body.guidelinesAccepted === true ? {

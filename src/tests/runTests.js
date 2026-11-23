@@ -990,6 +990,8 @@ async function run() {
       }).lean();
       assert.ok(savedClaim, 'the invitation must be persisted server-side before the app download');
       assert.equal(savedClaim.claimedAt, null);
+      assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000 + 5000, 'technician handoff claims must expire within 24 hours');
+      assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() > 23 * 60 * 60 * 1000, 'fresh technician handoff claims must retain a usable 24-hour window');
       const registration = await request(app).post('/api/fanni/register').send({
         name: 'فني اختبار التسجيل',
         phone,
@@ -2951,7 +2953,14 @@ async function run() {
         { name: 'مدعو اختبار', phone: '01000000002', passwordHash: 'test-hash' }
       ]);
       const clientCode = makeReferralCode('client', String(clients[0]._id));
+      assert.match(clientCode, /^[CT]-[a-f0-9]{24}-[A-Z0-9_-]{22}$/);
+      assert.ok(clientCode.length <= 50, 'new referral signatures must fit the existing storage and API limit');
       assert.equal(readReferralCode(clientCode)?.inviterId, String(clients[0]._id));
+      const legacySignature = require('crypto').createHmac('sha256', process.env.JWT_SECRET)
+        .update('C:' + String(clients[0]._id).toLowerCase()).digest('hex').slice(0, 12).toUpperCase();
+      const legacyClientCode = 'C-' + String(clients[0]._id).toLowerCase() + '-' + legacySignature;
+      assert.equal(readReferralCode(legacyClientCode)?.inviterId, String(clients[0]._id), 'existing 48-bit invitation links must remain valid');
+      assert.equal(readReferralCode(clientCode.slice(0, -1) + (clientCode.endsWith('A') ? 'B' : 'A')), null, 'tampered referral signatures must be rejected');
       await Referral.create({
         number: 'RFTESTCLIENT01', code: 'RFTESTCLIENT01', inviteCodeUsed: clientCode,
         kind: 'client', inviter: clients[0]._id, invitee: clients[1]._id, requiredCount: 1
@@ -3007,6 +3016,96 @@ async function run() {
       assert.equal(await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose }), null);
       const referralRows = await Referral.find({ number: { $in: ['RFTESTCLIENT01', 'RFTESTFANNI001'] } }).lean();
       assert.ok(referralRows.every(x => x.status === 'completed' && x.achievementLog.length === x.requiredCount));
+
+      // A shared national-ID ledger must hold the payout for manual review, never auto-ban.
+      const FanniCardLedger = require('../models/FanniCardLedger');
+      const fraudTechnicians = await Fanni.create([
+        { name: 'فني هوية مشتركة 1', phone: '01000000006', passwordHash: 'test-hash', specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni' },
+        { name: 'فني هوية مشتركة 2', phone: '01000000007', passwordHash: 'test-hash', specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni' }
+      ]);
+      await FanniCardLedger.create({
+        nationalIdHash: 'test-shared-national-id-hash',
+        fanniId: fraudTechnicians[0]._id,
+        fanniName: fraudTechnicians[0].name,
+        linkedTechnicians: fraudTechnicians.map(x => ({ fanniId: x._id, name: x.name, phone: x.phone }))
+      });
+      await Referral.create({
+        number: 'RFTESTFRAUD001', code: 'RFTESTFRAUD001', inviteCodeUsed: technicianCode,
+        kind: 'fanni', inviter: fraudTechnicians[0]._id, invitee: fraudTechnicians[1]._id, requiredCount: 3
+      });
+      await Order.create([1, 2, 3].map((n, i) => ({
+        sn: 'SN99100' + n, service: 'خدمة اختبار', area: 'القاهرة', clientName: 'عميل اختبار',
+        clientPhone: '01000000008', assignedFanni: fraudTechnicians[1]._id, status: 'تم الانتهاء',
+        completionDeclaredAt: new Date(Date.now() + 10 + i)
+      })));
+      const heldOutcome = await refreshReferralProgress({ kind: 'fanni', inviteeId: fraudTechnicians[1]._id, mongoose });
+      assert.equal(heldOutcome.status, 'eligible');
+      assert.equal(heldOutcome.reviewRequired, true);
+      assert.ok(heldOutcome.riskFlags.includes('shared_technician_national_id'));
+      const heldBalances = await Fanni.find({ _id: { $in: fraudTechnicians.map(x => x._id) } }).sort({ phone: 1 }).lean();
+      assert.deepEqual(heldBalances.map(x => x.walletBalance), [0, 0]);
+      const heldReferral = await Referral.findOne({ number: 'RFTESTFRAUD001' }).lean();
+      assert.equal(heldReferral.status, 'eligible');
+      assert.ok(heldReferral.riskDetectedAt);
+      assert.ok(heldReferral.riskFlags.includes('shared_technician_national_id'));
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 0);
+
+      const reviewApproval = await request(app)
+        .post('/api/referrals/admin/' + String(heldReferral._id) + '/approve-risk')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'تمت مراجعة الهوية والمستندات يدويًا في الاختبار.' });
+      assert.equal(reviewApproval.status, 200, JSON.stringify(reviewApproval.body));
+      const reviewedReferral = await Referral.findById(heldReferral._id).lean();
+      assert.equal(reviewedReferral.status, 'completed');
+      assert.deepEqual(reviewedReferral.riskFlags, []);
+      assert.ok(reviewedReferral.riskReviewedFlags.includes('shared_technician_national_id'));
+      assert.ok(reviewedReferral.riskReviewedAt);
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 2);
+
+      // Matching signup network/device fingerprints are review signals, not proof of fraud.
+      const fingerprintClients = await Client.create([
+        { name: 'عميل بصمة 1', phone: '01000000009', passwordHash: 'test-hash', registrationIpHash: 'inviter-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' },
+        { name: 'عميل بصمة 2', phone: '01000000010', passwordHash: 'test-hash', registrationIpHash: 'invitee-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' }
+      ]);
+      const orderCounterparty = await Fanni.create({
+        name: 'فني طرف الطلب', phone: '01000000011', passwordHash: 'test-hash',
+        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni',
+        registrationIpHash: 'invitee-hmac-ip', registrationUserAgentHash: 'same-hmac-ua'
+      });
+      const fingerprintCode = makeReferralCode('client', String(fingerprintClients[0]._id));
+      await Referral.create({
+        number: 'RFTESTFINGERPRINT', code: 'RFTESTFINGERPRINT', inviteCodeUsed: fingerprintCode,
+        kind: 'client', inviter: fingerprintClients[0]._id, invitee: fingerprintClients[1]._id, requiredCount: 1
+      });
+      await Order.create({
+        sn: 'SN991010', service: 'خدمة اختبار', area: 'القاهرة', clientName: fingerprintClients[1].name,
+        clientPhone: fingerprintClients[1].phone, clientAccount: fingerprintClients[1]._id,
+        assignedFanni: orderCounterparty._id, status: 'تم الانتهاء', completionDeclaredAt: new Date(Date.now() + 20)
+      });
+      const fingerprintOutcome = await refreshReferralProgress({ kind: 'client', inviteeId: fingerprintClients[1]._id, mongoose });
+      assert.equal(fingerprintOutcome.reviewRequired, true);
+      assert.ok(fingerprintOutcome.riskFlags.includes('same_order_counterparty_ip'));
+      assert.ok(fingerprintOutcome.riskFlags.includes('same_order_counterparty_device_signature'));
+      assert.ok(!fingerprintOutcome.riskFlags.includes('same_registration_ip'), 'different inviter and invitee networks must not be flagged as the same signup network');
+      assert.deepEqual((await Client.find({ _id: { $in: fingerprintClients.map(x => x._id) } }).sort({ phone: 1 }).lean()).map(x => x.walletBalance), [0, 0]);
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
+      const heldFingerprintReferral = await Referral.findOne({ number: 'RFTESTFINGERPRINT' }).lean();
+      const directReject = await request(app)
+        .post('/api/referrals/admin/' + String(heldFingerprintReferral._id) + '/reject')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'رفض قبل مراجعة الأمان' });
+      assert.equal(directReject.status, 409, 'a flagged referral must not use the ordinary rejection action');
+      const reviewedReject = await request(app)
+        .post('/api/referrals/admin/' + String(heldFingerprintReferral._id) + '/reject-risk')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'تمت مراجعة علاقة الطلب والأجهزة يدويًا.' });
+      assert.equal(reviewedReject.status, 200, JSON.stringify(reviewedReject.body));
+      const rejectedFingerprintReferral = await Referral.findById(heldFingerprintReferral._id).lean();
+      assert.equal(rejectedFingerprintReferral.status, 'rejected');
+      assert.deepEqual(rejectedFingerprintReferral.riskFlags, []);
+      assert.ok(rejectedFingerprintReferral.riskReviewedFlags.includes('same_order_counterparty_ip'));
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
+
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 

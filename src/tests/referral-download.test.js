@@ -30,10 +30,10 @@ assert.doesNotMatch(source, /\\\\n<div class="referral-notice"/, 'HTML must not 
 
 const technicianActions = fs.readFileSync(path.join(root, 'frontend/js/fanni-app-only-actions.js'), 'utf8');
 const technicianPage = fs.readFileSync(path.join(root, 'frontend/fanni.html'), 'utf8');
-assert.match(technicianPage, /fanni-app-only-actions\\.js/, 'technician dashboard must load the referral handoff script');
-assert.match(technicianActions, /fetch\\('\/api\/referrals\/prepare-fanni'/, 'technician invite must be converted into a server-side single-use claim');
-assert.match(technicianActions, /action=register&claim=/, 'technician app deep link must carry the claim token');
-assert.match(technicianActions, /DOWNLOAD_URL\\+'\\?claim='/, 'APK fallback must preserve the claim token');
+assert.ok(technicianPage.includes('fanni-app-only-actions.js'), 'technician dashboard must load the referral handoff script');
+assert.ok(technicianActions.includes("fetch('/api/referrals/prepare-fanni'"), 'technician invite must be converted into a server-side single-use claim');
+assert.ok(technicianActions.includes('action=register&claim='), 'technician app deep link must carry the claim token');
+assert.ok(technicianActions.includes("DOWNLOAD_URL+'?claim='"), 'APK fallback must preserve the claim token');
 assert.ok(source.includes('/1.0.16/HSsat.apk'), 'download page must serve the exact current HSsat APK release');
 assert.ok(source.includes('/tag/1.0.16'), 'download page release label must match the APK version');
 assert.ok(built.includes('/1.0.16/HSsat.apk'), 'built production download page must serve the exact current HSsat APK');

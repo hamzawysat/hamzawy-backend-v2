@@ -5,13 +5,15 @@ const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const Order = require('../models/Order');
 const WalletTransaction = require('../models/WalletTransaction');
+const FanniCardLedger = require('../models/FanniCardLedger');
+const AdminAuditLog = require('../models/AdminAuditLog');
 
 async function refreshReferralProgress({ kind, inviteeId, mongoose, session: suppliedSession = null }) {
   if (!inviteeId || !['client', 'fanni'].includes(kind)) return null;
   const completedQuery = Order.find(kind === 'client'
     ? { clientAccount: inviteeId, status: 'تم الانتهاء' }
     : { assignedFanni: inviteeId, status: 'تم الانتهاء' })
-    .select('_id sn completionDeclaredAt createdAt')
+    .select('_id sn completionDeclaredAt createdAt assignedFanni clientAccount clientPhone')
     .sort({ completionDeclaredAt: 1, createdAt: 1 })
     .lean();
   if (suppliedSession) completedQuery.session(suppliedSession);
@@ -39,9 +41,88 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       }
 
       const Model = kind === 'client' ? Client : Fanni;
-      const inviter = await Model.findById(referral.inviter).session(session);
-      const invitee = await Model.findById(referral.invitee).session(session);
+      const inviter = await Model.findById(referral.inviter).select('+registrationIpHash +registrationUserAgentHash').session(session);
+      const invitee = await Model.findById(referral.invitee).select('+registrationIpHash +registrationUserAgentHash').session(session);
       if (!inviter || !invitee) throw new Error('REFERRAL_PARTY_NOT_FOUND');
+
+      // Identity collisions are financial-risk holds, not automatic bans/rejections.
+      const riskFlags = [];
+      const inviterPhone = String(inviter.phone || '').trim();
+      const inviteePhone = String(invitee.phone || '').trim();
+      if (inviterPhone && inviteePhone && inviterPhone === inviteePhone) {
+        riskFlags.push('same_phone_identity');
+      }
+      const sameSignupIp = Boolean(inviter.registrationIpHash && invitee.registrationIpHash &&
+        inviter.registrationIpHash === invitee.registrationIpHash);
+      if (sameSignupIp) {
+        riskFlags.push('same_registration_ip');
+        if (inviter.registrationUserAgentHash && invitee.registrationUserAgentHash &&
+            inviter.registrationUserAgentHash === invitee.registrationUserAgentHash) {
+          riskFlags.push('same_registration_device_signature');
+        }
+      }
+
+      // A self-generated job between a referred account and its counterparty is
+      // another reward-abuse path. Shared networks are only a review signal.
+      const counterpartyIds = [...new Set(completedOrders
+        .map(order => kind === 'client' ? order.assignedFanni : order.clientAccount)
+        .filter(Boolean).map(String))];
+      if (counterpartyIds.length) {
+        const CounterpartyModel = kind === 'client' ? Fanni : Client;
+        const counterparties = await CounterpartyModel.find({ _id: { $in: counterpartyIds } })
+          .select('phone +registrationIpHash +registrationUserAgentHash')
+          .session(session).lean();
+        const byId = new Map(counterparties.map(account => [String(account._id), account]));
+        for (const order of completedOrders) {
+          const counterpartyId = kind === 'client' ? order.assignedFanni : order.clientAccount;
+          const counterparty = counterpartyId ? byId.get(String(counterpartyId)) : null;
+          if (!counterparty) continue;
+          if (inviteePhone && String(counterparty.phone || '').trim() === inviteePhone) {
+            riskFlags.push('same_order_party_phone');
+          }
+          if (invitee.registrationIpHash && counterparty.registrationIpHash &&
+              invitee.registrationIpHash === counterparty.registrationIpHash) {
+            riskFlags.push('same_order_counterparty_ip');
+            if (invitee.registrationUserAgentHash && counterparty.registrationUserAgentHash &&
+                invitee.registrationUserAgentHash === counterparty.registrationUserAgentHash) {
+              riskFlags.push('same_order_counterparty_device_signature');
+            }
+          }
+        }
+      }
+
+      if (kind === 'fanni') {
+        const sharedIdentity = await FanniCardLedger.findOne({
+          $and: [
+            { $or: [{ fanniId: inviter._id }, { 'linkedTechnicians.fanniId': inviter._id }] },
+            { $or: [{ fanniId: invitee._id }, { 'linkedTechnicians.fanniId': invitee._id }] }
+          ]
+        }).session(session).select('_id').lean();
+        if (sharedIdentity) riskFlags.push('shared_technician_national_id');
+      }
+      // Existing holds remain effective. After an administrator reviews a signal,
+      // only newly discovered signal types can create another hold.
+      if (Array.isArray(referral.riskFlags) && referral.riskFlags.length) {
+        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: referral.riskFlags };
+        return;
+      }
+      const reviewedFlags = new Set(referral.riskReviewedFlags || []);
+      const unreviewedRiskFlags = riskFlags.filter(flag => !reviewedFlags.has(flag));
+      if (unreviewedRiskFlags.length) {
+        referral.riskFlags = [...new Set([...(referral.riskFlags || []), ...unreviewedRiskFlags])];
+        referral.riskDetectedAt = referral.riskDetectedAt || new Date();
+        referral.status = 'eligible';
+        await referral.save({ session });
+        await AdminAuditLog.create([{
+          action: 'تعليق مكافأة دعوة للاشتباه',
+          category: 'referrals',
+          target: String(referral._id),
+          details: 'number=' + referral.number + '; flags=' + unreviewedRiskFlags.join(',') + '; payout held for manual review',
+          adminName: 'النظام'
+        }], { session });
+        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: unreviewedRiskFlags };
+        return;
+      }
 
       const partyFields = [
         { key: 'inviterReward', account: inviter, owner: kind === 'client' ? 'client' : 'fanni', side: 'inviter' },

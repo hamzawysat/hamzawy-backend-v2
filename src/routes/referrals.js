@@ -14,6 +14,7 @@ const WalletTransaction = require('../models/WalletTransaction');
 const { auth } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
 const { makeReferralCode, readReferralCode } = require('../utils/referralCodes');
+const { refreshReferralProgress } = require('../services/referralRewards');
 
 const router = express.Router();
 const prepareFanniReferralLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { message: 'محاولات كثيرة لحفظ الدعوة. حاول بعد قليل.' } });
@@ -51,8 +52,17 @@ router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next
     if (config?.settings?.referralsEnabled === false) return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا.' });
     const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id').lean();
     if (!inviter) return res.status(404).json({ message: 'صاحب كود الدعوة غير موجود.' });
+    // Bound claim minting per inviter as well as per source IP. Claims are short-lived
+    // handoff credentials, not reusable referral codes.
+    const claimsInLastHour = await ReferralClaim.countDocuments({
+      inviter: inviter._id,
+      createdAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) }
+    });
+    if (claimsInLastHour >= 50) {
+      return res.status(429).json({ message: 'تم تجاوز الحد المسموح لإنشاء روابط التسجيل المؤقتة. حاول بعد ساعة.' });
+    }
     const claimToken = crypto.randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await ReferralClaim.create({
       tokenHash: crypto.createHash('sha256').update(claimToken).digest('hex'),
       kind: 'fanni', inviter: inviter._id, inviteCodeUsed: decoded.code, expiresAt
@@ -64,22 +74,23 @@ router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next
 router.get('/admin/summary', auth('admin'), async (req, res, next) => {
   try {
     const config = await AdminConfig.findOne({ key: 'main' }).select('settings').lean();
-    const [total, clients, technicians, statuses, rewards] = await Promise.all([
+    const [total, clients, technicians, statuses, riskReviewCount, rewards] = await Promise.all([
       Referral.countDocuments({}),
       Referral.countDocuments({ kind: 'client' }),
       Referral.countDocuments({ kind: 'fanni' }),
       Referral.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Referral.countDocuments({ riskFlags: { $exists: true, $ne: [] } }),
       Referral.aggregate([{ $group: {
         _id: '$kind',
         inviterPaid: { $sum: { $cond: [{ $ne: ['$inviterReward.paidAt', null] }, '$inviterReward.amount', 0] } },
         inviteePaid: { $sum: { $cond: [{ $ne: ['$inviteeReward.paidAt', null] }, '$inviteeReward.amount', 0] } },
-        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } },
-        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } }
+        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }, { $eq: [{ $size: { $ifNull: ['$riskFlags', []] } }, 0] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } },
+        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }, { $eq: [{ $size: { $ifNull: ['$riskFlags', []] } }, 0] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } }
       } }])
     ]);
     return res.set('Cache-Control', 'no-store').json({
       enabled: config?.settings?.referralsEnabled !== false,
-      total, clients, technicians,
+      total, clients, technicians, riskReviewCount,
       statuses: Object.fromEntries(statuses.map(x => [x._id, x.count])),
       rewards
     });
@@ -127,6 +138,48 @@ router.get('/admin/:id', auth('admin'), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
+// Explicit administrator review is required before a flagged referral can pay out.
+router.post('/admin/:id/approve-risk', auth('admin'), async (req, res, next) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
+  if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب سبب مراجعة واضحًا من 3 إلى 500 حرف.' });
+  try {
+    const session = await mongoose.startSession();
+    let referral;
+    try {
+      await session.withTransaction(async () => {
+        referral = await Referral.findOne({
+          _id: req.params.id, status: 'eligible',
+          riskFlags: { $exists: true, $ne: [] },
+          'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
+        }).session(session);
+        if (!referral) throw new Error('REFERRAL_NOT_PENDING_RISK_REVIEW');
+        const reviewedFlags = [...(referral.riskFlags || [])];
+        referral.riskReviewedFlags = [...new Set([...(referral.riskReviewedFlags || []), ...reviewedFlags])];
+        referral.riskFlags = [];
+        referral.riskReviewedAt = new Date();
+        referral.riskReviewedBy = req.user?._id || null;
+        await referral.save({ session });
+        await AdminAuditLog.create([{
+          action: 'اعتماد دعوة بعد مراجعة الاشتباه',
+          category: 'referrals',
+          target: String(referral._id),
+          details: 'number=' + referral.number + '; flags=' + reviewedFlags.join(',') + '; reason=' + reason,
+          adminName: actorName(req),
+          adminId: String(req.user?._id || ''),
+          ip: String(req.ip || '').slice(0, 80)
+        }], { session });
+      });
+    } finally { await session.endSession(); }
+    const outcome = await refreshReferralProgress({ kind: referral.kind, inviteeId: referral.invitee, mongoose });
+    const updated = await Referral.findById(referral._id).lean();
+    return res.json({ message: updated?.status === 'completed' ? 'تم اعتماد الدعوة وصرف المكافآت المستحقة.' : 'تم رفع تعليق المراجعة؛ لا تزال شروط الاستحقاق قيد التحقق.', referral: updated, outcome });
+  } catch (err) {
+    if (err?.message === 'REFERRAL_NOT_PENDING_RISK_REVIEW') return res.status(409).json({ message: 'الدعوة ليست معلقة حاليًا لمراجعة أمنية أو سبق صرف مكافآتها.' });
+    return next(err);
+  }
+});
+
 router.patch('/admin/settings', auth('admin'), async (req, res, next) => {
   try {
     if (typeof req.body?.enabled !== 'boolean') return res.status(400).json({ message: 'قيمة تشغيل النظام غير صحيحة.' });
@@ -149,12 +202,15 @@ router.post('/admin/:id/reject', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
   if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب سبب رفض واضحًا من 3 إلى 500 حرف.' });
   try {
+    const securityHold = await Referral.exists({ _id: req.params.id, riskFlags: { $exists: true, $ne: [] } });
+    if (securityHold) return res.status(409).json({ message: 'الدعوة عليها تعليق أمني. راجع تفاصيل الاشتباه واختر اعتمادًا أو رفضًا بعد المراجعة الأمنية.' });
     const session = await mongoose.startSession();
     let referral;
     try {
       await session.withTransaction(async () => {
         referral = await Referral.findOneAndUpdate({
           _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible'] },
+          riskFlags: { $in: [[], null] },
           'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
         }, {
           $set: { status: 'rejected', rejectedAt: new Date(), rejectedBy: req.user?._id || null, rejectionReason: reason, reviewedAt: new Date(), reviewedBy: req.user?._id || null }
@@ -169,6 +225,53 @@ router.post('/admin/:id/reject', auth('admin'), async (req, res, next) => {
     });
     return res.json({ message: 'تم رفض الدعوة وتسجيل السبب.', referral });
   } catch (err) { next(err); }
+});
+
+// A flagged referral can only be rejected through the explicit security-review decision.
+router.post('/admin/:id/reject-risk', auth('admin'), async (req, res, next) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
+  if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب نتيجة المراجعة وسبب الرفض من 3 إلى 500 حرف.' });
+  try {
+    const session = await mongoose.startSession();
+    let referral;
+    try {
+      await session.withTransaction(async () => {
+        referral = await Referral.findOne({
+          _id: req.params.id, status: 'eligible',
+          riskFlags: { $exists: true, $ne: [] },
+          'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
+        }).session(session);
+        if (!referral) throw new Error('REFERRAL_NOT_PENDING_RISK_REVIEW');
+        const reviewedFlags = [...(referral.riskFlags || [])];
+        referral.riskReviewedFlags = [...new Set([...(referral.riskReviewedFlags || []), ...reviewedFlags])];
+        referral.riskFlags = [];
+        referral.riskReviewedAt = new Date();
+        referral.riskReviewedBy = req.user?._id || null;
+        referral.status = 'rejected';
+        referral.rejectedAt = new Date();
+        referral.rejectedBy = req.user?._id || null;
+        referral.rejectionReason = reason;
+        referral.reviewedAt = new Date();
+        referral.reviewedBy = req.user?._id || null;
+        await referral.save({ session });
+        await AdminAuditLog.create([{
+          action: 'رفض دعوة بعد مراجعة أمنية',
+          category: 'referrals',
+          target: String(referral._id),
+          details: 'number=' + referral.number + '; flags=' + reviewedFlags.join(',') + '; reason=' + reason,
+          adminName: actorName(req),
+          adminId: String(req.user?._id || ''),
+          ip: String(req.ip || '').slice(0, 80)
+        }], { session });
+      });
+    } finally { await session.endSession(); }
+    const updated = await Referral.findById(referral._id).lean();
+    return res.json({ message: 'تم رفض الدعوة بعد تسجيل المراجعة الأمنية وسبب القرار.', referral: updated });
+  } catch (err) {
+    if (err?.message === 'REFERRAL_NOT_PENDING_RISK_REVIEW') return res.status(409).json({ message: 'الدعوة ليست معلقة حاليًا لمراجعة أمنية أو سبق صرف مكافآتها.' });
+    return next(err);
+  }
 });
 
 module.exports = router;

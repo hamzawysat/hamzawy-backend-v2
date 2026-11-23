@@ -17,6 +17,12 @@ const referralSchema = new mongoose.Schema({
   inviteCodeUsed: { type: String, required: true, maxlength: 50 },
   invitedAt: { type: Date, default: Date.now, index: true },
   status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected'], default: 'pending', index: true },
+  // Fraud signals are review holds, never automatic account bans or referral rejection.
+  riskFlags: { type: [String], default: [] },
+  riskReviewedFlags: { type: [String], default: [] },
+  riskDetectedAt: { type: Date, default: null },
+  riskReviewedAt: { type: Date, default: null },
+  riskReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null },
   completedCount: { type: Number, default: 0, min: 0 },
   achievementLog: [{ order: { type: mongoose.Schema.Types.ObjectId, ref: 'Order', required: true }, orderSN: { type: String, trim: true, maxlength: 20, default: '' }, completedAt: { type: Date, default: Date.now } }],
   requiredCount: { type: Number, required: true, enum: [1, 3] },
