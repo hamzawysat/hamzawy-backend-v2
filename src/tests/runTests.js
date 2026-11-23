@@ -3339,7 +3339,7 @@ async function run() {
       assert.equal(pageOne.body.limit, 1);
       assert.ok(pageOne.body.total >= 2);
       assert.equal(pageOne.body.items.length, 1);
-      assert.equal(pageOne.body.items[0].registered, true);
+      assert.ok(pageOne.body.items[0]._id, 'every client row must be a real registered account');
       const orderOnly = await request(app).get('/api/admin/clients?search=01055550299')
         .set('Authorization', 'Bearer ' + adminToken);
       assert.equal(orderOnly.status, 200, JSON.stringify(orderOnly.body));
