@@ -66,7 +66,8 @@ function renderFannis(){
                   <button onclick="event.stopPropagation();setForcedPasswordChange('fanni','${id}',false)" class="dropdown-item">↩️ إلغاء إلزام تغيير كلمة المرور</button>
                   <button onclick="event.stopPropagation();issueSupportPassword('fanni','${id}')" class="dropdown-item">🛟 إصدار كلمة دعم لمرة واحدة</button>
                   <button onclick="event.stopPropagation();revealSupportPassword('fanni','${id}')" class="dropdown-item">👁 عرض كلمة الدعم الحالية</button>
-                  <button onclick="event.stopPropagation();setPendingAction('${menuKey}','delete','حذف نهائي')" class="dropdown-item text-red-600">🗑️ حذف نهائي</button>
+                  <button onclick="event.stopPropagation();revokeSupportPassword('fanni','${id}')" class="dropdown-item">✖ إلغاء كلمة الدعم الحالية</button>
+                  <button onclick="event.stopPropagation();archiveAccount('fanni','${id}','${escHtml(f.name||'')}')" class="dropdown-item text-amber-700">أرشفة الفني</button>
                 </div>
               `:''}
             </div>
@@ -80,7 +81,7 @@ function renderFannis(){
               </div>
             </div>
           `:''}
-          <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="openFanniProfileEditor('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-extrabold text-blue-800">✏️ تعديل البيانات</button><button type="button" onclick="viewFanniIdentityCard('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-extrabold text-emerald-800">🖼️ عرض الصور</button>${f.isApproved?'<button type="button" onclick="returnFanniToReview(\''+id+'\')" class="pill-btn soft-btn col-span-2">↩️ إعادة الفني إلى قيد المراجعة</button><button type="button" onclick="requestFanniChanges(\''+id+'\')" class="pill-btn danger-pill col-span-2">✏️ طلب تعديل بيانات أو صور</button>':''}</div>
+          <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="openFanniUnifiedProfile('${id}')" class="pill-btn primary-pill col-span-2">ملف الفني الموحد</button><button type="button" onclick="openFanniProfileEditor('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-extrabold text-blue-800">✏️ تعديل البيانات</button><button type="button" onclick="viewFanniIdentityCard('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-extrabold text-emerald-800">🖼️ عرض الصور</button>${f.isApproved?'<button type="button" onclick="returnFanniToReview(\''+id+'\')" class="pill-btn soft-btn col-span-2">↩️ إعادة الفني إلى قيد المراجعة</button><button type="button" onclick="requestFanniChanges(\''+id+'\')" class="pill-btn danger-pill col-span-2">✏️ طلب تعديل بيانات أو صور</button>':''}</div>
           <div class="mt-4 grid grid-cols-2 gap-2">
             <div class="rounded-[14px] bg-slate-50 border p-3"><p class="text-[10px] font-black text-slate-400">خدمات حمزاوي سات المعتمدة</p><p class="text-[11.5px] font-black mt-1 leading-6 whitespace-pre-wrap break-words">${escHtml((Array.isArray(f.activeSpecialties)?f.activeSpecialties:[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')}</p></div>
             <div class="rounded-[14px] bg-emerald-50 border border-emerald-100 p-3"><p class="text-[10px] font-black text-emerald-700">الرصيد</p><p class="text-[13px] font-black text-emerald-700 mt-1">${escHtml(String(f.balance??f.walletBalance??0))} ج</p></div>
@@ -285,4 +286,15 @@ async function revealSupportPassword(role, accountId) {
   } catch (error) {
     alert(error?.message || 'تعذر عرض كلمة الدعم.');
   }
+}
+
+async function revokeSupportPassword(role, accountId) {
+  if (!['client', 'fanni'].includes(role) || !/^[a-f0-9]{24}$/i.test(String(accountId || ''))) return showToast('بيانات الحساب غير صحيحة لإلغاء كلمة الدعم', 'error');
+  if (!confirm('إلغاء كلمة الدعم الحالية لهذا الحساب؟ لن يستطيع استخدامها بعد الإلغاء.')) return;
+  try {
+    const active = await tryApi(['/api/password-recovery/admin/support-passwords?role=' + encodeURIComponent(role) + '&accountId=' + encodeURIComponent(accountId)]);
+    if (!active?.id) throw new Error('لا توجد كلمة دعم صالحة لهذا الحساب.');
+    const result = await tryApi(['/api/password-recovery/admin/support-passwords/' + encodeURIComponent(active.id)], { method: 'DELETE' });
+    showToast(result?.message || 'تم إلغاء كلمة الدعم الحالية', 'success');
+  } catch (error) { showToast(error?.message || 'تعذر إلغاء كلمة الدعم', 'error'); }
 }

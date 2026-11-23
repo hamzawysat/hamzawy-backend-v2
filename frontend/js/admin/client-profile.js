@@ -54,6 +54,7 @@ async function openClientProfile(clientId) {
         <button onclick="setForcedPasswordChange('client','${clientProfileValue(c.phone)}',false)" class="pill-btn soft-btn">إلغاء الإلزام</button>
         <button onclick="issueSupportPassword('client','${clientProfileValue(c._id)}')" class="pill-btn soft-btn">إصدار كلمة دعم</button>
         <button onclick="revealSupportPassword('client','${clientProfileValue(c._id)}')" class="pill-btn soft-btn">عرض كلمة الدعم</button>
+         <button onclick="revokeSupportPassword('client','${clientProfileValue(c._id)}')" class="pill-btn danger-pill">إلغاء كلمة الدعم</button>
         <button onclick="createAdminClientSubscription('${clientProfileValue(c.phone)}')" class="pill-btn soft-btn">إدارة الاشتراك</button>
         <button onclick="addClientWalletBalance('${clientProfileValue(c._id)}')" class="pill-btn soft-btn">إضافة رصيد</button>
         <button onclick="deductClientWalletBalance('${clientProfileValue(c._id)}')" class="pill-btn soft-btn">خصم رصيد</button>
