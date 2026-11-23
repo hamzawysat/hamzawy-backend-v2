@@ -1214,6 +1214,38 @@ async function run() {
       assert.equal(afterAll.body.unreadCount, 0);
     });
 
+    await test('inactive notifications stay out of the inbox and refreshed store-order status replaces the old item', async () => {
+      const Notification = require('../models/Notification');
+      const { createNotification } = require('../utils/notifications');
+      const relatedEntityId = new mongoose.Types.ObjectId();
+      const dedupeKey = 'test-store-order-status:' + String(relatedEntityId);
+      const first = await createNotification({
+        recipientRole: 'client', recipientId: clientId, type: 'store_order_update',
+        title: 'طلب جديد', message: 'طلب جهاز: تم التواصل', link: '/client?tab=store',
+        dedupeKey, refreshExisting: true, relatedEntityType: 'store_order', relatedEntityId
+      });
+      assert.ok(first?._id);
+      await Notification.updateOne({ _id: first._id }, { $set: { readAt: new Date() } });
+      const refreshed = await createNotification({
+        recipientRole: 'client', recipientId: clientId, type: 'store_order_update',
+        title: 'تم اكتمال طلب المتجر', message: 'طلب جهاز: مكتمل',
+        link: '/client?tab=store', dedupeKey, refreshExisting: true,
+        relatedEntityType: 'store_order', relatedEntityId
+      });
+      assert.equal(String(refreshed._id), String(first._id), 'one notification record should be refreshed for this order');
+      assert.equal(refreshed.message, 'طلب جهاز: مكتمل');
+      assert.equal(refreshed.readAt, null, 'a status update should reset the current notification to unread');
+
+      await Notification.updateOne({ _id: refreshed._id }, { $set: { isActive: false } });
+      const inbox = await request(app).get('/api/notifications/client')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(inbox.status, 200);
+      assert.equal(inbox.body.notifications.some(item => item.id === String(refreshed._id)), false);
+      const readInactive = await request(app).patch('/api/notifications/client/' + refreshed._id + '/read')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(readInactive.status, 404, 'inactive notification cannot be marked read through the API');
+    });
+
     await test('second client receives a distinct account', async () => {
       const r = await request(app).post('/api/client/register').send({
         name: 'عميل اختبار ثان', phone: '01012345679',
