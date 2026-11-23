@@ -6,7 +6,8 @@
     "start": "node src/server.js",
     "test": "node src/tests/runTests.js",
     "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js && node src/tests/fanniRegistrationPrivacy.test.js && node src/tests/referral-download.test.js",
-    "build": "node scripts/build-frontend.js"
+    "build": "node scripts/build-frontend.js",
+    "cleanup:legacy-order-notifications": "node scripts/cleanup-legacy-order-notifications.js"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

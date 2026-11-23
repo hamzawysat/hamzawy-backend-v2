@@ -5,7 +5,7 @@ function renderAdminInbox(){
   const unread=Number(state.adminInboxUnread||0);
   let html='<div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">الوارد الإداري</p><p class="text-[10px] text-slate-500">تنبيهات موجهة لحساب الإدارة الحالي — غير المقروء: '+unread+'</p></div><div class="flex gap-2"><button type="button" onclick="loadAdminInbox()" class="pill-btn soft-btn">تحديث</button><button type="button" onclick="markAllAdminInboxRead()" class="pill-btn soft-btn">قراءة الكل</button></div></div><div id="admin-inbox-list" class="space-y-2">';
   if(!list.length)html+='<p class="p-4 text-center text-[11px] text-slate-500">لا توجد تنبيهات واردة حاليًا.</p>';
-  list.forEach(item=>{html+='<button type="button" data-admin-inbox-id="'+escHtml(item.id)+'" onclick="openAdminInboxNotification(this.dataset.adminInboxId)" class="block w-full rounded-xl border p-3 text-right '+(item.read?'border-slate-200 bg-white':'border-blue-200 bg-blue-50')+'"><b class="block text-[11px] font-black">'+escHtml(item.title||'تنبيه إداري')+'</b><span class="mt-1 block text-[10px] leading-5 text-slate-700">'+escHtml(item.message||'')+'</span><small class="mt-1 block text-[9px] text-slate-500">'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</small></button>';});
+  list.forEach(item=>{const id=escHtml(item.id);html+='<article class="flex items-start gap-2 rounded-xl border p-3 '+(item.read?'border-slate-200 bg-white':'border-blue-200 bg-blue-50')+'"><button type="button" data-admin-inbox-id="'+id+'" onclick="openAdminInboxNotification(this.dataset.adminInboxId)" class="min-w-0 flex-1 text-right"><b class="block text-[11px] font-black">'+escHtml(item.title||'تنبيه إداري')+'</b><span class="mt-1 block text-[10px] leading-5 text-slate-700">'+escHtml(item.message||'')+'</span><small class="mt-1 block text-[9px] text-slate-500">'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</small></button><button type="button" data-admin-inbox-dismiss="'+id+'" onclick="dismissAdminInboxNotification(this.dataset.adminInboxDismiss)" class="shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-600" aria-label="إغلاق الإشعار">إغلاق ✕</button></article>';});
   return html+'</div>';
 }
 async function loadAdminInbox(){
@@ -16,6 +16,19 @@ async function loadAdminInbox(){
 async function markAllAdminInboxRead(){
   try{await tryApi(['/api/notifications/admin/read-all'],{method:'PATCH'});state.adminInboxNotifications=(state.adminInboxNotifications||[]).map(item=>({...item,read:true}));state.adminInboxUnread=0;const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
   catch(e){showToast(e.message||'تعذر تعليم التنبيهات كمقروءة','error');}
+}
+async function dismissAdminInboxNotification(id){
+  const item=(state.adminInboxNotifications||[]).find(entry=>String(entry.id)===String(id));
+  if(!item)return;
+  if(!item.read){
+    try{await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});}
+    catch(error){showToast(error.message||'تعذر تسجيل قراءة الإشعار','error');return;}
+    item.read=true;
+    state.adminInboxUnread=Math.max(0,Number(state.adminInboxUnread||0)-1);
+  }
+  state.adminInboxNotifications=(state.adminInboxNotifications||[]).filter(entry=>String(entry.id)!==String(id));
+  const root=document.getElementById('admin-inbox-list');
+  if(root)root.outerHTML=renderAdminInbox();
 }
 async function openAdminInboxNotification(id){
   const item=(state.adminInboxNotifications||[]).find(entry=>String(entry.id)===String(id));if(!item)return;

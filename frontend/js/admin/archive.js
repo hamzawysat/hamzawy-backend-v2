@@ -95,8 +95,8 @@ function renderArchive() {
       <div class="premium-panel p-4 space-y-3">
         <div><h2 class="text-[14px] font-black">الأرشيف المركزي</h2><p class="text-[11px] text-slate-500 mt-1">الحسابات المؤرشفة فقط. الاستعادة لا تمسح السجلات التاريخية.</p></div>
         <div class="grid grid-cols-2 gap-2">
-          ${canClients ? '<button onclick="setArchiveType(\'clients\')" class="pill-btn '+(type==='clients'?'primary-pill':'soft-btn')+'">أرشيف العملاء</button>' : ''}
-          ${canFannis ? '<button onclick="setArchiveType(\'fannis\')" class="pill-btn '+(type==='fannis'?'primary-pill':'soft-btn')+'">أرشيف الفنيين</button>' : ''}
+          ${canClients ? '<button onclick="setArchiveType(\'clients\')" class="pill-btn '+(type==='clients'?'primary-pill':'soft-btn')+'">عملاء مؤرشفون</button>' : ''}
+          ${canFannis ? '<button onclick="setArchiveType(\'fannis\')" class="pill-btn '+(type==='fannis'?'primary-pill':'soft-btn')+'">فنيين مؤرشفين</button>' : ''}
         </div>
         <div class="flex gap-2"><input id="archive-search" value="${escHtml(state.archiveSearch||'')}" class="field flex-1" placeholder="ابحث بالاسم أو رقم الهاتف" onkeydown="if(event.key==='Enter')searchArchive()"><button onclick="searchArchive()" class="pill-btn primary-pill">بحث</button></div>
         <div class="flex justify-between text-[10px] text-slate-500"><span>إجمالي النتائج: ${Number(state.archiveTotal||0).toLocaleString('ar-EG')}</span><button onclick="loadArchive(state.archiveType,state.archivePage)" class="font-black text-blue-700">تحديث</button></div>

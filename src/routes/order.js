@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const Order = require('../models/Order');
 const Service = require('../models/Service');
 const Client = require('../models/Client');
-const { createNotification, notifyAdmins } = require('../utils/notifications');
+const { createNotification, notifyAdmins, dismissOrderNotifications } = require('../utils/notifications');
 const Fanni = require('../models/Fanni');
 const Region = require('../models/Region');
 const { AREA_OPTIONS, normalizeArea, getEffectiveAreaOptions } = require('../config/areas');
@@ -226,7 +226,7 @@ function getAcceptedOffer(order, offerId) {
 router.use(createOrderLifecycleRouter({
   mongoose, Order, WalletTransaction, Fanni, auth, validSN, verifyClientToken,
   ACTIVE_STATUSES, currentPricing, DEFAULT_COMMISSION_RATE, money, getAcceptedOffer,
-  publicOrder, createNotification, notifyAdmins, hasAcceptedGuidelines, autoPromoteFanni, sanitizeText
+  publicOrder, createNotification, notifyAdmins, dismissOrderNotifications, hasAcceptedGuidelines, autoPromoteFanni, sanitizeText
 }));
 router.use(createOrderRatingRouter({
   Joi, Order, validSN, verifyClientToken, jwt, Fanni, Rating, normalizePhone,

@@ -3,7 +3,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { normalizeStoreCategoryName, buildStoreCategories } = require('../../utils/storeCategories');
-const Notification = require('../../models/Notification');
+const { dismissStoreOrderNotifications } = require('../../utils/notifications');
 
 function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTransaction, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
@@ -408,10 +408,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       if (['مكتمل', 'مرفوض', 'ملغي'].includes(order.status)) {
         // The original admin alert is keyed by order ID. Retire it only when
         // that exact order reaches a terminal state; other orders stay visible.
-        await Notification.updateMany({
-          recipientRole: 'admin',
-          dedupeKey: new RegExp('^store-order:' + String(order._id) + ':')
-        }, { $set: { isActive: false, readAt: new Date() } })
+        await dismissStoreOrderNotifications(order._id, order)
           .catch(error => console.error('Could not retire terminal store-order notification:', error.message));
       }
       const refundMessage = refundAmount > 0

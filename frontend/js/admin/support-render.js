@@ -9,6 +9,7 @@ function renderSupport(){
  ${(result.orders||[]).map(o=>`<article class="premium-card p-3"><p class="font-black">طلب ${escHtml(o.sn)} — ${escHtml(o.clientName||'عميل')} — ${escHtml(o.clientPhone||'')}</p><div class="mt-1">${renderWhatsAppButton(o.clientPhone)}</div><p class="text-[10px] text-slate-500">${escHtml(o.service||'')} • ${escHtml(o.status||'')}</p><button onclick="markSupportReview('${escHtml(o.sn)}')" class="pill-btn soft-btn mt-2">وضع علامة مراجعة</button></article>`).join('')}
  ${(result.complaints||[]).map(c=>`<article class="premium-card p-3"><p class="font-black">شكوى ${escHtml(c.sn)} — ${escHtml(c.clientName||'')}</p><p class="text-[10px] text-slate-600">${escHtml(c.text||'')}</p><p class="text-[10px]">الحالة: ${escHtml(c.status||'')}</p><button onclick="markSupportReview('${escHtml(c.sn)}')" class="pill-btn soft-btn mt-2">وضع علامة مراجعة</button></article>`).join('')}
  ${state.supportViolations?.length?`<div class="premium-panel p-4"><h3 class="font-black mb-2">سجل إجراءات الدعم</h3>${state.supportViolations.map(v=>`<p class="border-b py-2 text-[10px]">${escHtml(v.action)} — ${escHtml(v.target)} • ${escHtml(v.createdAt?new Date(v.createdAt).toLocaleString('ar-EG-u-ca-gregory',{calendar:'gregory',timeZone:'Africa/Cairo'}):'')}</p>`).join('')}</div>`:''}
+ ${renderAdminSupportQueues()}
  </section>`;
 }
 

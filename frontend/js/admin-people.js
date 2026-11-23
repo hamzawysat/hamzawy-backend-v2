@@ -66,6 +66,7 @@ function renderFannis(){
                   <button onclick="event.stopPropagation();setForcedPasswordChange('fanni','${id}',false)" class="dropdown-item">↩️ إلغاء إلزام تغيير كلمة المرور</button>
                   <button onclick="event.stopPropagation();issueSupportPassword('fanni','${id}')" class="dropdown-item">🛟 إصدار كلمة دعم لمرة واحدة</button>
                   <button onclick="event.stopPropagation();revealSupportPassword('fanni','${id}')" class="dropdown-item">👁 عرض كلمة الدعم الحالية</button>
+                  <button onclick="event.stopPropagation();revokeSupportPassword('fanni','${id}')" class="dropdown-item">✖ إلغاء كلمة الدعم الحالية</button>
                   <button onclick="event.stopPropagation();archiveAccount('fanni','${id}','${escHtml(f.name||'')}')" class="dropdown-item text-amber-700">أرشفة الفني</button>
                 </div>
               `:''}
@@ -285,4 +286,15 @@ async function revealSupportPassword(role, accountId) {
   } catch (error) {
     alert(error?.message || 'تعذر عرض كلمة الدعم.');
   }
+}
+
+async function revokeSupportPassword(role, accountId) {
+  if (!['client', 'fanni'].includes(role) || !/^[a-f0-9]{24}$/i.test(String(accountId || ''))) return showToast('بيانات الحساب غير صحيحة لإلغاء كلمة الدعم', 'error');
+  if (!confirm('إلغاء كلمة الدعم الحالية لهذا الحساب؟ لن يستطيع استخدامها بعد الإلغاء.')) return;
+  try {
+    const active = await tryApi(['/api/password-recovery/admin/support-passwords?role=' + encodeURIComponent(role) + '&accountId=' + encodeURIComponent(accountId)]);
+    if (!active?.id) throw new Error('لا توجد كلمة دعم صالحة لهذا الحساب.');
+    const result = await tryApi(['/api/password-recovery/admin/support-passwords/' + encodeURIComponent(active.id)], { method: 'DELETE' });
+    showToast(result?.message || 'تم إلغاء كلمة الدعم الحالية', 'success');
+  } catch (error) { showToast(error?.message || 'تعذر إلغاء كلمة الدعم', 'error'); }
 }

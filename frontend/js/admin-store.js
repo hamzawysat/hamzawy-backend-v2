@@ -277,6 +277,48 @@ async function loadStoreOrderCount(silent=false){
     if(!silent&&state.pageMode==='home')render();
   }catch(_){}
 }
+async function dismissStoreAdminNotification(id,button){
+  id=String(id||'').trim();
+  if(!id)return;
+  const card=button?.closest('[data-store-order-notification]');
+  if(button)button.disabled=true;
+  try{
+    await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});
+    let saved=[];
+    try{
+      const current=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');
+      if(Array.isArray(current))saved=current.map(String);
+    }catch(_){}
+    saved=Array.from(new Set([...saved,id])).slice(-300);
+    try{localStorage.setItem('sonaa.admin.storeOrderNotificationRead.v2',JSON.stringify(saved));}catch(_){}
+    state.seenStoreOrderNotificationIds=(state.seenStoreOrderNotificationIds||[]).filter(value=>String(value)!==id);
+    card?.remove();
+    const root=document.getElementById('toast');
+    if(root&&!root.querySelector('[data-store-order-notification]'))root.innerHTML='';
+  }catch(error){
+    if(error?.status===404){
+      let saved=[];
+      try{const current=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');if(Array.isArray(current))saved=current.map(String);}catch(_){}
+      try{localStorage.setItem('sonaa.admin.storeOrderNotificationRead.v2',JSON.stringify(Array.from(new Set([...saved,id])).slice(-300)));}catch(_){}
+      card?.remove();
+      return;
+    }
+    if(button)button.disabled=false;
+    if(card){
+      let note=card.querySelector('[data-dismiss-error]');
+      if(!note){note=document.createElement('p');note.dataset.dismissError='';note.className='mt-2 text-[10px] font-bold';card.appendChild(note);}
+      note.textContent=error.message||'تعذر تسجيل قراءة الإشعار. حاول مرة أخرى.';
+    }else showToast(error.message||'تعذر تسجيل قراءة إشعار الطلب في الخادم','error');
+  }
+}
+function showStoreAdminNotificationToasts(items){
+  const root=document.getElementById('toast');
+  if(!root||!Array.isArray(items)||!items.length)return;
+  root.innerHTML='<div class="pointer-events-auto mx-auto max-w-[640px] space-y-2">'+items.map(item=>{
+    const id=escHtml(item.id);
+    return '<article data-store-order-notification="'+id+'" class="rounded-[16px] border border-amber-200 bg-amber-500 px-4 py-3.5 text-white shadow-2xl"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><b class="block text-[12px] font-black">'+escHtml(item.title||'طلب متجر جديد')+'</b><p class="mt-1 text-[11px] leading-5">'+escHtml(item.message||'')+'</p></div><button type="button" data-store-order-dismiss="'+id+'" onclick="dismissStoreAdminNotification(this.dataset.storeOrderDismiss,this)" class="shrink-0 rounded-lg bg-white/20 px-3 py-2 text-[10px] font-black" aria-label="إغلاق الإشعار">إغلاق</button></div></article>';
+  }).join('')+'</div>';
+}
 async function pollStoreAdminNotifications(){
   if(storeAdminNotificationsPollInFlight)return;
   storeAdminNotificationsPollInFlight=true;
@@ -286,20 +328,23 @@ async function pollStoreAdminNotifications(){
     const fresh=items.filter(item=>item.type==='admin_store_order'&&!item.read);
     let persisted=[];
     try{
-      const saved=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationSeen.v1')||'[]');
+      const saved=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');
       if(Array.isArray(saved))persisted=saved.map(String);
     }catch(_){}
-    const seen=new Set([...(state.seenStoreOrderNotificationIds||[]),...persisted]);
+    const readIds=new Set(persisted);
+    const shownIds=new Set((state.seenStoreOrderNotificationIds||[]).map(String));
     const initialized=state.storeAdminNotificationsInitialized===true;
     if(initialized){
-      fresh.filter(item=>!seen.has(String(item.id))).slice(0,3).forEach(item=>{
-        showToast((item.title||'طلب متجر جديد')+' — '+(item.message||''),'warning');
-      });
+      const toShow=fresh.filter(item=>!readIds.has(String(item.id))&&!shownIds.has(String(item.id))).slice(0,3);
+      if(toShow.length){
+        showStoreAdminNotificationToasts(toShow);
+        state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...toShow.map(item=>String(item.id))])).slice(-200);
+      }
+    }else{
+      // Establish a silent baseline once per page load; do not replay old unread alerts on the next poll.
+      state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...fresh.map(item=>String(item.id))])).slice(-200);
     }
-    const ids=items.map(item=>String(item.id)).filter(Boolean);
-    state.seenStoreOrderNotificationIds=Array.from(new Set([...seen,...ids])).slice(-200);
     state.storeAdminNotificationsInitialized=true;
-    try{localStorage.setItem('sonaa.admin.storeOrderNotificationSeen.v1',JSON.stringify(state.seenStoreOrderNotificationIds));}catch(_){}
   }catch(_){
   }finally{
     storeAdminNotificationsPollInFlight=false;

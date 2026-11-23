@@ -111,7 +111,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
   position:absolute;top:calc(100% + 8px);left:0;right:auto;z-index:90;
   display:flex!important;flex-direction:column!important;align-items:stretch!important;
   gap:6px!important;width:min(280px,calc(100vw - 24px));max-width:calc(100vw - 24px);
-  max-height:min(68vh,560px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  max-height:min(60vh,560px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   padding:10px;box-sizing:border-box;
   border:1px solid #dbe5f1;border-radius:14px;background:#fff;
   box-shadow:0 14px 34px rgba(11,27,58,.2);direction:rtl;
@@ -312,3 +312,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
   color: #1E5BE6 !important;
   -webkit-text-fill-color: #1E5BE6 !important;
 }
+
+/* Admin navigation sections: distinct cards with predictable spacing. */
+.section-nav{align-items:start;gap:14px}
+.section-nav-group{display:flex;flex-direction:column;align-self:start;min-width:0;margin:0;padding:12px!important}
+.section-nav-heading{margin:0 0 12px!important;padding:0 2px 10px!important}
+.section-nav-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px!important;align-content:start}
+.section-nav-items>div{min-width:0}
+.section-nav-btn{min-width:0;min-height:54px!important}
+@media(max-width:420px){.section-nav{grid-template-columns:1fr;gap:12px}.section-nav-items{grid-template-columns:repeat(2,minmax(0,1fr))}}
+/* Compact action menu; outside clicks and Escape close it without a screen-covering backdrop. */
+#admin-tab-content .action-wrap{position:relative;z-index:61}
+#admin-tab-content .dropdown-menu{width:280px!important;max-width:calc(100vw - 24px)!important;max-height:60vh!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain}
