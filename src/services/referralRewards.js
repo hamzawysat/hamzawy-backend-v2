@@ -13,7 +13,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
   const completedQuery = Order.find(kind === 'client'
     ? { clientAccount: inviteeId, status: 'تم الانتهاء' }
     : { assignedFanni: inviteeId, status: 'تم الانتهاء' })
-    .select('_id sn completionDeclaredAt createdAt')
+    .select('_id sn completionDeclaredAt createdAt assignedFanni clientAccount clientPhone')
     .sort({ completionDeclaredAt: 1, createdAt: 1 })
     .lean();
   if (suppliedSession) completedQuery.session(suppliedSession);
@@ -61,6 +61,36 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
           riskFlags.push('same_registration_device_signature');
         }
       }
+
+      // A self-generated job between a referred account and its counterparty is
+      // another reward-abuse path. Shared networks are only a review signal.
+      const counterpartyIds = [...new Set(completedOrders
+        .map(order => kind === 'client' ? order.assignedFanni : order.clientAccount)
+        .filter(Boolean).map(String))];
+      if (counterpartyIds.length) {
+        const CounterpartyModel = kind === 'client' ? Fanni : Client;
+        const counterparties = await CounterpartyModel.find({ _id: { $in: counterpartyIds } })
+          .select('phone +registrationIpHash +registrationUserAgentHash')
+          .session(session).lean();
+        const byId = new Map(counterparties.map(account => [String(account._id), account]));
+        for (const order of completedOrders) {
+          const counterpartyId = kind === 'client' ? order.assignedFanni : order.clientAccount;
+          const counterparty = counterpartyId ? byId.get(String(counterpartyId)) : null;
+          if (!counterparty) continue;
+          if (inviteePhone && String(counterparty.phone || '').trim() === inviteePhone) {
+            riskFlags.push('same_order_party_phone');
+          }
+          if (invitee.registrationIpHash && counterparty.registrationIpHash &&
+              invitee.registrationIpHash === counterparty.registrationIpHash) {
+            riskFlags.push('same_order_counterparty_ip');
+            if (invitee.registrationUserAgentHash && counterparty.registrationUserAgentHash &&
+                invitee.registrationUserAgentHash === counterparty.registrationUserAgentHash) {
+              riskFlags.push('same_order_counterparty_device_signature');
+            }
+          }
+        }
+      }
+
       if (kind === 'fanni') {
         const sharedIdentity = await FanniCardLedger.findOne({
           $and: [
