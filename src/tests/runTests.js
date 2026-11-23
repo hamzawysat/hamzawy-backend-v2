@@ -3205,6 +3205,151 @@ async function run() {
       assert.deepEqual(preservedLedger.linkedTechnicians.map(link => String(link.fanniId)), [String(otherLinked._id)]);
     });
 
+    await test('client and technician archives preserve account identity, reject destructive routes, and restore safely', async () => {
+      const Client = require('../models/Client');
+      const Fanni = require('../models/Fanni');
+      const client = await Client.create({
+        name: 'عميل اختبار الأرشيف', phone: '01055550101', passwordHash: 'archive-test-hash',
+        walletBalance: 125, status: 'نشط'
+      });
+      const frontId = new mongoose.Types.ObjectId();
+      const backId = new mongoose.Types.ObjectId();
+      const photoId = new mongoose.Types.ObjectId();
+      const fanni = await Fanni.create({
+        name: 'فني اختبار الأرشيف', phone: '01055550102', passwordHash: 'archive-test-hash',
+        specialties: ['اختبار'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni',
+        walletBalance: 75, identityCardFrontFileId: frontId,
+        identityCardBackFileId: backId, profilePhotoFileId: photoId
+      });
+
+      const missingReason = await request(app)
+        .post('/api/admin/clients/' + client._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({});
+      assert.equal(missingReason.status, 400, 'archive reason must be mandatory');
+
+      const archivedClient = await request(app)
+        .post('/api/admin/clients/' + client._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'طلب الإدارة إيقاف الحساب مؤقتًا للاختبار.' });
+      assert.equal(archivedClient.status, 200, JSON.stringify(archivedClient.body));
+      const clientAfterArchive = await Client.findById(client._id).lean();
+      assert.ok(clientAfterArchive.archivedAt);
+      assert.equal(clientAfterArchive.archiveReason, 'طلب الإدارة إيقاف الحساب مؤقتًا للاختبار.');
+      assert.ok(clientAfterArchive.archivedBy);
+      assert.ok(clientAfterArchive.archivedByName);
+      assert.equal(clientAfterArchive.walletBalance, 125);
+      assert.equal(clientAfterArchive.tokenVersion, 1);
+
+      const duplicateClientArchive = await request(app)
+        .post('/api/admin/clients/' + client._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'محاولة أرشفة مكررة.' });
+      assert.equal(duplicateClientArchive.status, 409);
+      const archivedClientLogin = await request(app).post('/api/client/login')
+        .send({ phone: client.phone, password: 'archive-test-hash' });
+      assert.equal(archivedClientLogin.status, 403);
+      assert.equal(archivedClientLogin.body.code, 'ACCOUNT_ARCHIVED');
+
+      const oldClientDelete = await request(app).delete('/api/admin/clients/' + client.phone + '/account')
+        .set('Authorization', 'Bearer ' + adminToken);
+      const oldClientDeleteByPhone = await request(app).delete('/api/admin/clients/' + client.phone)
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(oldClientDelete.status, 410);
+      assert.equal(oldClientDeleteByPhone.status, 410);
+      assert.ok(await Client.exists({ _id: client._id }), 'legacy delete endpoints must not delete client accounts');
+
+      const archivedClientList = await request(app).get('/api/admin/clients/archive?search=' + encodeURIComponent(client.phone))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(archivedClientList.status, 200, JSON.stringify(archivedClientList.body));
+      assert.equal(archivedClientList.body.total, 1);
+      assert.equal(String(archivedClientList.body.items[0]._id), String(client._id));
+
+      const notArchivedRestore = await request(app)
+        .post('/api/admin/clients/' + secondClientToken + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.ok([400, 404, 409].includes(notArchivedRestore.status), 'restore must reject a non-archived/invalid account reference');
+
+      const restoredClient = await request(app)
+        .post('/api/admin/clients/' + client._id + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(restoredClient.status, 200, JSON.stringify(restoredClient.body));
+      const clientAfterRestore = await Client.findById(client._id).lean();
+      assert.equal(String(clientAfterRestore._id), String(client._id));
+      assert.equal(clientAfterRestore.archivedAt, null);
+      assert.equal(clientAfterRestore.archiveReason, '');
+      assert.equal(clientAfterRestore.walletBalance, 125);
+      assert.equal(clientAfterRestore.tokenVersion, 2);
+      const duplicateClientRestore = await request(app)
+        .post('/api/admin/clients/' + client._id + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(duplicateClientRestore.status, 409);
+
+      const archivedFanni = await request(app)
+        .post('/api/admin/fannis/' + fanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'إيقاف ملف الفني مؤقتًا للاختبار.' });
+      assert.equal(archivedFanni.status, 200, JSON.stringify(archivedFanni.body));
+      const fanniAfterArchive = await Fanni.findById(fanni._id)
+        .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
+      assert.ok(fanniAfterArchive.archivedAt);
+      assert.equal(fanniAfterArchive.walletBalance, 75);
+      assert.equal(String(fanniAfterArchive.identityCardFrontFileId), String(frontId));
+      assert.equal(String(fanniAfterArchive.identityCardBackFileId), String(backId));
+      assert.equal(String(fanniAfterArchive.profilePhotoFileId), String(photoId));
+
+      const oldFanniDelete = await request(app).delete('/api/admin/fannis/' + fanni._id)
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(oldFanniDelete.status, 410);
+      assert.ok(await Fanni.exists({ _id: fanni._id }), 'legacy delete endpoint must not delete technician accounts');
+
+      const archivedFanniList = await request(app).get('/api/admin/fannis/archive?search=' + encodeURIComponent(fanni.phone))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(archivedFanniList.status, 200, JSON.stringify(archivedFanniList.body));
+      assert.equal(archivedFanniList.body.total, 1);
+
+      const archivedFanniLogin = await request(app).post('/api/fanni/login')
+        .send({ phone: fanni.phone, password: 'archive-test-hash' });
+      assert.equal(archivedFanniLogin.status, 403);
+      assert.equal(archivedFanniLogin.body.code, 'ACCOUNT_ARCHIVED');
+
+      const restoredFanni = await request(app)
+        .post('/api/admin/fannis/' + fanni._id + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(restoredFanni.status, 200, JSON.stringify(restoredFanni.body));
+      const fanniAfterRestore = await Fanni.findById(fanni._id)
+        .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
+      assert.equal(String(fanniAfterRestore._id), String(fanni._id));
+      assert.equal(fanniAfterRestore.archivedAt, null);
+      assert.equal(fanniAfterRestore.walletBalance, 75);
+      assert.equal(String(fanniAfterRestore.identityCardFrontFileId), String(frontId));
+      assert.equal(String(fanniAfterRestore.identityCardBackFileId), String(backId));
+      assert.equal(String(fanniAfterRestore.profilePhotoFileId), String(photoId));
+    });
+
+    await test('active client list is paginated and contains registered Client accounts only', async () => {
+      const Client = require('../models/Client');
+      await Client.create([
+        { name: 'عميل صفحة أولى', phone: '01055550201', passwordHash: 'test-hash' },
+        { name: 'عميل صفحة ثانية', phone: '01055550202', passwordHash: 'test-hash' }
+      ]);
+      await require('../models/Order').create({
+        sn: 'SNARCHIVEONLY01', service: 'اختبار', area: 'القاهرة',
+        clientName: 'سجل طلب بلا صف عميل', clientPhone: '01055550299',
+        status: 'تم النشر'
+      });
+      const pageOne = await request(app).get('/api/admin/clients?page=1&limit=1')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(pageOne.status, 200, JSON.stringify(pageOne.body));
+      assert.equal(pageOne.body.limit, 1);
+      assert.ok(pageOne.body.total >= 2);
+      assert.equal(pageOne.body.items.length, 1);
+      assert.equal(pageOne.body.items[0].registered, true);
+      const orderOnly = await request(app).get('/api/admin/clients?search=01055550299')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(orderOnly.status, 200, JSON.stringify(orderOnly.body));
+      assert.equal(orderOnly.body.total, 0, 'an order phone must not create a synthetic client account');
+    });
+
     await test('unknown API route returns JSON 404', async () => {
       const r = await request(app).get('/api/route-that-does-not-exist');
       assert.equal(r.status, 404);
