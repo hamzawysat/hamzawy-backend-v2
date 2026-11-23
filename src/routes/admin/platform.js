@@ -239,16 +239,12 @@ function createAdminPlatformRouter({
       const limit = Number.isInteger(limitValue) && limitValue > 0 ? Math.min(limitValue, 100) : 25;
       const filter = { archivedAt: null };
       if (search.length >= 2) {
-        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\      if (search.length >= 2) {
         const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const rx = new RegExp(escaped, 'i');
-        filter.$or = [{ name: rx }, { phone: rx }];
-      }');
         const rx = new RegExp(escaped, 'i');
         const accountMatches = [{ name: rx }, { phone: rx }];
         // Order numbers are lookup keys only: resolve them to a real Client account
         // and never create or return a synthetic customer row.
-        if (/^SN\\d{6}$/i.test(search)) {
+        if (/^SN\d{6}$/i.test(search)) {
           const matchedOrder = await Order.findOne({ sn: search.toUpperCase() })
             .select('clientAccount clientPhone').lean();
           if (matchedOrder?.clientAccount) accountMatches.push({ _id: matchedOrder.clientAccount });
