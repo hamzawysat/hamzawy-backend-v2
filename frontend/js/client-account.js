@@ -55,7 +55,7 @@ async function shareClientReferralLink(){
   '',
   '📲 تحميل التطبيق:',
   downloadUrl.toString()
- ].join('\\n');
+ ].join('\n');
  try{if(navigator.share)await navigator.share({title:'دعوة حمزاوي سات',text});else{await navigator.clipboard.writeText(text);showToast('تم نسخ رسالة الدعوة','success');}}
  catch(error){if(error?.name!=='AbortError')showToast('تعذرت مشاركة الرابط','error');}
 }
