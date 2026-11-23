@@ -3089,6 +3089,22 @@ async function run() {
       assert.ok(!fingerprintOutcome.riskFlags.includes('same_registration_ip'), 'different inviter and invitee networks must not be flagged as the same signup network');
       assert.deepEqual((await Client.find({ _id: { $in: fingerprintClients.map(x => x._id) } }).sort({ phone: 1 }).lean()).map(x => x.walletBalance), [0, 0]);
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
+      const heldFingerprintReferral = await Referral.findOne({ number: 'RFTESTFINGERPRINT' }).lean();
+      const directReject = await request(app)
+        .post('/api/referrals/admin/' + String(heldFingerprintReferral._id) + '/reject')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'رفض قبل مراجعة الأمان' });
+      assert.equal(directReject.status, 409, 'a flagged referral must not use the ordinary rejection action');
+      const reviewedReject = await request(app)
+        .post('/api/referrals/admin/' + String(heldFingerprintReferral._id) + '/reject-risk')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'تمت مراجعة علاقة الطلب والأجهزة يدويًا.' });
+      assert.equal(reviewedReject.status, 200, JSON.stringify(reviewedReject.body));
+      const rejectedFingerprintReferral = await Referral.findById(heldFingerprintReferral._id).lean();
+      assert.equal(rejectedFingerprintReferral.status, 'rejected');
+      assert.deepEqual(rejectedFingerprintReferral.riskFlags, []);
+      assert.ok(rejectedFingerprintReferral.riskReviewedFlags.includes('same_order_counterparty_ip'));
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
 
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
