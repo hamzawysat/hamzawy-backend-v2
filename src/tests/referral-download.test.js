@@ -17,7 +17,7 @@ const clientAccount = fs.readFileSync(path.join(root, 'frontend/js/client-accoun
 const clientPage = fs.readFileSync(path.join(root, 'frontend/client.html'), 'utf8');
 assert.match(clientAccount, /function clientDownloadUrl\(\)[\s\S]*?searchParams\.set\('ref',code\)/, 'client page download URL must preserve a valid referral code from the current page URL');
 assert.match(clientAccount, /href=\"'\+escAttr\(clientDownloadUrl\(\)\)\+'/,'client download button must use the referral-aware URL');
-assert.match(clientPage, /client-account\.js\?v=20261123-client-download-referral1/, 'client account script cache key must be bumped for referral-link fix');
+assert.match(clientPage, /client-account\.js\?v=20261124-referral-disable1/, 'client account script cache key must be bumped for referral-link fix');
 assert.match(source, /HAMZAWY_CLIENT_REFERRAL:/, 'download page must copy the client referral marker understood by the Android app');
 assert.match(source, /clientCode/);
 assert.match(built, /HAMZAWY_CLIENT_REFERRAL:/, 'built production download page must include client referral handoff');
@@ -27,6 +27,18 @@ assert.match(source, /data-continue-download/, 'clipboard-denied browsers must h
 assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production download page must include referral handoff');
 assert.doesNotMatch(source, /\\\\n<div class="referral-notice"/, 'HTML must not contain literal escaped newline sequences');
 
+
+const clientRender = fs.readFileSync(path.join(root, 'frontend/js/client-render.js'), 'utf8');
+const fanniDashboard = fs.readFileSync(path.join(root, 'frontend/js/fanni-dashboard.js'), 'utf8');
+const adminReferrals = fs.readFileSync(path.join(root, 'frontend/js/admin-referrals.js'), 'utf8');
+const referralRoutes = fs.readFileSync(path.join(root, 'src/routes/referrals.js'), 'utf8');
+const referralModel = fs.readFileSync(path.join(root, 'src/models/Referral.js'), 'utf8');
+assert.match(clientAccount, /if\(!clientReferralInfo\?\.enabled\)return '';/, 'client referral card must disappear when the service is disabled');
+assert.match(clientRender, /clientReferralInfo\?\.enabled \?/, 'client home card must be conditional on the live referral setting');
+assert.match(fanniDashboard, /if\(!fanniReferralInfo\?\.enabled\)return '';/, 'technician referral card must disappear when the service is disabled');
+assert.match(adminReferrals, /cancelReferral\(this\.dataset\.id\)/, 'admin referral list must expose individual cancellation');
+assert.match(referralRoutes, /router\.post\('\/admin\/:id\/cancel'/, 'backend must expose the admin cancellation endpoint');
+assert.match(referralModel, /'rejected', 'cancelled'/, 'referral schema must persist the cancelled state');
 
 const technicianActions = fs.readFileSync(path.join(root, 'frontend/js/fanni-app-only-actions.js'), 'utf8');
 const technicianPage = fs.readFileSync(path.join(root, 'frontend/fanni.html'), 'utf8');
