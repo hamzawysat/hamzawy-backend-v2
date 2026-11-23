@@ -27,4 +27,16 @@ assert.match(source, /data-continue-download/, 'clipboard-denied browsers must h
 assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production download page must include referral handoff');
 assert.doesNotMatch(source, /\\\\n<div class="referral-notice"/, 'HTML must not contain literal escaped newline sequences');
 
-console.log('Technician referral APK download handoff checks passed.');
+
+const technicianActions = fs.readFileSync(path.join(root, 'frontend/js/fanni-app-only-actions.js'), 'utf8');
+const technicianPage = fs.readFileSync(path.join(root, 'frontend/fanni.html'), 'utf8');
+assert.match(technicianPage, /fanni-app-only-actions\\.js/, 'technician dashboard must load the referral handoff script');
+assert.match(technicianActions, /fetch\\('\/api\/referrals\/prepare-fanni'/, 'technician invite must be converted into a server-side single-use claim');
+assert.match(technicianActions, /action=register&claim=/, 'technician app deep link must carry the claim token');
+assert.match(technicianActions, /DOWNLOAD_URL\\+'\\?claim='/, 'APK fallback must preserve the claim token');
+assert.match(source, /releases\\/download\\/1\\.0\\.15\\/hamzawy-sat-modern\\.apk/, 'download page must serve the current tested APK release');
+assert.match(source, /releases\\/tag\\/1\\.0\\.15/, 'download page release label must match the APK version');
+assert.match(built, /releases\\/download\\/1\\.0\\.15\\/hamzawy-sat-modern\\.apk/, 'built production download page must serve the same current APK');
+assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production page must hand off technician claim tokens');
+
+console.log('Client and technician referral APK download handoff checks passed.');
