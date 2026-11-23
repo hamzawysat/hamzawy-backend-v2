@@ -24,6 +24,7 @@ const { clientAuth } = require('../middleware/clientAuth');
 const { normalizePhone } = require('../utils/phone');
 
 const { notifyAdmins, createNotification } = require('../utils/notifications');
+const { referralFingerprint } = require('../utils/referralFingerprint');
 
 const router = express.Router();
 
@@ -149,6 +150,7 @@ router.post('/register', async (req, res, next) => {
     if (existing || existingFanni) return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل. سجّل الدخول بدل إنشاء حساب جديد.' });
 
     const passwordHash = await bcrypt.hash(value.password, 12);
+    const signupFingerprint = referralFingerprint(req);
     let client;
     const session = await mongoose.startSession();
     try {
@@ -179,7 +181,7 @@ router.post('/register', async (req, res, next) => {
             usedCode = decoded.code;
           }
         }
-        const created = await Client.create([{ _id: clientId, name: value.name, phone, passwordHash }], { session });
+        const created = await Client.create([{ _id: clientId, name: value.name, phone, passwordHash, ...signupFingerprint }], { session });
         client = created[0];
         if (inviterId) {
           const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
