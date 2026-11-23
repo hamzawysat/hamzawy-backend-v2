@@ -98,7 +98,7 @@ router.post('/orders/:sn/cancel', auth('admin'), validate(Joi.object({
     order.adminActionAt = new Date();
     order.adminActionBy = adminName(req);
     await order.save();
-    await dismissOrderNotifications(order._id);
+    await dismissOrderNotifications(order._id, order.sn, order);
     await writeAdminAudit(req, 'إلغاء طلب إداري', 'orders', sn, `reason=${order.adminActionNote}`);
     return res.json({ message: 'تم إلغاء الطلب', order: { sn: order.sn, status: order.status } });
   } catch (err) { next(err); }
@@ -121,6 +121,7 @@ router.post('/orders/:sn/archive', auth('admin'), validate(Joi.object({
     order.adminActionAt = new Date();
     order.adminActionBy = adminName(req);
     await order.save();
+    await dismissOrderNotifications(order._id, order.sn, order);
     await writeAdminAudit(req, 'أرشفة طلب', 'orders', sn, `reason=${order.adminActionNote}`);
     return res.json({ message: 'تمت أرشفة الطلب', order: { sn: order.sn, status: order.status } });
   } catch (err) { next(err); }

@@ -465,7 +465,8 @@ async function retryPendingNotificationDeliveries(limit = 25) {
   return { scanned: pending.length };
 }
 
-async function dismissOrderNotifications(orderId) {
+function escapeNotificationRegex(value) {
+  return String(value || '').replace(/[.*+?^$()|[\]\\{}]/g, '\\async function dismissOrderNotifications(orderId) {
   const id = String(orderId || '').trim();
   if (!/^[a-f0-9]{24}$/i.test(id)) return { modifiedCount: 0 };
   const match = [
@@ -476,6 +477,47 @@ async function dismissOrderNotifications(orderId) {
     { recipientRole: 'admin', isActive: { $ne: false }, $or: match },
     { $set: { isActive: false, readAt: new Date() } }
   );
+}');
+}
+
+function buildOrderNotificationFilter(orderId, orderSN = '', orderMeta = {}) {
+  const id = String(orderId || '').trim();
+  if (!/^[a-f0-9]{24}$/i.test(id)) return null;
+  const matches = [
+    { relatedEntityType: 'order', relatedEntityId: id },
+    { dedupeKey: { $regex: '(^|:)' + id + '(:|$)' } }
+  ];
+  const sn = String(orderSN || orderMeta.sn || '').trim().toUpperCase();
+  if (/^SN\d{6}$/.test(sn)) {
+    const snRegex = new RegExp('(^|[^A-Z0-9])' + escapeNotificationRegex(sn) + '($|[^A-Z0-9])', 'i');
+    matches.push({ $or: [{ title: snRegex }, { message: snRegex }, { link: snRegex }] });
+  }
+  const clientName = String(orderMeta.clientName || '').trim();
+  const budgetNumber = String(orderMeta.budget || '').match(/\d+(?:[.,]\d+)?/);
+  if (clientName.length >= 3 && budgetNumber) {
+    const nameRegex = new RegExp(escapeNotificationRegex(clientName), 'i');
+    const amount = escapeNotificationRegex(budgetNumber[0].replace(',', '.'));
+    const amountRegex = new RegExp('(^|[^0-9])' + amount + '($|[^0-9])');
+    matches.push({
+      $and: [
+        { $or: [{ title: nameRegex }, { message: nameRegex }] },
+        { $or: [{ title: amountRegex }, { message: amountRegex }] }
+      ]
+    });
+  }
+  return {
+    recipientRole: 'admin',
+    $and: [
+      { $or: matches },
+      { $or: [{ isActive: { $ne: false } }, { readAt: null }, { readAt: { $exists: false } }] }
+    ]
+  };
+}
+
+async function dismissOrderNotifications(orderId, orderSN = '', orderMeta = {}) {
+  const filter = buildOrderNotificationFilter(orderId, orderSN, orderMeta);
+  if (!filter) return { modifiedCount: 0 };
+  return Notification.updateMany(filter, { $set: { isActive: false, readAt: new Date() } });
 }
 
 async function notifyAdmins({ type, title, message, link = '', dedupeKey = null, relatedEntityType = '', relatedEntityId = null }) {
@@ -521,4 +563,4 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null,
     return { targeted: 0, created: 0, failed: 1 };
   }
 }
-module.exports = { createNotification, sendPushNotification, notifyAdmins, dismissOrderNotifications, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };
+module.exports = { createNotification, sendPushNotification, notifyAdmins, dismissOrderNotifications, buildOrderNotificationFilter, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };

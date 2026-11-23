@@ -366,7 +366,7 @@ router.post('/:sn/cancel', async (req, res, next) => {
       dedupeKey: 'admin-order-cancelled:' + String(cancelledOrder._id),
       relatedEntityType: 'order', relatedEntityId: cancelledOrder._id
     });
-    if (typeof dismissOrderNotifications === 'function') await dismissOrderNotifications(cancelledOrder._id);
+    if (typeof dismissOrderNotifications === 'function') await dismissOrderNotifications(cancelledOrder._id, cancelledOrder.sn, cancelledOrder);
 
     return res.json({ message: 'تم إلغاء الطلب بنجاح.', order: publicOrder(cancelledOrder) });
   } catch (err) {
@@ -483,6 +483,10 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     if (session) await session.endSession();
   }
 
+  if (typeof dismissOrderNotifications === 'function') {
+    await dismissOrderNotifications(confirmedOrder._id, confirmedOrder.sn, confirmedOrder);
+  }
+
   if (confirmedOrder.assignedFanni) {
     try {
       await createNotification({
@@ -574,8 +578,12 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
       type: 'admin_order_completed', title: 'الفني أعلن إنهاء المهمة',
       message: 'أعلن الفني ' + (req.user.name || 'فني') + ' إنهاء الطلب ' + order.sn + ' لخدمة ' + (order.service || '') + '.',
       link: '/admin?tab=orders',
-      dedupeKey: 'admin-order-completed:' + String(order._id)
+      dedupeKey: 'admin-order-completed:' + String(order._id),
+      relatedEntityType: 'order', relatedEntityId: order._id
     });
+    if (typeof dismissOrderNotifications === 'function') {
+      await dismissOrderNotifications(order._id, order.sn, order);
+    }
 
     return res.json({
       message: 'تم تسجيل إنهاء المهمة. مستحقات الفني تظل محجوزة حتى يؤكد العميل استلام الخدمة.',
