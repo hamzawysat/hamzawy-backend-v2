@@ -28,7 +28,7 @@ function defaultAdminPermissions(role) {
 
 const PERMISSION_SECTIONS = {
   dashboard: [/^\/me$/, /^\/counts$/, /^\/mobile-panel$/, /^\/reports?(\/|$)/, /^\/stats?(\/|$)/],
-  wallet: [/^\/wallet(\/|$)/, /^\/client-wallet(\/|$)/, /^\/clients\/[^/]+\/wallet\/(add-balance|deduct-balance|set-balance)$/, /^\/fannis\/[^/]+\/(set-balance|add-balance)$/],
+  wallet: [/^\/wallet(\/|$)/, /^\/client-wallet(\/|$)/, /^\/clients\/[^/]+\/wallet\/(add-balance|deduct-balance|set-balance)$/, /^\/fannis\/[^/]+\/(set-balance|add-balance|deduct-balance)$/],
   fannis: [/^\/fannis(\/|$)/, /^\/fanni-profile-edits(\/|$)/, /^\/fanni-card-ledger(\/|$)/],
   publishOrders: [/^\/admin\/[^/]+\/publish$/],
   voiceReview: [/^\/[^/]+\/voice$/, /^\/admin\/[^/]+\/voice-reviewed$/],
