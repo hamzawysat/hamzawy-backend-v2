@@ -14,6 +14,7 @@ const WalletTransaction = require('../models/WalletTransaction');
 const { auth } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
 const { makeReferralCode, readReferralCode } = require('../utils/referralCodes');
+const { refreshReferralProgress } = require('../services/referralRewards');
 
 const router = express.Router();
 const prepareFanniReferralLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { message: 'محاولات كثيرة لحفظ الدعوة. حاول بعد قليل.' } });
@@ -134,6 +135,47 @@ router.get('/admin/:id', auth('admin'), async (req, res, next) => {
     ]);
     return res.json({ referral: item, inviter, invitee, transactions });
   } catch (err) { next(err); }
+});
+
+// Explicit administrator review is required before a flagged referral can pay out.
+router.post('/admin/:id/approve-risk', auth('admin'), async (req, res, next) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
+  if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب سبب مراجعة واضحًا من 3 إلى 500 حرف.' });
+  try {
+    const session = await mongoose.startSession();
+    let referral;
+    try {
+      await session.withTransaction(async () => {
+        referral = await Referral.findOne({
+          _id: req.params.id, status: 'eligible',
+          riskFlags: { $exists: true, $ne: [] },
+          'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
+        }).session(session);
+        if (!referral) throw new Error('REFERRAL_NOT_PENDING_RISK_REVIEW');
+        const reviewedFlags = [...(referral.riskFlags || [])];
+        referral.riskFlags = [];
+        referral.riskReviewedAt = new Date();
+        referral.riskReviewedBy = req.user?._id || null;
+        await referral.save({ session });
+        await AdminAuditLog.create([{
+          action: 'اعتماد دعوة بعد مراجعة الاشتباه',
+          category: 'referrals',
+          target: String(referral._id),
+          details: 'number=' + referral.number + '; flags=' + reviewedFlags.join(',') + '; reason=' + reason,
+          adminName: actorName(req),
+          adminId: String(req.user?._id || ''),
+          ip: String(req.ip || '').slice(0, 80)
+        }], { session });
+      });
+    } finally { await session.endSession(); }
+    const outcome = await refreshReferralProgress({ kind: referral.kind, inviteeId: referral.invitee, mongoose });
+    const updated = await Referral.findById(referral._id).lean();
+    return res.json({ message: updated?.status === 'completed' ? 'تم اعتماد الدعوة وصرف المكافآت المستحقة.' : 'تم رفع تعليق المراجعة؛ لا تزال شروط الاستحقاق قيد التحقق.', referral: updated, outcome });
+  } catch (err) {
+    if (err?.message === 'REFERRAL_NOT_PENDING_RISK_REVIEW') return res.status(409).json({ message: 'الدعوة ليست معلقة حاليًا لمراجعة أمنية أو سبق صرف مكافآتها.' });
+    return next(err);
+  }
 });
 
 router.patch('/admin/settings', auth('admin'), async (req, res, next) => {
