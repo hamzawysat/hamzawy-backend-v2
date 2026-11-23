@@ -9,6 +9,7 @@ const mongoose = require('mongoose');
 
 const Fanni = require('../models/Fanni');
 const Client = require('../models/Client');
+const PhoneIdentity = require('../models/PhoneIdentity');
 const FanniCardLedger = require('../models/FanniCardLedger');
 const { normalizeNationalId, cardHash, encryptNationalId, isValidNationalId } = require('../services/fanniCardIdentity');
 const AdminConfig = require('../models/AdminConfig');
@@ -244,9 +245,12 @@ router.post(
         return res.status(400).json({ message: 'التسجيل متاح للخدمات الظاهرة حاليًا في قائمة خدمات حمزاوي سات فقط.' });
       }
 
-      const existing = await Fanni.findOne({ phone }).select('_id');
+      const [existing, existingClient] = await Promise.all([
+        Fanni.findOne({ phone, role: 'fanni' }).select('_id'),
+        Client.findOne({ phone }).select('_id')
+      ]);
 
-      if (existing) {
+      if (existing || existingClient) {
         return res.status(409).json({
           message: 'رقم الهاتف مسجل بالفعل. جرّب تسجيل الدخول.'
         });
@@ -285,6 +289,14 @@ router.post(
       const session = await mongoose.startSession();
       try {
         await session.withTransaction(async () => {
+          // Reserve the phone globally in the same transaction as account creation.
+          const [existingFanni, existingClient] = await Promise.all([
+            Fanni.findOne({ phone, role: 'fanni' }).select('_id').session(session),
+            Client.findOne({ phone }).select('_id').session(session)
+          ]);
+          if (existingFanni || existingClient) throw new Error('PHONE_ALREADY_REGISTERED');
+          const fanniId = new mongoose.Types.ObjectId();
+          await PhoneIdentity.create([{ phone, ownerRole: 'fanni', ownerId: fanniId }], { session });
           let inviterId = null;
           let usedCode = '';
           let referralClaim = null;
@@ -321,7 +333,7 @@ router.post(
             }
           }
           const created = await Fanni.create([{
-            name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
+            _id: fanniId, name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
             identityCardFrontFileId: identityIds[0], identityCardBackFileId: identityIds[1], profilePhotoFileId: profilePhotoId,
             identityReviewStatus: 'pending',
             ...(req.body.guidelinesAccepted === true ? {
@@ -389,6 +401,7 @@ router.post(
         status: fanni.status
       });
     } catch (err) {
+      if (err?.message === 'PHONE_ALREADY_REGISTERED') return res.status(409).json({ message: 'رقم الهاتف مسجل بالفعل كعميل أو فني. سجّل الدخول إلى حسابك الحالي.' });
       if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ code: 'CARD_LEDGER_SECRET_MISSING', message: 'التسجيل متوقف مؤقتًا بسبب نقص إعداد حماية سجل البطاقات على الخادم. لا تحتاج لإعادة رفع الصور؛ أعد المحاولة بعد استكمال إعدادات الخادم.' });
       if (err?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
       if (err?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للفنيين.' });

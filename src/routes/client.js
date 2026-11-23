@@ -9,6 +9,7 @@ const crypto = require('crypto');
 
 const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
+const PhoneIdentity = require('../models/PhoneIdentity');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
 const { readReferralCode } = require('../utils/referralCodes');
@@ -141,14 +142,25 @@ router.post('/register', async (req, res, next) => {
       return res.status(503).json({ message: 'التسجيل غير متاح بسبب إعدادات الخادم' });
     }
 
-    const existing = await Client.findOne({ phone }).select('_id');
-    if (existing) return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل. سجّل الدخول بدل إنشاء حساب جديد.' });
+    const [existing, existingFanni] = await Promise.all([
+      Client.findOne({ phone }).select('_id'),
+      Fanni.findOne({ phone, role: 'fanni' }).select('_id')
+    ]);
+    if (existing || existingFanni) return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل. سجّل الدخول بدل إنشاء حساب جديد.' });
 
     const passwordHash = await bcrypt.hash(value.password, 12);
     let client;
     const session = await mongoose.startSession();
     try {
       await session.withTransaction(async () => {
+        // Shared unique reservation prevents cross-role and concurrent signup races.
+        const [existingClient, existingFanni] = await Promise.all([
+          Client.findOne({ phone }).select('_id').session(session),
+          Fanni.findOne({ phone, role: 'fanni' }).select('_id').session(session)
+        ]);
+        if (existingClient || existingFanni) throw new Error('PHONE_ALREADY_REGISTERED');
+        const clientId = new mongoose.Types.ObjectId();
+        await PhoneIdentity.create([{ phone, ownerRole: 'client', ownerId: clientId }], { session });
         let inviterId = null;
         let usedCode = '';
         if (value.referralCode) {
@@ -167,7 +179,7 @@ router.post('/register', async (req, res, next) => {
             usedCode = decoded.code;
           }
         }
-        const created = await Client.create([{ name: value.name, phone, passwordHash }], { session });
+        const created = await Client.create([{ _id: clientId, name: value.name, phone, passwordHash }], { session });
         client = created[0];
         if (inviterId) {
           const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
@@ -195,6 +207,7 @@ router.post('/register', async (req, res, next) => {
       client: { id: String(client._id), name: client.name, phone: client.phone, status: client.status }
     });
   } catch (error) {
+    if (error?.message === 'PHONE_ALREADY_REGISTERED') return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل كعميل أو فني. سجّل الدخول إلى حسابك الحالي.' });
     if (error?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
     if (error?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للعملاء.' });
     if (error?.message === 'SELF_REFERRAL') return res.status(400).json({ message: 'لا يمكنك استخدام كود دعوتك على حسابك.' });
