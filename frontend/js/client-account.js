@@ -35,6 +35,7 @@ let clientReferralPageOpen = false;
 function openClientReferralPage(){clientReferralPageOpen=true;render();}
 function closeClientReferralPage(){clientReferralPageOpen=false;render();}
 function clientReferralCodeFromUrl(){try{return new URLSearchParams(location.search).get('ref')||'';}catch(_){return '';}}
+function clientDownloadUrl(){const url=new URL('/download',location.origin);const code=clientReferralCodeFromUrl().trim().toUpperCase();if(/^C-[A-F0-9]{24}-[A-F0-9]{12}$/.test(code))url.searchParams.set('ref',code);return url.pathname+url.search;}
 async function loadClientReferralInfo(){if(!state.accountToken)return;try{clientReferralInfo=await API.request('/api/referrals/me/client',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});if(state.tab==='home'||clientReferralPageOpen)render();}catch(error){console.warn('تعذر تحميل دعوات العميل:',error.message);}}
 async function copyClientReferralLink(){const value=clientReferralInfo?.url||'';if(!value)return;try{await navigator.clipboard.writeText(value);showToast('تم نسخ رابط الدعوة','success');}catch(_){showToast('تعذر النسخ تلقائيًا؛ انسخ الرابط يدويًا','error');}}
 async function shareClientReferralLink(){
@@ -163,7 +164,7 @@ h+='border:1px solid #D5DDFE!important">إنشاء حساب عميل جديد</b
 h+='<p class="mt-3 text-center text-[13px] text-slate-500">بياناتك وحسابك في أمان</p>';
 h+='<div class="mt-3 flex gap-2" ';
 h+='style="padding-bottom:max(0.5rem,env(safe-area-inset-bottom))">';
-h+='<a href="/download" class="flex-1 h-[52px] rounded-2xl ';
+h+='<a href="'+escAttr(clientDownloadUrl())+'" class="flex-1 h-[52px] rounded-2xl ';
 h+='inline-flex items-center justify-center gap-1.5 text-[15px] font-black" ';
 h+='style="background:#2E7CF6!important;color:#FFFFFF!important;-webkit-text-fill-color:#FFFFFF!important">⬇ تحميل التطبيق</a>';
 h+='<a href="/links" target="_blank" rel="noopener noreferrer" ';
