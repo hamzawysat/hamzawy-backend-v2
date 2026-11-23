@@ -12,6 +12,8 @@ on:
       - 'frontend/js/fanni-render.js'
       - 'frontend/js/fanni-auth.js'
       - 'frontend/fanni.html'
+      - 'frontend/download.html'
+      - 'frontend-dist/download.html'
       - 'src/services/fanniCardIdentity.js'
       - 'src/routes/admin/fanniProfiles.js'
       - 'src/models/Fanni.js'
