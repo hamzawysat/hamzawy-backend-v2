@@ -29,7 +29,7 @@ function defaultAdminPermissions(role) {
 const PERMISSION_SECTIONS = {
   dashboard: [/^\/me$/, /^\/counts$/, /^\/mobile-panel$/, /^\/reports?(\/|$)/, /^\/stats?(\/|$)/],
   wallet: [/^\/wallet(\/|$)/, /^\/client-wallet(\/|$)/, /^\/clients\/[^/]+\/wallet\/(add-balance|deduct-balance|set-balance)$/, /^\/fannis\/[^/]+\/(set-balance|add-balance|deduct-balance)$/],
-  fannis: [/^\/fannis(\/|$)/, /^\/fanni-profile-edits(\/|$)/, /^\/fanni-card-ledger(\/|$)/],
+  fannis: [/^\/fannis(\/|$)/, /^\/fanni-profile-edits(\/|$)/, /^\/fanni-card-ledger(\/|$)/, /^\/admin\/[^/]+\/(?:photo|identity\/(?:front|back))$/],
   publishOrders: [/^\/admin\/[^/]+\/publish$/],
   voiceReview: [/^\/[^/]+\/voice$/, /^\/admin\/[^/]+\/voice-reviewed$/],
   passwordRecovery: [/^\/password-recovery\/admin\/requests(\/|$)/, /^\/password-recovery\/admin\/support-passwords(\/|$)/, /^\/password-recovery\/admin\/force-password-change(\/|$)/],
