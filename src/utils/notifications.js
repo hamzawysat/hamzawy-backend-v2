@@ -499,6 +499,7 @@ function buildOrderNotificationFilter(orderId, orderSN = '', orderMeta = {}) {
     const amount = escapeNotificationRegex(budgetNumber[0].replace(',', '.'));
     const amountRegex = new RegExp('(^|[^0-9])' + amount + '($|[^0-9])');
     matches.push({
+      type: 'admin_new_order',
       $and: [
         { $or: [{ title: nameRegex }, { message: nameRegex }] },
         { $or: [{ title: amountRegex }, { message: amountRegex }] },
@@ -536,6 +537,7 @@ function buildStoreOrderNotificationFilter(storeOrderId, orderMeta = {}) {
     const amount = escapeNotificationRegex(totalNumber[0].replace(',', '.'));
     const amountRegex = new RegExp('(^|[^0-9])' + amount + '($|[^0-9])');
     matches.push({
+      type: 'admin_store_order',
       $and: [
         { $or: [{ title: nameRegex }, { message: nameRegex }] },
         { $or: [{ title: amountRegex }, { message: amountRegex }] },
