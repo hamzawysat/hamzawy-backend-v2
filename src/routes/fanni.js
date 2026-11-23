@@ -454,6 +454,9 @@ router.post(
       if (!fanni) {
         return res.status(401).json({ message: 'رقم الهاتف أو كلمة السر غير صحيحة' });
       }
+      if (fanni.archivedAt) {
+        return res.status(403).json({ message: 'حساب الفني مؤرشف ولا يمكن تسجيل الدخول به. تواصل مع الإدارة إذا كنت تعتقد أن ذلك حدث بالخطأ.', code: 'ACCOUNT_ARCHIVED' });
+      }
       if (fanni.status === 'معلق' || fanni.status === 'مرفوض') {
         return res.status(403).json({
           message: fanni.status === 'معلق'
