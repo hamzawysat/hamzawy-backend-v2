@@ -202,6 +202,8 @@ router.post('/admin/:id/reject', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
   if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب سبب رفض واضحًا من 3 إلى 500 حرف.' });
   try {
+    const securityHold = await Referral.exists({ _id: req.params.id, riskFlags: { $exists: true, $ne: [] } });
+    if (securityHold) return res.status(409).json({ message: 'الدعوة عليها تعليق أمني. راجع تفاصيل الاشتباه واختر اعتمادًا أو رفضًا بعد المراجعة الأمنية.' });
     const session = await mongoose.startSession();
     let referral;
     try {
@@ -222,6 +224,53 @@ router.post('/admin/:id/reject', auth('admin'), async (req, res, next) => {
     });
     return res.json({ message: 'تم رفض الدعوة وتسجيل السبب.', referral });
   } catch (err) { next(err); }
+});
+
+// A flagged referral can only be rejected through the explicit security-review decision.
+router.post('/admin/:id/reject-risk', auth('admin'), async (req, res, next) => {
+  const reason = String(req.body?.reason || '').trim();
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'رقم الدعوة غير صالح.' });
+  if (reason.length < 3 || reason.length > 500) return res.status(400).json({ message: 'اكتب نتيجة المراجعة وسبب الرفض من 3 إلى 500 حرف.' });
+  try {
+    const session = await mongoose.startSession();
+    let referral;
+    try {
+      await session.withTransaction(async () => {
+        referral = await Referral.findOne({
+          _id: req.params.id, status: 'eligible',
+          riskFlags: { $exists: true, $ne: [] },
+          'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
+        }).session(session);
+        if (!referral) throw new Error('REFERRAL_NOT_PENDING_RISK_REVIEW');
+        const reviewedFlags = [...(referral.riskFlags || [])];
+        referral.riskReviewedFlags = [...new Set([...(referral.riskReviewedFlags || []), ...reviewedFlags])];
+        referral.riskFlags = [];
+        referral.riskReviewedAt = new Date();
+        referral.riskReviewedBy = req.user?._id || null;
+        referral.status = 'rejected';
+        referral.rejectedAt = new Date();
+        referral.rejectedBy = req.user?._id || null;
+        referral.rejectionReason = reason;
+        referral.reviewedAt = new Date();
+        referral.reviewedBy = req.user?._id || null;
+        await referral.save({ session });
+        await AdminAuditLog.create([{
+          action: 'رفض دعوة بعد مراجعة أمنية',
+          category: 'referrals',
+          target: String(referral._id),
+          details: 'number=' + referral.number + '; flags=' + reviewedFlags.join(',') + '; reason=' + reason,
+          adminName: actorName(req),
+          adminId: String(req.user?._id || ''),
+          ip: String(req.ip || '').slice(0, 80)
+        }], { session });
+      });
+    } finally { await session.endSession(); }
+    const updated = await Referral.findById(referral._id).lean();
+    return res.json({ message: 'تم رفض الدعوة بعد تسجيل المراجعة الأمنية وسبب القرار.', referral: updated });
+  } catch (err) {
+    if (err?.message === 'REFERRAL_NOT_PENDING_RISK_REVIEW') return res.status(409).json({ message: 'الدعوة ليست معلقة حاليًا لمراجعة أمنية أو سبق صرف مكافآتها.' });
+    return next(err);
+  }
 });
 
 module.exports = router;
