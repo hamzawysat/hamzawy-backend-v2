@@ -80,7 +80,7 @@ let state={
   
   storeProducts:[],storeProductsLoading:false,storeProductsLoaded:false,storeProductsLoadError:'',storeCategories:[],storeAdRotationSeconds:null,storeAdSettingsLoading:false,storeAdSettingsLoaded:false,storeAdSettingsLoadError:'',storeOrders:[],storeOrdersLoading:false,auditLogs:[],auditDate:'',regions:[],regionsLoading:false,regionsError:'',regionSearch:'',notifications:[],adminInboxNotifications:[],adminInboxUnread:0,adminDeliveryLogs:[],walletTransactions:[],walletSelectedFanniId:'',walletLoading:false,settings:{siteName:'حمزاوي سات',maintenance:false},
   referrals:[],referralSummary:null,referralsLoading:false,referralsError:'',referralSearch:'',referralKind:'all',referralStatus:'all',referralPaid:'all',referralFrom:'',referralTo:'',referralDetail:null,
-  reports:{},pricing:null,pricingHistory:[],offerFilter:'all',clientSearch:'',content:{announcement:'',faqs:[]},supportQuery:'',supportResults:{orders:[],complaints:[]},supportViolations:[],notificationHistory:[],notificationHistoryLoading:false,
+  reports:{},pricing:null,pricingHistory:[],offerFilter:'all',clientSearch:'',content:{announcement:'',faqs:[]},supportQuery:'',supportResults:{orders:[],complaints:[]},supportViolations:[],adminSupportCases:[],selectedAdminSupportCase:null,selectedAdminRecovery:null,recoveryIssuedCode:'',notificationHistory:[],notificationHistoryLoading:false,
   search:'',filter:'الكل',filterTopup:'الكل',filterOrder:'الكل',filterComplaint:'الكل',filterClient:'الكل',selectedOrderSNs:[],
   errors:{fannis:'',topups:'',orders:'',complaints:'',services:'',clients:''}, error:''
 };

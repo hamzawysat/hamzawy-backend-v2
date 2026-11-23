@@ -44,6 +44,15 @@ async function openClientProfile(clientId) {
     modal.querySelector('.premium-panel').innerHTML = `
       <div class="flex items-start justify-between gap-3"><div><h2 class="font-black text-lg">${clientProfileValue(c.name)}</h2><p dir="ltr" class="text-sm text-slate-600 mt-1">${clientProfileValue(c.phone)}</p><p class="text-xs mt-2">${c.archivedAt ? 'مؤرشف' : c.status === 'معلق' ? 'موقوف' : 'نشط'} • الرصيد ${clientProfileValue(c.walletBalance)} ج</p></div><button type="button" data-close class="pill-btn soft-btn">إغلاق</button></div>
       <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 my-4 text-center">${[['الطلبات',data.totals?.orders],['الحركات',data.totals?.walletTransactions],['الاشتراكات',data.totals?.subscriptions],['الشكاوى',data.totals?.complaints]].map(([k,v])=>'<div class="rounded-xl bg-slate-50 p-2"><strong class="block text-lg">'+Number(v||0)+'</strong><span class="text-[10px] text-slate-500">'+k+'</span></div>').join('')}</div>
+      <details class="mb-4 rounded-xl border border-blue-100 bg-blue-50/50 p-3">
+        <summary class="cursor-pointer text-xs font-black text-blue-900">تعديل اسم العميل ورقم الهاتف من لوحة الإدارة</summary>
+        <div class="mt-3 grid gap-2 sm:grid-cols-2">
+          <label class="text-[11px] font-bold">اسم العميل<input id="client-edit-name-${clientProfileValue(c._id)}" class="field mt-1" maxlength="50" value="${clientProfileValue(c.name||'')}"></label>
+          <label class="text-[11px] font-bold">رقم الهاتف<input id="client-edit-phone-${clientProfileValue(c._id)}" class="field mt-1" inputmode="numeric" maxlength="11" value="${clientProfileValue(c.phone||'')}"></label>
+          <button type="button" onclick="saveAdminClientProfile('${clientProfileValue(c._id)}')" class="pill-btn primary-pill sm:col-span-2" ${canWriteClientData()?'':'disabled title="لا تملك صلاحية clientsData"'}>حفظ بيانات العميل</button>
+        </div>
+        <p class="mt-2 text-[10px] text-slate-500">يتم التحقق من الاسم ورقم الهاتف وعدم تكرار الرقم قبل الحفظ.</p>
+      </details>
       <div class="flex flex-wrap gap-2 mb-4">
         <a href="/password.html?role=admin&amp;mode=admin-edit&amp;targetRole=client&amp;targetId=${encodeURIComponent(c._id)}" class="pill-btn soft-btn">تعديل البيانات</a>
         <button onclick="blockClient('${clientProfileValue(c.phone)}')" class="pill-btn soft-btn" ${c.status==='معلق'||c.archivedAt?'disabled':''}>تعليق</button>
