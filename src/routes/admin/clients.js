@@ -83,7 +83,9 @@ router.post('/clients/:phone/note', auth('admin'), async (req, res, next) => {
     client.adminNote = note;
     client.adminNotesHistory.push({ note, date: new Date(), by: adminName(req), byId: req.user?._id });
     await client.save();
-    return res.json({ message: 'تم حفظ الملاحظة الداخلية وسجلها', client: { id: String(client._id), name: client.name, phone: client.phone, adminNote: client.adminNote } });
+    await writeAdminAudit(req, 'إضافة ملاحظة داخلية على عميل', 'clients', String(client._id),
+      JSON.stringify({ phone: client.phone, note, noteLength: note.length }));
+    return res.json({ message: 'تم حفظ الملاحظة الداخلية وسجلها في سجل التدقيق', client: { id: String(client._id), name: client.name, phone: client.phone, adminNote: client.adminNote } });
   } catch (error) { return next(error); }
 });
 
