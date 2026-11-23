@@ -40,6 +40,9 @@ async function main() {
     await inBatches(orders, 40, async order => {
       const filter = buildOrderNotificationFilter(order._id, order.sn, order);
       const before = filter ? await Notification.countDocuments(filter) : 0;
+      const candidates = filter
+        ? await Notification.find(filter).select('_id type title message createdAt isActive readAt').sort({ createdAt: 1 }).limit(10).lean()
+        : [];
       matchedBefore += before;
       let modified = 0;
 
@@ -49,6 +52,9 @@ async function main() {
       }
 
       const remaining = filter ? await Notification.countDocuments(filter) : 0;
+      const remainingRows = filter
+        ? await Notification.find(filter).select('_id title message').sort({ createdAt: 1 }).limit(10).lean()
+        : [];
       matchedAfter += remaining;
       report.push({
         sn: order.sn,
@@ -57,7 +63,17 @@ async function main() {
         status: order.status,
         matchedBefore: before,
         modified,
-        remainingActiveOrUnread: remaining
+        candidateNotifications: candidates.map(item => ({
+          id: String(item._id),
+          type: item.type || '',
+          title: item.title || '',
+          message: item.message || '',
+          createdAt: item.createdAt || null,
+          isActive: item.isActive !== false,
+          readAt: item.readAt || null
+        })),
+        remainingActiveOrUnread: remaining,
+        remainingNotificationIds: remainingRows.map(item => String(item._id))
       });
     });
 
