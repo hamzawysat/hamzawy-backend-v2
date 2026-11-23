@@ -46,7 +46,7 @@ function preserveTechnicianInvite(){
  if(!code)return;
  let left=false;
  const markLeft=()=>{left=true;};
- document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')markLeft();},{once:true});
+ const onVisibility=()=>{if(document.visibilityState==='hidden'){markLeft();document.removeEventListener('visibilitychange',onVisibility);}};\n document.addEventListener('visibilitychange',onVisibility);
  window.addEventListener('pagehide',markLeft,{once:true});
  fetch('/api/referrals/prepare-fanni',{
   method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
