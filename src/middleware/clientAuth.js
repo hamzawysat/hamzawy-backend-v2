@@ -24,6 +24,9 @@ async function clientAuth(req, res, next) {
     if (!client) {
       return res.status(401).json({ message: 'حساب العميل غير موجود' });
     }
+    if (client.archivedAt) {
+      return res.status(403).json({ message: 'حساب العميل مؤرشف ولا يمكن استخدامه. تواصل مع الإدارة إذا كنت تعتقد أن ذلك حدث بالخطأ.', code: 'ACCOUNT_ARCHIVED' });
+    }
     if (Number(payload.tokenVersion || 0) !== Number(client.tokenVersion || 0)) {
       return res.status(401).json({ message: 'انتهت صلاحية الجلسة بعد تغيير كلمة المرور. سجّل الدخول مرة أخرى.' });
     }
