@@ -155,6 +155,7 @@ router.post('/admin/:id/approve-risk', auth('admin'), async (req, res, next) => 
         }).session(session);
         if (!referral) throw new Error('REFERRAL_NOT_PENDING_RISK_REVIEW');
         const reviewedFlags = [...(referral.riskFlags || [])];
+        referral.riskReviewedFlags = [...new Set([...(referral.riskReviewedFlags || []), ...reviewedFlags])];
         referral.riskFlags = [];
         referral.riskReviewedAt = new Date();
         referral.riskReviewedBy = req.user?._id || null;
