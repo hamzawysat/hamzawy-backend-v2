@@ -952,6 +952,23 @@ async function run() {
       assert.equal(profileUpload.status, 201, JSON.stringify(profileUpload.body));
       const publicImage = await request(app).get('/api/store/media/' + frontUpload.body.fileId);
       assert.equal(publicImage.status, 404, 'technician identity images must not be publicly served');
+      const Fanni = require('../models/Fanni');
+      const Referral = require('../models/Referral');
+      const ReferralClaim = require('../models/ReferralClaim');
+      const { makeReferralCode } = require('../utils/referralCodes');
+      const inviter = await Fanni.create({
+        name: 'فني صاحب الدعوة', phone: '01012345684', passwordHash: 'test-hash',
+        specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni'
+      });
+      const preparedInvite = await request(app).post('/api/referrals/prepare-fanni')
+        .send({ referralCode: makeReferralCode('fanni', String(inviter._id)) });
+      assert.equal(preparedInvite.status, 201, JSON.stringify(preparedInvite.body));
+      assert.match(preparedInvite.body.claimToken, /^[A-Za-z0-9_-]{40,64}$/);
+      const savedClaim = await ReferralClaim.findOne({
+        tokenHash: require('crypto').createHash('sha256').update(preparedInvite.body.claimToken).digest('hex')
+      }).lean();
+      assert.ok(savedClaim, 'the invitation must be persisted server-side before the app download');
+      assert.equal(savedClaim.claimedAt, null);
       const registration = await request(app).post('/api/fanni/register').send({
         name: 'فني اختبار التسجيل',
         phone,
@@ -961,9 +978,15 @@ async function run() {
         nationalId: '29001012345678',
         identityCardFrontFileId: frontUpload.body.fileId,
         identityCardBackFileId: backUpload.body.fileId,
-        profilePhotoFileId: profileUpload.body.fileId
+        profilePhotoFileId: profileUpload.body.fileId,
+        referralClaimToken: preparedInvite.body.claimToken
       });
       assert.equal(registration.status, 201);
+      const redeemedClaim = await ReferralClaim.findById(savedClaim._id).lean();
+      assert.ok(redeemedClaim.claimedAt, 'the saved invite must be consumed only when technician registration succeeds');
+      assert.equal(String(redeemedClaim.invitee), registration.body.id);
+      const linkedReferral = await Referral.findOne({ kind: 'fanni', inviter: inviter._id, invitee: registration.body.id }).lean();
+      assert.ok(linkedReferral, 'the original inviter must receive the referral record');
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
 
@@ -1006,7 +1029,6 @@ async function run() {
       assert.equal(removedToken.body.deleted, 1);
       assert.equal(await PushToken.countDocuments({ token: expoToken }), 0);
 
-      const Fanni = require('../models/Fanni');
       const approvedFanni = await Fanni.findOne({ phone });
       approvedFanni.status = 'معتمد';
       approvedFanni.technicianGuidelinesAcceptedAt = new Date();

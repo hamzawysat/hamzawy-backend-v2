@@ -2,7 +2,10 @@
 
 const express = require('express');
 const mongoose = require('mongoose');
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
 const Referral = require('../models/Referral');
+const ReferralClaim = require('../models/ReferralClaim');
 const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const AdminConfig = require('../models/AdminConfig');
@@ -10,9 +13,10 @@ const AdminAuditLog = require('../models/AdminAuditLog');
 const WalletTransaction = require('../models/WalletTransaction');
 const { auth } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
-const { makeReferralCode } = require('../utils/referralCodes');
+const { makeReferralCode, readReferralCode } = require('../utils/referralCodes');
 
 const router = express.Router();
+const prepareFanniReferralLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 30, standardHeaders: true, legacyHeaders: false, message: { message: 'محاولات كثيرة لحفظ الدعوة. حاول بعد قليل.' } });
 const actorName = req => String(req.user?.name || req.user?.phone || 'الإدارة').slice(0, 120);
 
 async function sendMyReferral(req, res, next, kind, accountId) {
@@ -35,6 +39,26 @@ router.get('/me/client', clientAuth, (req, res, next) => sendMyReferral(req, res
 router.get('/me/fanni', auth(), (req, res, next) => {
   if (req.user?.role !== 'fanni') return res.status(403).json({ message: 'الخدمة متاحة للفنيين فقط.' });
   return sendMyReferral(req, res, next, 'fanni', req.userId || req.user._id);
+});
+
+// Create a server-side, single-use invitation claim before sending a technician to the APK download page.
+router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next) => {
+  try {
+    const code = String(req.body?.referralCode || '').trim().slice(0, 50);
+    const decoded = readReferralCode(code);
+    if (!decoded || decoded.kind !== 'fanni') return res.status(400).json({ message: 'رابط الدعوة غير صالح أو غير مخصص للفنيين.' });
+    const config = await AdminConfig.findOne({ key: 'main' }).select('settings').lean();
+    if (config?.settings?.referralsEnabled === false) return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا.' });
+    const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id').lean();
+    if (!inviter) return res.status(404).json({ message: 'صاحب كود الدعوة غير موجود.' });
+    const claimToken = crypto.randomBytes(32).toString('base64url');
+    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    await ReferralClaim.create({
+      tokenHash: crypto.createHash('sha256').update(claimToken).digest('hex'),
+      kind: 'fanni', inviter: inviter._id, inviteCodeUsed: decoded.code, expiresAt
+    });
+    return res.set('Cache-Control', 'no-store').status(201).json({ claimToken, expiresAt });
+  } catch (err) { next(err); }
 });
 
 router.get('/admin/summary', auth('admin'), async (req, res, next) => {
