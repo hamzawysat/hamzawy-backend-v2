@@ -17,7 +17,7 @@ const clientAccount = fs.readFileSync(path.join(root, 'frontend/js/client-accoun
 const clientPage = fs.readFileSync(path.join(root, 'frontend/client.html'), 'utf8');
 assert.match(clientAccount, /function clientDownloadUrl\(\)[\s\S]*?searchParams\.set\('ref',code\)/, 'client page download URL must preserve a valid referral code from the current page URL');
 assert.match(clientAccount, /href=\"'\+escAttr\(clientDownloadUrl\(\)\)\+'/,'client download button must use the referral-aware URL');
-assert.match(clientPage, /client-account\.js\\?v=20261123-client-download-referral1/, 'client account script cache key must be bumped for referral-link fix');
+assert.match(clientPage, /client-account\.js\?v=20261123-client-download-referral1/, 'client account script cache key must be bumped for referral-link fix');
 assert.match(source, /HAMZAWY_CLIENT_REFERRAL:/, 'download page must copy the client referral marker understood by the Android app');
 assert.match(source, /clientCode/);
 assert.match(built, /HAMZAWY_CLIENT_REFERRAL:/, 'built production download page must include client referral handoff');
