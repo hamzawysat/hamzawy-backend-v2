@@ -3007,6 +3007,40 @@ async function run() {
       assert.equal(await refreshReferralProgress({ kind: 'fanni', inviteeId: technicians[1]._id, mongoose }), null);
       const referralRows = await Referral.find({ number: { $in: ['RFTESTCLIENT01', 'RFTESTFANNI001'] } }).lean();
       assert.ok(referralRows.every(x => x.status === 'completed' && x.achievementLog.length === x.requiredCount));
+
+      // A shared national-ID ledger must hold the payout for manual review, never auto-ban.
+      const FanniCardLedger = require('../models/FanniCardLedger');
+      const fraudTechnicians = await Fanni.create([
+        { name: 'فني هوية مشتركة 1', phone: '01000000006', passwordHash: 'test-hash', specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni' },
+        { name: 'فني هوية مشتركة 2', phone: '01000000007', passwordHash: 'test-hash', specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni' }
+      ]);
+      await FanniCardLedger.create({
+        nationalIdHash: 'test-shared-national-id-hash',
+        fanniId: fraudTechnicians[0]._id,
+        fanniName: fraudTechnicians[0].name,
+        linkedTechnicians: fraudTechnicians.map(x => ({ fanniId: x._id, name: x.name, phone: x.phone }))
+      });
+      await Referral.create({
+        number: 'RFTESTFRAUD001', code: 'RFTESTFRAUD001', inviteCodeUsed: technicianCode,
+        kind: 'fanni', inviter: fraudTechnicians[0]._id, invitee: fraudTechnicians[1]._id, requiredCount: 3
+      });
+      await Order.create([1, 2, 3].map((n, i) => ({
+        sn: 'SN99100' + n, service: 'خدمة اختبار', area: 'القاهرة', clientName: 'عميل اختبار',
+        clientPhone: '01000000008', assignedFanni: fraudTechnicians[1]._id, status: 'تم الانتهاء',
+        completionDeclaredAt: new Date(Date.now() + 10 + i)
+      })));
+      const heldOutcome = await refreshReferralProgress({ kind: 'fanni', inviteeId: fraudTechnicians[1]._id, mongoose });
+      assert.equal(heldOutcome.status, 'eligible');
+      assert.equal(heldOutcome.reviewRequired, true);
+      assert.ok(heldOutcome.riskFlags.includes('shared_technician_national_id'));
+      const heldBalances = await Fanni.find({ _id: { $in: fraudTechnicians.map(x => x._id) } }).sort({ phone: 1 }).lean();
+      assert.deepEqual(heldBalances.map(x => x.walletBalance), [0, 0]);
+      const heldReferral = await Referral.findOne({ number: 'RFTESTFRAUD001' }).lean();
+      assert.equal(heldReferral.status, 'eligible');
+      assert.ok(heldReferral.riskDetectedAt);
+      assert.ok(heldReferral.riskFlags.includes('shared_technician_national_id'));
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 0);
+
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
