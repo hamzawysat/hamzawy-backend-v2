@@ -199,7 +199,9 @@ function createAdminFanniProfilesRouter({
           .sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
         WalletTransaction.find({ fanni: fanni._id }).sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
         TopupRequest.find({ fanni: fanni._id }).sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
-        FanniCardLedger.findOne({ fanniId: fanni._id }).select('+nationalIdEncrypted').lean(),
+        FanniCardLedger.findOne({
+          $or: [{ fanniId: fanni._id }, { 'linkedTechnicians.fanniId': fanni._id }]
+        }).select('+nationalIdEncrypted').lean(),
         AdminAuditLog.find({ category: 'fannis', target: String(fanni._id) }).sort({ createdAt: -1, _id: -1 }).limit(100).lean()
       ]);
       let nationalId = '';
