@@ -13,6 +13,7 @@ const FanniCardLedger = require('../models/FanniCardLedger');
 const { normalizeNationalId, cardHash, encryptNationalId, isValidNationalId } = require('../services/fanniCardIdentity');
 const AdminConfig = require('../models/AdminConfig');
 const Referral = require('../models/Referral');
+const ReferralClaim = require('../models/ReferralClaim');
 const { readReferralCode } = require('../utils/referralCodes');
 const Service = require('../models/Service');
 const { getActiveServiceNames, normalizeServiceKey } = require('../services/serviceCatalog');
@@ -54,7 +55,8 @@ const registerSchema = Joi.object({
   identityCardBackFileId: Joi.string().hex().length(24).required(),
   profilePhotoFileId: Joi.string().hex().length(24).required(),
   nationalId: Joi.string().trim().required(),
-  referralCode: Joi.string().trim().max(50).allow('').optional()
+  referralCode: Joi.string().trim().max(50).allow('').optional(),
+  referralClaimToken: Joi.string().trim().max(100).allow('').optional()
 });
 
 const profileUpdateSchema = Joi.object({
@@ -285,12 +287,30 @@ router.post(
         await session.withTransaction(async () => {
           let inviterId = null;
           let usedCode = '';
-          if (req.body.referralCode) {
+          let referralClaim = null;
+          if (req.body.referralCode && req.body.referralClaimToken) throw new Error('MULTIPLE_REFERRAL_CREDENTIALS');
+          if (req.body.referralClaimToken) {
+            const tokenHash = crypto.createHash('sha256').update(String(req.body.referralClaimToken)).digest('hex');
+            referralClaim = await ReferralClaim.findOne({
+              tokenHash, kind: 'fanni', claimedAt: null, expiresAt: { $gt: new Date() }
+            }).session(session);
+            if (!referralClaim) throw new Error('INVALID_REFERRAL_CLAIM');
+            const config = await AdminConfig.findOne({ key: 'main' }).select('settings').session(session).lean();
+            if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
+            // Cross-role accounts may register normally, but cannot earn a referral reward through the same phone.
+            const existingClient = await Client.findOne({ phone }).select('_id').session(session);
+            if (!existingClient) {
+              const inviter = await Fanni.findOne({ _id: referralClaim.inviter, role: 'fanni' }).select('_id phone').session(session);
+              if (!inviter) throw new Error('REFERRER_NOT_FOUND');
+              if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
+              inviterId = inviter._id;
+              usedCode = referralClaim.inviteCodeUsed;
+            }
+          } else if (req.body.referralCode) {
             const config = await AdminConfig.findOne({ key: 'main' }).select('settings').session(session).lean();
             if (config?.settings?.referralsEnabled === false) throw new Error('REFERRALS_DISABLED');
             const decoded = readReferralCode(req.body.referralCode);
             if (!decoded || decoded.kind !== 'fanni') throw new Error('INVALID_REFERRAL_CODE');
-            // Cross-role accounts may register normally, but cannot earn a referral reward through the same phone.
             const existingClient = await Client.findOne({ phone }).select('_id').session(session);
             if (!existingClient) {
               const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id phone').session(session);
@@ -349,6 +369,14 @@ router.post(
               inviter: inviterId, invitee: fanni._id, requiredCount: 3
             }], { session });
           }
+          if (referralClaim) {
+            const consumed = await ReferralClaim.updateOne(
+              { _id: referralClaim._id, claimedAt: null, expiresAt: { $gt: new Date() } },
+              { $set: { claimedAt: new Date(), invitee: fanni._id } },
+              { session }
+            );
+            if (consumed.modifiedCount !== 1) throw new Error('INVALID_REFERRAL_CLAIM');
+          }
         });
       } finally {
         await session.endSession();
@@ -364,6 +392,8 @@ router.post(
       if (err?.code === 'CARD_LEDGER_SECRET_MISSING') return res.status(503).json({ code: 'CARD_LEDGER_SECRET_MISSING', message: 'التسجيل متوقف مؤقتًا بسبب نقص إعداد حماية سجل البطاقات على الخادم. لا تحتاج لإعادة رفع الصور؛ أعد المحاولة بعد استكمال إعدادات الخادم.' });
       if (err?.message === 'REFERRALS_DISABLED') return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا ولا يمكن التسجيل من خلال دعوة جديدة.' });
       if (err?.message === 'INVALID_REFERRAL_CODE') return res.status(400).json({ message: 'كود الدعوة غير صحيح أو غير مخصص للفنيين.' });
+      if (err?.message === 'INVALID_REFERRAL_CLAIM') return res.status(400).json({ message: 'انتهت صلاحية رابط الدعوة أو تم استخدامه من قبل. افتح رابط الدعوة مرة أخرى.' });
+      if (err?.message === 'MULTIPLE_REFERRAL_CREDENTIALS') return res.status(400).json({ message: 'لا يمكن استخدام أكثر من كود دعوة في نفس التسجيل.' });
       if (err?.message === 'REFERRER_NOT_FOUND') return res.status(400).json({ message: 'صاحب كود الدعوة غير موجود.' });
       if (err && err.code === 11000) {
         return res.status(409).json({
