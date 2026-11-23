@@ -3210,6 +3210,13 @@ async function run() {
         .send({ phone: client.phone, password: archiveTestPassword });
       assert.equal(archivedClientLogin.status, 403);
       assert.equal(archivedClientLogin.body.code, 'ACCOUNT_ARCHIVED');
+      const archivedClientToken = require('jsonwebtoken').sign({
+        id: String(client._id), role: 'client', tokenVersion: 0
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const archivedClientOperation = await request(app).get('/api/store/client/orders')
+        .set('Authorization', 'Bearer ' + archivedClientToken);
+      assert.equal(archivedClientOperation.status, 403);
+      assert.equal(archivedClientOperation.body.code, 'ACCOUNT_ARCHIVED');
 
       const oldClientDelete = await request(app).delete('/api/admin/clients/' + client.phone + '/account')
         .set('Authorization', 'Bearer ' + adminToken);
