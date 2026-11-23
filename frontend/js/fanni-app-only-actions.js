@@ -39,4 +39,33 @@ const originalSubmitOffer=window.submitOffer;
 if(typeof originalSubmitOffer==='function')window.submitOffer=function(){if(openInApp('offer',(typeof state!=='undefined'&&state.offerModal?state.offerModal.sn:'')))return;return originalSubmitOffer.apply(this,arguments);};
 const originalSubmitWallet=window.submitWallet;
 if(typeof originalSubmitWallet==='function')window.submitWallet=function(){if(openInApp('topup'))return;return originalSubmitWallet.apply(this,arguments);};
+
+function preserveTechnicianInvite(){
+ if(!isBrowserDashboard())return;
+ const code=new URLSearchParams(window.location.search).get('ref');
+ if(!code)return;
+ let left=false;
+ const markLeft=()=>{left=true;};
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')markLeft();},{once:true});
+ window.addEventListener('pagehide',markLeft,{once:true});
+ fetch('/api/referrals/prepare-fanni',{
+  method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},
+  body:JSON.stringify({referralCode:String(code).slice(0,50)}),cache:'no-store',credentials:'same-origin'
+ }).then(async response=>{
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.claimToken)throw new Error(data.message||'تعذر حفظ الدعوة');
+  return data.claimToken;
+ }).then(claimToken=>{
+  const deepLink=SCHEME+'://technician?action=register&claim='+encodeURIComponent(claimToken);
+  try{window.location.href=deepLink;}catch(_){}
+  setTimeout(()=>{
+   if(!left&&document.visibilityState==='visible'){
+    window.location.replace(DOWNLOAD_URL+'?claim='+encodeURIComponent(claimToken));
+   }
+  },1400);
+ }).catch(()=>{
+  if(!left&&document.visibilityState==='visible')window.location.replace(DOWNLOAD_URL+'?referralError=1');
+ });
+}
+preserveTechnicianInvite();
 })();
