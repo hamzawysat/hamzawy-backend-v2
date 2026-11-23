@@ -295,6 +295,7 @@ router.get(['/counts', '/stats'], auth('admin'), async (req, res, next) => {
   try {
     const activeServices = await getActiveServiceNames(Service);
     const acceptedFanniFilter = {
+      archivedAt: null,
       $and: [
         { $or: [ { role: 'fanni' }, { role: { $ne: 'admin' }, specialties: { $exists: true, $ne: [] }, adminRole: null } ] },
         { specialties: { $in: activeServices } },
@@ -304,7 +305,7 @@ router.get(['/counts', '/stats'], auth('admin'), async (req, res, next) => {
     const [technicians, verifiedTechnicians, clients] = await Promise.all([
       Fanni.countDocuments(acceptedFanniFilter),
       Fanni.countDocuments({ ...acceptedFanniFilter, status: 'معتمد' }),
-      Client.countDocuments({})
+      Client.countDocuments({ archivedAt: null })
     ]);
     return res.set('Cache-Control', 'no-store').json({
       counts: { technicians, verifiedTechnicians, clients }
