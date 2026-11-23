@@ -2953,7 +2953,7 @@ async function run() {
         { name: 'مدعو اختبار', phone: '01000000002', passwordHash: 'test-hash' }
       ]);
       const clientCode = makeReferralCode('client', String(clients[0]._id));
-      assert.match(clientCode, /^[CT]-[A-F0-9]{24}-[A-Z0-9_-]{22}$/);
+      assert.match(clientCode, /^[CT]-[a-f0-9]{24}-[A-Z0-9_-]{22}$/);
       assert.ok(clientCode.length <= 50, 'new referral signatures must fit the existing storage and API limit');
       assert.equal(readReferralCode(clientCode)?.inviterId, String(clients[0]._id));
       const legacySignature = require('crypto').createHmac('sha256', process.env.JWT_SECRET)
