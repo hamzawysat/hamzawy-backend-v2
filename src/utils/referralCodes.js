@@ -26,6 +26,7 @@ function makeReferralCode(kind, accountId) {
 }
 
 function readReferralCode(value) {
+  if (String(process.env.JWT_SECRET || '').length < 32) return null;
   const code = String(value || '').trim().toUpperCase();
   const match = /^(C|T)-([A-F0-9]{24})-([A-Z0-9_-]{12}|[A-Z0-9_-]{22})$/.exec(code);
   if (!match) return null;
