@@ -11,6 +11,9 @@ const notificationSchema = new mongoose.Schema({
   message: { type: String, required: true, trim: true, maxlength: 300 },
   link: { type: String, trim: true, maxlength: 200, default: '' },
   readAt: { type: Date, default: null, index: true },
+  isActive: { type: Boolean, default: true, index: true },
+  relatedEntityType: { type: String, trim: true, maxlength: 50, default: '' },
+  relatedEntityId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
   dedupeKey: { type: String, trim: true, maxlength: 200, default: undefined }
 }, { timestamps: true });
 
