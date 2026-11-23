@@ -104,7 +104,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         return res.status(409).json({ message: 'رصيد العميل غير كافٍ لتفعيل هذه الباقة.' });
       }
       const updatedClient = amount > 0 ? await Client.findOneAndUpdate(
-        { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
+        { _id: client._id, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
         { $inc: { walletBalance: -amount } },
         { new: true, session, runValidators: true }
       ) : client;
@@ -184,7 +184,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
           if (!client) { result = { kind: 'insufficient' }; return; }
           const before = Number(client.walletBalance || 0);
           const updatedClient = await Client.findOneAndUpdate(
-            { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
+            { _id: client._id, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
             { $inc: { walletBalance: -amount } },
             { new: true, session, runValidators: true }
           );
@@ -243,7 +243,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
           if (!client) { await session.abortTransaction(); return res.status(409).json({ message: 'لا يمكن تفعيل الاشتراك: رصيد العميل غير كافٍ أو المحفظة غير متاحة.' }); }
           const before = Number(client.walletBalance || 0);
           const updatedClient = await Client.findOneAndUpdate(
-            { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
+            { _id: client._id, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
             { $inc: { walletBalance: -amount } }, { new: true, session, runValidators: true }
           );
           if (!updatedClient) { await session.abortTransaction(); return res.status(409).json({ message: 'تغير رصيد العميل أثناء التفعيل. حدّث الصفحة وحاول مرة أخرى.' }); }
