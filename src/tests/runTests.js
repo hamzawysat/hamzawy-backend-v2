@@ -153,6 +153,9 @@ async function run() {
 
       const storeRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/store.js'), 'utf8');
       assert.match(storeRoute, /StoreOrder\.countDocuments\(\{ status: 'جديد' \}\)/, 'cancelled and completed orders must not count as pending');
+      assert.match(storeRoute, /Notification\.updateMany/, 'terminal store states must retire the exact admin order notification');
+      assert.match(storeRoute, /\['مكتمل', 'مرفوض', 'ملغي'\]/, 'admin order alerts are retired only for terminal states');
+      assert.match(storeRoute, /store-order:/, 'admin alert cleanup is scoped to the exact store-order dedupe key');
     });
 
     await test('admin FCM channel routing is isolated from Expo client and technician notifications', async () => {
