@@ -60,7 +60,7 @@ async function openFanniUnifiedProfile(id) {
         ${section('المحفظة وكشف الحركات',wallet)}
         ${section('طلبات الشحن',topups)}
         ${section('سجل قرارات الإدارة',decisions)}
-        ${section('سجل البطاقة والربط',list(data.cardLedger?.linkedTechnicians, x => '<p class="text-xs">'+val(x.name)+' • '+val(x.phone)+' • '+date(x.linkedAt)+'</p>', 'لا توجد روابط إضافية'))}
+        ${section('سجل البطاقة والربط',list(data.cardLedger?.linkedTechnicians, x => '<p class="text-xs">'+val(x.name)+' • '+val(x.phone)+' • '+date(x.linkedAt)+'</p>', 'لا توجد روابط إضافية')+'<div class="border-t pt-2"><p class="text-xs font-black">محاولات التكرار</p>'+list(data.cardLedger?.duplicateAttempts, x => '<article class="rounded-lg bg-amber-50 p-2 text-xs"><strong>'+val(x.applicantName)+' • '+val(x.applicantPhone)+'</strong><p>'+val(x.status)+' • '+date(x.createdAt)+'</p><p>'+val(x.reviewedBy)+' • '+val(x.reviewNote)+'</p></article>', 'لا توجد محاولات تكرار')+'</div><p class="text-xs text-slate-500">آخر مراجعة: '+date(data.cardLedger?.lastReviewedAt)+' • '+val(data.cardLedger?.lastReviewedBy)+'</p><p class="text-xs">'+val(data.cardLedger?.lastReviewNote)+'</p>')}
         ${section('سجل التدقيق',audits)}
       </div>`;
     modal.querySelector('[data-close]').addEventListener('click', close);
