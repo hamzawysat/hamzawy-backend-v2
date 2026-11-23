@@ -36,7 +36,7 @@ function readReferralCode(value) {
   const expectedSignature = signature.length === 12
     ? signatureFor(kind, id, 'hex', 12)
     : signatureFor(kind, id, 'base64url', 22);
-  const expected = match[1] + '-' + id + '-' + expectedSignature;
+  const expected = match[1] + '-' + match[2] + '-' + expectedSignature;
   const a = Buffer.from(expected);
   const b = Buffer.from(code);
   if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
