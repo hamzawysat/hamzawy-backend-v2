@@ -125,7 +125,9 @@ async function run() {
       assert.match(deployed, /sonaa\.admin\.storeOrderNotificationSeen\.v1/, 'the deployed admin bundle must include the notification dedupe fix');
       const navigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
       const deployedNavigation = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-navigation.js'), 'utf8');
-      const refreshHandler = navigation.slice(navigation.indexOf('function handleGlobalRefresh'), navigation.indexOf("document.getElementById('global-refresh')"));
+      const refreshStart = navigation.indexOf('function handleGlobalRefresh');
+      const refreshEnd = navigation.indexOf("\ndocument.getElementById('global-refresh')", refreshStart);
+      const refreshHandler = navigation.slice(refreshStart, refreshEnd === -1 ? undefined : refreshEnd);
       assert.match(refreshHandler, /window\.location\.reload\(\)/, 'the floating admin refresh button must reload the whole WebView document');
       assert.doesNotMatch(refreshHandler, /refreshAllAdminData/, 'the floating refresh button must not perform only a partial data refresh');
       assert.match(deployedNavigation, /window\.location\.reload\(\)/, 'the deployed navigation bundle must include full reload behavior');
