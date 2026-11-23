@@ -990,6 +990,8 @@ async function run() {
       }).lean();
       assert.ok(savedClaim, 'the invitation must be persisted server-side before the app download');
       assert.equal(savedClaim.claimedAt, null);
+      assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000 + 5000, 'technician handoff claims must expire within 24 hours');
+      assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() > 23 * 60 * 60 * 1000, 'fresh technician handoff claims must retain a usable 24-hour window');
       const registration = await request(app).post('/api/fanni/register').send({
         name: 'فني اختبار التسجيل',
         phone,
