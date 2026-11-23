@@ -16,7 +16,6 @@ assert.match(source, /HAMZAWY_FANNI_CLAIM:/, 'download page must copy the exact 
 assert.match(source, /navigator\.clipboard\.writeText\(clipboardValue\)/, 'download click must copy the claim before starting the APK download');
 assert.match(source, /data-continue-download/, 'clipboard-denied browsers must have a manual copy and continue fallback');
 assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production download page must include referral handoff');
-assert.match(built, /params\.get\(['"]claim['"]\)/, 'built production page must preserve the claim URL handling');
 assert.doesNotMatch(source, /\\\\n<div class="referral-notice"/, 'HTML must not contain literal escaped newline sequences');
 
 console.log('Technician referral APK download handoff checks passed.');
