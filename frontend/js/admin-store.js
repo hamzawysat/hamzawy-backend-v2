@@ -268,9 +268,60 @@ async function loadStoreProducts(){
   }
 }
 async function loadStoreOrders(){state.storeOrdersLoading=true;if(state.tab==='storeOrders')render();try{const d=await tryApi(['/api/admin/store/orders']);state.storeOrders=extractList(d,['orders']);state.storeOrdersPendingCount=state.storeOrders.filter(o=>o.status==='جديد').length;}catch(e){state.storeOrders=[];showToast(e.message||'تعذر تحميل المعاملات','error');}finally{state.storeOrdersLoading=false;if(state.tab==='storeOrders')render();}}
-async function loadStoreOrderCount(silent=false){try{const d=await tryApi(['/api/admin/store/orders/count']);const next=Math.max(0,Number(d.pendingCount)||0);const previous=Number(state.storeOrdersPendingCount||0);state.storeOrdersPendingCount=next;if(next>previous&&previous>=0&&state.storeOrderCountInitialized){showToast('وصلك طلب جديد في متجر حمزاوي سات','warning');}state.storeOrderCountInitialized=true;if(!silent&&state.pageMode==='home')render();}catch(_){}}
-async function pollStoreAdminNotifications(){try{const data=await tryApi(['/api/notifications/admin'],{method:'GET'});const items=extractList(data,['notifications']);const fresh=items.filter(item=>item.type==='admin_store_order'&&!item.read);const seen=new Set(state.seenStoreOrderNotificationIds||[]);if(state.storeAdminNotificationsInitialized){fresh.filter(item=>!seen.has(String(item.id))).slice(0,3).forEach(item=>showToast((item.title||'طلب متجر جديد')+' — '+(item.message||''),'warning'));}state.seenStoreOrderNotificationIds=items.map(item=>String(item.id)).slice(0,100);state.storeAdminNotificationsInitialized=true;}catch(_){}}
-function startStoreOrderCountPolling(){if(window.__sonaaStoreOrderCountTimer||!getToken())return;loadStoreOrderCount(true);pollStoreAdminNotifications();window.__sonaaStoreOrderCountTimer=setInterval(()=>{if(!document.hidden&&getToken()){loadStoreOrderCount(true);pollStoreAdminNotifications();}},15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getToken()){loadStoreOrderCount(true);pollStoreAdminNotifications();}});}
+let storeAdminNotificationsPollInFlight=false;
+async function loadStoreOrderCount(silent=false){
+  try{
+    const data=await tryApi(['/api/admin/store/orders/count']);
+    state.storeOrdersPendingCount=Math.max(0,Number(data.pendingCount)||0);
+    state.storeOrderCountInitialized=true;
+    if(!silent&&state.pageMode==='home')render();
+  }catch(_){}
+}
+async function pollStoreAdminNotifications(){
+  if(storeAdminNotificationsPollInFlight)return;
+  storeAdminNotificationsPollInFlight=true;
+  try{
+    const data=await tryApi(['/api/notifications/admin'],{method:'GET'});
+    const items=extractList(data,['notifications']);
+    const fresh=items.filter(item=>item.type==='admin_store_order'&&!item.read);
+    let persisted=[];
+    try{
+      const saved=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationSeen.v1')||'[]');
+      if(Array.isArray(saved))persisted=saved.map(String);
+    }catch(_){}
+    const seen=new Set([...(state.seenStoreOrderNotificationIds||[]),...persisted]);
+    const initialized=state.storeAdminNotificationsInitialized===true;
+    if(initialized){
+      fresh.filter(item=>!seen.has(String(item.id))).slice(0,3).forEach(item=>{
+        showToast((item.title||'طلب متجر جديد')+' — '+(item.message||''),'warning');
+      });
+    }
+    const ids=items.map(item=>String(item.id)).filter(Boolean);
+    state.seenStoreOrderNotificationIds=Array.from(new Set([...seen,...ids])).slice(-200);
+    state.storeAdminNotificationsInitialized=true;
+    try{localStorage.setItem('sonaa.admin.storeOrderNotificationSeen.v1',JSON.stringify(state.seenStoreOrderNotificationIds));}catch(_){}
+  }catch(_){
+  }finally{
+    storeAdminNotificationsPollInFlight=false;
+  }
+}
+function startStoreOrderCountPolling(){
+  if(window.__sonaaStoreOrderCountTimer||!getToken())return;
+  loadStoreOrderCount(true);
+  pollStoreAdminNotifications();
+  window.__sonaaStoreOrderCountTimer=setInterval(()=>{
+    if(!document.hidden&&getToken()){
+      loadStoreOrderCount(true);
+      pollStoreAdminNotifications();
+    }
+  },15000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&getToken()){
+      loadStoreOrderCount(true);
+      pollStoreAdminNotifications();
+    }
+  });
+}
 (function attachStoreOrdersCount(){const item=(typeof ADMIN_SECTIONS!=='undefined'?ADMIN_SECTIONS:[]).flatMap(section=>section.tabs||[]).find(tab=>tab.id==='storeOrders');if(item)item.count=()=>Math.max(0,Number(state.storeOrdersPendingCount)||0);})();
 async function saveStoreAdRotationSeconds(){const seconds=Number(document.getElementById('store-ad-rotation-seconds')?.value);if(![5,10,15,20,30,45,60].includes(seconds))return showToast('اختار مدة صحيحة لعرض الصورة','error');try{const result=await tryApi(['/api/admin/store/ad-settings'],{method:'PUT',body:JSON.stringify({rotationSeconds:seconds})});state.storeAdRotationSeconds=Number(result.rotationSeconds)||seconds;state.storeAdSettingsLoaded=true;state.storeAdSettingsLoadError='';showToast('تم حفظ مدة عرض صور الإعلان');render();}catch(error){showToast(error.message||'تعذر حفظ مدة الإعلان','error');}}
 function toggleStoreProductForm(){persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=state.storeProductFormOpen!==true;render();}
