@@ -19,6 +19,7 @@ const referralSchema = new mongoose.Schema({
   status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected'], default: 'pending', index: true },
   // Fraud signals are review holds, never automatic account bans or referral rejection.
   riskFlags: { type: [String], default: [] },
+  riskReviewedFlags: { type: [String], default: [] },
   riskDetectedAt: { type: Date, default: null },
   riskReviewedAt: { type: Date, default: null },
   riskReviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null },
