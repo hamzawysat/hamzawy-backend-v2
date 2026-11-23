@@ -3135,15 +3135,17 @@ async function run() {
     await test('client and technician archives preserve account identity, reject destructive routes, and restore safely', async () => {
       const Client = require('../models/Client');
       const Fanni = require('../models/Fanni');
+      const archiveTestPassword = 'archive-test-password';
+      const archiveTestHash = require('bcryptjs').hashSync(archiveTestPassword, 4);
       const client = await Client.create({
-        name: 'عميل اختبار الأرشيف', phone: '01055550101', passwordHash: 'archive-test-hash',
+        name: 'عميل اختبار الأرشيف', phone: '01055550101', passwordHash: archiveTestHash,
         walletBalance: 125, status: 'نشط'
       });
       const frontId = new mongoose.Types.ObjectId();
       const backId = new mongoose.Types.ObjectId();
       const photoId = new mongoose.Types.ObjectId();
       const fanni = await Fanni.create({
-        name: 'فني اختبار الأرشيف', phone: '01055550102', passwordHash: 'archive-test-hash',
+        name: 'فني اختبار الأرشيف', phone: '01055550102', passwordHash: archiveTestHash,
         specialties: ['اختبار'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni',
         walletBalance: 75, identityCardFrontFileId: frontId,
         identityCardBackFileId: backId, profilePhotoFileId: photoId
@@ -3173,7 +3175,7 @@ async function run() {
         .send({ reason: 'محاولة أرشفة مكررة.' });
       assert.equal(duplicateClientArchive.status, 409);
       const archivedClientLogin = await request(app).post('/api/client/login')
-        .send({ phone: client.phone, password: 'archive-test-hash' });
+        .send({ phone: client.phone, password: archiveTestPassword });
       assert.equal(archivedClientLogin.status, 403);
       assert.equal(archivedClientLogin.body.code, 'ACCOUNT_ARCHIVED');
 
@@ -3236,7 +3238,7 @@ async function run() {
       assert.equal(archivedFanniList.body.total, 1);
 
       const archivedFanniLogin = await request(app).post('/api/fanni/login')
-        .send({ phone: fanni.phone, password: 'archive-test-hash' });
+        .send({ phone: fanni.phone, password: archiveTestPassword });
       assert.equal(archivedFanniLogin.status, 403);
       assert.equal(archivedFanniLogin.body.code, 'ACCOUNT_ARCHIVED');
 
