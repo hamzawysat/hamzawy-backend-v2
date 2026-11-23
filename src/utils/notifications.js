@@ -469,6 +469,16 @@ function escapeNotificationRegex(value) {
   return String(value || '').replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
 }
 
+function notificationCreatedAtWindow(orderMeta = {}) {
+  const createdAt = orderMeta.createdAt ? new Date(orderMeta.createdAt) : null;
+  if (!createdAt || !Number.isFinite(createdAt.getTime())) return null;
+  const radiusMs = 60 * 60 * 1000;
+  return {
+    $gte: new Date(createdAt.getTime() - radiusMs),
+    $lte: new Date(createdAt.getTime() + radiusMs)
+  };
+}
+
 function buildOrderNotificationFilter(orderId, orderSN = '', orderMeta = {}) {
   const id = String(orderId || '').trim();
   if (!/^[a-f0-9]{24}$/i.test(id)) return null;
@@ -483,14 +493,16 @@ function buildOrderNotificationFilter(orderId, orderSN = '', orderMeta = {}) {
   }
   const clientName = String(orderMeta.clientName || '').trim();
   const budgetNumber = String(orderMeta.budget || '').match(/\d+(?:[.,]\d+)?/);
-  if (clientName.length >= 3 && budgetNumber) {
+  const createdAtWindow = notificationCreatedAtWindow(orderMeta);
+  if (clientName.length >= 3 && budgetNumber && createdAtWindow) {
     const nameRegex = new RegExp(escapeNotificationRegex(clientName), 'i');
     const amount = escapeNotificationRegex(budgetNumber[0].replace(',', '.'));
     const amountRegex = new RegExp('(^|[^0-9])' + amount + '($|[^0-9])');
     matches.push({
       $and: [
         { $or: [{ title: nameRegex }, { message: nameRegex }] },
-        { $or: [{ title: amountRegex }, { message: amountRegex }] }
+        { $or: [{ title: amountRegex }, { message: amountRegex }] },
+        { createdAt: createdAtWindow }
       ]
     });
   }
@@ -505,6 +517,43 @@ function buildOrderNotificationFilter(orderId, orderSN = '', orderMeta = {}) {
 
 async function dismissOrderNotifications(orderId, orderSN = '', orderMeta = {}) {
   const filter = buildOrderNotificationFilter(orderId, orderSN, orderMeta);
+  if (!filter) return { modifiedCount: 0 };
+  return Notification.updateMany(filter, { $set: { isActive: false, readAt: new Date() } });
+}
+
+function buildStoreOrderNotificationFilter(storeOrderId, orderMeta = {}) {
+  const id = String(storeOrderId || '').trim();
+  if (!/^[a-f0-9]{24}$/i.test(id)) return null;
+  const matches = [
+    { relatedEntityType: 'store_order', relatedEntityId: id },
+    { dedupeKey: { $regex: '(^|:)' + id + '(:|$)' } }
+  ];
+  const buyerName = String(orderMeta.buyerName || '').trim();
+  const totalNumber = String(orderMeta.total || '').match(/\d+(?:[.,]\d+)?/);
+  const createdAtWindow = notificationCreatedAtWindow(orderMeta);
+  if (buyerName.length >= 3 && totalNumber && createdAtWindow) {
+    const nameRegex = new RegExp(escapeNotificationRegex(buyerName), 'i');
+    const amount = escapeNotificationRegex(totalNumber[0].replace(',', '.'));
+    const amountRegex = new RegExp('(^|[^0-9])' + amount + '($|[^0-9])');
+    matches.push({
+      $and: [
+        { $or: [{ title: nameRegex }, { message: nameRegex }] },
+        { $or: [{ title: amountRegex }, { message: amountRegex }] },
+        { createdAt: createdAtWindow }
+      ]
+    });
+  }
+  return {
+    recipientRole: 'admin',
+    $and: [
+      { $or: matches },
+      { $or: [{ isActive: { $ne: false } }, { readAt: null }, { readAt: { $exists: false } }] }
+    ]
+  };
+}
+
+async function dismissStoreOrderNotifications(storeOrderId, orderMeta = {}) {
+  const filter = buildStoreOrderNotificationFilter(storeOrderId, orderMeta);
   if (!filter) return { modifiedCount: 0 };
   return Notification.updateMany(filter, { $set: { isActive: false, readAt: new Date() } });
 }
@@ -552,4 +601,4 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null,
     return { targeted: 0, created: 0, failed: 1 };
   }
 }
-module.exports = { createNotification, sendPushNotification, notifyAdmins, dismissOrderNotifications, buildOrderNotificationFilter, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };
+module.exports = { createNotification, sendPushNotification, notifyAdmins, dismissOrderNotifications, buildOrderNotificationFilter, dismissStoreOrderNotifications, buildStoreOrderNotificationFilter, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };
