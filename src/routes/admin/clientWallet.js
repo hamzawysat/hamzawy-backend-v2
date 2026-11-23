@@ -5,7 +5,7 @@ function createAdminClientWalletRouter({auth,validate,Joi,mongoose,Client,Client
  const router=express.Router();
  router.get('/client-wallet/accounts',auth('admin'),async(req,res,next)=>{
   try{
-   const accounts=await Client.find({}).select('name phone status walletBalance walletFrozen createdAt').sort({name:1,createdAt:-1}).lean();
+   const accounts=await Client.find({ archivedAt: null }).select('name phone status walletBalance walletFrozen createdAt').sort({name:1,createdAt:-1}).lean();
    return res.set('Cache-Control','no-store').json({accounts,data:accounts});
   }catch(e){next(e);}
  });
