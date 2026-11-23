@@ -184,7 +184,7 @@ const PROFESSIONAL_LEVEL_RANK = {
 
 async function autoPromoteFanni(fanniId, reason) {
   if (!fanniId) return null;
-  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni' });
+  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni', archivedAt: null });
   if (!fanni || typeof fanni.calculateLevel !== 'function') return null;
   const currentLevel = fanni.level || 'مبتدئ';
   const calculatedLevel = fanni.calculateLevel();
@@ -265,7 +265,7 @@ router.use(createOrderAdminPublicationRouter({
  * - بيانات العميل الشخصية لا تُرسل في هذه المرحلة.
  */
 async function hasAcceptedGuidelines(fanniId) {
-  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni', status: 'معتمد' }).select('technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
+  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni', archivedAt: null, status: 'معتمد' }).select('technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
   return Boolean(fanni?.technicianGuidelinesAcceptedAt && fanni?.technicianGuidelinesVersion);
 }
 function hasContactDetails(text) { return containsEgyptianMobile(String(text || '')) || /(?:https?:\/\/|www\.|t\.me\/|wa\.me\/|bit\.ly\/)/i.test(String(text || '')); }
