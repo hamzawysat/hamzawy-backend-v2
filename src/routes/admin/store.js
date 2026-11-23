@@ -3,6 +3,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { normalizeStoreCategoryName, buildStoreCategories } = require('../../utils/storeCategories');
+const Notification = require('../../models/Notification');
 
 function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTransaction, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
@@ -404,6 +405,14 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       await order.save({ session });
       await session.commitTransaction();
       await writeAdminAudit(req, 'تحديث حالة طلب متجر', 'store-orders', String(order._id), order.status);
+      if (['مكتمل', 'مرفوض', 'ملغي'].includes(order.status)) {
+        // The original admin alert is keyed by order ID. Retire it only when
+        // that exact order reaches a terminal state; other orders stay visible.
+        await Notification.updateMany({
+          recipientRole: 'admin',
+          dedupeKey: new RegExp('^store-order:' + String(order._id) + ':')
+        }, { $set: { isActive: false, readAt: new Date() } });
+      }
       const refundMessage = refundAmount > 0
         ? ' وتم استرداد مبلغ ' + refundAmount.toLocaleString('ar-EG') + ' جنيه إلى محفظتك.'
         : '';
