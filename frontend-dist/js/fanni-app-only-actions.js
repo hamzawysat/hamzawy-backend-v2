@@ -5,7 +5,7 @@ const SCHEME='hamzawy';
 let fallbackTimer=null;
 let leftPage=false;
 function isBrowserDashboard(){
- return !window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\\s*wv\\)/i.test(navigator.userAgent||'');
+ return !window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\s*wv\)/i.test(navigator.userAgent||'');
 }
 function showDownloadNotice(kind){
  let box=document.getElementById('fanni-app-action-notice');
@@ -36,7 +36,7 @@ function openInApp(kind,sn){
 const originalOpenOffer=window.openOffer;
 if(typeof originalOpenOffer==='function')window.openOffer=function(sn){if(openInApp('offer',sn))return;return originalOpenOffer.apply(this,arguments);};
 const originalSubmitOffer=window.submitOffer;
-if(typeof originalSubmitOffer==='function')window.submitOffer=function(){if(openInApp('offer',window.state&&state.offerModal&&state.offerModal.sn))return;return originalSubmitOffer.apply(this,arguments);};
+if(typeof originalSubmitOffer==='function')window.submitOffer=function(){if(openInApp('offer',(typeof state!=='undefined'&&state.offerModal?state.offerModal.sn:'')))return;return originalSubmitOffer.apply(this,arguments);};
 const originalSubmitWallet=window.submitWallet;
 if(typeof originalSubmitWallet==='function')window.submitWallet=function(){if(openInApp('topup'))return;return originalSubmitWallet.apply(this,arguments);};
 })();
