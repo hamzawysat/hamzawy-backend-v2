@@ -3054,6 +3054,28 @@ async function run() {
       assert.ok(reviewedReferral.riskReviewedAt);
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 2);
 
+      // Matching signup network/device fingerprints are review signals, not proof of fraud.
+      const fingerprintClients = await Client.create([
+        { name: 'عميل بصمة 1', phone: '01000000009', passwordHash: 'test-hash', registrationIpHash: 'same-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' },
+        { name: 'عميل بصمة 2', phone: '01000000010', passwordHash: 'test-hash', registrationIpHash: 'same-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' }
+      ]);
+      const fingerprintCode = makeReferralCode('client', String(fingerprintClients[0]._id));
+      await Referral.create({
+        number: 'RFTESTFINGERPRINT', code: 'RFTESTFINGERPRINT', inviteCodeUsed: fingerprintCode,
+        kind: 'client', inviter: fingerprintClients[0]._id, invitee: fingerprintClients[1]._id, requiredCount: 1
+      });
+      await Order.create({
+        sn: 'SN991010', service: 'خدمة اختبار', area: 'القاهرة', clientName: fingerprintClients[1].name,
+        clientPhone: fingerprintClients[1].phone, clientAccount: fingerprintClients[1]._id,
+        status: 'تم الانتهاء', completionDeclaredAt: new Date(Date.now() + 20)
+      });
+      const fingerprintOutcome = await refreshReferralProgress({ kind: 'client', inviteeId: fingerprintClients[1]._id, mongoose });
+      assert.equal(fingerprintOutcome.reviewRequired, true);
+      assert.ok(fingerprintOutcome.riskFlags.includes('same_registration_ip'));
+      assert.ok(fingerprintOutcome.riskFlags.includes('same_registration_device_signature'));
+      assert.deepEqual((await Client.find({ _id: { $in: fingerprintClients.map(x => x._id) } }).sort({ phone: 1 }).lean()).map(x => x.walletBalance), [0, 0]);
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
+
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
