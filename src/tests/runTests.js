@@ -3191,8 +3191,9 @@ async function run() {
       assert.equal(archivedClientList.body.total, 1);
       assert.equal(String(archivedClientList.body.items[0]._id), String(client._id));
 
+      const nonArchivedClientId = new mongoose.Types.ObjectId().toString();
       const notArchivedRestore = await request(app)
-        .post('/api/admin/clients/' + secondClientToken + '/restore')
+        .post('/api/admin/clients/' + nonArchivedClientId + '/restore')
         .set('Authorization', 'Bearer ' + adminToken);
       assert.ok([400, 404, 409].includes(notArchivedRestore.status), 'restore must reject a non-archived/invalid account reference');
 
@@ -3259,8 +3260,9 @@ async function run() {
         { name: 'عميل صفحة أولى', phone: '01055550201', passwordHash: 'test-hash' },
         { name: 'عميل صفحة ثانية', phone: '01055550202', passwordHash: 'test-hash' }
       ]);
+      const orderOnlySn = 'SN' + String(Date.now() % 1000000).padStart(6, '0');
       await require('../models/Order').create({
-        sn: 'SNARCHIVEONLY01', service: 'اختبار', area: 'القاهرة',
+        sn: orderOnlySn, service: 'اختبار', area: 'القاهرة',
         clientName: 'سجل طلب بلا صف عميل', clientPhone: '01055550299',
         status: 'تم النشر'
       });
