@@ -56,7 +56,9 @@ async function archiveAccount(kind, id, label = '') {
       method: 'POST', body: JSON.stringify({ reason: reason.trim() })
     });
     showToast(data.message || 'تمت الأرشفة');
-    if (type === 'clients') await loadClients(state.clientSearch || '');
+    document.getElementById('unified-client-profile')?.remove();
+    document.getElementById('unified-fanni-profile')?.remove();
+    if (type === 'clients') { state.clientPage = 1; await loadClients(state.clientSearch || '', 1); }
     else await loadAll();
     if (state.tab === 'archive') await loadArchive(state.archiveType, state.archivePage);
   } catch (error) {
@@ -75,7 +77,7 @@ async function restoreArchivedAccount(kind, id) {
     });
     showToast(data.message || 'تمت استعادة الحساب');
     await loadArchive(type, state.archivePage);
-    if (type === 'clients') await loadClients(state.clientSearch || '');
+    if (type === 'clients') { state.clientPage = 1; await loadClients(state.clientSearch || '', 1); }
     else await loadAll();
   } catch (error) {
     showToast(error.message || 'تعذرت استعادة الحساب', 'error');
