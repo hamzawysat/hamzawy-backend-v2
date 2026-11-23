@@ -2953,7 +2953,14 @@ async function run() {
         { name: 'مدعو اختبار', phone: '01000000002', passwordHash: 'test-hash' }
       ]);
       const clientCode = makeReferralCode('client', String(clients[0]._id));
+      assert.match(clientCode, /^[CT]-[A-F0-9]{24}-[A-Z0-9_-]{22}$/);
+      assert.ok(clientCode.length <= 50, 'new referral signatures must fit the existing storage and API limit');
       assert.equal(readReferralCode(clientCode)?.inviterId, String(clients[0]._id));
+      const legacySignature = require('crypto').createHmac('sha256', process.env.JWT_SECRET)
+        .update('C:' + String(clients[0]._id).toLowerCase()).digest('hex').slice(0, 12).toUpperCase();
+      const legacyClientCode = 'C-' + String(clients[0]._id).toLowerCase() + '-' + legacySignature;
+      assert.equal(readReferralCode(legacyClientCode)?.inviterId, String(clients[0]._id), 'existing 48-bit invitation links must remain valid');
+      assert.equal(readReferralCode(clientCode.slice(0, -1) + (clientCode.endsWith('A') ? 'B' : 'A')), null, 'tampered referral signatures must be rejected');
       await Referral.create({
         number: 'RFTESTCLIENT01', code: 'RFTESTCLIENT01', inviteCodeUsed: clientCode,
         kind: 'client', inviter: clients[0]._id, invitee: clients[1]._id, requiredCount: 1
