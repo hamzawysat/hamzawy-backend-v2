@@ -3051,6 +3051,7 @@ async function run() {
       const reviewedReferral = await Referral.findById(heldReferral._id).lean();
       assert.equal(reviewedReferral.status, 'completed');
       assert.deepEqual(reviewedReferral.riskFlags, []);
+      assert.ok(reviewedReferral.riskReviewedFlags.includes('shared_technician_national_id'));
       assert.ok(reviewedReferral.riskReviewedAt);
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 2);
 
