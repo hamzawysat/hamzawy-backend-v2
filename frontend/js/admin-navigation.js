@@ -81,5 +81,5 @@ if(!window.__sonaaAdminRefreshLoop){
   },0);
  });
 }
-async function handleGlobalRefresh(){const button=document.getElementById('global-refresh');if(button?.disabled)return;if(button){button.disabled=true;button.classList.add('is-refreshing');}try{await refreshAllAdminData(true);showToast('تم تحديث جميع قوائم الإدارة','success');}catch(error){showToast(error.message||'تعذر تحديث البيانات','error');}finally{if(button){button.disabled=false;button.classList.remove('is-refreshing');}}}
+function handleGlobalRefresh(){const button=document.getElementById('global-refresh');if(button?.disabled)return;if(button){button.disabled=true;button.classList.add('is-refreshing');}window.location.reload();}
 document.getElementById('global-refresh')?.addEventListener('click', handleGlobalRefresh);
