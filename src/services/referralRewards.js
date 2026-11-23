@@ -5,6 +5,8 @@ const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const Order = require('../models/Order');
 const WalletTransaction = require('../models/WalletTransaction');
+const FanniCardLedger = require('../models/FanniCardLedger');
+const AdminAuditLog = require('../models/AdminAuditLog');
 
 async function refreshReferralProgress({ kind, inviteeId, mongoose, session: suppliedSession = null }) {
   if (!inviteeId || !['client', 'fanni'].includes(kind)) return null;
@@ -42,6 +44,43 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       const inviter = await Model.findById(referral.inviter).session(session);
       const invitee = await Model.findById(referral.invitee).session(session);
       if (!inviter || !invitee) throw new Error('REFERRAL_PARTY_NOT_FOUND');
+
+      // Identity collisions are financial-risk holds, not automatic bans/rejections.
+      const riskFlags = [];
+      const inviterPhone = String(inviter.phone || '').trim();
+      const inviteePhone = String(invitee.phone || '').trim();
+      if (inviterPhone && inviteePhone && inviterPhone === inviteePhone) {
+        riskFlags.push('same_phone_identity');
+      }
+      if (kind === 'fanni') {
+        const sharedIdentity = await FanniCardLedger.findOne({
+          $and: [
+            { $or: [{ fanniId: inviter._id }, { 'linkedTechnicians.fanniId': inviter._id }] },
+            { $or: [{ fanniId: invitee._id }, { 'linkedTechnicians.fanniId': invitee._id }] }
+          ]
+        }).session(session).select('_id').lean();
+        if (sharedIdentity) riskFlags.push('shared_technician_national_id');
+      }
+      // Existing holds must remain effective until an administrator reviews them.
+      if (Array.isArray(referral.riskFlags) && referral.riskFlags.length) {
+        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: referral.riskFlags };
+        return;
+      }
+      if (riskFlags.length) {
+        referral.riskFlags = [...new Set([...(referral.riskFlags || []), ...riskFlags])];
+        referral.riskDetectedAt = referral.riskDetectedAt || new Date();
+        referral.status = 'eligible';
+        await referral.save({ session });
+        await AdminAuditLog.create([{
+          action: 'تعليق مكافأة دعوة للاشتباه',
+          category: 'referrals',
+          target: String(referral._id),
+          details: 'number=' + referral.number + '; flags=' + riskFlags.join(',') + '; payout held for manual review',
+          adminName: 'النظام'
+        }], { session });
+        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags };
+        return;
+      }
 
       const partyFields = [
         { key: 'inviterReward', account: inviter, owner: kind === 'client' ? 'client' : 'fanni', side: 'inviter' },
