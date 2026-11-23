@@ -270,8 +270,8 @@ function createAdminPlatformRouter({
         Client.countDocuments(filter)
       ]);
 
-      // The client list is account-based: an order phone is only a historical
-      // lookup key and must never create a synthetic/unregistered client row.
+      // The client list is account-based. An order phone is only a lookup key
+      // for an existing Client document; order records never create client rows.
       const clients = registered.map(client => ({
         id: String(client._id),
         _id: String(client._id),
