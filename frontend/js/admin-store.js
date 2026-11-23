@@ -296,8 +296,19 @@ async function dismissStoreAdminNotification(id,button){
     const root=document.getElementById('toast');
     if(root&&!root.querySelector('[data-store-order-notification]'))root.innerHTML='';
   }catch(error){
+    if(error?.status===404){
+      let saved=[];
+      try{const current=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');if(Array.isArray(current))saved=current.map(String);}catch(_){}
+      try{localStorage.setItem('sonaa.admin.storeOrderNotificationRead.v2',JSON.stringify(Array.from(new Set([...saved,id])).slice(-300)));}catch(_){}
+      card?.remove();
+      return;
+    }
     if(button)button.disabled=false;
-    showToast(error.message||'تعذر تسجيل قراءة إشعار الطلب في الخادم','error');
+    if(card){
+      let note=card.querySelector('[data-dismiss-error]');
+      if(!note){note=document.createElement('p');note.dataset.dismissError='';note.className='mt-2 text-[10px] font-bold';card.appendChild(note);}
+      note.textContent=error.message||'تعذر تسجيل قراءة الإشعار. حاول مرة أخرى.';
+    }else showToast(error.message||'تعذر تسجيل قراءة إشعار الطلب في الخادم','error');
   }
 }
 function showStoreAdminNotificationToasts(items){
