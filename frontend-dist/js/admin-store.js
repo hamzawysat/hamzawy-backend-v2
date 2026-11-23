@@ -1,1 +1,576 @@
-"use strict";let storeCsvImportState={open:!1,fileName:"",headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:!1,result:null};const STORE_CSV_IMPORT_FIELDS=[{key:"name",label:"اسم المنتج *",aliases:["name","productname","title","اسم المنتج","اسم","المنتج","الاسم"]},{key:"price",label:"السعر *",aliases:["price","currentprice","sellingprice","السعر","السعر الحالي","سعر البيع"]},{key:"category",label:"القسم",aliases:["category","section","group","القسم","الفئة","التصنيف"]},{key:"description",label:"الوصف",aliases:["description","shortdescription","الوصف","وصف"]},{key:"details",label:"التفاصيل والمواصفات",aliases:["details","specifications","المواصفات","التفاصيل"]},{key:"originalPrice",label:"السعر قبل العرض",aliases:["originalprice","oldprice","السعر الأصلي","السعر قبل الخصم","السعر قبل العرض"]},{key:"offerText",label:"تفاصيل العرض",aliases:["offer","offertext","العرض","تفاصيل العرض"]},{key:"type",label:"نوع المنتج",aliases:["type","producttype","نوع المنتج","النوع"]},{key:"subscriptionDuration",label:"مدة الاشتراك",aliases:["duration","subscriptionduration","مدة الاشتراك"]},{key:"imageUrl",label:"رابط الصورة",aliases:["image","imageurl","image_url","رابط الصورة","رابط صورة المنتج","صورة المنتج"]},{key:"stock",label:"الكمية / المخزون",aliases:["stock","quantity","qty","الكمية","المخزون","عدد"]},{key:"isActive",label:"حالة المنتج",aliases:["active","isactive","enabled","نشط","مفعل","حالة المنتج"]}];function normalizeStoreCsvHeader(t){return String(t||"").replace(/^\uFEFF/,"").normalize("NFKC").toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,"").replace(/[\s_\-./\\()[\]{}:،؛]+/g,"")}function parseStoreCsvText(t){const e=String(t||"").replace(/^\uFEFF/,""),o=e.split(/\r?\n/).find(t=>t.trim())||"",r=[",",";","\t"],s=r.map(t=>{let e=0,r=!1;for(let s=0;s<o.length;s++){const a=o[s];'"'===a&&r&&'"'===o[s+1]?s++:'"'!==a?r||a!==t||e++:r=!r}return e}),a=r[s.indexOf(Math.max(...s))]||",",i=[];let n=[],l="",d=!1;for(let t=0;t<e.length;t++){const o=e[t];d?'"'===o&&'"'===e[t+1]?(l+='"',t++):'"'===o?d=!1:l+=o:'"'===o&&""===l?d=!0:o===a?(n.push(l),l=""):"\n"===o?(n.push(l.replace(/\r$/,"")),i.push(n),n=[],l=""):l+=o}(l.length||n.length)&&(n.push(l.replace(/\r$/,"")),i.push(n));const c=i.filter(t=>t.some(t=>""!==String(t||"").trim())),p=(c.shift()||[]).map(t=>String(t||"").trim()),u=c.map(t=>p.map((e,o)=>String(t[o]??"").trim()));return{headers:p,rows:u,delimiter:a}}function autoMapStoreCsvHeaders(t){const e={};for(const o of STORE_CSV_IMPORT_FIELDS){const r=o.aliases.map(normalizeStoreCsvHeader),s=t.findIndex(t=>r.includes(normalizeStoreCsvHeader(t)));e[o.key]=s>=0?String(s):""}return e}function parseStoreCsvNumber(t){const e=String(t??"").replace(/[٠-٩]/g,t=>"٠١٢٣٤٥٦٧٨٩".indexOf(t)).replace(/[۰-۹]/g,t=>"۰۱۲۳۴۵۶۷۸۹".indexOf(t)).replace(/[٬,\s]/g,"").replace(/٫/g,".").replace(/[^0-9.\-]/g,"");if(!e||"-"===e||"."===e)return null;const o=Number(e);return Number.isFinite(o)?o:null}function prepareStoreCsvImportRows(){const t=[],e=[],o=storeCsvImportState.mapping||{},r=(t,e)=>{const r=Number(o[e]);return""!==o[e]&&Number.isInteger(r)&&r>=0?String(t[r]??"").trim():""};return storeCsvImportState.rows.forEach((o,s)=>{const a=s+2,i=r(o,"name"),n=r(o,"price"),l=parseStoreCsvNumber(n),d=[];(!i||i.length<2||i.length>120)&&d.push("اسم المنتج مطلوب (من حرفين إلى 120 حرفًا)."),(""===n||null===l||l<0||l>1e8)&&d.push("السعر مطلوب ويجب أن يكون رقمًا صحيحًا من صفر فأكثر.");const c=r(o,"originalPrice"),p=""===c?null:parseStoreCsvNumber(c);""!==c&&(null===p||p<0||p>1e8)&&d.push("السعر قبل العرض غير صالح.");const u=r(o,"stock"),m=""===u?null:parseStoreCsvNumber(u);""!==u&&(null===m||!Number.isInteger(m)||m<0)&&d.push("الكمية يجب أن تكون عددًا صحيحًا غير سالب.");const g=r(o,"imageUrl");if(g){let t;try{t=new URL(g)}catch(e){t=null}(!t||!["http:","https:"].includes(t.protocol)||g.length>1e3)&&d.push("رابط الصورة يجب أن يبدأ بـ https:// أو http://.")}const b=(r(o,"category")||"عام").slice(0,80),y=r(o,"type").toLowerCase(),f=y.includes("اشتراك")||y.includes("subscription")?"subscription":"product",x=r(o,"isActive").toLowerCase(),S=""===x||!["0","false","no","inactive","غير مفعل","مخفي","لا"].includes(x),h={name:i,category:b,price:l??0,originalPrice:p,offerText:r(o,"offerText").slice(0,200),type:f,subscriptionDuration:r(o,"subscriptionDuration").slice(0,60),description:r(o,"description").slice(0,2e3),details:r(o,"details").slice(0,5e3),imageUrl:g,imageFileId:null,isActive:S,isAdvertised:!1,adAudience:"both",adPriority:0,adExpiresAt:null,stock:m};d.length?e.push({rowNumber:a,name:i,message:d.join("؛ ")}):t.push({rowNumber:a,product:h})}),storeCsvImportState.prepared={valid:t,errors:e},storeCsvImportState.prepared}function renderStoreCsvImportPanel(){const t=storeCsvImportState,e='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(t.open?"إغلاق":"استيراد CSV")+"</button></div>";if(!t.open)return e;const o=t.headers.length?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">'+STORE_CSV_IMPORT_FIELDS.map(e=>'<label class="block text-[11px] font-bold text-slate-600">'+escHtml(e.label)+'<select data-store-csv-map="'+e.key+'" onchange="updateStoreCsvMapping(this)" class="field mt-1"><option value="">— بدون ربط —</option>'+t.headers.map((o,r)=>'<option value="'+r+'" '+(String(t.mapping[e.key]??"")===String(r)?"selected":"")+">"+escHtml(o||"عمود "+(r+1))+"</option>").join("")+"</select></label>").join("")+"</div>":"",r=t.headers.length?prepareStoreCsvImportRows():{valid:[],errors:[]},s=t.rows.slice(0,8).map((t,e)=>{const o=e+2,s=r.valid.find(t=>t.rowNumber===o),a=r.errors.find(t=>t.rowNumber===o),i=s?.product.name||a?.name||"—",n=s?Number(s.product.price).toLocaleString("en-US"):"—",l=s?.product.category||"—";return'<tr class="border-t"><td class="p-2 text-[10px]">'+o+'</td><td class="p-2 text-[10px]">'+escHtml(i)+'</td><td class="p-2 text-[10px]">'+n+'</td><td class="p-2 text-[10px]">'+escHtml(l)+'</td><td class="p-2 text-[10px] '+(a?"text-rose-700":"text-emerald-700")+'">'+(a?escHtml(a.message):s?"جاهز":"—")+"</td></tr>"}).join(""),a=t.headers.length?'<div class="rounded-xl bg-slate-50 p-3 text-xs flex flex-wrap gap-x-4 gap-y-1"><span>إجمالي الصفوف: <b>'+t.rows.length+'</b></span><span class="text-emerald-700">جاهز: <b>'+r.valid.length+'</b></span><span class="text-rose-700">به أخطاء: <b>'+r.errors.length+"</b></span></div>":"",i=t.result?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">تمت الإضافة: <b>'+Number(t.result.importedCount||0)+"</b> • المكرر والمتخطى: <b>"+Number(t.result.duplicateCount||0)+"</b> • صفوف بها أخطاء: <b>"+Number(t.result.errorCount||0)+"</b></div>":"",n=t.result?[...t.result.duplicates||[],...t.result.errors||[]].slice(0,12).map(t=>'<li class="text-[10px] text-slate-600">الصف '+Number(t.rowNumber||0)+": "+escHtml(t.name||"")+" — "+escHtml(t.message||"تم تخطي الصف")+"</li>").join(""):"",l=r.valid.length||r.errors.length?'<div class="overflow-x-auto rounded-xl border"><table class="w-full text-right"><thead><tr class="bg-slate-50"><th class="p-2 text-[10px]">صف</th><th class="p-2 text-[10px]">المنتج</th><th class="p-2 text-[10px]">السعر</th><th class="p-2 text-[10px]">القسم</th><th class="p-2 text-[10px]">المراجعة</th></tr></thead><tbody>'+s+'</tbody></table><p class="text-[10px] text-slate-500 p-2">المعاينة تعرض أول 8 صفوف فقط. سيتم فحص جميع الصفوف عند الاستيراد.</p></div>':"";return e+'<section class="premium-panel p-4 space-y-3"><div><b class="block text-sm">رفع ملف المنتجات CSV</b><p class="text-[10px] text-slate-500 mt-1">يمكن ربط الأعمدة تلقائيًا أو اختيار العمود يدويًا. اسم المنتج والسعر إلزاميان. المنتجات المكررة بنفس الاسم والقسم سيتم تخطيها، ولن يتم تعديل المنتجات الموجودة.</p></div><input type="file" accept=".csv,text/csv" class="field w-full" onchange="handleStoreCsvFile(this.files&&this.files[0])"><p class="text-[10px] text-slate-500">'+(t.fileName?"الملف: "+escHtml(t.fileName):"يدعم CSV بفواصل أو فاصلة منقوطة أو Tab، مع دعم النصوص العربية.")+"</p>"+o+a+l+i+(n?'<ul class="rounded-xl bg-slate-50 p-3 space-y-1">'+n+"</ul>":"")+'<div class="flex gap-2"><button type="button" onclick="importStoreCsvProducts()" '+(!r.valid.length||t.busy?"disabled":"")+' class="primary-btn rounded-xl px-4 py-3 flex-1 disabled:opacity-40">'+(t.busy?"جاري الاستيراد...":"استيراد "+r.valid.length+" منتج")+'</button><button type="button" onclick="resetStoreCsvImporter()" class="rounded-xl border px-4 py-3 text-xs font-bold">مسح الملف</button></div></section>'}function toggleStoreCsvImporter(){storeCsvImportState.open=!storeCsvImportState.open,render()}function resetStoreCsvImporter(){storeCsvImportState={open:!0,fileName:"",headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:!1,result:null},render()}async function handleStoreCsvFile(t){if(t){if(t.size>921600)return showToast("حجم ملف CSV كبير. قلل الملف إلى أقل من 900 كيلوبايت أو قسّمه إلى ملفين.","error");try{const e=await t.arrayBuffer();let o;try{o=new TextDecoder("utf-8",{fatal:!0}).decode(e)}catch(t){o=new TextDecoder("windows-1256").decode(e)}const r=parseStoreCsvText(o);if(r.headers.length<2||!r.rows.length)throw new Error("الملف فارغ أو لا يحتوي على صف عناوين وصفوف منتجات.");if(r.rows.length>500)throw new Error("الحد الأقصى للاستيراد هو 500 منتج في المرة الواحدة.");storeCsvImportState.fileName=t.name||"products.csv",storeCsvImportState.headers=r.headers,storeCsvImportState.rows=r.rows,storeCsvImportState.mapping=autoMapStoreCsvHeaders(r.headers),storeCsvImportState.result=null,prepareStoreCsvImportRows(),render(),showToast("تمت قراءة الملف. راجع المعاينة وربط الأعمدة قبل الاستيراد.")}catch(t){showToast(t.message||"تعذرت قراءة ملف CSV.","error")}}}function updateStoreCsvMapping(t){const e=String(t?.dataset?.storeCsvMap||"");STORE_CSV_IMPORT_FIELDS.some(t=>t.key===e)&&(storeCsvImportState.mapping[e]=String(t.value??""),storeCsvImportState.result=null,prepareStoreCsvImportRows(),render())}async function importStoreCsvProducts(){if(storeCsvImportState.busy)return;if(""===storeCsvImportState.mapping.name||""===storeCsvImportState.mapping.price)return showToast("اربط عمود اسم المنتج وعمود السعر أولًا.","error");const t=prepareStoreCsvImportRows();if(!t.valid.length)return showToast("لا توجد صفوف سليمة للاستيراد. راجع الأخطاء الظاهرة.","error");if(confirm("سيتم إضافة "+t.valid.length+" منتج إلى المتجر. المنتجات الموجودة أو المكررة سيتم تخطيها دون تعديلها. هل تريد المتابعة؟")){storeCsvImportState.busy=!0,render();try{const e=await tryApi(["/api/admin/store/products/import"],{method:"POST",body:JSON.stringify({products:t.valid})});storeCsvImportState.result=e,showToast("تم استيراد "+Number(e.importedCount||0)+" منتج بنجاح."),Number(e.importedCount||0)>0&&await loadStoreProducts()}catch(t){showToast(t.message||"تعذر استيراد المنتجات.","error")}finally{storeCsvImportState.busy=!1,render()}}}const STORE_PRODUCT_EDIT_SESSION_KEY="hamzawy-admin-store-edit-product",STORE_PRODUCT_EDIT_FIELDS=["store-name","store-category","store-category-new","store-price","store-original-price","store-offer","store-type","store-duration","store-description","store-details","store-image-url","store-stock","store-ad-enabled","store-ad-audience","store-ad-priority","store-ad-days"];function persistStoreProductEditSession(t){try{if(!t)return void sessionStorage.removeItem(STORE_PRODUCT_EDIT_SESSION_KEY);let e=null;try{e=JSON.parse(sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||"null")}catch(t){}e&&String(e.productId)===String(t)||(e={productId:String(t),values:{}}),sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,JSON.stringify(e))}catch(t){}}function saveStoreProductEditDraft(){if(state.storeProductEditingId)try{const t={productId:String(state.storeProductEditingId),values:{}};STORE_PRODUCT_EDIT_FIELDS.forEach(e=>{const o=document.getElementById(e);o&&(t.values[e]="checkbox"===o.type?o.checked:o.value)}),sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,JSON.stringify(t))}catch(t){}}function restoreStoreProductEditSession(){if(window.__hamzawyStoreEditRestored||"store"!==state.tab)return;let t=null;try{const e=sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||"";if(e)try{t=JSON.parse(e)}catch(o){t={productId:e,values:{}}}}catch(t){}const e=String(t?.productId||"");if(!e)return;(state.storeProducts||[]).find(t=>String(t._id)===e)?(window.__hamzawyStoreEditRestored=!0,editStoreProduct(e),Object.entries(t.values||{}).forEach(([t,e])=>{if(!STORE_PRODUCT_EDIT_FIELDS.includes(t))return;const o=document.getElementById(t);o&&("checkbox"===o.type?o.checked=!!e:o.value=String(e??""))})):persistStoreProductEditSession(null)}window.__hamzawyStoreEditDraftListener||(document.addEventListener("input",saveStoreProductEditDraft,!0),document.addEventListener("change",saveStoreProductEditDraft,!0),window.__hamzawyStoreEditDraftListener=!0);let storeProductsLoadSequence=0;async function loadStoreProducts(){const t=++storeProductsLoadSequence;state.storeProductsLoading=!0,state.storeAdSettingsLoading=!0,state.storeAdSettingsLoadError="","store"===state.tab&&render();try{const e=await tryApi(["/api/admin/store/products"],{cache:"no-store"}),o=Array.isArray(e?.products)?e.products:Array.isArray(e)?e:null;if(!o)throw new Error("استجابة قائمة المنتجات غير صالحة.");if(t!==storeProductsLoadSequence)return;state.storeProducts=o,state.storeProductsLoaded=!0,state.storeCategories=Array.isArray(e?.categories)?e.categories:[],state.storeProductsLoadError=""}catch(e){t===storeProductsLoadSequence&&(state.storeProductsLoadError=e.message||"تعذر تحميل المنتجات",showToast("تعذر تحميل المنتجات؛ لم نغيّر البيانات المحفوظة.","error"))}try{const e=await tryApi(["/api/admin/store/ad-settings"],{cache:"no-store"});if(t===storeProductsLoadSequence){const t=Number(e?.rotationSeconds);[5,10,15,20,30,45,60].includes(t)?(state.storeAdRotationSeconds=t,state.storeAdSettingsLoaded=!0,state.storeAdSettingsLoadError=""):state.storeAdSettingsLoadError="استجابة إعداد مدة عرض الإعلان غير صالحة."}}catch(e){t===storeProductsLoadSequence&&(state.storeAdSettingsLoadError=e.message||"تعذر تحميل إعداد مدة عرض الإعلان")}finally{t===storeProductsLoadSequence&&(state.storeProductsLoading=!1,state.storeAdSettingsLoading=!1,"store"===state.tab&&(render(),restoreStoreProductEditSession()))}}async function loadStoreOrders(){state.storeOrdersLoading=!0,"storeOrders"===state.tab&&render();try{const t=await tryApi(["/api/admin/store/orders"]);state.storeOrders=extractList(t,["orders"]),state.storeOrdersPendingCount=state.storeOrders.filter(t=>"جديد"===t.status).length}catch(t){state.storeOrders=[],showToast(t.message||"تعذر تحميل المعاملات","error")}finally{state.storeOrdersLoading=!1,"storeOrders"===state.tab&&render()}}let storeAdminNotificationsPollInFlight=false;async function loadStoreOrderCount(silent=false){try{const data=await tryApi(['/api/admin/store/orders/count']);state.storeOrdersPendingCount=Math.max(0,Number(data.pendingCount)||0);state.storeOrderCountInitialized=true;if(!silent&&state.pageMode==='home')render()}catch(_){}}async function pollStoreAdminNotifications(){if(storeAdminNotificationsPollInFlight)return;storeAdminNotificationsPollInFlight=true;try{const data=await tryApi(['/api/notifications/admin'],{method:'GET'});const items=extractList(data,['notifications']);const fresh=items.filter(item=>item.type==='admin_store_order'&&!item.read);let persisted=[];try{const saved=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationSeen.v1')||'[]');if(Array.isArray(saved))persisted=saved.map(String)}catch(_){}const seen=new Set([...(state.seenStoreOrderNotificationIds||[]),...persisted]);const initialized=state.storeAdminNotificationsInitialized===true;if(initialized)fresh.filter(item=>!seen.has(String(item.id))).slice(0,3).forEach(item=>showToast((item.title||'طلب متجر جديد')+' — '+(item.message||''),'warning'));const ids=items.map(item=>String(item.id)).filter(Boolean);state.seenStoreOrderNotificationIds=Array.from(new Set([...seen,...ids])).slice(-200);state.storeAdminNotificationsInitialized=true;try{localStorage.setItem('sonaa.admin.storeOrderNotificationSeen.v1',JSON.stringify(state.seenStoreOrderNotificationIds))}catch(_){}}catch(_){}finally{storeAdminNotificationsPollInFlight=false}}function startStoreOrderCountPolling(){if(window.__sonaaStoreOrderCountTimer||!getToken())return;loadStoreOrderCount(true);pollStoreAdminNotifications();window.__sonaaStoreOrderCountTimer=setInterval(()=>{if(!document.hidden&&getToken()){loadStoreOrderCount(true);pollStoreAdminNotifications()}},15000);document.addEventListener('visibilitychange',()=>{if(!document.hidden&&getToken()){loadStoreOrderCount(true);pollStoreAdminNotifications()}})}async function saveStoreAdRotationSeconds(){const t=Number(document.getElementById("store-ad-rotation-seconds")?.value);if(![5,10,15,20,30,45,60].includes(t))return showToast("اختار مدة صحيحة لعرض الصورة","error");try{const e=await tryApi(["/api/admin/store/ad-settings"],{method:"PUT",body:JSON.stringify({rotationSeconds:t})});state.storeAdRotationSeconds=Number(e.rotationSeconds)||t,state.storeAdSettingsLoaded=!0,state.storeAdSettingsLoadError="",showToast("تم حفظ مدة عرض صور الإعلان"),render()}catch(t){showToast(t.message||"تعذر حفظ مدة الإعلان","error")}}function toggleStoreProductForm(){persistStoreProductEditSession(null),state.storeProductEditingId=null,state.storeProductFormOpen=!0!==state.storeProductFormOpen,render()}function cancelStoreProductEdit(){persistStoreProductEditSession(null),state.storeProductEditingId=null,state.storeProductFormOpen=!1,state.storeNewProductAsAdvertisement=!1,render()}function setStoreOrderStatusTab(t){["جديد","تم التواصل","قيد التجهيز","مرفوض","ملغي","مكتمل"].includes(t)&&(state.storeOrderStatusTab=t,render())}function toggleStoreCategoryManager(){state.storeCategoryManagerOpen=!0!==state.storeCategoryManagerOpen,render()}function toggleStoreAdRotationSettings(){state.storeAdRotationSettingsOpen=!0!==state.storeAdRotationSettingsOpen,render()}function renderStoreCategoryManager(t){"boolean"!=typeof state.storeCategoryManagerOpen&&(state.storeCategoryManagerOpen=!1);const e=(Array.isArray(state.storeCategories)&&state.storeCategories.length?state.storeCategories:Array.from(new Set((t||[]).map(t=>String(t.category||"عام").trim()||"عام"))).sort((t,e)=>t.localeCompare(e,"ar")).map(e=>{const o=(t||[]).filter(t=>(String(t.category||"عام").trim()||"عام")===e),r=o.find(t=>String(t.imageUrl||"").trim())||o[0];return{name:e,productCount:o.length,imageUrl:r?.imageUrl||"",fallbackImageUrl:r?.imageUrl||"",customImageUrl:"",imageFileId:null,hasCustomImage:!1}})).map(t=>{const e=t.imageUrl||t.fallbackImageUrl||"";return'<article data-store-category-row data-original-name="'+escHtml(t.name)+'" data-custom-image-url="'+escHtml(t.customImageUrl||"")+'" data-image-file-id="'+escHtml(t.imageFileId||"")+'" class="rounded-2xl border border-slate-200 bg-white p-3 space-y-2"><div class="flex items-center gap-3"><div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">'+(e?'<img src="'+escHtml(e)+'" alt="'+escHtml(t.name)+'" class="w-full h-full object-contain">':'<div class="w-full h-full flex items-center justify-center text-2xl">📦</div>')+'</div><div class="min-w-0 flex-1"><b class="block text-sm">'+escHtml(t.name)+'</b><span class="text-[10px] text-slate-500">'+Number(t.productCount||0)+" منتج • "+(t.hasCustomImage?"صورة مخصصة":"صورة تلقائية من المنتجات")+'</span></div></div><label class="block text-[11px] font-bold text-slate-600">اسم القسم<input data-category-name maxlength="80" class="field mt-1" value="'+escHtml(t.name)+'"></label><label class="block text-[11px] font-bold text-slate-600">رابط صورة مخصصة (اختياري)<input data-category-image-url type="url" inputmode="url" maxlength="1000" class="field mt-1" value="'+escHtml(t.customImageUrl||"")+'" placeholder="اتركه فارغًا لاستخدام صورة من المنتجات"></label><label class="block text-[11px] font-bold text-slate-600">أو اختر صورة من الجهاز<input data-category-image-file type="file" accept="image/jpeg,image/png,image/webp" class="field mt-1"></label><p class="text-[10px] text-slate-500">لو رفعت صورة هنا هتكون هي صورة القسم عند العميل والفني. ولو مسحت الصورة المخصصة هيرجع للصورة التلقائية.</p><div class="flex gap-2"><button type="button" onclick="saveStoreCategoryFromButton(this)" class="primary-btn rounded-xl px-4 py-2 flex-1 text-xs">حفظ القسم</button><button type="button" onclick="deleteStoreCategoryFromButton(this)" '+("عام"===t.name?'disabled title="القسم الافتراضي لا يمكن حذفه"':"")+' class="rounded-xl border border-rose-200 px-4 py-2 text-xs font-bold text-rose-700 disabled:opacity-40">حذف</button></div></article>'}).join(""),o=!0===state.storeCategoryManagerOpen;return'<section class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreCategoryManager()" aria-expanded="'+(o?"true":"false")+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">إدارة أقسام المتجر</b><span class="block mt-1 text-[10px] text-slate-500">اضغط لفتح أو إغلاق إعدادات الأقسام والصور</span></span><span class="text-xl font-black transition-transform '+(o?"rotate-180":"")+'" aria-hidden="true">⌄</span></button>'+(o?'<div class="border-t border-slate-100 p-4 space-y-3">'+(e||'<p class="text-xs text-slate-500">أضف أول منتج بقسم جديد علشان يظهر هنا.</p>')+"</div>":"")+"</section>"}async function uploadStoreCategoryImage(t){if(!t)return null;if(!["image/jpeg","image/png","image/webp"].includes(t.type)||t.size>20971520)throw new Error("اختار صورة JPG أو PNG أو WebP لا تتجاوز 20 ميجابايت.");const e=await optimizeStoreProductImage(t);if(e.size>5242880)throw new Error("حجم الصورة بعد الضغط ما زال أكبر من 5 ميجابايت. اختار صورة أصغر.");const o=await fetch("/api/admin/store/media?purpose=category",{method:"POST",headers:{Authorization:"Bearer "+getToken(),"Content-Type":e.type},body:e}),r=await o.json().catch(()=>({}));if(!o.ok)throw new Error(r.message||"تعذر رفع صورة القسم.");return r}async function saveStoreCategoryFromButton(t){const e=t?.closest("[data-store-category-row]");if(!e)return;const o=String(e.dataset.originalName||""),r=String(e.querySelector("[data-category-name]")?.value||"").trim();let s=String(e.querySelector("[data-category-image-url]")?.value||"").trim(),a=null;const i=e.querySelector("[data-category-image-file]")?.files?.[0]||null;if(r.length<2||r.length>80)return showToast("اسم القسم لازم يكون من حرفين إلى 80 حرفًا.","error");try{if(i){const t=await uploadStoreCategoryImage(i);s=t.imageUrl,a=t.imageFileId}else if(s)if(s===String(e.dataset.customImageUrl||"")&&e.dataset.imageFileId)a=e.dataset.imageFileId;else{let t;try{t=new URL(s)}catch(t){return showToast("اكتب رابط صورة يبدأ بـ https:// أو http:// أو ارفع صورة من الجهاز.","error")}if(!["http:","https:"].includes(t.protocol))return showToast("رابط صورة القسم غير صالح.","error")}await tryApi(["/api/admin/store/categories/"+encodeURIComponent(o)],{method:"PUT",body:JSON.stringify({name:r,imageUrl:s,imageFileId:a})}),showToast("تم حفظ القسم وصورته."),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر حفظ القسم.","error")}}async function deleteStoreCategoryFromButton(t){const e=t?.closest("[data-store-category-row]");if(!e)return;const o=String(e.dataset.originalName||"");if("عام"===o)return showToast("لا يمكن حذف قسم عام الافتراضي.","error");if(confirm('حذف قسم "'+o+'"؟ المنتجات الموجودة فيه هتتنقل إلى قسم عام، ومش هتتمسح المنتجات نفسها.'))try{const t=await tryApi(["/api/admin/store/categories/"+encodeURIComponent(o)],{method:"DELETE"});showToast(t.message||"تم حذف القسم."),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر حذف القسم.","error")}}function renderStore(){"boolean"!=typeof state.storeProductFormOpen&&(state.storeProductFormOpen=!1),"boolean"!=typeof state.storeNewProductAsAdvertisement&&(state.storeNewProductAsAdvertisement=!1);const t=state.storeProducts||[],e=Array.from(new Set(["عام",...t.map(t=>String(t.category||"عام").trim()).filter(Boolean),...Array.isArray(state.storeCategories)?state.storeCategories.map(t=>String(t.name||"").trim()).filter(Boolean):[]])).filter(Boolean).sort((t,e)=>t.localeCompare(e,"ar")).map(t=>'<option value="'+escHtml(t)+'">'+escHtml(t)+"</option>").join(""),o=state.storeAdSettingsLoaded&&[5,10,15,20,30,45,60].includes(Number(state.storeAdRotationSeconds)),r=[5,10,15,20,30,45,60].map(t=>'<option value="'+t+'" '+(Number(state.storeAdRotationSeconds)===t?"selected":"")+">"+t+(5===t||10===t||20===t||30===t||45===t||60===t?" ثوانٍ":" ثانية")+"</option>").join("");"boolean"!=typeof state.storeAdRotationSettingsOpen&&(state.storeAdRotationSettingsOpen=!1);const s=!0===state.storeAdRotationSettingsOpen,a=o?'<div class="p-4 space-y-2"><p class="text-[11px] text-slate-500">حدد عدد الثواني التي تظهر فيها كل صورة قبل الانتقال للصورة التالية، ويُطبق الإعداد على العميل والفني.</p><div class="flex items-center gap-2"><select id="store-ad-rotation-seconds" class="field flex-1">'+r+'</select><button type="button" onclick="saveStoreAdRotationSeconds()" class="primary-btn rounded-xl px-4 py-3">حفظ المدة</button></div></div>':'<div class="p-4 space-y-2"><p class="text-[11px] text-slate-500">'+(state.storeAdSettingsLoading||!state.storeAdSettingsLoaded&&!state.storeAdSettingsLoadError?"جاري تحميل المدة المحفوظة من الخادم...":"تعذر تحميل المدة المحفوظة؛ لم نعرض قيمة افتراضية بدلًا منها.")+'</p><button type="button" onclick="loadStoreProducts()" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold">إعادة تحميل إعدادات المتجر</button></div>',i='<section class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreAdRotationSettings()" aria-expanded="'+(s?"true":"false")+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">مدة عرض صورة الإعلان</b><span class="block mt-1 text-[10px] text-slate-500">اضغط لفتح أو إغلاق إعداد مدة ظهور كل صورة</span></span><span class="text-xl font-black transition-transform '+(s?"rotate-180":"")+'" aria-hidden="true">⌄</span></button>'+(s?'<div class="border-t border-slate-100">'+a+"</div>":"")+"</section>",n='<div class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreProductForm()" aria-expanded="'+(state.storeProductFormOpen?"true":"false")+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">إضافة منتج جديد</b><span class="block mt-1 text-[11px] text-slate-500">افتح النموذج لإدخال بيانات المنتج</span></span><span class="text-xl font-black transition-transform '+(state.storeProductFormOpen?"rotate-180":"")+'" aria-hidden="true">⌄</span></button>'+(state.storeProductFormOpen?'<div class="border-t border-slate-100 p-4 grid gap-2"><input id="store-name" class="field" placeholder="اسم المنتج"><div class="grid grid-cols-2 gap-2"><label class="block min-w-0"><span class="block text-[10px] font-bold text-slate-600 mb-1">اختار قسمًا موجودًا</span><select id="store-category" class="field w-full"><option value="">اختار قسمًا</option>'+e+'</select></label><label class="block min-w-0"><span class="block text-[10px] font-bold text-slate-600 mb-1">أو اكتب قسمًا جديدًا</span><input id="store-category-new" class="field w-full" maxlength="80" placeholder="اسم القسم الجديد"></label></div><input id="store-price" type="number" min="0" class="field" placeholder="السعر الحالي بالجنيه"><input id="store-original-price" type="number" min="0" class="field" placeholder="السعر قبل العرض (اختياري)"><input id="store-offer" class="field" maxlength="200" placeholder="تفاصيل العرض (اختياري)"><select id="store-type" class="field"><option value="product">بضاعة ومنتج</option><option value="subscription">اشتراك أو تجديد اشتراك</option></select><input id="store-duration" class="field" maxlength="60" placeholder="مدة الاشتراك (مثال: شهر أو سنة)"><textarea id="store-description" class="field" placeholder="الوصف المختصر"></textarea><textarea id="store-details" class="field" placeholder="التفاصيل والمواصفات"></textarea><label class="block text-xs font-bold text-slate-700">رابط صورة المنتج (اختياري)<input id="store-image-url" type="url" inputmode="url" maxlength="1000" class="field mt-1" placeholder="https://example.com/product-image.jpg"><span class="mt-1 block text-[10px] font-normal text-slate-500">ضع رابط الصورة هنا، أو اتركه فارغًا واستخدم الرفع من جهازك.</span></label><label class="field block">رفع صورة من الجهاز (اختياري)<input id="store-image-file" type="file" accept="image/jpeg,image/png,image/webp" class="block w-full mt-2 text-xs"></label><input id="store-stock" type="number" min="0" class="field" placeholder="الكمية (اتركها فارغة بدون تحديد)"><label class="flex items-center gap-2 rounded-xl border p-3 text-xs font-bold"><input id="store-ad-enabled" type="checkbox" '+(state.storeNewProductAsAdvertisement?"checked":"")+'> نشر المنتج كشريط إعلاني أسفل الصفحة</label><select id="store-ad-audience" class="field"><option value="both">الإعلان للعميل والفني</option><option value="client">للعميل فقط</option><option value="fanni">للفني فقط</option></select><select id="store-ad-days" class="field"><option value="1">مدة الإعلان: يوم واحد</option><option value="3">3 أيام</option><option value="7" selected>أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><select id="store-ad-priority" class="field"><option value="0">الأولوية: عادية</option><option value="10">منخفضة</option><option value="20">20</option><option value="30">30</option><option value="40">40</option><option value="50">متوسطة</option><option value="60">60</option><option value="70">70</option><option value="80">مرتفعة</option><option value="90">90</option><option value="100">الأولوية القصوى</option></select><button type="button" onclick="createStoreProduct()" class="primary-btn rounded-xl py-3">إضافة المنتج</button></div>':"")+"</div>",l=renderStoreCsvImportPanel(),d=t.map(t=>'<article class="premium-card p-3 flex gap-3"><div class="w-16 h-16 bg-slate-100 rounded-xl overflow-hidden shrink-0">'+(t.imageUrl?'<img class="w-full h-full object-contain" src="'+escHtml(t.imageUrl)+'" alt="'+escHtml(t.name)+'">':"📦")+'</div><div class="min-w-0 flex-1"><b>'+escHtml(t.name)+'</b><p class="text-[10px] font-bold text-blue-700">القسم: '+escHtml(t.category||"عام")+'</p><p class="text-[11px]">'+escHtml(t.description||"")+'</p><p class="text-[10px] text-teal-700">'+("subscription"===t.type?"اشتراك / تجديد":"منتج")+(t.offerText?" • "+escHtml(t.offerText):"")+"</p><b>"+Number(t.price||0).toLocaleString("ar-EG")+" جنيه</b>"+(null!=t.originalPrice&&Number(t.originalPrice)>Number(t.price)?'<p class="text-[10px] line-through text-slate-400">بدلًا من '+Number(t.originalPrice).toLocaleString("ar-EG")+" جنيه</p>":"")+'<p class="text-[10px]">'+(t.isActive?"متاح":"مخفي")+" • "+(t.isAdvertised?"إعلان نشط":"بدون إعلان")+'</p><button class="text-teal-700 text-xs" onclick="manageStoreProductAdvertisement(\''+escHtml(t._id)+"')\">"+(t.isAdvertised?"إيقاف الإعلان":"نشر الإعلان")+'</button> <button class="text-blue-700 text-xs" onclick="editStoreProduct(\''+escHtml(t._id)+'\')">تعديل</button> <label class="text-xs text-blue-700">تغيير الصورة<input type="file" class="hidden" data-product-id="'+escHtml(t._id)+'" accept="image/jpeg,image/png,image/webp" onchange="replaceStoreProductImage(this.dataset.productId,this.files[0])"></label> '+(t.isActive?'<button class="text-rose-700 text-xs" onclick="hideStoreProduct(\''+escHtml(t._id)+"')\">إخفاء</button>":'<button class="text-emerald-700 text-xs" onclick="showStoreProduct(\''+escHtml(t._id)+"')\">إظهار</button>")+' <button class="text-red-700 text-xs font-bold" onclick="deleteStoreProduct(\''+escHtml(t._id)+"')\">حذف نهائي</button></div></article>").join(""),c=state.storeProductsLoading&&t.length?'<div class="text-[11px] text-slate-500">جاري تحديث قائمة المنتجات مع الاحتفاظ بالقائمة الحالية...</div>':state.storeProductsLoadError&&t.length?'<div class="premium-panel p-3 text-[11px] text-amber-800 flex items-center justify-between gap-2"><span>تعذر تحديث القائمة. المعروض هو آخر بيانات محفوظة.</span><button type="button" class="font-black underline" onclick="loadStoreProducts()">إعادة المحاولة</button></div>':"",p=!state.storeProductsLoaded&&0===t.length&&state.storeProductsLoadError?'<div class="premium-panel p-5 text-center text-sm text-amber-800">تعذر تحميل المنتجات المحفوظة. <button type="button" class="font-black underline" onclick="loadStoreProducts()">إعادة المحاولة</button></div>':state.storeProductsLoaded||0!==t.length?d||'<div class="premium-panel p-5">لا توجد منتجات بعد.</div>':'<div class="premium-panel p-5 text-center text-sm text-slate-500">جاري تحميل المنتجات المحفوظة...</div>',u='<section class="space-y-3"><div class="px-1"><b class="block text-sm">إدارة المنتجات</b><p class="mt-1 text-[10px] text-slate-500">استيراد المنتجات من CSV وإضافة المنتجات وتعديلها ومراجعة القائمة الحالية.</p></div>'+l+n+'<section class="premium-panel p-4 space-y-3"><b class="block text-sm">المنتجات الحالية ('+(state.storeProductsLoading&&0===t.length?"...":t.length)+")</b>"+c+p+"</section></section>";return'<section class="mt-4 space-y-5">'+('<section class="space-y-3"><div class="px-1"><b class="block text-sm">إعدادات المتجر</b><p class="mt-1 text-[10px] text-slate-500">إدارة أقسام المتجر والتحكم في مدة عرض الإعلانات.</p></div>'+renderStoreCategoryManager(t)+i+"</section>")+u+"</section>"}function renderStoreOrders(){"string"!=typeof state.storeOrderStatusTab&&(state.storeOrderStatusTab="جديد");const t=[{value:"جديد",label:"طلب جديد"},{value:"تم التواصل",label:"تم التواصل"},{value:"قيد التجهيز",label:"جاري التجهيز"},{value:"مرفوض",label:"مرفوض"},{value:"ملغي",label:"ملغي"},{value:"مكتمل",label:"مكتمل"}],e=state.storeOrders||[],o=t.some(t=>t.value===state.storeOrderStatusTab)?state.storeOrderStatusTab:"جديد";state.storeOrderStatusTab=o;const r=e.filter(t=>String(t.status||"جديد")===o),s=t.map(t=>{const r=e.filter(e=>String(e.status||"جديد")===t.value).length;return'<button type="button" onclick="setStoreOrderStatusTab(\''+t.value+'\')" class="rounded-xl px-3 py-2 text-[11px] font-black border '+(o===t.value?"bg-blue-700 text-white border-blue-700":"bg-white text-slate-700 border-slate-200")+'">'+t.label+' <span class="mr-1">'+r+"</span></button>"}).join(""),a=r.map(e=>{const o=Array.isArray(e.items)&&e.items.length?e.items:[{productName:e.productName,productType:e.productType,quantity:e.quantity,unitPrice:e.unitPrice,total:e.total}],r=o.map(t=>'<div class="flex items-center justify-between gap-3 border-t border-slate-100 py-2"><div class="min-w-0"><b class="block text-[11px]">'+escHtml(t.productName||"منتج")+'</b><span class="text-[10px] text-slate-500">الكمية: '+Number(t.quantity||0)+" × "+Number(t.unitPrice||0).toLocaleString("ar-EG")+' جنيه</span></div><b class="shrink-0 text-[11px]">'+Number(t.total||0).toLocaleString("ar-EG")+" جنيه</b></div>").join("");return'<article class="premium-card p-3 space-y-2"><b>'+escHtml(e.productName||"طلب متجر")+'</b><p class="text-[10px]">'+(o.length>1?"طلب متعدد المنتجات":"subscription"===o[0]?.productType?"اشتراك / تجديد":"بضاعة")+" • "+escHtml(e.buyerName)+" • "+escHtml(e.buyerPhone)+" • "+("client"===e.buyerRole?"عميل":"فني")+'</p><div class="rounded-xl bg-slate-50 px-3">'+r+'</div><p class="text-xs font-black">إجمالي الطلب: '+Number(e.total||0).toLocaleString("ar-EG")+" جنيه • "+Number(e.quantity||0)+' قطعة</p><p class="text-[10px]">الحالة الحالية: '+escHtml(e.status||"جديد")+" • الدفع: "+escHtml(e.paymentMethod||"غير محدد")+" ("+escHtml(e.paymentStatus||"غير مدفوع")+")</p>"+(e.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+escHtml(e.transactionNumber)+"</p>":'<p class="text-[10px] text-slate-500" dir="ltr">رقم الطلب: '+escHtml(e._id||"")+"</p>")+(e.refundTransactionNumber?'<p class="text-[10px] font-bold text-emerald-700" dir="ltr">رقم الاسترداد: '+escHtml(e.refundTransactionNumber)+"</p>":"")+'<p class="text-[10px]">'+escHtml(e.buyerNote||"لا توجد ملاحظات")+'</p><select class="field" id="store-status-'+escHtml(e._id)+'">'+t.map(t=>'<option value="'+t.value+'" '+((e.status||"جديد")===t.value?"selected":"")+">"+t.label+"</option>").join("")+'</select><select class="field" id="store-payment-'+escHtml(e._id)+'"><option value="غير محدد" '+(e.paymentMethod&&"غير محدد"!==e.paymentMethod?"":"selected")+'>طريقة الدفع لم تحدد</option><option value="محفظة العميل" '+("محفظة العميل"===e.paymentMethod?"selected":"")+'>محفظة العميل</option><option value="محفظة الفني" '+("محفظة الفني"===e.paymentMethod?"selected":"")+'>محفظة الفني</option><option value="عند الاستلام" '+("عند الاستلام"===e.paymentMethod?"selected":"")+'>عند الاستلام</option><option value="تحويل" '+("تحويل"===e.paymentMethod?"selected":"")+'>تحويل</option></select><input class="field" id="store-note-'+escHtml(e._id)+'" placeholder="ملاحظة للمشتري" value="'+escHtml(e.adminNote||"")+'"><button class="primary-btn rounded-xl py-2 w-full" onclick="updateStoreOrder(\''+escHtml(e._id)+"')\">حفظ الحالة وطريقة الدفع وإشعار صاحب الطلب</button></article>"}).join("");return'<section class="mt-4 space-y-3"><div class="premium-panel p-3"><b>طلبات ومبيعات المتجر</b><p class="text-[10px] text-slate-500">كل طلب يظهر في تبويب حالته الحالية، وينتقل تلقائيًا بعد حفظ الحالة الجديدة.</p></div><div class="flex flex-wrap gap-2">'+s+"</div>"+(state.storeOrdersLoading?'<div class="premium-panel p-5">جاري التحميل...</div>':a||'<div class="premium-panel p-5 text-center text-sm text-slate-500">لا توجد طلبات في هذه الحالة.</div>')+"</section>"}async function optimizeStoreProductImage(t){try{if("function"!=typeof createImageBitmap)return t;const e=await createImageBitmap(t),o=Math.min(1,1600/Math.max(e.width,e.height)),r=document.createElement("canvas");r.width=Math.max(1,Math.round(e.width*o)),r.height=Math.max(1,Math.round(e.height*o));const s=r.getContext("2d");if(!s)return e.close?.(),t;s.drawImage(e,0,0,r.width,r.height),e.close?.();const a=await new Promise(t=>r.toBlob(t,"image/webp",.82));return!a||!a.type||a.size>=t.size?t:new File([a],t.name.replace(/\\.[^.]+$/,"")+".webp",{type:a.type})}catch(e){return t}}async function uploadStoreProductImage(t){if(!t)return null;if(!["image/jpeg","image/png","image/webp"].includes(t.type)||t.size>20971520)throw new Error("اختار صورة JPG أو PNG أو WebP لا تتجاوز 20 ميجابايت.");const e=await optimizeStoreProductImage(t);if(e.size>5242880)throw new Error("حجم الصورة بعد الضغط ما زال أكبر من 5 ميجابايت. اختار صورة أصغر.");const o=await fetch("/api/admin/store/media",{method:"POST",headers:{Authorization:"Bearer "+getToken(),"Content-Type":e.type},body:e}),r=await o.json().catch(()=>({}));if(!o.ok)throw new Error(r.message||"تعذر رفع الصورة إلى MongoDB.");return r}async function replaceStoreProductImage(t,e){const o=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(o&&e)try{const r=await uploadStoreProductImage(e);await tryApi(["/api/admin/store/products/"+encodeURIComponent(t)],{method:"PUT",body:JSON.stringify({name:o.name,category:o.category||"عام",description:o.description||"",details:o.details||"",price:Number(o.price),originalPrice:o.originalPrice??null,offerText:o.offerText||"",type:o.type||"product",subscriptionDuration:o.subscriptionDuration||"",imageUrl:r.imageUrl,imageFileId:r.imageFileId,isActive:!1!==o.isActive,stock:o.stock??null,isAdvertised:!!o.isAdvertised,adAudience:o.adAudience||"both",adPriority:Number(o.adPriority)||0,adExpiresAt:o.adExpiresAt||null})}),showToast("تم حفظ الصورة داخل MongoDB"),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر تغيير الصورة","error")}}async function createStoreProduct(){const t=(state.storeProducts||[]).find(t=>String(t._id)===String(state.storeProductEditingId||""))||null,e=document.getElementById("store-name")?.value.trim()||"",o=String(document.getElementById("store-category-new")?.value||"").trim().slice(0,80)||String(document.getElementById("store-category")?.value||"").trim().slice(0,80)||"عام",r=Number(document.getElementById("store-price")?.value),s=document.getElementById("store-original-price")?.value,a=document.getElementById("store-offer")?.value||"",i=document.getElementById("store-type")?.value||"product",n=document.getElementById("store-duration")?.value||"",l=document.getElementById("store-description")?.value||"",d=document.getElementById("store-details")?.value||"",c=(document.getElementById("store-image-url")?.value||"").trim(),p=document.getElementById("store-image-file")?.files?.[0]||null,u=document.getElementById("store-stock")?.value,m=!!document.getElementById("store-ad-enabled")?.checked;if(e.length<2||""===document.getElementById("store-price")?.value||!Number.isFinite(r)||r<0)return showToast("اكتب اسم المنتج وسعرًا صحيحًا","error");if(c&&!c.startsWith("/api/store/media/")){let t;try{t=new URL(c)}catch(t){return showToast("اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://","error")}if(!["http:","https:"].includes(t.protocol)||c.length>1e3)return showToast("اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://","error")}try{const g=p?await uploadStoreProductImage(p):null,b=g?.imageUrl||c||t?.imageUrl||"",y=g?.imageFileId||c===String(t?.imageUrl||"")&&t?.imageFileId||null,f=await tryApi([t?"/api/admin/store/products/"+encodeURIComponent(t._id):"/api/admin/store/products"],{method:t?"PUT":"POST",body:JSON.stringify({name:e,category:o,price:r,originalPrice:""===s?null:Number(s),offerText:a,type:i,subscriptionDuration:n,description:l,details:d,imageUrl:b,imageFileId:y,isActive:!t||!1!==t.isActive,stock:""===u?null:Number(u),isAdvertised:m,adAudience:document.getElementById("store-ad-audience")?.value||"both",adPriority:Math.max(0,Math.min(100,Number(document.getElementById("store-ad-priority")?.value)||0)),adExpiresAt:m?new Date(Date.now()+864e5*Math.max(1,Math.min(365,Number(document.getElementById("store-ad-days")?.value)||7))).toISOString():null})});if(f?.product){const t=f.product,e=Array.isArray(state.storeProducts)?state.storeProducts:[],o=e.findIndex(e=>String(e._id)===String(t._id));state.storeProducts=o>=0?e.map((e,r)=>r===o?t:e):[t,...e]}showToast(t?"تم تعديل المنتج":"تمت إضافة المنتج"),persistStoreProductEditSession(null),state.storeProductEditingId=null,state.storeProductFormOpen=!1,await loadStoreProducts()}catch(t){showToast(t.message||"تعذرت إضافة المنتج","error")}}function editStoreProduct(t){const e=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(!e)return;persistStoreProductEditSession(t),state.storeProductEditingId=String(t),state.storeProductFormOpen=!0,render();const o={"store-name":e.name,"store-category":e.category||"عام","store-price":e.price,"store-original-price":e.originalPrice??"","store-offer":e.offerText||"","store-type":e.type||"product","store-duration":e.subscriptionDuration||"","store-description":e.description||"","store-details":e.details||"","store-image-url":e.imageUrl||"","store-stock":e.stock??"","store-ad-audience":e.adAudience||"both","store-ad-priority":String(e.adPriority??0)};Object.entries(o).forEach(([t,e])=>{const o=document.getElementById(t);o&&(o.value=String(e))});const r=document.getElementById("store-category-new");r&&(r.value="");const s=document.getElementById("store-ad-enabled");s&&(s.checked=!!e.isAdvertised);const a=document.querySelector('[onclick="createStoreProduct()"]');a&&(a.textContent="حفظ التعديل");const i=document.querySelector('.premium-panel button[onclick="toggleStoreProductForm()"] b');i&&(i.textContent="تعديل المنتج");const n=document.getElementById("store-ad-days");if(n&&e.adExpiresAt){const t=Math.max(1,Math.ceil((new Date(e.adExpiresAt).getTime()-Date.now())/864e5));n.value=String([1,3,7,14,30,60,90,180,365].includes(t)?t:7)}const l=document.getElementById("store-name")?.parentElement;if(l&&!l.querySelector("[data-cancel-edit]")){const t=document.createElement("button");t.type="button",t.dataset.cancelEdit="true",t.className="rounded-xl border px-4 py-3",t.textContent="إلغاء التعديل",t.onclick=cancelStoreProductEdit,l.appendChild(t)}scrollStoreProductEditFormIntoView()}function scrollStoreProductEditFormIntoView(){const t=document.getElementById("store-name")?.closest(".premium-panel");if(!t)return;const e=document.querySelector(".admin-topbar"),o=e?.getBoundingClientRect().height||0;t.style.scrollMarginTop=o+16+"px",requestAnimationFrame(()=>requestAnimationFrame(()=>{t.scrollIntoView({behavior:"smooth",block:"start",inline:"nearest"})}))}async function deleteStoreProduct(t){const e=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(e&&confirm('حذف المنتج "'+e.name+'" نهائيًا؟ إذا كان مرتبطًا بطلبات سابقة فلن يسمح النظام بالحذف حفاظًا على سجل الطلبات.'))try{await tryApi(["/api/admin/store/products/"+encodeURIComponent(t)],{method:"DELETE"}),showToast("تم حذف المنتج نهائيًا"),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر حذف المنتج","error")}}async function hideStoreProduct(t){const e=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(e&&confirm("إخفاء المنتج من المتجر؟"))try{await tryApi(["/api/admin/store/products/"+encodeURIComponent(t)],{method:"PUT",body:JSON.stringify({name:e.name,category:e.category||"عام",description:e.description||"",details:e.details||"",price:Number(e.price),originalPrice:e.originalPrice??null,offerText:e.offerText||"",type:e.type||"product",subscriptionDuration:e.subscriptionDuration||"",imageUrl:e.imageUrl||"",imageFileId:e.imageFileId||null,isActive:!1,stock:e.stock??null,isAdvertised:!!e.isAdvertised,adAudience:e.adAudience||"both",adPriority:Number(e.adPriority)||0,adExpiresAt:e.adExpiresAt||null})}),showToast("تم إخفاء المنتج"),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر إخفاء المنتج","error")}}async function updateStoreOrder(t){const e=document.getElementById("store-status-"+t)?.value||"جديد";try{await tryApi(["/api/admin/store/orders/"+encodeURIComponent(t)],{method:"PATCH",body:JSON.stringify({status:e,paymentMethod:document.getElementById("store-payment-"+t)?.value||"غير محدد",adminNote:document.getElementById("store-note-"+t)?.value||""})}),state.storeOrderStatusTab=e,showToast("تم تحديث المعاملة وإرسال الإشعار"),await loadStoreOrders()}catch(t){showToast(t.message||"تعذر تحديث المعاملة","error")}}async function showStoreProduct(t){const e=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(e)try{await tryApi(["/api/admin/store/products/"+encodeURIComponent(t)],{method:"PUT",body:JSON.stringify({name:e.name,category:e.category||"عام",price:e.price,originalPrice:e.originalPrice??null,offerText:e.offerText||"",type:e.type||"product",subscriptionDuration:e.subscriptionDuration||"",description:e.description||"",details:e.details||"",imageUrl:e.imageUrl||"",imageFileId:e.imageFileId||null,isActive:!0,stock:e.stock??null,isAdvertised:!!e.isAdvertised,adAudience:e.adAudience||"both",adPriority:Number(e.adPriority)||0,adExpiresAt:e.adExpiresAt||null})}),showToast("تم إظهار المنتج"),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر إظهار المنتج","error")}}function openStoreAdvertisementSettings(t){const e=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(!e)return;const o=document.getElementById("store-ad-settings-modal");o&&o.remove();const r=document.createElement("div");r.id="store-ad-settings-modal",r.className="fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4",r.innerHTML='<div class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl text-right" dir="rtl"><div class="flex items-center justify-between gap-3 mb-3"><b class="text-base">إعدادات نشر الإعلان</b><button type="button" data-ad-cancel class="rounded-full px-3 py-1 text-lg text-slate-500" aria-label="إغلاق">×</button></div><p class="mb-3 text-xs text-slate-500">'+escHtml(e.name)+'</p><label class="block mb-2 text-xs font-bold">الجمهور المستهدف</label><select id="store-ad-modal-audience" class="field mb-3"><option value="both">العميل والفني</option><option value="client">العميل فقط</option><option value="fanni">الفني فقط</option></select><label class="block mb-2 text-xs font-bold">مدة الإعلان</label><select id="store-ad-modal-days" class="field mb-3"><option value="1">يوم واحد</option><option value="3">3 أيام</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><label class="block mb-2 text-xs font-bold">أولوية الظهور</label><select id="store-ad-modal-priority" class="field mb-4"><option value="0">عادية</option><option value="10">منخفضة جدًا</option><option value="20">منخفضة</option><option value="30">أقل من متوسطة</option><option value="40">متوسطة منخفضة</option><option value="50">متوسطة</option><option value="60">متوسطة مرتفعة</option><option value="70">مرتفعة</option><option value="80">مرتفعة جدًا</option><option value="90">عاجلة</option><option value="100">الأولوية القصوى</option></select><div class="flex gap-2"><button type="button" data-ad-publish class="primary-btn flex-1 rounded-xl py-3">نشر الإعلان</button><button type="button" data-ad-cancel class="rounded-xl border border-slate-200 px-4 py-2 text-sm">إلغاء</button></div></div>',document.body.appendChild(r);const s=r.querySelector("#store-ad-modal-audience"),a=r.querySelector("#store-ad-modal-days"),i=r.querySelector("#store-ad-modal-priority");s.value=["both","client","fanni"].includes(e.adAudience)?e.adAudience:"both";const n=e.adExpiresAt?Math.ceil((new Date(e.adExpiresAt).getTime()-Date.now())/864e5):7;a.value=String([1,3,7,14,30,60,90,180,365].includes(n)?n:7);const l=Math.max(0,Math.min(100,Number(e.adPriority)||0));i.value=String(10*Math.round(l/10)),r.querySelectorAll("[data-ad-cancel]").forEach(t=>t.addEventListener("click",()=>r.remove())),r.addEventListener("click",t=>{t.target===r&&r.remove()}),r.querySelector("[data-ad-publish]").addEventListener("click",async()=>{const o=Number(a.value),n=Number(i.value),l=s.value;if(!/^https?:\/\//i.test(String(e.imageUrl||""))&&!/^\/api\/store\/media\/[a-f0-9]{24}$/i.test(String(e.imageUrl||"")))return showToast("أضف صورة صالحة للمنتج أولًا","error");try{await tryApi(["/api/admin/store/products/"+encodeURIComponent(t)],{method:"PUT",body:JSON.stringify({name:e.name,category:e.category||"عام",description:e.description||"",details:e.details||"",price:Number(e.price),originalPrice:e.originalPrice??null,offerText:e.offerText||"",type:e.type||"product",subscriptionDuration:e.subscriptionDuration||"",imageUrl:e.imageUrl||"",imageFileId:e.imageFileId||null,isActive:!1!==e.isActive,stock:e.stock??null,isAdvertised:!0,adAudience:l,adPriority:n,adExpiresAt:new Date(Date.now()+864e5*o).toISOString()})}),r.remove(),showToast("تم نشر الإعلان بالإعدادات المحددة"),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر نشر الإعلان","error")}})}async function manageStoreProductAdvertisement(t){const e=(state.storeProducts||[]).find(e=>String(e._id)===String(t));if(e)if(!0!==e.isAdvertised)openStoreAdvertisementSettings(t);else{if(!confirm("إيقاف الإعلان لهذا المنتج؟"))return;try{await tryApi(["/api/admin/store/products/"+encodeURIComponent(t)],{method:"PUT",body:JSON.stringify({name:e.name,category:e.category||"عام",description:e.description||"",details:e.details||"",price:Number(e.price),originalPrice:e.originalPrice??null,offerText:e.offerText||"",type:e.type||"product",subscriptionDuration:e.subscriptionDuration||"",imageUrl:e.imageUrl||"",imageFileId:e.imageFileId||null,isActive:!1!==e.isActive,stock:e.stock??null,isAdvertised:!1,adAudience:e.adAudience||"both",adPriority:Number(e.adPriority)||0,adExpiresAt:e.adExpiresAt||null})}),showToast("تم إيقاف الإعلان"),await loadStoreProducts()}catch(t){showToast(t.message||"تعذر إيقاف الإعلان","error")}}}!function(){const t=("undefined"!=typeof ADMIN_SECTIONS?ADMIN_SECTIONS:[]).flatMap(t=>t.tabs||[]).find(t=>"storeOrders"===t.id);t&&(t.count=()=>Math.max(0,Number(state.storeOrdersPendingCount)||0))}();
+'use strict';
+
+let storeCsvImportState={open:false,fileName:'',headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:false,result:null};
+const STORE_CSV_IMPORT_FIELDS=[
+  {key:'name',label:'اسم المنتج *',aliases:['name','productname','title','اسم المنتج','اسم','المنتج','الاسم']},
+  {key:'price',label:'السعر *',aliases:['price','currentprice','sellingprice','السعر','السعر الحالي','سعر البيع']},
+  {key:'category',label:'القسم',aliases:['category','section','group','القسم','الفئة','التصنيف']},
+  {key:'description',label:'الوصف',aliases:['description','shortdescription','الوصف','وصف']},
+  {key:'details',label:'التفاصيل والمواصفات',aliases:['details','specifications','المواصفات','التفاصيل']},
+  {key:'originalPrice',label:'السعر قبل العرض',aliases:['originalprice','oldprice','السعر الأصلي','السعر قبل الخصم','السعر قبل العرض']},
+  {key:'offerText',label:'تفاصيل العرض',aliases:['offer','offertext','العرض','تفاصيل العرض']},
+  {key:'type',label:'نوع المنتج',aliases:['type','producttype','نوع المنتج','النوع']},
+  {key:'subscriptionDuration',label:'مدة الاشتراك',aliases:['duration','subscriptionduration','مدة الاشتراك']},
+  {key:'imageUrl',label:'رابط الصورة',aliases:['image','imageurl','image_url','رابط الصورة','رابط صورة المنتج','صورة المنتج']},
+  {key:'stock',label:'الكمية / المخزون',aliases:['stock','quantity','qty','الكمية','المخزون','عدد']},
+  {key:'isActive',label:'حالة المنتج',aliases:['active','isactive','enabled','نشط','مفعل','حالة المنتج']}
+];
+function normalizeStoreCsvHeader(value){
+  return String(value||'').replace(/^\uFEFF/,'').normalize('NFKC').toLowerCase()
+    .replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[\s_\-./\\()[\]{}:،؛]+/g,'');
+}
+function parseStoreCsvText(sourceText){
+  const source=String(sourceText||'').replace(/^\uFEFF/,'');
+  const firstLine=source.split(/\r?\n/).find(line=>line.trim())||'';
+  const candidates=[',',';','\t'];
+  const counts=candidates.map(delimiter=>{
+    let count=0,quoted=false;
+    for(let i=0;i<firstLine.length;i++){
+      const ch=firstLine[i];
+      if(ch==='"'&&quoted&&firstLine[i+1]==='"'){i++;continue;}
+      if(ch==='"'){quoted=!quoted;continue;}
+      if(!quoted&&ch===delimiter)count++;
+    }
+    return count;
+  });
+  const delimiter=candidates[counts.indexOf(Math.max(...counts))]||',';
+  const matrix=[];let row=[],cell='',quoted=false;
+  for(let i=0;i<source.length;i++){
+    const ch=source[i];
+    if(quoted){
+      if(ch==='"'&&source[i+1]==='"'){cell+='"';i++;}
+      else if(ch==='"')quoted=false;
+      else cell+=ch;
+    }else if(ch==='"'&&cell===''){quoted=true;}
+    else if(ch===delimiter){row.push(cell);cell='';}
+    else if(ch==='\n'){row.push(cell.replace(/\r$/,''));matrix.push(row);row=[];cell='';}
+    else cell+=ch;
+  }
+  if(cell.length||row.length){row.push(cell.replace(/\r$/,''));matrix.push(row);}
+  const nonEmpty=matrix.filter(cells=>cells.some(value=>String(value||'').trim()!==''));
+  const headers=(nonEmpty.shift()||[]).map(value=>String(value||'').trim());
+  const rows=nonEmpty.map(cells=>headers.map((_,index)=>String(cells[index]??'').trim()));
+  return {headers,rows,delimiter};
+}
+function autoMapStoreCsvHeaders(headers){
+  const mapping={};
+  for(const field of STORE_CSV_IMPORT_FIELDS){
+    const aliases=field.aliases.map(normalizeStoreCsvHeader);
+    const index=headers.findIndex(header=>aliases.includes(normalizeStoreCsvHeader(header)));
+    mapping[field.key]=index>=0?String(index):'';
+  }
+  return mapping;
+}
+function parseStoreCsvNumber(value){
+  const digits=String(value??'').replace(/[٠-٩]/g,digit=>'٠١٢٣٤٥٦٧٨٩'.indexOf(digit)).replace(/[۰-۹]/g,digit=>'۰۱۲۳۴۵۶۷۸۹'.indexOf(digit));
+  const cleaned=digits.replace(/[٬,\s]/g,'').replace(/٫/g,'.').replace(/[^0-9.\-]/g,'');
+  if(!cleaned||cleaned==='-'||cleaned==='.')return null;
+  const number=Number(cleaned);
+  return Number.isFinite(number)?number:null;
+}
+function prepareStoreCsvImportRows(){
+  const valid=[],errors=[];
+  const mapping=storeCsvImportState.mapping||{};
+  const column=(row,key)=>{const index=Number(mapping[key]);return mapping[key]!==''&&Number.isInteger(index)&&index>=0?String(row[index]??'').trim():'';};
+  storeCsvImportState.rows.forEach((row,index)=>{
+    const rowNumber=index+2;
+    const name=column(row,'name');
+    const rawPrice=column(row,'price');
+    const price=parseStoreCsvNumber(rawPrice);
+    const rowErrors=[];
+    if(!name||name.length<2||name.length>120)rowErrors.push('اسم المنتج مطلوب (من حرفين إلى 120 حرفًا).');
+    if(rawPrice===''||price===null||price<0||price>100000000)rowErrors.push('السعر مطلوب ويجب أن يكون رقمًا صحيحًا من صفر فأكثر.');
+    const originalRaw=column(row,'originalPrice');
+    const originalPrice=originalRaw===''?null:parseStoreCsvNumber(originalRaw);
+    if(originalRaw!==''&&(originalPrice===null||originalPrice<0||originalPrice>100000000))rowErrors.push('السعر قبل العرض غير صالح.');
+    const stockRaw=column(row,'stock');
+    const stock=stockRaw===''?null:parseStoreCsvNumber(stockRaw);
+    if(stockRaw!==''&&(stock===null||!Number.isInteger(stock)||stock<0))rowErrors.push('الكمية يجب أن تكون عددًا صحيحًا غير سالب.');
+    const imageUrl=column(row,'imageUrl');
+    if(imageUrl){let parsed;try{parsed=new URL(imageUrl);}catch(_){parsed=null;}if(!parsed||!['http:','https:'].includes(parsed.protocol)||imageUrl.length>1000)rowErrors.push('رابط الصورة يجب أن يبدأ بـ https:// أو http://.');}
+    const category=(column(row,'category')||'عام').slice(0,80);
+    const typeRaw=column(row,'type').toLowerCase();
+    const type=(typeRaw.includes('اشتراك')||typeRaw.includes('subscription'))?'subscription':'product';
+    const activeRaw=column(row,'isActive').toLowerCase();
+    const isActive=activeRaw===''?true:!['0','false','no','inactive','غير مفعل','مخفي','لا'].includes(activeRaw);
+    const product={
+      name,category,price:price??0,originalPrice,offerText:column(row,'offerText').slice(0,200),
+      type,subscriptionDuration:column(row,'subscriptionDuration').slice(0,60),
+      description:column(row,'description').slice(0,2000),details:column(row,'details').slice(0,5000),
+      imageUrl,imageFileId:null,isActive,isAdvertised:false,adAudience:'both',adPriority:0,adExpiresAt:null,stock
+    };
+    if(rowErrors.length)errors.push({rowNumber,name,message:rowErrors.join('؛ ')});
+    else valid.push({rowNumber,product});
+  });
+  storeCsvImportState.prepared={valid,errors};
+  return storeCsvImportState.prepared;
+}
+function renderStoreCsvImportPanel(){
+  const s=storeCsvImportState;
+  const toggle='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(s.open?'إغلاق':'استيراد CSV')+'</button></div>';
+  if(!s.open)return toggle;
+  const mapping=s.headers.length?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">'+STORE_CSV_IMPORT_FIELDS.map(field=>'<label class="block text-[11px] font-bold text-slate-600">'+escHtml(field.label)+'<select data-store-csv-map="'+field.key+'" onchange="updateStoreCsvMapping(this)" class="field mt-1"><option value="">— بدون ربط —</option>'+s.headers.map((header,index)=>'<option value="'+index+'" '+(String(s.mapping[field.key]??'')===String(index)?'selected':'')+'>'+escHtml(header||('عمود '+(index+1)))+'</option>').join('')+'</select></label>').join('')+'</div>':'';
+  const prepared=s.headers.length?prepareStoreCsvImportRows():{valid:[],errors:[]};
+  const preview=s.rows.slice(0,8).map((row,index)=>{
+    const rowNumber=index+2;
+    const item=prepared.valid.find(entry=>entry.rowNumber===rowNumber);
+    const issue=prepared.errors.find(entry=>entry.rowNumber===rowNumber);
+    const name=item?.product.name||issue?.name||'—';
+    const price=item?Number(item.product.price).toLocaleString('en-US'):'—';
+    const category=item?.product.category||'—';
+    return '<tr class="border-t"><td class="p-2 text-[10px]">'+rowNumber+'</td><td class="p-2 text-[10px]">'+escHtml(name)+'</td><td class="p-2 text-[10px]">'+price+'</td><td class="p-2 text-[10px]">'+escHtml(category)+'</td><td class="p-2 text-[10px] '+(issue?'text-rose-700':'text-emerald-700')+'">'+(issue?escHtml(issue.message):item?'جاهز':'—')+'</td></tr>';
+  }).join('');
+  const summary=s.headers.length?'<div class="rounded-xl bg-slate-50 p-3 text-xs flex flex-wrap gap-x-4 gap-y-1"><span>إجمالي الصفوف: <b>'+s.rows.length+'</b></span><span class="text-emerald-700">جاهز: <b>'+prepared.valid.length+'</b></span><span class="text-rose-700">به أخطاء: <b>'+prepared.errors.length+'</b></span></div>':'';
+  const result=s.result?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">تمت الإضافة: <b>'+Number(s.result.importedCount||0)+'</b> • المكرر والمتخطى: <b>'+Number(s.result.duplicateCount||0)+'</b> • صفوف بها أخطاء: <b>'+Number(s.result.errorCount||0)+'</b></div>':'';
+  const resultDetails=s.result?[...(s.result.duplicates||[]),...(s.result.errors||[])].slice(0,12).map(item=>'<li class="text-[10px] text-slate-600">الصف '+Number(item.rowNumber||0)+': '+escHtml(item.name||'')+' — '+escHtml(item.message||'تم تخطي الصف')+'</li>').join(''):'';
+  const table=prepared.valid.length||prepared.errors.length?'<div class="overflow-x-auto rounded-xl border"><table class="w-full text-right"><thead><tr class="bg-slate-50"><th class="p-2 text-[10px]">صف</th><th class="p-2 text-[10px]">المنتج</th><th class="p-2 text-[10px]">السعر</th><th class="p-2 text-[10px]">القسم</th><th class="p-2 text-[10px]">المراجعة</th></tr></thead><tbody>'+preview+'</tbody></table><p class="text-[10px] text-slate-500 p-2">المعاينة تعرض أول 8 صفوف فقط. سيتم فحص جميع الصفوف عند الاستيراد.</p></div>':'';
+  return toggle+'<section class="premium-panel p-4 space-y-3"><div><b class="block text-sm">رفع ملف المنتجات CSV</b><p class="text-[10px] text-slate-500 mt-1">يمكن ربط الأعمدة تلقائيًا أو اختيار العمود يدويًا. اسم المنتج والسعر إلزاميان. المنتجات المكررة بنفس الاسم والقسم سيتم تخطيها، ولن يتم تعديل المنتجات الموجودة.</p></div><input type="file" accept=".csv,text/csv" class="field w-full" onchange="handleStoreCsvFile(this.files&&this.files[0])"><p class="text-[10px] text-slate-500">'+(s.fileName?'الملف: '+escHtml(s.fileName):'يدعم CSV بفواصل أو فاصلة منقوطة أو Tab، مع دعم النصوص العربية.')+'</p>'+mapping+summary+table+result+(resultDetails?'<ul class="rounded-xl bg-slate-50 p-3 space-y-1">'+resultDetails+'</ul>':'')+'<div class="flex gap-2"><button type="button" onclick="importStoreCsvProducts()" '+(!prepared.valid.length||s.busy?'disabled':'')+' class="primary-btn rounded-xl px-4 py-3 flex-1 disabled:opacity-40">'+(s.busy?'جاري الاستيراد...':'استيراد '+prepared.valid.length+' منتج')+'</button><button type="button" onclick="resetStoreCsvImporter()" class="rounded-xl border px-4 py-3 text-xs font-bold">مسح الملف</button></div></section>';
+}
+function toggleStoreCsvImporter(){storeCsvImportState.open=!storeCsvImportState.open;render();}
+function resetStoreCsvImporter(){storeCsvImportState={open:true,fileName:'',headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:false,result:null};render();}
+async function handleStoreCsvFile(file){
+  if(!file)return;
+  if(file.size>900*1024)return showToast('حجم ملف CSV كبير. قلل الملف إلى أقل من 900 كيلوبايت أو قسّمه إلى ملفين.','error');
+  try{
+    const buffer=await file.arrayBuffer();
+    let csvText;
+    try{csvText=new TextDecoder('utf-8',{fatal:true}).decode(buffer);}catch(_){csvText=new TextDecoder('windows-1256').decode(buffer);}
+    const parsed=parseStoreCsvText(csvText);
+    if(parsed.headers.length<2||!parsed.rows.length)throw new Error('الملف فارغ أو لا يحتوي على صف عناوين وصفوف منتجات.');
+    if(parsed.rows.length>500)throw new Error('الحد الأقصى للاستيراد هو 500 منتج في المرة الواحدة.');
+    storeCsvImportState.fileName=file.name||'products.csv';
+    storeCsvImportState.headers=parsed.headers;
+    storeCsvImportState.rows=parsed.rows;
+    storeCsvImportState.mapping=autoMapStoreCsvHeaders(parsed.headers);
+    storeCsvImportState.result=null;
+    prepareStoreCsvImportRows();
+    render();
+    showToast('تمت قراءة الملف. راجع المعاينة وربط الأعمدة قبل الاستيراد.');
+  }catch(error){showToast(error.message||'تعذرت قراءة ملف CSV.','error');}
+}
+function updateStoreCsvMapping(select){
+  const key=String(select?.dataset?.storeCsvMap||'');
+  if(!STORE_CSV_IMPORT_FIELDS.some(field=>field.key===key))return;
+  storeCsvImportState.mapping[key]=String(select.value??'');
+  storeCsvImportState.result=null;
+  prepareStoreCsvImportRows();
+  render();
+}
+async function importStoreCsvProducts(){
+  if(storeCsvImportState.busy)return;
+  if(storeCsvImportState.mapping.name===''||storeCsvImportState.mapping.price==='')return showToast('اربط عمود اسم المنتج وعمود السعر أولًا.','error');
+  const prepared=prepareStoreCsvImportRows();
+  if(!prepared.valid.length)return showToast('لا توجد صفوف سليمة للاستيراد. راجع الأخطاء الظاهرة.','error');
+  if(!confirm('سيتم إضافة '+prepared.valid.length+' منتج إلى المتجر. المنتجات الموجودة أو المكررة سيتم تخطيها دون تعديلها. هل تريد المتابعة؟'))return;
+  storeCsvImportState.busy=true;render();
+  try{
+    const result=await tryApi(['/api/admin/store/products/import'],{method:'POST',body:JSON.stringify({products:prepared.valid})});
+    storeCsvImportState.result=result;
+    showToast('تم استيراد '+Number(result.importedCount||0)+' منتج بنجاح.');
+    if(Number(result.importedCount||0)>0)await loadStoreProducts();
+  }catch(error){showToast(error.message||'تعذر استيراد المنتجات.','error');}
+  finally{storeCsvImportState.busy=false;render();}
+}
+
+const STORE_PRODUCT_EDIT_SESSION_KEY='hamzawy-admin-store-edit-product';
+const STORE_PRODUCT_EDIT_FIELDS=['store-name','store-category','store-category-new','store-price','store-original-price','store-offer','store-type','store-duration','store-description','store-details','store-image-url','store-stock','store-ad-enabled','store-ad-audience','store-ad-priority','store-ad-days'];
+function persistStoreProductEditSession(productId){
+  try{
+    if(!productId){sessionStorage.removeItem(STORE_PRODUCT_EDIT_SESSION_KEY);return;}
+    let saved=null;
+    try{saved=JSON.parse(sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||'null');}catch(_){}
+    if(!saved||String(saved.productId)!==String(productId))saved={productId:String(productId),values:{}};
+    sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,JSON.stringify(saved));
+  }catch(_){}
+}
+function saveStoreProductEditDraft(){
+  if(!state.storeProductEditingId)return;
+  try{
+    const saved={productId:String(state.storeProductEditingId),values:{}};
+    STORE_PRODUCT_EDIT_FIELDS.forEach(id=>{
+      const element=document.getElementById(id);
+      if(element)saved.values[id]=element.type==='checkbox'?element.checked:element.value;
+    });
+    sessionStorage.setItem(STORE_PRODUCT_EDIT_SESSION_KEY,JSON.stringify(saved));
+  }catch(_){}
+}
+function restoreStoreProductEditSession(){
+  if(window.__hamzawyStoreEditRestored||state.tab!=='store')return;
+  let saved=null;
+  try{
+    const raw=sessionStorage.getItem(STORE_PRODUCT_EDIT_SESSION_KEY)||'';
+    if(raw){try{saved=JSON.parse(raw);}catch(_){saved={productId:raw,values:{}};}}
+  }catch(_){}
+  const productId=String(saved?.productId||'');
+  if(!productId)return;
+  const product=(state.storeProducts||[]).find(item=>String(item._id)===productId);
+  if(!product){persistStoreProductEditSession(null);return;}
+  window.__hamzawyStoreEditRestored=true;
+  editStoreProduct(productId);
+  Object.entries(saved.values||{}).forEach(([id,value])=>{
+    if(!STORE_PRODUCT_EDIT_FIELDS.includes(id))return;
+    const element=document.getElementById(id);
+    if(element){if(element.type==='checkbox')element.checked=!!value;else element.value=String(value??'');}
+  });
+}
+if(!window.__hamzawyStoreEditDraftListener){
+  document.addEventListener('input',saveStoreProductEditDraft,true);
+  document.addEventListener('change',saveStoreProductEditDraft,true);
+  window.__hamzawyStoreEditDraftListener=true;
+}
+let storeProductsLoadSequence=0;
+async function loadStoreProducts(){
+  const requestId=++storeProductsLoadSequence;
+  state.storeProductsLoading=true;
+  state.storeAdSettingsLoading=true;
+  state.storeAdSettingsLoadError='';
+  if(state.tab==='store')render();
+  try{
+    const data=await tryApi(['/api/admin/store/products'],{cache:'no-store'});
+    const products=Array.isArray(data?.products)?data.products:(Array.isArray(data)?data:null);
+    if(!products)throw new Error('استجابة قائمة المنتجات غير صالحة.');
+    if(requestId!==storeProductsLoadSequence)return;
+    state.storeProducts=products;
+    state.storeProductsLoaded=true;
+    state.storeCategories=Array.isArray(data?.categories)?data.categories:[];
+    state.storeProductsLoadError='';
+  }catch(error){
+    if(requestId===storeProductsLoadSequence){
+      state.storeProductsLoadError=error.message||'تعذر تحميل المنتجات';
+      showToast('تعذر تحميل المنتجات؛ لم نغيّر البيانات المحفوظة.','error');
+    }
+  }
+  try{
+    const settings=await tryApi(['/api/admin/store/ad-settings'],{cache:'no-store'});
+    if(requestId===storeProductsLoadSequence){
+      const seconds=Number(settings?.rotationSeconds);
+      if([5,10,15,20,30,45,60].includes(seconds)){
+        state.storeAdRotationSeconds=seconds;
+        state.storeAdSettingsLoaded=true;
+        state.storeAdSettingsLoadError='';
+      }else{
+        state.storeAdSettingsLoadError='استجابة إعداد مدة عرض الإعلان غير صالحة.';
+      }
+    }
+  }catch(error){
+    if(requestId===storeProductsLoadSequence){
+      state.storeAdSettingsLoadError=error.message||'تعذر تحميل إعداد مدة عرض الإعلان';
+    }
+  }finally{
+    if(requestId===storeProductsLoadSequence){
+      state.storeProductsLoading=false;
+      state.storeAdSettingsLoading=false;
+      if(state.tab==='store'){
+        render();
+        restoreStoreProductEditSession();
+      }
+    }
+  }
+}
+async function loadStoreOrders(){state.storeOrdersLoading=true;if(state.tab==='storeOrders')render();try{const d=await tryApi(['/api/admin/store/orders']);state.storeOrders=extractList(d,['orders']);state.storeOrdersPendingCount=state.storeOrders.filter(o=>o.status==='جديد').length;}catch(e){state.storeOrders=[];showToast(e.message||'تعذر تحميل المعاملات','error');}finally{state.storeOrdersLoading=false;if(state.tab==='storeOrders')render();}}
+let storeAdminNotificationsPollInFlight=false;
+async function loadStoreOrderCount(silent=false){
+  try{
+    const data=await tryApi(['/api/admin/store/orders/count']);
+    state.storeOrdersPendingCount=Math.max(0,Number(data.pendingCount)||0);
+    state.storeOrderCountInitialized=true;
+    if(!silent&&state.pageMode==='home')render();
+  }catch(_){}
+}
+async function dismissStoreAdminNotification(id,button){
+  id=String(id||'').trim();
+  if(!id)return;
+  const card=button?.closest('[data-store-order-notification]');
+  if(button)button.disabled=true;
+  try{
+    await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});
+    let saved=[];
+    try{
+      const current=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');
+      if(Array.isArray(current))saved=current.map(String);
+    }catch(_){}
+    saved=Array.from(new Set([...saved,id])).slice(-300);
+    try{localStorage.setItem('sonaa.admin.storeOrderNotificationRead.v2',JSON.stringify(saved));}catch(_){}
+    state.seenStoreOrderNotificationIds=(state.seenStoreOrderNotificationIds||[]).filter(value=>String(value)!==id);
+    card?.remove();
+    const root=document.getElementById('toast');
+    if(root&&!root.querySelector('[data-store-order-notification]'))root.innerHTML='';
+  }catch(error){
+    if(button)button.disabled=false;
+    showToast(error.message||'تعذر تسجيل قراءة إشعار الطلب في الخادم','error');
+  }
+}
+function showStoreAdminNotificationToasts(items){
+  const root=document.getElementById('toast');
+  if(!root||!Array.isArray(items)||!items.length)return;
+  root.innerHTML='<div class="pointer-events-auto mx-auto max-w-[640px] space-y-2">'+items.map(item=>{
+    const id=escHtml(item.id);
+    return '<article data-store-order-notification="'+id+'" class="rounded-[16px] border border-amber-200 bg-amber-500 px-4 py-3.5 text-white shadow-2xl"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><b class="block text-[12px] font-black">'+escHtml(item.title||'طلب متجر جديد')+'</b><p class="mt-1 text-[11px] leading-5">'+escHtml(item.message||'')+'</p></div><button type="button" data-store-order-dismiss="'+id+'" onclick="dismissStoreAdminNotification(this.dataset.storeOrderDismiss,this)" class="shrink-0 rounded-lg bg-white/20 px-3 py-2 text-[10px] font-black" aria-label="إغلاق الإشعار">إغلاق</button></div></article>';
+  }).join('')+'</div>';
+}
+async function pollStoreAdminNotifications(){
+  if(storeAdminNotificationsPollInFlight)return;
+  storeAdminNotificationsPollInFlight=true;
+  try{
+    const data=await tryApi(['/api/notifications/admin'],{method:'GET'});
+    const items=extractList(data,['notifications']);
+    const fresh=items.filter(item=>item.type==='admin_store_order'&&!item.read);
+    let persisted=[];
+    try{
+      const saved=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');
+      if(Array.isArray(saved))persisted=saved.map(String);
+    }catch(_){}
+    const readIds=new Set(persisted);
+    const shownIds=new Set((state.seenStoreOrderNotificationIds||[]).map(String));
+    const initialized=state.storeAdminNotificationsInitialized===true;
+    if(initialized){
+      const toShow=fresh.filter(item=>!readIds.has(String(item.id))&&!shownIds.has(String(item.id))).slice(0,3);
+      if(toShow.length){
+        showStoreAdminNotificationToasts(toShow);
+        state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...toShow.map(item=>String(item.id))])).slice(-200);
+      }
+    }
+    state.storeAdminNotificationsInitialized=true;
+  }catch(_){
+  }finally{
+    storeAdminNotificationsPollInFlight=false;
+  }
+}
+function startStoreOrderCountPolling(){
+  if(window.__sonaaStoreOrderCountTimer||!getToken())return;
+  loadStoreOrderCount(true);
+  pollStoreAdminNotifications();
+  window.__sonaaStoreOrderCountTimer=setInterval(()=>{
+    if(!document.hidden&&getToken()){
+      loadStoreOrderCount(true);
+      pollStoreAdminNotifications();
+    }
+  },15000);
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden&&getToken()){
+      loadStoreOrderCount(true);
+      pollStoreAdminNotifications();
+    }
+  });
+}
+(function attachStoreOrdersCount(){const item=(typeof ADMIN_SECTIONS!=='undefined'?ADMIN_SECTIONS:[]).flatMap(section=>section.tabs||[]).find(tab=>tab.id==='storeOrders');if(item)item.count=()=>Math.max(0,Number(state.storeOrdersPendingCount)||0);})();
+async function saveStoreAdRotationSeconds(){const seconds=Number(document.getElementById('store-ad-rotation-seconds')?.value);if(![5,10,15,20,30,45,60].includes(seconds))return showToast('اختار مدة صحيحة لعرض الصورة','error');try{const result=await tryApi(['/api/admin/store/ad-settings'],{method:'PUT',body:JSON.stringify({rotationSeconds:seconds})});state.storeAdRotationSeconds=Number(result.rotationSeconds)||seconds;state.storeAdSettingsLoaded=true;state.storeAdSettingsLoadError='';showToast('تم حفظ مدة عرض صور الإعلان');render();}catch(error){showToast(error.message||'تعذر حفظ مدة الإعلان','error');}}
+function toggleStoreProductForm(){persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=state.storeProductFormOpen!==true;render();}
+function cancelStoreProductEdit(){persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=false;state.storeNewProductAsAdvertisement=false;render();}
+function setStoreOrderStatusTab(status){if(!['جديد','تم التواصل','قيد التجهيز','مرفوض','ملغي','مكتمل'].includes(status))return;state.storeOrderStatusTab=status;render();}
+
+function toggleStoreCategoryManager(){state.storeCategoryManagerOpen=state.storeCategoryManagerOpen!==true;render();}
+function toggleStoreAdRotationSettings(){state.storeAdRotationSettingsOpen=state.storeAdRotationSettingsOpen!==true;render();}
+function renderStoreCategoryManager(products){
+  if(typeof state.storeCategoryManagerOpen!=='boolean')state.storeCategoryManagerOpen=false;
+  const categories=Array.isArray(state.storeCategories)&&state.storeCategories.length?state.storeCategories:Array.from(new Set((products||[]).map(product=>String(product.category||'عام').trim()||'عام'))).sort((a,b)=>a.localeCompare(b,'ar')).map(name=>{const items=(products||[]).filter(product=>(String(product.category||'عام').trim()||'عام')===name);const cover=items.find(product=>String(product.imageUrl||'').trim())||items[0];return {name,productCount:items.length,imageUrl:cover?.imageUrl||'',fallbackImageUrl:cover?.imageUrl||'',customImageUrl:'',imageFileId:null,hasCustomImage:false};});
+  const rows=categories.map(category=>{
+    const preview=category.imageUrl||category.fallbackImageUrl||'';
+    return '<article data-store-category-row data-original-name="'+escHtml(category.name)+'" data-custom-image-url="'+escHtml(category.customImageUrl||'')+'" data-image-file-id="'+escHtml(category.imageFileId||'')+'" class="rounded-2xl border border-slate-200 bg-white p-3 space-y-2">'+
+      '<div class="flex items-center gap-3"><div class="w-16 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0">'+(preview?'<img src="'+escHtml(preview)+'" alt="'+escHtml(category.name)+'" class="w-full h-full object-contain">':'<div class="w-full h-full flex items-center justify-center text-2xl">📦</div>')+'</div><div class="min-w-0 flex-1"><b class="block text-sm">'+escHtml(category.name)+'</b><span class="text-[10px] text-slate-500">'+Number(category.productCount||0)+' منتج • '+(category.hasCustomImage?'صورة مخصصة':'صورة تلقائية من المنتجات')+'</span></div></div>'+
+      '<label class="block text-[11px] font-bold text-slate-600">اسم القسم<input data-category-name maxlength="80" class="field mt-1" value="'+escHtml(category.name)+'"></label>'+
+      '<label class="block text-[11px] font-bold text-slate-600">رابط صورة مخصصة (اختياري)<input data-category-image-url type="url" inputmode="url" maxlength="1000" class="field mt-1" value="'+escHtml(category.customImageUrl||'')+'" placeholder="اتركه فارغًا لاستخدام صورة من المنتجات"></label>'+
+      '<label class="block text-[11px] font-bold text-slate-600">أو اختر صورة من الجهاز<input data-category-image-file type="file" accept="image/jpeg,image/png,image/webp" class="field mt-1"></label>'+
+      '<p class="text-[10px] text-slate-500">لو رفعت صورة هنا هتكون هي صورة القسم عند العميل والفني. ولو مسحت الصورة المخصصة هيرجع للصورة التلقائية.</p>'+
+      '<div class="flex gap-2"><button type="button" onclick="saveStoreCategoryFromButton(this)" class="primary-btn rounded-xl px-4 py-2 flex-1 text-xs">حفظ القسم</button><button type="button" onclick="deleteStoreCategoryFromButton(this)" '+(category.name==='عام'?'disabled title="القسم الافتراضي لا يمكن حذفه"':'')+' class="rounded-xl border border-rose-200 px-4 py-2 text-xs font-bold text-rose-700 disabled:opacity-40">حذف</button></div>'+
+    '</article>';
+  }).join('');
+  const isOpen=state.storeCategoryManagerOpen===true;
+  return '<section class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreCategoryManager()" aria-expanded="'+(isOpen?'true':'false')+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">إدارة أقسام المتجر</b><span class="block mt-1 text-[10px] text-slate-500">اضغط لفتح أو إغلاق إعدادات الأقسام والصور</span></span><span class="text-xl font-black transition-transform '+(isOpen?'rotate-180':'')+'" aria-hidden="true">⌄</span></button>'+(isOpen?'<div class="border-t border-slate-100 p-4 space-y-3">'+(rows||'<p class="text-xs text-slate-500">أضف أول منتج بقسم جديد علشان يظهر هنا.</p>')+'</div>':'')+'</section>';
+}
+async function uploadStoreCategoryImage(file){
+  if(!file)return null;
+  if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024)throw new Error('اختار صورة JPG أو PNG أو WebP لا تتجاوز 20 ميجابايت.');
+  const optimized=await optimizeStoreProductImage(file);
+  if(optimized.size>5*1024*1024)throw new Error('حجم الصورة بعد الضغط ما زال أكبر من 5 ميجابايت. اختار صورة أصغر.');
+  const response=await fetch('/api/admin/store/media?purpose=category',{method:'POST',headers:{Authorization:'Bearer '+getToken(),'Content-Type':optimized.type},body:optimized});
+  const result=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(result.message||'تعذر رفع صورة القسم.');
+  return result;
+}
+async function saveStoreCategoryFromButton(button){
+  const row=button?.closest('[data-store-category-row]');
+  if(!row)return;
+  const oldName=String(row.dataset.originalName||'');
+  const name=String(row.querySelector('[data-category-name]')?.value||'').trim();
+  let imageUrl=String(row.querySelector('[data-category-image-url]')?.value||'').trim();
+  let imageFileId=null;
+  const imageFile=row.querySelector('[data-category-image-file]')?.files?.[0]||null;
+  if(name.length<2||name.length>80)return showToast('اسم القسم لازم يكون من حرفين إلى 80 حرفًا.','error');
+  try{
+    if(imageFile){
+      const uploaded=await uploadStoreCategoryImage(imageFile);
+      imageUrl=uploaded.imageUrl;
+      imageFileId=uploaded.imageFileId;
+    }else if(imageUrl){
+      if(imageUrl===String(row.dataset.customImageUrl||'')&&row.dataset.imageFileId)imageFileId=row.dataset.imageFileId;
+      else{
+        let parsed;try{parsed=new URL(imageUrl);}catch(_){return showToast('اكتب رابط صورة يبدأ بـ https:// أو http:// أو ارفع صورة من الجهاز.','error');}
+        if(!['http:','https:'].includes(parsed.protocol))return showToast('رابط صورة القسم غير صالح.','error');
+      }
+    }
+    await tryApi(['/api/admin/store/categories/'+encodeURIComponent(oldName)],{method:'PUT',body:JSON.stringify({name,imageUrl,imageFileId})});
+    showToast('تم حفظ القسم وصورته.');
+    await loadStoreProducts();
+  }catch(error){showToast(error.message||'تعذر حفظ القسم.','error');}
+}
+async function deleteStoreCategoryFromButton(button){
+  const row=button?.closest('[data-store-category-row]');
+  if(!row)return;
+  const name=String(row.dataset.originalName||'');
+  if(name==='عام')return showToast('لا يمكن حذف قسم عام الافتراضي.','error');
+  if(!confirm('حذف قسم "'+name+'"؟ المنتجات الموجودة فيه هتتنقل إلى قسم عام، ومش هتتمسح المنتجات نفسها.'))return;
+  try{
+    const result=await tryApi(['/api/admin/store/categories/'+encodeURIComponent(name)],{method:'DELETE'});
+    showToast(result.message||'تم حذف القسم.');
+    await loadStoreProducts();
+  }catch(error){showToast(error.message||'تعذر حذف القسم.','error');}
+}
+
+function renderStore(){
+  if(typeof state.storeProductFormOpen!=='boolean')state.storeProductFormOpen=false;
+  if(typeof state.storeNewProductAsAdvertisement!=='boolean')state.storeNewProductAsAdvertisement=false;
+  const products=state.storeProducts||[];
+  const categoryOptions=Array.from(new Set(['عام',...products.map(p=>String(p.category||'عام').trim()).filter(Boolean),...(Array.isArray(state.storeCategories)?state.storeCategories.map(category=>String(category.name||'').trim()).filter(Boolean):[])])).filter(Boolean).sort((a,b)=>a.localeCompare(b,'ar')).map(category=>'<option value="'+escHtml(category)+'">'+escHtml(category)+'</option>').join('');
+  const hasRotationSettings=state.storeAdSettingsLoaded&&[5,10,15,20,30,45,60].includes(Number(state.storeAdRotationSeconds));
+  const rotationOptions=[5,10,15,20,30,45,60].map(seconds=>'<option value="'+seconds+'" '+(Number(state.storeAdRotationSeconds)===seconds?'selected':'')+'>'+seconds+(seconds===5||seconds===10||seconds===20||seconds===30||seconds===45||seconds===60?' ثوانٍ':' ثانية')+'</option>').join('');
+  if(typeof state.storeAdRotationSettingsOpen!=='boolean')state.storeAdRotationSettingsOpen=false;
+  const rotationOpen=state.storeAdRotationSettingsOpen===true;
+  const rotationBody=hasRotationSettings
+    ? '<div class="p-4 space-y-2"><p class="text-[11px] text-slate-500">حدد عدد الثواني التي تظهر فيها كل صورة قبل الانتقال للصورة التالية، ويُطبق الإعداد على العميل والفني.</p><div class="flex items-center gap-2"><select id="store-ad-rotation-seconds" class="field flex-1">'+rotationOptions+'</select><button type="button" onclick="saveStoreAdRotationSeconds()" class="primary-btn rounded-xl px-4 py-3">حفظ المدة</button></div></div>'
+    : '<div class="p-4 space-y-2"><p class="text-[11px] text-slate-500">'+(state.storeAdSettingsLoading||(!state.storeAdSettingsLoaded&&!state.storeAdSettingsLoadError)?'جاري تحميل المدة المحفوظة من الخادم...':'تعذر تحميل المدة المحفوظة؛ لم نعرض قيمة افتراضية بدلًا منها.')+'</p><button type="button" onclick="loadStoreProducts()" class="rounded-xl border border-slate-200 px-4 py-2 text-xs font-bold">إعادة تحميل إعدادات المتجر</button></div>';
+  const rotationSettings='<section class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreAdRotationSettings()" aria-expanded="'+(rotationOpen?'true':'false')+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">مدة عرض صورة الإعلان</b><span class="block mt-1 text-[10px] text-slate-500">اضغط لفتح أو إغلاق إعداد مدة ظهور كل صورة</span></span><span class="text-xl font-black transition-transform '+(rotationOpen?'rotate-180':'')+'" aria-hidden="true">⌄</span></button>'+(rotationOpen?'<div class="border-t border-slate-100">'+rotationBody+'</div>':'')+'</section>';
+  const form='<div class="premium-panel overflow-hidden"><button type="button" onclick="toggleStoreProductForm()" aria-expanded="'+(state.storeProductFormOpen?'true':'false')+'" class="w-full p-4 flex items-center justify-between gap-3 text-right"><span><b class="block text-sm">إضافة منتج جديد</b><span class="block mt-1 text-[11px] text-slate-500">افتح النموذج لإدخال بيانات المنتج</span></span><span class="text-xl font-black transition-transform '+(state.storeProductFormOpen?'rotate-180':'')+'" aria-hidden="true">⌄</span></button>'+
+    (state.storeProductFormOpen?'<div class="border-t border-slate-100 p-4 grid gap-2"><input id="store-name" class="field" placeholder="اسم المنتج"><div class="grid grid-cols-2 gap-2"><label class="block min-w-0"><span class="block text-[10px] font-bold text-slate-600 mb-1">اختار قسمًا موجودًا</span><select id="store-category" class="field w-full"><option value="">اختار قسمًا</option>'+categoryOptions+'</select></label><label class="block min-w-0"><span class="block text-[10px] font-bold text-slate-600 mb-1">أو اكتب قسمًا جديدًا</span><input id="store-category-new" class="field w-full" maxlength="80" placeholder="اسم القسم الجديد"></label></div><input id="store-price" type="number" min="0" class="field" placeholder="السعر الحالي بالجنيه"><input id="store-original-price" type="number" min="0" class="field" placeholder="السعر قبل العرض (اختياري)"><input id="store-offer" class="field" maxlength="200" placeholder="تفاصيل العرض (اختياري)"><select id="store-type" class="field"><option value="product">بضاعة ومنتج</option><option value="subscription">اشتراك أو تجديد اشتراك</option></select><input id="store-duration" class="field" maxlength="60" placeholder="مدة الاشتراك (مثال: شهر أو سنة)"><textarea id="store-description" class="field" placeholder="الوصف المختصر"></textarea><textarea id="store-details" class="field" placeholder="التفاصيل والمواصفات"></textarea><label class="block text-xs font-bold text-slate-700">رابط صورة المنتج (اختياري)<input id="store-image-url" type="url" inputmode="url" maxlength="1000" class="field mt-1" placeholder="https://example.com/product-image.jpg"><span class="mt-1 block text-[10px] font-normal text-slate-500">ضع رابط الصورة هنا، أو اتركه فارغًا واستخدم الرفع من جهازك.</span></label><label class="field block">رفع صورة من الجهاز (اختياري)<input id="store-image-file" type="file" accept="image/jpeg,image/png,image/webp" class="block w-full mt-2 text-xs"></label><input id="store-stock" type="number" min="0" class="field" placeholder="الكمية (اتركها فارغة بدون تحديد)"><label class="flex items-center gap-2 rounded-xl border p-3 text-xs font-bold"><input id="store-ad-enabled" type="checkbox" '+(state.storeNewProductAsAdvertisement?'checked':'')+'> نشر المنتج كشريط إعلاني أسفل الصفحة</label><select id="store-ad-audience" class="field"><option value="both">الإعلان للعميل والفني</option><option value="client">للعميل فقط</option><option value="fanni">للفني فقط</option></select><select id="store-ad-days" class="field"><option value="1">مدة الإعلان: يوم واحد</option><option value="3">3 أيام</option><option value="7" selected>أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><select id="store-ad-priority" class="field"><option value="0">الأولوية: عادية</option><option value="10">منخفضة</option><option value="20">20</option><option value="30">30</option><option value="40">40</option><option value="50">متوسطة</option><option value="60">60</option><option value="70">70</option><option value="80">مرتفعة</option><option value="90">90</option><option value="100">الأولوية القصوى</option></select><button type="button" onclick="createStoreProduct()" class="primary-btn rounded-xl py-3">إضافة المنتج</button></div>':'')+'</div>';
+  const csvImporter=renderStoreCsvImportPanel();
+    const cards=products.map(p=>'<article class="premium-card p-3 flex gap-3"><div class="w-16 h-16 bg-slate-100 rounded-xl overflow-hidden shrink-0">'+(p.imageUrl?'<img class="w-full h-full object-contain" src="'+escHtml(p.imageUrl)+'" alt="'+escHtml(p.name)+'">':'📦')+'</div><div class="min-w-0 flex-1"><b>'+escHtml(p.name)+'</b><p class="text-[10px] font-bold text-blue-700">القسم: '+escHtml(p.category||'عام')+'</p><p class="text-[11px]">'+escHtml(p.description||'')+'</p><p class="text-[10px] text-teal-700">'+(p.type==='subscription'?'اشتراك / تجديد':'منتج')+(p.offerText?' • '+escHtml(p.offerText):'')+'</p><b>'+Number(p.price||0).toLocaleString('ar-EG')+' جنيه</b>'+(p.originalPrice!=null&&Number(p.originalPrice)>Number(p.price)?'<p class="text-[10px] line-through text-slate-400">بدلًا من '+Number(p.originalPrice).toLocaleString('ar-EG')+' جنيه</p>':'')+'<p class="text-[10px]">'+(p.isActive?'متاح':'مخفي')+' • '+(p.isAdvertised?'إعلان نشط':'بدون إعلان')+'</p><button class="text-teal-700 text-xs" onclick="manageStoreProductAdvertisement(\''+escHtml(p._id)+'\')">'+(p.isAdvertised?'إيقاف الإعلان':'نشر الإعلان')+'</button> <button class="text-blue-700 text-xs" onclick="editStoreProduct(\''+escHtml(p._id)+'\')">تعديل</button> <label class="text-xs text-blue-700">تغيير الصورة<input type="file" class="hidden" data-product-id="'+escHtml(p._id)+'" accept="image/jpeg,image/png,image/webp" onchange="replaceStoreProductImage(this.dataset.productId,this.files[0])"></label> '+(p.isActive?'<button class="text-rose-700 text-xs" onclick="hideStoreProduct(\''+escHtml(p._id)+'\')">إخفاء</button>':'<button class="text-emerald-700 text-xs" onclick="showStoreProduct(\''+escHtml(p._id)+'\')">إظهار</button>')+' <button class="text-red-700 text-xs font-bold" onclick="deleteStoreProduct(\''+escHtml(p._id)+'\')">حذف نهائي</button></div></article>').join('');
+  const refreshStatus=state.storeProductsLoading&&products.length?'<div class="text-[11px] text-slate-500">جاري تحديث قائمة المنتجات مع الاحتفاظ بالقائمة الحالية...</div>':(state.storeProductsLoadError&&products.length?'<div class="premium-panel p-3 text-[11px] text-amber-800 flex items-center justify-between gap-2"><span>تعذر تحديث القائمة. المعروض هو آخر بيانات محفوظة.</span><button type="button" class="font-black underline" onclick="loadStoreProducts()">إعادة المحاولة</button></div>':'');
+  const emptyProductsState=!state.storeProductsLoaded&&products.length===0&&state.storeProductsLoadError?'<div class="premium-panel p-5 text-center text-sm text-amber-800">تعذر تحميل المنتجات المحفوظة. <button type="button" class="font-black underline" onclick="loadStoreProducts()">إعادة المحاولة</button></div>':!state.storeProductsLoaded&&products.length===0?'<div class="premium-panel p-5 text-center text-sm text-slate-500">جاري تحميل المنتجات المحفوظة...</div>':(cards||'<div class="premium-panel p-5">لا توجد منتجات بعد.</div>');
+  const productManagement='<section class="space-y-3"><div class="px-1"><b class="block text-sm">إدارة المنتجات</b><p class="mt-1 text-[10px] text-slate-500">استيراد المنتجات من CSV وإضافة المنتجات وتعديلها ومراجعة القائمة الحالية.</p></div>'+csvImporter+form+'<section class="premium-panel p-4 space-y-3"><b class="block text-sm">المنتجات الحالية ('+(state.storeProductsLoading&&products.length===0?'...':products.length)+')</b>'+refreshStatus+emptyProductsState+'</section></section>';
+  const storeManagement='<section class="space-y-3"><div class="px-1"><b class="block text-sm">إعدادات المتجر</b><p class="mt-1 text-[10px] text-slate-500">إدارة أقسام المتجر والتحكم في مدة عرض الإعلانات.</p></div>'+renderStoreCategoryManager(products)+rotationSettings+'</section>';
+  return '<section class="mt-4 space-y-5">'+storeManagement+productManagement+'</section>';
+}
+function renderStoreOrders(){
+  if(typeof state.storeOrderStatusTab!=='string')state.storeOrderStatusTab='جديد';
+  const statuses=[{value:'جديد',label:'طلب جديد'},{value:'تم التواصل',label:'تم التواصل'},{value:'قيد التجهيز',label:'جاري التجهيز'},{value:'مرفوض',label:'مرفوض'},{value:'ملغي',label:'ملغي'},{value:'مكتمل',label:'مكتمل'}];
+  const rows=state.storeOrders||[];
+  const selected=statuses.some(item=>item.value===state.storeOrderStatusTab)?state.storeOrderStatusTab:'جديد';
+  state.storeOrderStatusTab=selected;
+  const filtered=rows.filter(o=>String(o.status||'جديد')===selected);
+  const tabs=statuses.map(item=>{
+    const count=rows.filter(o=>String(o.status||'جديد')===item.value).length;
+    return '<button type="button" onclick="setStoreOrderStatusTab(\''+item.value+'\')" class="rounded-xl px-3 py-2 text-[11px] font-black border '+(selected===item.value?'bg-blue-700 text-white border-blue-700':'bg-white text-slate-700 border-slate-200')+'">'+item.label+' <span class="mr-1">'+count+'</span></button>';
+  }).join('');
+  const cards=filtered.map(o=>{
+    const items=Array.isArray(o.items)&&o.items.length?o.items:[{productName:o.productName,productType:o.productType,quantity:o.quantity,unitPrice:o.unitPrice,total:o.total}];
+    const itemRows=items.map(item=>'<div class="flex items-center justify-between gap-3 border-t border-slate-100 py-2"><div class="min-w-0"><b class="block text-[11px]">'+escHtml(item.productName||'منتج')+'</b><span class="text-[10px] text-slate-500">الكمية: '+Number(item.quantity||0)+' × '+Number(item.unitPrice||0).toLocaleString('ar-EG')+' جنيه</span></div><b class="shrink-0 text-[11px]">'+Number(item.total||0).toLocaleString('ar-EG')+' جنيه</b></div>').join('');
+    return '<article class="premium-card p-3 space-y-2"><b>'+escHtml(o.productName||'طلب متجر')+'</b><p class="text-[10px]">'+(items.length>1?'طلب متعدد المنتجات':items[0]?.productType==='subscription'?'اشتراك / تجديد':'بضاعة')+' • '+escHtml(o.buyerName)+' • '+escHtml(o.buyerPhone)+' • '+(o.buyerRole==='client'?'عميل':'فني')+'</p><div class="rounded-xl bg-slate-50 px-3">'+itemRows+'</div><p class="text-xs font-black">إجمالي الطلب: '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • '+Number(o.quantity||0)+' قطعة</p><p class="text-[10px]">الحالة الحالية: '+escHtml(o.status||'جديد')+' • الدفع: '+escHtml(o.paymentMethod||'غير محدد')+' ('+escHtml(o.paymentStatus||'غير مدفوع')+')</p>'+(o.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+escHtml(o.transactionNumber)+'</p>':'<p class="text-[10px] text-slate-500" dir="ltr">رقم الطلب: '+escHtml(o._id||'')+'</p>')+(o.refundTransactionNumber?'<p class="text-[10px] font-bold text-emerald-700" dir="ltr">رقم الاسترداد: '+escHtml(o.refundTransactionNumber)+'</p>':'')+'<p class="text-[10px]">'+escHtml(o.buyerNote||'لا توجد ملاحظات')+'</p><select class="field" id="store-status-'+escHtml(o._id)+'">'+statuses.map(status=>'<option value="'+status.value+'" '+((o.status||'جديد')===status.value?'selected':'')+'>'+status.label+'</option>').join('')+'</select><select class="field" id="store-payment-'+escHtml(o._id)+'"><option value="غير محدد" '+(!o.paymentMethod||o.paymentMethod==='غير محدد'?'selected':'')+'>طريقة الدفع لم تحدد</option><option value="محفظة العميل" '+(o.paymentMethod==='محفظة العميل'?'selected':'')+'>محفظة العميل</option><option value="محفظة الفني" '+(o.paymentMethod==='محفظة الفني'?'selected':'')+'>محفظة الفني</option><option value="عند الاستلام" '+(o.paymentMethod==='عند الاستلام'?'selected':'')+'>عند الاستلام</option><option value="تحويل" '+(o.paymentMethod==='تحويل'?'selected':'')+'>تحويل</option></select><input class="field" id="store-note-'+escHtml(o._id)+'" placeholder="ملاحظة للمشتري" value="'+escHtml(o.adminNote||'')+'"><button class="primary-btn rounded-xl py-2 w-full" onclick="updateStoreOrder(\''+escHtml(o._id)+'\')">حفظ الحالة وطريقة الدفع وإشعار صاحب الطلب</button></article>';
+  }).join('')
+  return '<section class="mt-4 space-y-3"><div class="premium-panel p-3"><b>طلبات ومبيعات المتجر</b><p class="text-[10px] text-slate-500">كل طلب يظهر في تبويب حالته الحالية، وينتقل تلقائيًا بعد حفظ الحالة الجديدة.</p></div><div class="flex flex-wrap gap-2">'+tabs+'</div>'+(state.storeOrdersLoading?'<div class="premium-panel p-5">جاري التحميل...</div>':cards||'<div class="premium-panel p-5 text-center text-sm text-slate-500">لا توجد طلبات في هذه الحالة.</div>')+'</section>';
+}
+async function optimizeStoreProductImage(file){try{if(typeof createImageBitmap!=='function')return file;const bitmap=await createImageBitmap(file);const scale=Math.min(1,1600/Math.max(bitmap.width,bitmap.height));const canvas=document.createElement('canvas');canvas.width=Math.max(1,Math.round(bitmap.width*scale));canvas.height=Math.max(1,Math.round(bitmap.height*scale));const context=canvas.getContext('2d');if(!context){bitmap.close?.();return file;}context.drawImage(bitmap,0,0,canvas.width,canvas.height);bitmap.close?.();const blob=await new Promise(resolve=>canvas.toBlob(resolve,'image/webp',0.82));if(!blob||!blob.type||blob.size>=file.size)return file;return new File([blob],file.name.replace(/\\.[^.]+$/,'')+'.webp',{type:blob.type});}catch(_){return file;}}
+async function uploadStoreProductImage(file){if(!file)return null;if(!['image/jpeg','image/png','image/webp'].includes(file.type)||file.size>20*1024*1024)throw new Error('اختار صورة JPG أو PNG أو WebP لا تتجاوز 20 ميجابايت.');const optimized=await optimizeStoreProductImage(file);if(optimized.size>5*1024*1024)throw new Error('حجم الصورة بعد الضغط ما زال أكبر من 5 ميجابايت. اختار صورة أصغر.');const response=await fetch('/api/admin/store/media',{method:'POST',headers:{Authorization:'Bearer '+getToken(),'Content-Type':optimized.type},body:optimized});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(result.message||'تعذر رفع الصورة إلى MongoDB.');return result;}
+async function replaceStoreProductImage(id,file){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p||!file)return;try{const uploaded=await uploadStoreProductImage(file);await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'عام',description:p.description||'',details:p.details||'',price:Number(p.price),originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',imageUrl:uploaded.imageUrl,imageFileId:uploaded.imageFileId,isActive:p.isActive!==false,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم حفظ الصورة داخل MongoDB');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر تغيير الصورة','error');}}
+async function createStoreProduct(){const editingProduct=(state.storeProducts||[]).find(p=>String(p._id)===String(state.storeProductEditingId||''))||null;
+  const name=document.getElementById('store-name')?.value.trim()||'';
+  const category=String(document.getElementById('store-category-new')?.value||'').trim().slice(0,80)||String(document.getElementById('store-category')?.value||'').trim().slice(0,80)||'عام';
+  const price=Number(document.getElementById('store-price')?.value);
+  const originalRaw=document.getElementById('store-original-price')?.value;
+  const offerText=document.getElementById('store-offer')?.value||'';
+  const type=document.getElementById('store-type')?.value||'product';
+  const subscriptionDuration=document.getElementById('store-duration')?.value||'';
+  const description=document.getElementById('store-description')?.value||'';
+  const details=document.getElementById('store-details')?.value||'';
+  const imageUrlInput=(document.getElementById('store-image-url')?.value||'').trim();
+  const imageFile=document.getElementById('store-image-file')?.files?.[0]||null;
+  const raw=document.getElementById('store-stock')?.value;
+  const isAdvertised=!!document.getElementById('store-ad-enabled')?.checked;
+  if(name.length<2||document.getElementById('store-price')?.value===''||!Number.isFinite(price)||price<0)return showToast('اكتب اسم المنتج وسعرًا صحيحًا','error');
+  if(imageUrlInput&&!imageUrlInput.startsWith('/api/store/media/')){let parsedImageUrl;try{parsedImageUrl=new URL(imageUrlInput);}catch(_){return showToast('اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://','error');}if(!['http:','https:'].includes(parsedImageUrl.protocol)||imageUrlInput.length>1000)return showToast('اكتب رابط صورة صحيحًا يبدأ بـ https:// أو http://','error');}
+  try{
+    // If both are supplied, prefer the URL; otherwise preserve the existing upload flow.
+    const uploaded=imageFile?await uploadStoreProductImage(imageFile):null;
+    const imageUrl=uploaded?.imageUrl||imageUrlInput||editingProduct?.imageUrl||'';
+    const imageFileId=uploaded?.imageFileId||(imageUrlInput===String(editingProduct?.imageUrl||'')?editingProduct?.imageFileId||null:null);
+    const saved=await tryApi([editingProduct?'/api/admin/store/products/'+encodeURIComponent(editingProduct._id):'/api/admin/store/products'],{method:editingProduct?'PUT':'POST',body:JSON.stringify({
+      name,category,price,originalPrice:originalRaw===''?null:Number(originalRaw),offerText,type,subscriptionDuration,
+      description,details,imageUrl,imageFileId,isActive:editingProduct?editingProduct.isActive!==false:true,stock:raw===''?null:Number(raw),
+      isAdvertised,adAudience:document.getElementById('store-ad-audience')?.value||'both',
+      adPriority:Math.max(0,Math.min(100,Number(document.getElementById('store-ad-priority')?.value)||0)),
+      adExpiresAt:isAdvertised?new Date(Date.now()+Math.max(1,Math.min(365,Number(document.getElementById('store-ad-days')?.value)||7))*86400000).toISOString():null
+    })});
+    if(saved?.product){const savedProduct=saved.product;const current=Array.isArray(state.storeProducts)?state.storeProducts:[];const index=current.findIndex(item=>String(item._id)===String(savedProduct._id));state.storeProducts=index>=0?current.map((item,i)=>i===index?savedProduct:item):[savedProduct,...current];}
+    showToast(editingProduct?'تم تعديل المنتج':'تمت إضافة المنتج');persistStoreProductEditSession(null);state.storeProductEditingId=null;state.storeProductFormOpen=false;
+    await loadStoreProducts();
+  }catch(e){showToast(e.message||'تعذرت إضافة المنتج','error');}
+}
+function editStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;persistStoreProductEditSession(id);state.storeProductEditingId=String(id);state.storeProductFormOpen=true;render();const values={'store-name':p.name,'store-category':p.category||'عام','store-price':p.price,'store-original-price':p.originalPrice??'','store-offer':p.offerText||'','store-type':p.type||'product','store-duration':p.subscriptionDuration||'','store-description':p.description||'','store-details':p.details||'','store-image-url':p.imageUrl||'','store-stock':p.stock??'','store-ad-audience':p.adAudience||'both','store-ad-priority':String(p.adPriority??0)};Object.entries(values).forEach(([id,value])=>{const el=document.getElementById(id);if(el)el.value=String(value);});const newCategoryInput=document.getElementById('store-category-new');if(newCategoryInput)newCategoryInput.value='';const ad=document.getElementById('store-ad-enabled');if(ad)ad.checked=!!p.isAdvertised;const button=document.querySelector('[onclick="createStoreProduct()"]');if(button)button.textContent='حفظ التعديل';const title=document.querySelector('.premium-panel button[onclick="toggleStoreProductForm()"] b');if(title)title.textContent='تعديل المنتج';const days=document.getElementById('store-ad-days');if(days&&p.adExpiresAt){const left=Math.max(1,Math.ceil((new Date(p.adExpiresAt).getTime()-Date.now())/86400000));days.value=String([1,3,7,14,30,60,90,180,365].includes(left)?left:7);}const wrap=document.getElementById('store-name')?.parentElement;if(wrap&&!wrap.querySelector('[data-cancel-edit]')){const cancel=document.createElement('button');cancel.type='button';cancel.dataset.cancelEdit='true';cancel.className='rounded-xl border px-4 py-3';cancel.textContent='إلغاء التعديل';cancel.onclick=cancelStoreProductEdit;wrap.appendChild(cancel);}scrollStoreProductEditFormIntoView();}
+function scrollStoreProductEditFormIntoView() {
+  const editForm = document.getElementById('store-name')?.closest('.premium-panel');
+  if (!editForm) return;
+  const stickyHeader = document.querySelector('.admin-topbar');
+  const headerHeight = stickyHeader?.getBoundingClientRect().height || 0;
+  editForm.style.scrollMarginTop = (headerHeight + 16) + 'px';
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    editForm.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
+  }));
+}
+async function deleteStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;if(!confirm('حذف المنتج "'+p.name+'" نهائيًا؟ إذا كان مرتبطًا بطلبات سابقة فلن يسمح النظام بالحذف حفاظًا على سجل الطلبات.'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'DELETE'});showToast('تم حذف المنتج نهائيًا');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر حذف المنتج','error');}}
+async function hideStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p||!confirm('إخفاء المنتج من المتجر؟'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'عام',description:p.description||'',details:p.details||'',price:Number(p.price),originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',imageUrl:p.imageUrl||'',imageFileId:p.imageFileId||null,isActive:false,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم إخفاء المنتج');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر إخفاء المنتج','error');}}
+async function updateStoreOrder(id){
+  const nextStatus=document.getElementById('store-status-'+id)?.value||'جديد';
+  try{
+    await tryApi(['/api/admin/store/orders/'+encodeURIComponent(id)],{method:'PATCH',body:JSON.stringify({status:nextStatus,paymentMethod:document.getElementById('store-payment-'+id)?.value||'غير محدد',adminNote:document.getElementById('store-note-'+id)?.value||''})});
+    state.storeOrderStatusTab=nextStatus;
+    showToast('تم تحديث المعاملة وإرسال الإشعار');
+    await loadStoreOrders();
+  }catch(e){showToast(e.message||'تعذر تحديث المعاملة','error');}
+}
+
+async function showStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'عام',price:p.price,originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',description:p.description||'',details:p.details||'',imageUrl:p.imageUrl||'',imageFileId:p.imageFileId||null,isActive:true,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم إظهار المنتج');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر إظهار المنتج','error');}}
+
+function openStoreAdvertisementSettings(productId){
+  const product=(state.storeProducts||[]).find(item=>String(item._id)===String(productId));
+  if(!product)return;
+  const existing=document.getElementById('store-ad-settings-modal');
+  if(existing)existing.remove();
+  const modal=document.createElement('div');
+  modal.id='store-ad-settings-modal';
+  modal.className='fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4';
+  modal.innerHTML='<div class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl text-right" dir="rtl"><div class="flex items-center justify-between gap-3 mb-3"><b class="text-base">إعدادات نشر الإعلان</b><button type="button" data-ad-cancel class="rounded-full px-3 py-1 text-lg text-slate-500" aria-label="إغلاق">×</button></div><p class="mb-3 text-xs text-slate-500">'+escHtml(product.name)+'</p><label class="block mb-2 text-xs font-bold">الجمهور المستهدف</label><select id="store-ad-modal-audience" class="field mb-3"><option value="both">العميل والفني</option><option value="client">العميل فقط</option><option value="fanni">الفني فقط</option></select><label class="block mb-2 text-xs font-bold">مدة الإعلان</label><select id="store-ad-modal-days" class="field mb-3"><option value="1">يوم واحد</option><option value="3">3 أيام</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><label class="block mb-2 text-xs font-bold">أولوية الظهور</label><select id="store-ad-modal-priority" class="field mb-4"><option value="0">عادية</option><option value="10">منخفضة جدًا</option><option value="20">منخفضة</option><option value="30">أقل من متوسطة</option><option value="40">متوسطة منخفضة</option><option value="50">متوسطة</option><option value="60">متوسطة مرتفعة</option><option value="70">مرتفعة</option><option value="80">مرتفعة جدًا</option><option value="90">عاجلة</option><option value="100">الأولوية القصوى</option></select><div class="flex gap-2"><button type="button" data-ad-publish class="primary-btn flex-1 rounded-xl py-3">نشر الإعلان</button><button type="button" data-ad-cancel class="rounded-xl border border-slate-200 px-4 py-2 text-sm">إلغاء</button></div></div>';
+  document.body.appendChild(modal);
+  const audience=modal.querySelector('#store-ad-modal-audience');
+  const days=modal.querySelector('#store-ad-modal-days');
+  const priority=modal.querySelector('#store-ad-modal-priority');
+  audience.value=['both','client','fanni'].includes(product.adAudience)?product.adAudience:'both';
+  const remaining=product.adExpiresAt?Math.ceil((new Date(product.adExpiresAt).getTime()-Date.now())/86400000):7;
+  days.value=String([1,3,7,14,30,60,90,180,365].includes(remaining)?remaining:7);
+  const savedPriority=Math.max(0,Math.min(100,Number(product.adPriority)||0));
+  priority.value=String(Math.round(savedPriority/10)*10);
+  modal.querySelectorAll('[data-ad-cancel]').forEach(button=>button.addEventListener('click',()=>modal.remove()));
+  modal.addEventListener('click',event=>{if(event.target===modal)modal.remove();});
+  modal.querySelector('[data-ad-publish]').addEventListener('click',async()=>{
+    const selectedDays=Number(days.value),selectedPriority=Number(priority.value),selectedAudience=audience.value;
+    if(!(/^https?:\/\//i.test(String(product.imageUrl||''))||/^\/api\/store\/media\/[a-f0-9]{24}$/i.test(String(product.imageUrl||''))))return showToast('أضف صورة صالحة للمنتج أولًا','error');
+    try{
+      await tryApi(['/api/admin/store/products/'+encodeURIComponent(productId)],{method:'PUT',body:JSON.stringify({name:product.name,category:product.category||'عام',description:product.description||'',details:product.details||'',price:Number(product.price),originalPrice:product.originalPrice??null,offerText:product.offerText||'',type:product.type||'product',subscriptionDuration:product.subscriptionDuration||'',imageUrl:product.imageUrl||'',imageFileId:product.imageFileId||null,isActive:product.isActive!==false,stock:product.stock??null,isAdvertised:true,adAudience:selectedAudience,adPriority:selectedPriority,adExpiresAt:new Date(Date.now()+selectedDays*86400000).toISOString()})});
+      modal.remove();
+      showToast('تم نشر الإعلان بالإعدادات المحددة');
+      await loadStoreProducts();
+    }catch(error){showToast(error.message||'تعذر نشر الإعلان','error');}
+  });
+}
+async function manageStoreProductAdvertisement(id){
+  const product=(state.storeProducts||[]).find(item=>String(item._id)===String(id));
+  if(!product)return;
+  if(product.isAdvertised===true){
+    if(!confirm('إيقاف الإعلان لهذا المنتج؟'))return;
+    try{
+      await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:product.name,category:product.category||'عام',description:product.description||'',details:product.details||'',price:Number(product.price),originalPrice:product.originalPrice??null,offerText:product.offerText||'',type:product.type||'product',subscriptionDuration:product.subscriptionDuration||'',imageUrl:product.imageUrl||'',imageFileId:product.imageFileId||null,isActive:product.isActive!==false,stock:product.stock??null,isAdvertised:false,adAudience:product.adAudience||'both',adPriority:Number(product.adPriority)||0,adExpiresAt:product.adExpiresAt||null})});
+      showToast('تم إيقاف الإعلان');
+      await loadStoreProducts();
+    }catch(error){showToast(error.message||'تعذر إيقاف الإعلان','error');}
+    return;
+  }
+  openStoreAdvertisementSettings(id);
+}

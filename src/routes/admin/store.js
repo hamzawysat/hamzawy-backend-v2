@@ -410,7 +410,10 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         // that exact order reaches a terminal state; other orders stay visible.
         await Notification.updateMany({
           recipientRole: 'admin',
-          dedupeKey: new RegExp('^store-order:' + String(order._id) + ':')
+          $or: [
+            { relatedEntityType: 'store_order', relatedEntityId: order._id },
+            { dedupeKey: new RegExp('^store-order:' + String(order._id) + ':') }
+          ]
         }, { $set: { isActive: false, readAt: new Date() } })
           .catch(error => console.error('Could not retire terminal store-order notification:', error.message));
       }

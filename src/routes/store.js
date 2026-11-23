@@ -273,7 +273,7 @@ async function submitBulkOrder(req, res, next, role) {
     await notifyAdmins({
       type: 'admin_store_order', title: 'طلب شراء جديد',
       message: 'طلب متعدد المنتجات (' + orderItems.length + ') من ' + order.buyerName + ' بإجمالي ' + total + ' جنيه — الدفع: ' + paymentMethod + '.',
-      link: '/admin.html?tab=storeOrders', dedupeKey: 'store-order:' + String(order._id)
+      link: '/admin.html?tab=storeOrders', dedupeKey: 'store-order:' + String(order._id), relatedEntityType: 'store_order', relatedEntityId: order._id
     });
     return res.status(201).json({
       message: paymentStatus === 'مدفوع'
@@ -453,7 +453,8 @@ async function submitOrder(req, res, next, role) {
     await notifyAdmins({
       type: 'admin_store_order', title: 'طلب شراء جديد',
       message: 'طلب ' + order.productName + ' من ' + order.buyerName + ' بإجمالي ' + order.total + ' جنيه — الدفع: ' + paymentMethod + '.',
-      link: '/admin.html?tab=storeOrders', dedupeKey: 'store-order:' + String(order._id)
+      link: '/admin.html?tab=storeOrders', dedupeKey: 'store-order:' + String(order._id),
+      relatedEntityType: 'store_order', relatedEntityId: order._id
     });
 
     return res.status(201).json({
