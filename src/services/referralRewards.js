@@ -41,8 +41,8 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       }
 
       const Model = kind === 'client' ? Client : Fanni;
-      const inviter = await Model.findById(referral.inviter).session(session);
-      const invitee = await Model.findById(referral.invitee).session(session);
+      const inviter = await Model.findById(referral.inviter).select('+registrationIpHash +registrationUserAgentHash').session(session);
+      const invitee = await Model.findById(referral.invitee).select('+registrationIpHash +registrationUserAgentHash').session(session);
       if (!inviter || !invitee) throw new Error('REFERRAL_PARTY_NOT_FOUND');
 
       // Identity collisions are financial-risk holds, not automatic bans/rejections.
@@ -51,6 +51,15 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       const inviteePhone = String(invitee.phone || '').trim();
       if (inviterPhone && inviteePhone && inviterPhone === inviteePhone) {
         riskFlags.push('same_phone_identity');
+      }
+      const sameSignupIp = Boolean(inviter.registrationIpHash && invitee.registrationIpHash &&
+        inviter.registrationIpHash === invitee.registrationIpHash);
+      if (sameSignupIp) {
+        riskFlags.push('same_registration_ip');
+        if (inviter.registrationUserAgentHash && invitee.registrationUserAgentHash &&
+            inviter.registrationUserAgentHash === invitee.registrationUserAgentHash) {
+          riskFlags.push('same_registration_device_signature');
+        }
       }
       if (kind === 'fanni') {
         const sharedIdentity = await FanniCardLedger.findOne({
