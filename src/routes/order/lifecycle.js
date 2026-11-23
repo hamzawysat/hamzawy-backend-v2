@@ -359,13 +359,7 @@ router.post('/:sn/cancel', async (req, res, next) => {
       });
     }
 
-        await notifyAdmins({
-      type: 'admin_order_cancelled', title: 'العميل ألغى طلبًا',
-      message: 'ألغى العميل الطلب ' + cancelledOrder.sn + ' لخدمة ' + (cancelledOrder.service || '') + '.',
-      link: '/admin?tab=orders',
-      dedupeKey: 'admin-order-cancelled:' + String(cancelledOrder._id),
-      relatedEntityType: 'order', relatedEntityId: cancelledOrder._id
-    });
+    // Terminal orders must not create or push a fresh admin alert.
     if (typeof dismissOrderNotifications === 'function') await dismissOrderNotifications(cancelledOrder._id, cancelledOrder.sn, cancelledOrder);
 
     return res.json({ message: 'تم إلغاء الطلب بنجاح.', order: publicOrder(cancelledOrder) });
@@ -574,13 +568,7 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
         link: '/client.html?tab=orders', dedupeKey: 'order-completed:' + String(order._id)
       });
     }
-    await notifyAdmins({
-      type: 'admin_order_completed', title: 'الفني أعلن إنهاء المهمة',
-      message: 'أعلن الفني ' + (req.user.name || 'فني') + ' إنهاء الطلب ' + order.sn + ' لخدمة ' + (order.service || '') + '.',
-      link: '/admin?tab=orders',
-      dedupeKey: 'admin-order-completed:' + String(order._id),
-      relatedEntityType: 'order', relatedEntityId: order._id
-    });
+    // Terminal orders must not create or push a fresh admin alert.
     if (typeof dismissOrderNotifications === 'function') {
       await dismissOrderNotifications(order._id, order.sn, order);
     }
