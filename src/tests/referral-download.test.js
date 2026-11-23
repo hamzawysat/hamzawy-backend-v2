@@ -34,9 +34,20 @@ assert.match(technicianPage, /fanni-app-only-actions\\.js/, 'technician dashboar
 assert.match(technicianActions, /fetch\\('\/api\/referrals\/prepare-fanni'/, 'technician invite must be converted into a server-side single-use claim');
 assert.match(technicianActions, /action=register&claim=/, 'technician app deep link must carry the claim token');
 assert.match(technicianActions, /DOWNLOAD_URL\\+'\\?claim='/, 'APK fallback must preserve the claim token');
-assert.match(source, /releases\\/download\\/1\\.0\\.15\\/hamzawy-sat-modern\\.apk/, 'download page must serve the current tested APK release');
-assert.match(source, /releases\\/tag\\/1\\.0\\.15/, 'download page release label must match the APK version');
-assert.match(built, /releases\\/download\\/1\\.0\\.15\\/hamzawy-sat-modern\\.apk/, 'built production download page must serve the same current APK');
+assert.ok(source.includes('/1.0.16/HSsat.apk'), 'download page must serve the exact current HSsat APK release');
+assert.ok(source.includes('/tag/1.0.16'), 'download page release label must match the APK version');
+assert.ok(built.includes('/1.0.16/HSsat.apk'), 'built production download page must serve the exact current HSsat APK');
 assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production page must hand off technician claim tokens');
 
 console.log('Client and technician referral APK download handoff checks passed.');
+
+assert.ok(source.includes('getInstalledRelatedApps'), 'download page must detect installed Android apps');
+assert.ok(source.includes('تحديث التطبيق'), 'download page must label outdated installations as updates');
+assert.ok(source.includes('فتح التطبيق'), 'download page must open an installed current app');
+assert.ok(source.includes('manifest.webmanifest'), 'download page must declare the related app manifest');
+assert.ok(built.includes('getInstalledRelatedApps'), 'built production page must include app detection');
+assert.ok(built.includes('/1.0.16/HSsat.apk'), 'built production page must use the exact HSsat release asset');
+const appManifest = JSON.parse(fs.readFileSync(path.join(root, 'frontend/manifest.webmanifest'), 'utf8'));
+assert.ok(appManifest.related_applications.some((app) => app.platform === 'play' && app.id === 'com.sonaa.app'), 'web manifest must identify the Android package');
+const assetLinks = JSON.parse(fs.readFileSync(path.join(root, 'frontend/.well-known/assetlinks.json'), 'utf8'));
+assert.ok(assetLinks.some((item) => item.target?.package_name === 'com.sonaa.app'), 'asset links must associate the Android package');

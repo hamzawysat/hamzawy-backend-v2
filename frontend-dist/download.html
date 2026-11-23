@@ -12,6 +12,7 @@
 <meta property="og:title" content="تحميل تطبيق حمزاوي سات">
 <meta property="og:description" content="كل خدمات الدش والكاميرات والشاشات في مكان واحد.">
 <title>تحميل تطبيق حمزاوي سات</title>
+<link rel="manifest" href="/manifest.webmanifest?v=20261123-app-detection1">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -64,11 +65,11 @@ h1 span{color:#f1d18c}
 <section class="body">
 <p class="intro">تطبيق حمزاوي سات لخدمات تركيب وصيانة الدش وكاميرات المراقبة والشاشات والريسيفرات، ومتابعة طلباتك بسهولة.</p>
 <div class="referral-notice" id="referralNotice" role="status" aria-live="polite"></div>
-<a class="download" href="https://github.com/hamzawysat/hamzawy-app/releases/download/1.0.15/hamzawy-sat-modern.apk" aria-label="تحميل أحدث إصدار من تطبيق حمزاوي سات">
+<a class="download" href="https://github.com/hamzawysat/hamzawy-app/releases/download/1.0.16/HSsat.apk" aria-label="تحميل أحدث إصدار من تطبيق حمزاوي سات">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12m0 0 5-5m-5 5-5-5"/><path d="M5 17v3h14v-3"/></svg>
 تحميل تطبيق حمزاوي سات
 </a>
-<a class="release-link" href="https://github.com/hamzawysat/hamzawy-app/releases/tag/1.0.15">الإصدار 1.0.15 · Build 17</a>
+<a class="release-link" href="https://github.com/hamzawysat/hamzawy-app/releases/tag/1.0.16">الإصدار 1.0.16 · Build 18</a>
 <div class="features">
 <div class="feature"><b>📡</b>الدش والريسيفرات</div>
 <div class="feature"><b>📷</b>كاميرات المراقبة</div>
@@ -79,6 +80,50 @@ h1 span{color:#f1d18c}
 </section>
 <footer class="footer">حمزاوي سات · خدمات وتركيبات وصيانة</footer>
 </main>
+
+<script>
+(function () {
+  'use strict';
+  const button = document.querySelector('a.download');
+  if (!button) return;
+  const latestVersion = '1.0.16';
+  const packageId = 'com.sonaa.app';
+  const apkUrl = 'https://github.com/hamzawysat/hamzawy-app/releases/download/1.0.16/HSsat.apk';
+  const openUrl = 'hamzawy://';
+  function compareVersions(installed, latest) {
+    const a = String(installed).split('.').map((part) => Number.parseInt(part, 10) || 0);
+    const b = String(latest).split('.').map((part) => Number.parseInt(part, 10) || 0);
+    for (let i = 0; i < Math.max(a.length, b.length); i += 1) {
+      const difference = (a[i] || 0) - (b[i] || 0);
+      if (difference) return difference < 0 ? -1 : 1;
+    }
+    return 0;
+  }
+  function setAction(label, href, description) {
+    button.textContent = label;
+    button.href = href;
+    button.setAttribute('aria-label', description);
+    button.dataset.appAction = label;
+  }
+  async function detectInstalledApp() {
+    if (typeof navigator.getInstalledRelatedApps !== 'function') return;
+    try {
+      const related = await navigator.getInstalledRelatedApps();
+      const installed = related.find((item) => item.platform === 'play' && item.id === packageId);
+      if (!installed) return;
+      const installedVersion = String(installed.version || '').trim();
+      if (installedVersion && compareVersions(installedVersion, latestVersion) < 0) {
+        setAction('تحديث التطبيق', apkUrl, 'تحديث تطبيق حمزاوي سات');
+        return;
+      }
+      setAction('فتح التطبيق', openUrl, 'فتح تطبيق حمزاوي سات');
+    } catch (_) {
+      // Unsupported or blocked detection safely falls back to the APK download.
+    }
+  }
+  void detectInstalledApp();
+})();
+</script>
 
 <script>
 (function () {

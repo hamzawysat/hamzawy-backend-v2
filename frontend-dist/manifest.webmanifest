@@ -1,20 +1,15 @@
 {
+  "id": "/download",
   "name": "حمزاوي سات",
-  "short_name": "حمزاوي سات",
-  "description": "حمزاوي سات، خدمات الدش والكاميرات والشاشات",
-  "lang": "ar",
-  "dir": "rtl",
-  "start_url": "/",
+  "short_name": "حمزاوي",
+  "start_url": "/download",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#F4F8FC",
-  "theme_color": "#2E7CF6",
-  "icons": [
+  "related_applications": [
     {
-      "src": "/images/LOGO_UPLOAD_HERE/logo.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
+      "platform": "play",
+      "id": "com.sonaa.app"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }
