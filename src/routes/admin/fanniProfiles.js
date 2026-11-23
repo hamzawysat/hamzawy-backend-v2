@@ -207,16 +207,19 @@ function createAdminFanniProfilesRouter({
       const offers = orders.flatMap(order => (order.offers || [])
         .filter(offer => String(offer.fanni || '') === String(fanni._id))
         .map(offer => ({ orderSn: order.sn, service: order.service, status: order.status, createdAt: order.createdAt, ...offer })));
+      const {
+        identityCardFrontFileId, identityCardBackFileId, profilePhotoFileId, ...safeFanni
+      } = fanni;
       return res.set('Cache-Control', 'no-store').json({
         fanni: {
-          ...fanni,
+          ...safeFanni,
           _id: String(fanni._id),
           specialties,
           nationalId,
           identityImages: {
-            profile: fanni.profilePhotoFileId ? '/api/fanni/admin/' + String(fanni._id) + '/photo' : '',
-            front: fanni.identityCardFrontFileId ? '/api/fanni/admin/' + String(fanni._id) + '/identity/front' : '',
-            back: fanni.identityCardBackFileId ? '/api/fanni/admin/' + String(fanni._id) + '/identity/back' : ''
+            profile: profilePhotoFileId ? '/api/fanni/admin/' + String(fanni._id) + '/photo' : '',
+            front: identityCardFrontFileId ? '/api/fanni/admin/' + String(fanni._id) + '/identity/front' : '',
+            back: identityCardBackFileId ? '/api/fanni/admin/' + String(fanni._id) + '/identity/back' : ''
           }
         },
         orders, offers, walletTransactions, topups, decisions: fanni.decisions || [],
