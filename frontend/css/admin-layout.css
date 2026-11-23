@@ -111,7 +111,7 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
   position:absolute;top:calc(100% + 8px);left:0;right:auto;z-index:90;
   display:flex!important;flex-direction:column!important;align-items:stretch!important;
   gap:6px!important;width:min(280px,calc(100vw - 24px));max-width:calc(100vw - 24px);
-  max-height:min(68vh,560px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  max-height:min(60vh,560px);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
   padding:10px;box-sizing:border-box;
   border:1px solid #dbe5f1;border-radius:14px;background:#fff;
   box-shadow:0 14px 34px rgba(11,27,58,.2);direction:rtl;
