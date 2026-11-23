@@ -183,7 +183,7 @@ router.get('/me/photo', auth(), requireFanni, async (req, res, next) => {
 router.get('/:id/photo', async (req, res, next) => {
   try {
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(404).end();
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('+profilePhotoFileId').lean();
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null }).select('+profilePhotoFileId').lean();
     if (!fanni?.profilePhotoFileId || !mongoose.connection.db) return res.status(404).end();
     const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
     const files = await bucket.find({ _id: fanni.profilePhotoFileId, 'metadata.purpose': 'fanni-profile-photo' }).limit(1).toArray();
@@ -313,7 +313,7 @@ router.post(
             // Cross-role accounts may register normally, but cannot earn a referral reward through the same phone.
             const existingClient = await Client.findOne({ phone }).select('_id').session(session);
             if (!existingClient) {
-              const inviter = await Fanni.findOne({ _id: referralClaim.inviter, role: 'fanni' }).select('_id phone').session(session);
+              const inviter = await Fanni.findOne({ _id: referralClaim.inviter, role: 'fanni', archivedAt: null }).select('_id phone').session(session);
               if (!inviter) throw new Error('REFERRER_NOT_FOUND');
               if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
               inviterId = inviter._id;
@@ -326,7 +326,7 @@ router.post(
             if (!decoded || decoded.kind !== 'fanni') throw new Error('INVALID_REFERRAL_CODE');
             const existingClient = await Client.findOne({ phone }).select('_id').session(session);
             if (!existingClient) {
-              const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id phone').session(session);
+              const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni', archivedAt: null }).select('_id phone').session(session);
               if (!inviter) throw new Error('REFERRER_NOT_FOUND');
               if (normalizePhone(inviter.phone) === phone) throw new Error('SELF_REFERRAL');
               inviterId = inviter._id;
