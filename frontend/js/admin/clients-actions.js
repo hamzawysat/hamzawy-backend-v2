@@ -3,7 +3,7 @@
 async function loadClients(query=state.clientSearch||'',page=state.clientPage||1){state.clientsLoading=true;state.clientSearch=String(query||'').trim();state.clientPage=Math.max(1,Number(page)||1);if(state.tab==='clients')render();try{const params=new URLSearchParams({page:String(state.clientPage),limit:String(state.clientLimit||25)});if(state.clientSearch)params.set('search',state.clientSearch);if(state.clientStatusFilter==='active')params.set('status','نشط');if(state.clientStatusFilter==='suspended')params.set('status','معلق');const data=await tryApi(['/api/admin/clients?'+params.toString()],{method:'GET'});state.clients=extractList(data,['clients','items']);state.clientTotal=Number(data.total||0);state.clientPages=Number(data.pages||0);state.clientPage=Number(data.page||state.clientPage);applyClientFilter();}catch(e){state.clients=[];state.filteredClients=[];showToast(e.message||'تعذر تحميل العملاء','error');}finally{state.clientsLoading=false;if(state.tab==='clients')render();}}
 
 
-async function searchClients(){await loadClients(String(document.getElementById('client-search')?.value||'').trim());}
+async function searchClients(){await loadClients(String(document.getElementById('client-search')?.value||'').trim(),1);}
 
 
 async function openClient(phone){const client=(state.clients||[]).find(item=>String(item.phone||'')===String(phone||''));if(!client||!(client.id||client._id))return showToast('حساب العميل غير موجود في القائمة الحالية','error');return openClientProfile(String(client.id||client._id));}
