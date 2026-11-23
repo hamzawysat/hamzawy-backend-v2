@@ -412,7 +412,11 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         type: refundAmount > 0 ? (order.buyerRole === 'client' ? 'client_wallet_credit' : 'wallet_credit') : 'store_order_update',
         title: refundAmount > 0 ? (order.status === 'مرفوض' ? 'تم رفض الطلب واسترداد المبلغ' : 'تم إلغاء الطلب واسترداد المبلغ') : 'تحديث طلب المتجر',
         message: 'طلب ' + order.productName + ': ' + order.status + '، الدفع: ' + order.paymentMethod + refundMessage + (order.adminNote ? ' — ' + order.adminNote : ''),
-        link: order.buyerRole === 'client' ? '/client?tab=store' : '/fanni?tab=store'
+        link: order.buyerRole === 'client' ? '/client?tab=store' : '/fanni?tab=store',
+        dedupeKey: 'store-order-status:' + String(order._id),
+        refreshExisting: true,
+        relatedEntityType: 'store_order',
+        relatedEntityId: order._id
       });
       return res.json({ message: refundAmount > 0 ? 'تم إلغاء الطلب واسترداد المبلغ إلى المحفظة وإرسال الإشعار.' : 'تم تحديث حالة الطلب وإرسال إشعار لصاحبه.', order, refundedAmount: refundAmount });
     } catch (error) {
