@@ -3064,9 +3064,14 @@ async function run() {
 
       // Matching signup network/device fingerprints are review signals, not proof of fraud.
       const fingerprintClients = await Client.create([
-        { name: 'عميل بصمة 1', phone: '01000000009', passwordHash: 'test-hash', registrationIpHash: 'same-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' },
-        { name: 'عميل بصمة 2', phone: '01000000010', passwordHash: 'test-hash', registrationIpHash: 'same-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' }
+        { name: 'عميل بصمة 1', phone: '01000000009', passwordHash: 'test-hash', registrationIpHash: 'inviter-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' },
+        { name: 'عميل بصمة 2', phone: '01000000010', passwordHash: 'test-hash', registrationIpHash: 'invitee-hmac-ip', registrationUserAgentHash: 'same-hmac-ua' }
       ]);
+      const orderCounterparty = await Fanni.create({
+        name: 'فني طرف الطلب', phone: '01000000011', passwordHash: 'test-hash',
+        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni',
+        registrationIpHash: 'invitee-hmac-ip', registrationUserAgentHash: 'same-hmac-ua'
+      });
       const fingerprintCode = makeReferralCode('client', String(fingerprintClients[0]._id));
       await Referral.create({
         number: 'RFTESTFINGERPRINT', code: 'RFTESTFINGERPRINT', inviteCodeUsed: fingerprintCode,
@@ -3075,12 +3080,13 @@ async function run() {
       await Order.create({
         sn: 'SN991010', service: 'خدمة اختبار', area: 'القاهرة', clientName: fingerprintClients[1].name,
         clientPhone: fingerprintClients[1].phone, clientAccount: fingerprintClients[1]._id,
-        status: 'تم الانتهاء', completionDeclaredAt: new Date(Date.now() + 20)
+        assignedFanni: orderCounterparty._id, status: 'تم الانتهاء', completionDeclaredAt: new Date(Date.now() + 20)
       });
       const fingerprintOutcome = await refreshReferralProgress({ kind: 'client', inviteeId: fingerprintClients[1]._id, mongoose });
       assert.equal(fingerprintOutcome.reviewRequired, true);
-      assert.ok(fingerprintOutcome.riskFlags.includes('same_registration_ip'));
-      assert.ok(fingerprintOutcome.riskFlags.includes('same_registration_device_signature'));
+      assert.ok(fingerprintOutcome.riskFlags.includes('same_order_counterparty_ip'));
+      assert.ok(fingerprintOutcome.riskFlags.includes('same_order_counterparty_device_signature'));
+      assert.ok(!fingerprintOutcome.riskFlags.includes('same_registration_ip'), 'different inviter and invitee networks must not be flagged as the same signup network');
       assert.deepEqual((await Client.find({ _id: { $in: fingerprintClients.map(x => x._id) } }).sort({ phone: 1 }).lean()).map(x => x.walletBalance), [0, 0]);
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
 
