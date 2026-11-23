@@ -19,7 +19,7 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
   }
 
   function searchFilter(search) {
-    const term = String(search || '').trim();
+    const term = String(search || '').trim().slice(0, 100);
     if (!term) return {};
     const regex = new RegExp(escapeRegex(term), 'i');
     return { $or: [{ name: regex }, { phone: regex }] };
