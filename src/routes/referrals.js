@@ -74,22 +74,23 @@ router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next
 router.get('/admin/summary', auth('admin'), async (req, res, next) => {
   try {
     const config = await AdminConfig.findOne({ key: 'main' }).select('settings').lean();
-    const [total, clients, technicians, statuses, rewards] = await Promise.all([
+    const [total, clients, technicians, statuses, rewards, riskReviewCount] = await Promise.all([
       Referral.countDocuments({}),
       Referral.countDocuments({ kind: 'client' }),
       Referral.countDocuments({ kind: 'fanni' }),
       Referral.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
+      Referral.countDocuments({ riskFlags: { $exists: true, $ne: [] } }),
       Referral.aggregate([{ $group: {
         _id: '$kind',
         inviterPaid: { $sum: { $cond: [{ $ne: ['$inviterReward.paidAt', null] }, '$inviterReward.amount', 0] } },
         inviteePaid: { $sum: { $cond: [{ $ne: ['$inviteeReward.paidAt', null] }, '$inviteeReward.amount', 0] } },
-        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } },
-        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } }
+        inviterDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviterReward.paidAt', null] }, { $eq: [{ $size: { $ifNull: ['$riskFlags', []] } }, 0] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } },
+        inviteeDue: { $sum: { $cond: [{ $and: [{ $eq: ['$status', 'eligible'] }, { $eq: ['$inviteeReward.paidAt', null] }, { $eq: [{ $size: { $ifNull: ['$riskFlags', []] } }, 0] }] }, { $cond: [{ $eq: ['$kind', 'fanni'] }, 150, 50] }, 0] } }
       } }])
     ]);
     return res.set('Cache-Control', 'no-store').json({
       enabled: config?.settings?.referralsEnabled !== false,
-      total, clients, technicians,
+      total, clients, technicians, riskReviewCount,
       statuses: Object.fromEntries(statuses.map(x => [x._id, x.count])),
       rewards
     });
