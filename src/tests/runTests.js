@@ -3335,11 +3335,17 @@ async function run() {
         { name: 'عميل صفحة ثانية', phone: '01055550202', passwordHash: 'test-hash' }
       ]);
       const orderOnlySn = 'SN' + String(Date.now() % 1000000).padStart(6, '0');
-      await require('../models/Order').create({
+      const orphanOrder = await require('../models/Order').create({
         sn: orderOnlySn, service: 'اختبار', area: 'القاهرة',
         clientName: 'سجل طلب بلا صف عميل', clientPhone: '01055550299',
         status: 'تم النشر'
       });
+      const orphanToken = require('jsonwebtoken').sign({
+        purpose: 'client-order', orderId: String(orphanOrder._id), sn: orphanOrder.sn
+      }, process.env.JWT_SECRET, { expiresIn: '30d' });
+      const orphanTracking = await request(app).get('/api/orders/' + orderOnlySn)
+        .query({ clientToken: orphanToken });
+      assert.equal(orphanTracking.status, 403, 'an order token without a matching registered Client account must not grant customer access');
       const pageOne = await request(app).get('/api/admin/clients?page=1&limit=1')
         .set('Authorization', 'Bearer ' + adminToken);
       assert.equal(pageOne.status, 200, JSON.stringify(pageOne.body));
