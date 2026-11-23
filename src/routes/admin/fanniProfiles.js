@@ -44,7 +44,7 @@ function createAdminFanniProfilesRouter({
 
   router.get('/fanni-registration-requests', auth('admin'), async (req, res, next) => {
     try {
-      const rows = await Fanni.find({ role: 'fanni', status: 'قيد المراجعة', identityReviewStatus: { $in: ['pending', 'needs_resubmission'] } })
+      const rows = await Fanni.find({ role: 'fanni', archivedAt: null, status: 'قيد المراجعة', identityReviewStatus: { $in: ['pending', 'needs_resubmission'] } })
         .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').sort({ createdAt: 1 }).limit(MAX_LIST_LIMIT).lean();
       const ids = rows.map(item => item._id);
       const ledgers = ids.length ? await FanniCardLedger.find({ fanniId: { $in: ids } }).select('+nationalIdEncrypted').lean() : [];
@@ -71,7 +71,7 @@ function createAdminFanniProfilesRouter({
       if (error) return res.status(400).json({ message: 'راجع الاسم والرقم القومي قبل الموافقة.' });
       const nationalId = normalizeNationalId(value.nationalId);
       if (!isValidNationalId(nationalId)) return res.status(400).json({ message: 'الرقم القومي يجب أن يكون صحيحًا ومكوّنًا من 14 رقمًا.' });
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'قيد المراجعة' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null, status: 'قيد المراجعة' });
       if (!fanni) return res.status(404).json({ message: 'طلب التسجيل غير موجود أو تمت مراجعته.' });
       const ledger = await FanniCardLedger.findOne({ fanniId: fanni._id }).select('+nationalIdEncrypted');
       if (!ledger) return res.status(409).json({ message: 'سجل الرقم القومي غير موجود. أعد إرسال بيانات البطاقة.' });
@@ -118,7 +118,7 @@ function createAdminFanniProfilesRouter({
       }
       if (!reason) return res.status(400).json({ message: 'اكتب رسالة واضحة للفني توضح المطلوب منه.' });
       if (!fields.length && !images.length) return res.status(400).json({ message: 'حدد بند بيانات أو صورة واحدة على الأقل.' });
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'قيد المراجعة' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null, status: 'قيد المراجعة' });
       if (!fanni) return res.status(404).json({ message: 'طلب التسجيل غير موجود أو تمت مراجعته.' });
       fanni.identityReviewStatus = 'needs_resubmission';
       fanni.identityReviewReason = reason;
@@ -189,7 +189,7 @@ function createAdminFanniProfilesRouter({
   router.get('/fannis/:id/profile', auth('admin'), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' })
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null })
         .select('-passwordHash +identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
       if (!fanni) return res.status(404).json({ message: 'حساب الفني غير موجود.' });
       const activeServices = (await getActiveServiceNames(Service)).map(normalizeServiceKey);
@@ -246,7 +246,7 @@ function createAdminFanniProfilesRouter({
       if (error) return res.status(400).json({ message: 'راجع رقم الهاتف والتخصصات ومناطق العمل.' });
       const phone = normalizePhone(value.phone);
       if (!phone || !/^01[0-9]{9}$/.test(phone)) return res.status(400).json({ message: 'رقم الهاتف غير صحيح.' });
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
       if (!fanni) return res.status(404).json({ message: 'حساب الفني غير موجود.' });
       if (fanni.pendingProfileChange?.requestedAt) return res.status(409).json({ message: 'لدى الفني طلب تعديل بيانات قيد المراجعة. راجع الطلب أولًا.' });
       const duplicate = await Fanni.findOne({ phone, _id: { $ne: fanni._id } }).select('_id');
@@ -292,7 +292,7 @@ function createAdminFanniProfilesRouter({
       const schema = Joi.object({ newPassword: Joi.string().min(8).max(128).required(), confirmPassword: Joi.string().required() }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error || value.newPassword !== value.confirmPassword) return res.status(400).json({ message: 'كلمة السر يجب ألا تقل عن 8 أحرف، والتأكيد يجب أن يطابقها.' });
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('+passwordHash');
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null }).select('+passwordHash');
       if (!fanni) return res.status(404).json({ message: 'حساب الفني غير موجود.' });
       fanni.passwordHash = await bcrypt.hash(value.newPassword, 12);
       fanni.tokenVersion = Number(fanni.tokenVersion || 0) + 1;
@@ -348,7 +348,7 @@ function createAdminFanniProfilesRouter({
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'اختار خدمة واحدة على الأقل ومنطقة عمل واحدة على الأقل.' });
 
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
       if (!fanni) return res.status(404).json({ message: 'حساب الفني غير موجود.' });
       if (fanni.pendingProfileChange?.requestedAt) return res.status(409).json({ message: 'لدى الفني طلب تعديل بيانات قيد المراجعة. راجع الطلب أولًا قبل التعديل المباشر.' });
 
@@ -419,7 +419,7 @@ function createAdminFanniProfilesRouter({
   router.post('/fanni-profile-edits/:id/approve', auth('admin'), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
       if (!fanni || !fanni.pendingProfileChange?.requestedAt) return res.status(404).json({ message: 'طلب تعديل البيانات غير موجود أو تمت مراجعته بالفعل' });
       const pending = fanni.pendingProfileChange;
       const before = { phone: String(fanni.phone || ''), specialties: [...(fanni.specialties || [])], areas: [...(fanni.areas || [])] };
@@ -460,7 +460,7 @@ function createAdminFanniProfilesRouter({
   router.post('/fanni-profile-edits/:id/reject', auth('admin'), validate(Joi.object({ reason: reasonSchema.optional() })), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
       if (!fanni || !fanni.pendingProfileChange?.requestedAt) return res.status(404).json({ message: 'طلب تعديل البيانات غير موجود أو تمت مراجعته بالفعل' });
       const reason = String(req.body.reason || 'لم تتم الموافقة على الطلب').trim().slice(0, 500);
       fanni.pendingProfileChange = undefined;
