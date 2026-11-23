@@ -16,7 +16,7 @@ const referralSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, index: true },
   inviteCodeUsed: { type: String, required: true, maxlength: 50 },
   invitedAt: { type: Date, default: Date.now, index: true },
-  status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected'], default: 'pending', index: true },
+  status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected', 'cancelled'], default: 'pending', index: true },
   // Fraud signals are review holds, never automatic account bans or referral rejection.
   riskFlags: { type: [String], default: [] },
   riskReviewedFlags: { type: [String], default: [] },
@@ -31,6 +31,9 @@ const referralSchema = new mongoose.Schema({
   rejectedAt: { type: Date, default: null },
   rejectedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null },
   rejectionReason: { type: String, trim: true, maxlength: 500, default: '' },
+  cancelledAt: { type: Date, default: null },
+  cancelledBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null },
+  cancellationReason: { type: String, trim: true, maxlength: 500, default: '' },
   reviewedAt: { type: Date, default: null },
   reviewedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null }
 }, { timestamps: true, versionKey: false });

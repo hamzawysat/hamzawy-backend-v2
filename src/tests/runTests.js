@@ -3145,6 +3145,40 @@ async function run() {
       assert.ok(rejectedFingerprintReferral.riskReviewedFlags.includes('same_order_counterparty_ip'));
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFINGERPRINT' }), 0);
 
+      const cancellationClients = await Client.create([
+        { name: 'داعي دعوة ملغاة', phone: '01000000012', passwordHash: 'test-hash' },
+        { name: 'مدعو دعوة ملغاة', phone: '01000000013', passwordHash: 'test-hash' }
+      ]);
+      const cancellationCode = makeReferralCode('client', String(cancellationClients[0]._id));
+      const cancellableReferral = await Referral.create({
+        number: 'RFTESTCANCEL01', code: 'RFTESTCANCEL01', inviteCodeUsed: cancellationCode,
+        kind: 'client', inviter: cancellationClients[0]._id, invitee: cancellationClients[1]._id,
+        requiredCount: 1, status: 'in_progress', completedCount: 0
+      });
+      await Order.create({
+        sn: 'SN991020', service: 'خدمة اختبار', area: 'القاهرة',
+        clientName: cancellationClients[1].name, clientPhone: cancellationClients[1].phone,
+        clientAccount: cancellationClients[1]._id, status: 'تم الانتهاء', completionDeclaredAt: new Date()
+      });
+      const cancelledResponse = await request(app)
+        .post('/api/referrals/admin/' + String(cancellableReferral._id) + '/cancel')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'تم الاشتباه في أن الدعوة غير حقيقية.' });
+      assert.equal(cancelledResponse.status, 200, JSON.stringify(cancelledResponse.body));
+      assert.equal(cancelledResponse.body.referral.status, 'cancelled');
+      assert.ok(cancelledResponse.body.referral.cancelledAt);
+      assert.equal(cancelledResponse.body.referral.cancellationReason, 'تم الاشتباه في أن الدعوة غير حقيقية.');
+      assert.equal(await refreshReferralProgress({ kind: 'client', inviteeId: cancellationClients[1]._id, mongoose }), null,
+        'cancelled referrals must not resume progress or payout');
+      assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTCANCEL01' }), 0);
+      const cancellationAudit = await require('../models/AdminAuditLog').findOne({ category: 'referrals', target: String(cancellableReferral._id), action: 'إلغاء دعوة' }).lean();
+      assert.ok(cancellationAudit, 'cancellation must be recorded in the admin audit log');
+      const duplicateCancellation = await request(app)
+        .post('/api/referrals/admin/' + String(cancellableReferral._id) + '/cancel')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'محاولة إلغاء مكررة.' });
+      assert.equal(duplicateCancellation.status, 409, 'a cancelled referral cannot be cancelled again');
+
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 

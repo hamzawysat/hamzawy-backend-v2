@@ -46,7 +46,7 @@ function render(){
     }
     renderAccountGate();return;
   }
-  if(clientReferralPageOpen){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#2E7CF6]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
+  if(clientReferralPageOpen&&clientReferralInfo?.enabled){document.title='دعوة صديقك | حمزاوي سات';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#2E7CF6]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
   const matching=CATEGORIES.map(c=>({
@@ -121,14 +121,14 @@ function render(){
           </button>
         </div>
 
-        <button type="button" onclick="openClientReferralPage()" class="client-home-referral">
+        ${clientReferralInfo?.enabled ? `        <button type="button" onclick="openClientReferralPage()" class="client-home-referral">
           <span class="client-home-referral-icon" aria-hidden="true">🎁</span>
           <span class="client-home-referral-copy">
             <strong>ادعُ صديقك واربح 50 جنيه</strong>
             <small>شارك رابط الدعوة واكسب رصيد عند انضمام صديقك</small>
           </span>
           <span class="client-home-referral-cta">دعوة الآن ←</span>
-        </button>
+        </button>` : ''}
 
         <div class="client-home-section-head">
           <h2>إجراءات سريعة</h2>
