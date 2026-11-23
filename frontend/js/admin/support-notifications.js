@@ -48,9 +48,7 @@ async function loadNotificationDeliveryAudit(){
 function renderNotifications(){
   return `
   <section class="mt-4 space-y-4">
-    <div class="premium-panel p-4 space-y-3">${renderAdminInbox()}</div>
-    <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">تتبع تسليم الإشعارات</p><p class="text-[10px] text-slate-500">نتائج مزودي الإرسال لكل قناة، دون تخزين رموز الأجهزة</p></div><button type="button" onclick="loadNotificationDeliveryAudit()" class="pill-btn soft-btn">تحديث</button></div><div id="admin-delivery-log-list" class="space-y-2">${renderDeliveryAudit()}</div></div>
-    <div class="rounded-[18px] bg-gradient-to-r from-violet-600 to-purple-600 p-4 text-white"><p class="text-[12px] font-black">الإشعارات والرسائل</p><p class="text-[10px] text-violet-100 mt-1">إرسال فردي أو جماعي حسب نوع الحساب وحالته</p></div>
+    <div class="rounded-[18px] bg-gradient-to-r from-violet-600 to-purple-600 p-4 text-white"><p class="text-[12px] font-black">إرسال الإشعارات</p><p class="text-[10px] text-violet-100 mt-1">إرسال فردي أو جماعي للفنيين أو العملاء</p></div>
     <div class="premium-panel p-4 space-y-3">
       <label class="block text-[11px] font-black">طريقة الإرسال<select id="notification-mode" onchange="updateNotificationMode()" class="field mt-2 w-full"><option value="single">إشعار لفرد محدد</option><option value="group">إشعار جماعي لفئة</option></select></label>
       <label class="block text-[11px] font-black">نوع الحساب<select id="notification-recipient-role" onchange="updateNotificationAudience()" class="field mt-2 w-full"><option value="fanni">الفنيون</option><option value="client">العملاء</option></select></label>
@@ -61,13 +59,26 @@ function renderNotifications(){
       <button id="send-notification-btn" onclick="sendNotification()" class="pill-btn primary-pill w-full">إرسال الإشعار 🔔</button>
       <div class="rounded-[12px] bg-slate-50 border p-3 text-[10px] font-bold text-slate-500">الإرسال داخل التطبيق فقط، وليس SMS. ستظهر رسالة تأكيد قبل الإرسال الجماعي.</div>
     </div>
-    <div class="premium-panel p-4 space-y-3">
-      <div class="flex items-center justify-between gap-3"><div><p class="text-[12px] font-black">سجل الإشعارات الإدارية</p><p class="mt-1 text-[10px] text-slate-500">الحذف هنا يزيل الإشعار من جميع الحسابات التي أُرسل إليها.</p></div><button type="button" onclick="loadNotificationHistory()" class="pill-btn soft-btn shrink-0">تحديث</button></div>
-      <div id="notification-history-list" class="space-y-2">${renderNotificationHistory()}</div>
+    <div class="premium-panel p-3 space-y-3">
+      <div class="flex items-center justify-between gap-3"><div><p class="text-[12px] font-black">سجل الإشعارات</p><p class="mt-1 text-[10px] text-slate-500">الوارد الإداري، وسجل الإرسال، وحالة وصول الإشعارات</p></div><button id="notification-log-toggle" type="button" onclick="toggleNotificationLog()" aria-expanded="false" aria-controls="notification-log-panel" class="pill-btn soft-btn shrink-0">عرض سجل الإشعارات</button></div>
+      <div id="notification-log-panel" class="hidden space-y-4">
+        <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">الوارد الإداري</p><p class="text-[10px] text-slate-500">الإشعارات والتنبيهات المرسلة إلى الإدارة</p></div><button type="button" onclick="loadAdminInbox()" class="pill-btn soft-btn">تحديث</button></div>${renderAdminInbox()}</div>
+        <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">تتبع تسليم الإشعارات</p><p class="text-[10px] text-slate-500">نتائج مزودي الإرسال لكل قناة، دون تخزين رموز الأجهزة</p></div><button type="button" onclick="loadNotificationDeliveryAudit()" class="pill-btn soft-btn">تحديث</button></div><div id="admin-delivery-log-list" class="space-y-2">${renderDeliveryAudit()}</div></div>
+        <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><p class="text-[12px] font-black">سجل الإشعارات المرسلة</p><p class="mt-1 text-[10px] text-slate-500">الحذف هنا يزيل الإشعار من جميع الحسابات التي أُرسل إليها.</p></div><button type="button" onclick="loadNotificationHistory()" class="pill-btn soft-btn shrink-0">تحديث</button></div><div id="notification-history-list" class="space-y-2">${renderNotificationHistory()}</div></div>
+      </div>
     </div>
   </section>`;
 }
 
+function toggleNotificationLog(){
+  const panel=document.getElementById('notification-log-panel');
+  const button=document.getElementById('notification-log-toggle');
+  if(!panel)return;
+  const opening=panel.classList.contains('hidden');
+  panel.classList.toggle('hidden',!opening);
+  if(button){button.textContent=opening?'إخفاء سجل الإشعارات':'عرض سجل الإشعارات';button.setAttribute('aria-expanded',opening?'true':'false');}
+  if(opening)loadNotificationHistory();
+}
 
 function updateNotificationMode(){const mode=document.getElementById('notification-mode')?.value||'single';const phoneWrap=document.getElementById('notification-phone-wrap');const audienceWrap=document.getElementById('notification-audience-wrap');if(phoneWrap)phoneWrap.classList.toggle('hidden',mode!=='single');if(audienceWrap)audienceWrap.classList.toggle('hidden',mode!=='group');updateNotificationAudience();}
 
@@ -83,7 +94,7 @@ function renderNotificationHistory(){
     : !state.notificationHistory.length
       ? '<p class="p-4 text-center text-[11px] text-slate-500">لا توجد إشعارات إدارية محفوظة.</p>'
       : state.notificationHistory.map(item => '<div class="rounded-xl border border-slate-200 p-3 space-y-2"><div class="flex items-start justify-between gap-3"><div class="min-w-0"><p class="text-[11px] font-black break-words">'+escHtml(item.title||'إشعار بدون عنوان')+'</p><p class="mt-1 text-[10px] leading-5 text-slate-600 break-words">'+escHtml(item.message||'')+'</p></div><button type="button" data-id="'+escHtml(item.id)+'" onclick="deleteNotificationCampaign(this.dataset.id)" class="shrink-0 rounded-lg bg-red-50 border border-red-200 px-3 py-2 text-[10px] font-black text-red-700">حذف</button></div><div class="flex flex-wrap items-center gap-2 text-[9px] text-slate-500"><span class="rounded-full bg-slate-100 px-2 py-1">'+(item.recipientRole==='client'?'العملاء':'الفنيون')+'</span><span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">عدد المستلمين: '+Number(item.count||0)+'</span><span>'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</span></div></div>').join('');
-  return '<div class="space-y-4">'+renderAdminInbox()+'<div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">تتبع تسليم الإشعارات</p><p class="text-[10px] text-slate-500">حالة Expo وFCM وإشعارات المتصفح لكل قناة</p></div><button type="button" onclick="loadNotificationDeliveryAudit()" class="pill-btn soft-btn">تحديث</button></div><div id="admin-delivery-log-list" class="space-y-2">'+renderDeliveryAudit()+'</div></div><div id="notification-campaign-history" class="space-y-2">'+campaignContent+'</div></div>';
+  return campaignContent;
 }
 
 
