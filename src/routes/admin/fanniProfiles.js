@@ -206,7 +206,7 @@ function createAdminFanniProfilesRouter({
       try { nationalId = cardLedger?.nationalIdEncrypted ? decryptNationalId(cardLedger.nationalIdEncrypted) : ''; } catch (_) {}
       const offers = orders.flatMap(order => (order.offers || [])
         .filter(offer => String(offer.fanni || '') === String(fanni._id))
-        .map(offer => ({ orderSn: order.sn, service: order.service, status: order.status, createdAt: order.createdAt, ...offer.toObject?.() || offer })));
+        .map(offer => ({ orderSn: order.sn, service: order.service, status: order.status, createdAt: order.createdAt, ...offer })));
       return res.set('Cache-Control', 'no-store').json({
         fanni: {
           ...fanni,
