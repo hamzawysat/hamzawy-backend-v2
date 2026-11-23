@@ -74,7 +74,7 @@ router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next
 router.get('/admin/summary', auth('admin'), async (req, res, next) => {
   try {
     const config = await AdminConfig.findOne({ key: 'main' }).select('settings').lean();
-    const [total, clients, technicians, statuses, rewards, riskReviewCount] = await Promise.all([
+    const [total, clients, technicians, statuses, riskReviewCount, rewards] = await Promise.all([
       Referral.countDocuments({}),
       Referral.countDocuments({ kind: 'client' }),
       Referral.countDocuments({ kind: 'fanni' }),
