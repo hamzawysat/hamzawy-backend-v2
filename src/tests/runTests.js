@@ -1029,7 +1029,6 @@ async function run() {
       assert.equal(removedToken.body.deleted, 1);
       assert.equal(await PushToken.countDocuments({ token: expoToken }), 0);
 
-      const Fanni = require('../models/Fanni');
       const approvedFanni = await Fanni.findOne({ phone });
       approvedFanni.status = 'معتمد';
       approvedFanni.technicianGuidelinesAcceptedAt = new Date();
