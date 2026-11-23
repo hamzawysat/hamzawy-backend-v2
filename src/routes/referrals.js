@@ -51,8 +51,17 @@ router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next
     if (config?.settings?.referralsEnabled === false) return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا.' });
     const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id').lean();
     if (!inviter) return res.status(404).json({ message: 'صاحب كود الدعوة غير موجود.' });
+    // Bound claim minting per inviter as well as per source IP. Claims are short-lived
+    // handoff credentials, not reusable referral codes.
+    const claimsInLastHour = await ReferralClaim.countDocuments({
+      inviter: inviter._id,
+      createdAt: { $gte: new Date(Date.now() - 60 * 60 * 1000) }
+    });
+    if (claimsInLastHour >= 50) {
+      return res.status(429).json({ message: 'تم تجاوز الحد المسموح لإنشاء روابط التسجيل المؤقتة. حاول بعد ساعة.' });
+    }
     const claimToken = crypto.randomBytes(32).toString('base64url');
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await ReferralClaim.create({
       tokenHash: crypto.createHash('sha256').update(claimToken).digest('hex'),
       kind: 'fanni', inviter: inviter._id, inviteCodeUsed: decoded.code, expiresAt
