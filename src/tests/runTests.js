@@ -114,6 +114,19 @@ async function run() {
       assert.equal(isAdminNotificationEnabled('future_admin_event', {}), true, 'unknown future events must default to enabled');
     });
 
+    await test('admin store order polling suppresses old unread notifications and duplicate count toasts', async () => {
+      const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      const deployed = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-store.js'), 'utf8');
+      const countFn = source.slice(source.indexOf('async function loadStoreOrderCount('), source.indexOf('async function pollStoreAdminNotifications('));
+      assert.doesNotMatch(countFn, /showToast/ , 'pending-count refresh must never create a second order toast');
+      assert.match(source, /storeAdminNotificationsPollInFlight/, 'overlapping notification polls must be serialized');
+      assert.match(source, /sonaa\.admin\.storeOrderNotificationSeen\.v1/, 'seen notification IDs must survive browser reloads');
+      assert.match(source, /storeAdminNotificationsInitialized===true/, 'the first inbox response must establish a silent baseline');
+      assert.match(deployed, /sonaa\.admin\.storeOrderNotificationSeen\.v1/, 'the deployed admin bundle must include the notification dedupe fix');
+      const storeRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/store.js'), 'utf8');
+      assert.match(storeRoute, /StoreOrder\.countDocuments\(\{ status: 'جديد' \}\)/, 'cancelled and completed orders must not count as pending');
+    });
+
     await test('admin FCM channel routing is isolated from Expo client and technician notifications', async () => {
       const { adminChannelFor } = require('../utils/notifications');
       const expected = {
