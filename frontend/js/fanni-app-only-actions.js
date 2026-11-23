@@ -5,7 +5,7 @@ const SCHEME='hamzawy';
 let fallbackTimer=null;
 let leftPage=false;
 function isBrowserDashboard(){
- return !window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\\s*wv\\)/i.test(navigator.userAgent||'');
+ return !window.ReactNativeWebView&&!navigator.standalone&&!(window.matchMedia&&window.matchMedia('(display-mode: standalone)').matches)&&!/;\s*wv\)/i.test(navigator.userAgent||'');
 }
 function showDownloadNotice(kind){
  let box=document.getElementById('fanni-app-action-notice');
