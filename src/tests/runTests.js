@@ -3355,6 +3355,20 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken);
       assert.equal(orderCodeSearch.status, 200);
       assert.equal(orderCodeSearch.body.total, 0, 'an order number without a registered Client account must not create a synthetic row');
+
+      const linkedClient = await Client.create({
+        name: 'عميل مرتبط بطلب', phone: '01055550301', passwordHash: 'test-hash'
+      });
+      const linkedOrderSn = 'SN' + String((Date.now() + 1) % 1000000).padStart(6, '0');
+      await require('../models/Order').create({
+        sn: linkedOrderSn, clientAccount: linkedClient._id, service: 'اختبار', area: 'القاهرة',
+        clientName: linkedClient.name, clientPhone: linkedClient.phone, status: 'تم النشر'
+      });
+      const linkedOrderSearch = await request(app).get('/api/admin/clients?search=' + encodeURIComponent(linkedOrderSn))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(linkedOrderSearch.status, 200);
+      assert.equal(linkedOrderSearch.body.total, 1, 'order numbers should resolve to the existing Client account');
+      assert.equal(String(linkedOrderSearch.body.items[0]._id), String(linkedClient._id));
     });
 
     await test('unknown API route returns JSON 404', async () => {
