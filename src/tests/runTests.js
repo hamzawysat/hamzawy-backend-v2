@@ -3241,6 +3241,18 @@ async function run() {
       assert.equal(clientAfterRestore.archiveReason, '');
       assert.equal(clientAfterRestore.walletBalance, 125);
       assert.equal(clientAfterRestore.tokenVersion, 2);
+      const clientProfile = await request(app).get('/api/admin/clients/' + client._id + '/profile')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(clientProfile.status, 200, JSON.stringify(clientProfile.body));
+      for (const key of ['client', 'orders', 'walletTransactions', 'subscriptions', 'topups', 'storeOrders', 'complaints', 'supportCases', 'auditLogs']) {
+        assert.ok(Object.prototype.hasOwnProperty.call(clientProfile.body, key), 'client profile should include ' + key);
+      }
+      const clientNote = await request(app).post('/api/admin/clients/' + client.phone + '/note')
+        .set('Authorization', 'Bearer ' + adminToken).send({ note: 'ملاحظة تدقيق للاختبار' });
+      assert.equal(clientNote.status, 200, JSON.stringify(clientNote.body));
+      const AdminAuditLog = require('../models/AdminAuditLog');
+      assert.ok(await AdminAuditLog.exists({ category: 'clients', target: String(client._id), action: 'إضافة ملاحظة داخلية على عميل' }));
+
       const duplicateClientRestore = await request(app)
         .post('/api/admin/clients/' + client._id + '/restore')
         .set('Authorization', 'Bearer ' + adminToken);
@@ -3286,6 +3298,13 @@ async function run() {
       assert.equal(String(fanniAfterRestore.identityCardFrontFileId), String(frontId));
       assert.equal(String(fanniAfterRestore.identityCardBackFileId), String(backId));
       assert.equal(String(fanniAfterRestore.profilePhotoFileId), String(photoId));
+      const technicianProfile = await request(app).get('/api/admin/fannis/' + fanni._id + '/profile')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(technicianProfile.status, 200, JSON.stringify(technicianProfile.body));
+      assert.equal(technicianProfile.body.fanni.identityImages.front, '/api/fanni/admin/' + String(fanni._id) + '/identity/front');
+      for (const key of ['orders', 'offers', 'walletTransactions', 'topups', 'decisions', 'cardLedger', 'auditLogs']) {
+        assert.ok(Object.prototype.hasOwnProperty.call(technicianProfile.body, key), 'technician profile should include ' + key);
+      }
     });
 
     await test('active client list is paginated and contains registered Client accounts only', async () => {
