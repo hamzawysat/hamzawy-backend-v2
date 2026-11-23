@@ -3297,6 +3297,9 @@ async function run() {
       const fanniAfterArchive = await Fanni.findById(fanni._id)
         .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
       assert.ok(fanniAfterArchive.archivedAt);
+      assert.equal(fanniAfterArchive.archiveReason, 'إيقاف ملف الفني مؤقتًا للاختبار.');
+      assert.ok(fanniAfterArchive.archivedBy);
+      assert.ok(fanniAfterArchive.archivedByName);
       assert.equal(fanniAfterArchive.walletBalance, 75);
       assert.equal(String(fanniAfterArchive.identityCardFrontFileId), String(frontId));
       assert.equal(String(fanniAfterArchive.identityCardBackFileId), String(backId));
@@ -3306,6 +3309,10 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken);
       assert.equal(oldFanniDelete.status, 410);
       assert.ok(await Fanni.exists({ _id: fanni._id }), 'legacy delete endpoint must not delete technician accounts');
+      const duplicateFanniArchive = await request(app)
+        .post('/api/admin/fannis/' + fanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'محاولة أرشفة مكررة.' });
+      assert.equal(duplicateFanniArchive.status, 409);
 
       const archivedFanniList = await request(app).get('/api/admin/fannis/archive?search=' + encodeURIComponent(fanni.phone))
         .set('Authorization', 'Bearer ' + adminToken);
