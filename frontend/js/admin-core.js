@@ -41,7 +41,8 @@ function normalizePhoneInput(value){return String(value??'').replace(/[٠-٩]/g,
 
 const ADMIN_SECTIONS = [
  {id:'dashboard',label:'نظرة عامة',icon:'📊',tabs:[{id:'dashboard',label:'نظرة عامة'}]},
- {id:'clients',label:'الطلبات والعملاء',icon:'👥',tabs:[{id:'orders',label:'طلبات العملاء'},{id:'clients',label:'كل العملاء'},{id:'archive',label:'الأرشيف المركزي'}]},
+ {id:'clients',label:'الطلبات والعملاء',icon:'👥',tabs:[{id:'orders',label:'طلبات العملاء'},{id:'clients',label:'كل العملاء'}]},
+ {id:'central-archive',label:'الأرشيف المركزي',icon:'🗄️',tabs:[{id:'archive',label:'الأرشيف المركزي'}]},
  {id:'technicians',label:'الفنيون',icon:'👷',tabs:[{id:'fannis',label:'كل الفنيين'},{id:'pending',label:'انتظار الاعتماد'},{id:'profileEdits',label:'طلبات تعديل البيانات'},{id:'disabled',label:'الفنيون الموقوفون'},{id:'fanniCardLedger',label:'سجل البطاقات الفنيين'},{id:'levels',label:'المستويات والشارات'},{id:'offers',label:'عروض الفنيين'}]},
  {id:'finance',label:'المحافظ والمالية',icon:'💰',tabs:[{id:'clientWallet',label:'محافظ العملاء'},{id:'wallets',label:'محافظ الفنيين'},{id:'topups',label:'طلبات شحن المحافظ'}]},
  {id:'referrals',label:'الدعوات والمكافآت',icon:'🎁',tabs:[{id:'referrals',label:'إدارة الدعوات والمكافآت'}]},
@@ -102,6 +103,20 @@ function toggleMenu(key){
   render();
 }
 function closeAllMenus(){ state.dropdowns={}; render(); }
+if(!window.__sonaaAdminMenuDismissHandlers){
+  window.__sonaaAdminMenuDismissHandlers=true;
+  document.addEventListener('click',event=>{
+    if(!Object.keys(state.dropdowns||{}).length)return;
+    if(event.target&&typeof event.target.closest==='function'&&event.target.closest('.action-wrap'))return;
+    closeAllMenus();
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape'&&Object.keys(state.dropdowns||{}).length){
+      event.preventDefault();
+      closeAllMenus();
+    }
+  });
+}
 function setPendingAction(key, action, label){
   state.pendingActions[key]={action,label};
   state.dropdowns={};

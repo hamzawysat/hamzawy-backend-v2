@@ -127,7 +127,6 @@ function render(){
       </div>`:''}
     `}
   </main>
-  <div onclick="closeAllMenus()" id="menu-backdrop" class="${Object.keys(state.dropdowns).length?'fixed inset-0 z-30 bg-black/5':''}"></div>
   `;
   restoreAdminInputFocus(inputFocusSnapshot);
   const restoreScrollPosition=()=>{
