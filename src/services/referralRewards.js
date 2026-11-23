@@ -70,13 +70,16 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
         }).session(session).select('_id').lean();
         if (sharedIdentity) riskFlags.push('shared_technician_national_id');
       }
-      // Existing holds must remain effective until an administrator reviews them.
+      // Existing holds remain effective. After an administrator reviews a signal,
+      // only newly discovered signal types can create another hold.
       if (Array.isArray(referral.riskFlags) && referral.riskFlags.length) {
         result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: referral.riskFlags };
         return;
       }
-      if (riskFlags.length) {
-        referral.riskFlags = [...new Set([...(referral.riskFlags || []), ...riskFlags])];
+      const reviewedFlags = new Set(referral.riskReviewedFlags || []);
+      const unreviewedRiskFlags = riskFlags.filter(flag => !reviewedFlags.has(flag));
+      if (unreviewedRiskFlags.length) {
+        referral.riskFlags = [...new Set([...(referral.riskFlags || []), ...unreviewedRiskFlags])];
         referral.riskDetectedAt = referral.riskDetectedAt || new Date();
         referral.status = 'eligible';
         await referral.save({ session });
@@ -84,10 +87,10 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
           action: 'تعليق مكافأة دعوة للاشتباه',
           category: 'referrals',
           target: String(referral._id),
-          details: 'number=' + referral.number + '; flags=' + riskFlags.join(',') + '; payout held for manual review',
+          details: 'number=' + referral.number + '; flags=' + unreviewedRiskFlags.join(',') + '; payout held for manual review',
           adminName: 'النظام'
         }], { session });
-        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags };
+        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: unreviewedRiskFlags };
         return;
       }
 
