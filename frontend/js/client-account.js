@@ -37,7 +37,28 @@ function closeClientReferralPage(){clientReferralPageOpen=false;render();}
 function clientReferralCodeFromUrl(){try{return new URLSearchParams(location.search).get('ref')||'';}catch(_){return '';}}
 async function loadClientReferralInfo(){if(!state.accountToken)return;try{clientReferralInfo=await API.request('/api/referrals/me/client',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});if(state.tab==='home'||clientReferralPageOpen)render();}catch(error){console.warn('تعذر تحميل دعوات العميل:',error.message);}}
 async function copyClientReferralLink(){const value=clientReferralInfo?.url||'';if(!value)return;try{await navigator.clipboard.writeText(value);showToast('تم نسخ رابط الدعوة','success');}catch(_){showToast('تعذر النسخ تلقائيًا؛ انسخ الرابط يدويًا','error');}}
-async function shareClientReferralLink(){const value=clientReferralInfo?.url||'';if(!value)return;const text='ادعُ صديقك لاستخدام حمزاوي سات، وكلانا يحصل على 50 جنيهًا بعد إكمال أول طلب.';try{if(navigator.share)await navigator.share({title:'دعوة حمزاوي سات',text,url:value});else await copyClientReferralLink();}catch(error){if(error?.name!=='AbortError')showToast('تعذرت مشاركة الرابط','error');}}
+async function shareClientReferralLink(){
+ const info=clientReferralInfo||{};
+ let referralUrl;
+ try{referralUrl=new URL(String(info.url||''),location.origin);}catch(_){showToast('رابط الدعوة غير صالح','error');return;}
+ const code=String(info.code||referralUrl.searchParams.get('ref')||'').trim().toUpperCase();
+ if(!/^C-[A-F0-9]{24}-[A-F0-9]{12}$/.test(code)){showToast('كود الدعوة غير صالح. حدّث بيانات الدعوة وحاول مرة أخرى.','error');return;}
+ referralUrl.pathname='/client';referralUrl.search='';referralUrl.searchParams.set('ref',code);
+ const downloadUrl=new URL('/download',referralUrl.origin);downloadUrl.searchParams.set('ref',code);
+ const text=[
+  'سجّل حسابك الجديد في حمزاوي سات واستمتع بخدماتنا ومتجرنا وأسعاره المميزة 🛍️',
+  '',
+  '🎁 50 جنيه مكافأة بعد إتمام أول طلب ليك، و50 جنيه إضافية عن كل شخص تدعوه ويسجل ويكمل أول طلب له!',
+  '',
+  '📝 تسجيل عميل جديد:',
+  referralUrl.toString(),
+  '',
+  '📲 تحميل التطبيق:',
+  downloadUrl.toString()
+ ].join('\\n');
+ try{if(navigator.share)await navigator.share({title:'دعوة حمزاوي سات',text});else{await navigator.clipboard.writeText(text);showToast('تم نسخ رسالة الدعوة','success');}}
+ catch(error){if(error?.name!=='AbortError')showToast('تعذرت مشاركة الرابط','error');}
+}
 function scrollToClientReferralCard(){const card=document.getElementById('clientReferralCard');if(card)card.scrollIntoView({behavior:'smooth',block:'center'});}
 function renderClientReferralCard(){
  if(!clientReferralInfo)return '';
