@@ -139,7 +139,7 @@ function createAdminFanniProfilesRouter({
   router.post('/fannis/:id/reopen-review', auth('admin'), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'معتمد' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null, status: 'معتمد' });
       if (!fanni) return res.status(404).json({ message: 'الفني المعتمد غير موجود أو ليس في حالة اعتماد.' });
       if (fanni.pendingProfileChange?.requestedAt) return res.status(409).json({ message: 'لدى الفني طلب تعديل بيانات آخر قيد المراجعة. راجعه أولًا.' });
       fanni.status = 'قيد المراجعة';
@@ -168,7 +168,7 @@ function createAdminFanniProfilesRouter({
       const images = [...new Set((Array.isArray(req.body?.images) ? req.body.images : []).filter(value => allowedImages.includes(value)))];
       if (!reason) return res.status(400).json({ message: 'اكتب رسالة واضحة للفني توضح المطلوب منه.' });
       if (!fields.length && !images.length) return res.status(400).json({ message: 'حدد بند بيانات أو صورة واحدة على الأقل.' });
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', status: 'معتمد' });
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null, status: 'معتمد' });
       if (!fanni) return res.status(404).json({ message: 'الفني المعتمد غير موجود أو تمت مراجعته بالفعل.' });
       if (fanni.pendingProfileChange?.requestedAt) return res.status(409).json({ message: 'لدى الفني طلب تعديل بيانات آخر قيد المراجعة. راجعه أولًا.' });
       fanni.status = 'قيد المراجعة';
@@ -382,7 +382,7 @@ function createAdminFanniProfilesRouter({
 
   router.get('/fanni-profile-edits', auth('admin'), async (req, res, next) => {
     try {
-      const fannis = await Fanni.find({ role: 'fanni', 'pendingProfileChange.requestedAt': { $exists: true, $ne: null } }).select('-passwordHash').sort({ 'pendingProfileChange.requestedAt': 1 }).limit(MAX_LIST_LIMIT).lean();
+      const fannis = await Fanni.find({ role: 'fanni', archivedAt: null, 'pendingProfileChange.requestedAt': { $exists: true, $ne: null } }).select('-passwordHash').sort({ 'pendingProfileChange.requestedAt': 1 }).limit(MAX_LIST_LIMIT).lean();
       const activeServices = (await getActiveServiceNames(Service)).map(normalizeServiceKey);
       return res.set('Cache-Control', 'no-store').json({ requests: fannis.map(item => {
         const pending = item.pendingProfileChange || {};
