@@ -203,6 +203,16 @@ if (!fs.existsSync(path.join(frontendPath, 'index.html'))) {
   throw new Error('Built frontend artifact is incomplete: frontend-dist/index.html is missing.');
 }
 
+// Express static intentionally ignores dotfiles; serve the verified Android association explicitly.
+app.get('/.well-known/assetlinks.json', (req, res) => {
+  const assetLinksPath = path.join(frontendPath, '.well-known', 'assetlinks.json');
+  if (!fs.existsSync(assetLinksPath) || !fs.statSync(assetLinksPath).isFile()) {
+    return res.sendStatus(404);
+  }
+  res.setHeader('Cache-Control', 'public, max-age=3600');
+  return res.type('application/json').sendFile(assetLinksPath);
+});
+
 // Serve repository frontend files from an explicit absolute path.
 // Keep the admin HTML page out of all public static paths.
 // The private route is enabled only when a valid path is configured.

@@ -51,3 +51,6 @@ const appManifest = JSON.parse(fs.readFileSync(path.join(root, 'frontend/manifes
 assert.ok(appManifest.related_applications.some((app) => app.platform === 'play' && app.id === 'com.sonaa.app'), 'web manifest must identify the Android package');
 const assetLinks = JSON.parse(fs.readFileSync(path.join(root, 'frontend/.well-known/assetlinks.json'), 'utf8'));
 assert.ok(assetLinks.some((item) => item.target?.package_name === 'com.sonaa.app'), 'asset links must associate the Android package');
+
+const serverSource = fs.readFileSync(path.join(root, 'src/server.js'), 'utf8');
+assert.ok(serverSource.includes("app.get('/.well-known/assetlinks.json'"), 'server must explicitly serve assetlinks because express.static ignores dotfiles');
