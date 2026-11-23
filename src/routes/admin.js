@@ -27,6 +27,7 @@ const Region = require('../models/Region');
 const { AREA_OPTIONS } = require('../config/areas');
 const AdminConfig = require('../models/AdminConfig');
 const AdminAuditLog = require('../models/AdminAuditLog');
+const SupportCase = require('../models/SupportCase');
 const PageVisit = require('../models/PageVisit');
 
 const {
@@ -90,6 +91,7 @@ const createAdminFanniManagementRouter = require('./admin/fanniManagement');
 const createAdminStoreRouter = require('./admin/store');
 const createAdminFanniCardLedgerRouter = require('./admin/fanniCardLedger');
 const createAdminArchiveRouter = require('./admin/archive');
+const createAdminClientProfilesRouter = require('./admin/clientProfiles');
 
 const ADMIN_TOKEN_EXPIRY = '1d';
 const CON_ADMIN_TOKEN_EXPIRY = '30d';
@@ -424,9 +426,12 @@ async function writeAdminAudit(req, action, category, target, details) {
 }
 
 router.use(createAdminClientsRouter({ auth, Joi, Client, normalizePhone, adminName, writeAdminAudit }));
+router.use(createAdminClientProfilesRouter({
+  auth, Client, Order, Complaint, WalletTransaction, ClientSubscription,
+  ClientTopupRequest, StoreOrder, SupportCase, AdminAuditLog, validId, sendBadId
+}));
 
-// GET /clients is intentionally provided by the platform router below.
-// Its response merges registered accounts with order-only customers and sets registered=true.
+// GET /clients is provided by the platform router and lists registered Client accounts only.
 
 
 router.use(createAdminServicesRouter({
