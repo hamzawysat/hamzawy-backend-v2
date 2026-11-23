@@ -2,6 +2,7 @@
 
 const express = require('express');
 const { isActiveService } = require('../../services/serviceCatalog');
+const { dismissOrderNotifications } = require('../../utils/notifications');
 
 function createAdminOrdersRouter({
   auth,
@@ -97,6 +98,7 @@ router.post('/orders/:sn/cancel', auth('admin'), validate(Joi.object({
     order.adminActionAt = new Date();
     order.adminActionBy = adminName(req);
     await order.save();
+    await dismissOrderNotifications(order._id);
     await writeAdminAudit(req, 'إلغاء طلب إداري', 'orders', sn, `reason=${order.adminActionNote}`);
     return res.json({ message: 'تم إلغاء الطلب', order: { sn: order.sn, status: order.status } });
   } catch (err) { next(err); }

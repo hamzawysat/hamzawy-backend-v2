@@ -19,6 +19,7 @@ function createOrderLifecycleRouter({
   publicOrder,
   createNotification,
   notifyAdmins,
+  dismissOrderNotifications,
   hasAcceptedGuidelines,
   autoPromoteFanni,
   sanitizeText
@@ -362,8 +363,10 @@ router.post('/:sn/cancel', async (req, res, next) => {
       type: 'admin_order_cancelled', title: 'العميل ألغى طلبًا',
       message: 'ألغى العميل الطلب ' + cancelledOrder.sn + ' لخدمة ' + (cancelledOrder.service || '') + '.',
       link: '/admin?tab=orders',
-      dedupeKey: 'admin-order-cancelled:' + String(cancelledOrder._id)
+      dedupeKey: 'admin-order-cancelled:' + String(cancelledOrder._id),
+      relatedEntityType: 'order', relatedEntityId: cancelledOrder._id
     });
+    if (typeof dismissOrderNotifications === 'function') await dismissOrderNotifications(cancelledOrder._id);
 
     return res.json({ message: 'تم إلغاء الطلب بنجاح.', order: publicOrder(cancelledOrder) });
   } catch (err) {

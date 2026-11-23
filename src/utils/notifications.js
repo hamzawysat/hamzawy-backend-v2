@@ -465,7 +465,20 @@ async function retryPendingNotificationDeliveries(limit = 25) {
   return { scanned: pending.length };
 }
 
-async function notifyAdmins({ type, title, message, link = '', dedupeKey = null }) {
+async function dismissOrderNotifications(orderId) {
+  const id = String(orderId || '').trim();
+  if (!/^[a-f0-9]{24}$/i.test(id)) return { modifiedCount: 0 };
+  const match = [
+    { relatedEntityType: 'order', relatedEntityId: orderId },
+    { dedupeKey: { $regex: '^admin-new-order:' + id + '(:|$)' } }
+  ];
+  return Notification.updateMany(
+    { recipientRole: 'admin', isActive: { $ne: false }, $or: match },
+    { $set: { isActive: false, readAt: new Date() } }
+  );
+}
+
+async function notifyAdmins({ type, title, message, link = '', dedupeKey = null, relatedEntityType = '', relatedEntityId = null }) {
   try {
     // Missing legacy preferences and config read failures default to enabled.
     const config = await AdminConfig.findOne({ key: 'main' }).select('settings.adminNotificationPreferences').lean().catch(() => null);
@@ -493,7 +506,8 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null 
         title,
         message,
         link,
-        dedupeKey: dedupeKey ? dedupeKey + ':' + String(admin._id) : null
+        dedupeKey: dedupeKey ? dedupeKey + ':' + String(admin._id) : null,
+        relatedEntityType, relatedEntityId
       });
       return Boolean(notification);
     }));
@@ -507,4 +521,4 @@ async function notifyAdmins({ type, title, message, link = '', dedupeKey = null 
     return { targeted: 0, created: 0, failed: 1 };
   }
 }
-module.exports = { createNotification, sendPushNotification, notifyAdmins, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };
+module.exports = { createNotification, sendPushNotification, notifyAdmins, dismissOrderNotifications, normalizeNotificationLink, retryPendingNotificationDeliveries, adminChannelFor };

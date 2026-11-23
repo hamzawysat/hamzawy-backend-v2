@@ -156,7 +156,7 @@ function createOrderCreationRouter({
         });
       }
   
-      await notifyAdmins({ type: 'admin_new_order', title: 'طلب جديد يحتاج مراجعة', message: `وصل طلب جديد ${order.sn} لخدمة ${order.service}.`, link: '/admin?tab=orders', dedupeKey: 'admin-new-order:' + String(order._id) });
+      await notifyAdmins({ type: 'admin_new_order', title: 'طلب جديد يحتاج مراجعة', message: `وصل طلب جديد ${order.sn} لخدمة ${order.service}.`, link: '/admin?tab=orders', dedupeKey: 'admin-new-order:' + String(order._id), relatedEntityType: 'order', relatedEntityId: order._id });
       await createNotification({
         recipientRole: 'client', recipientId: order.clientAccount, type: 'order_created',
         title: 'تم استلام طلبك', message: 'استلمنا طلبك ' + order.sn + ' وسيتم مراجعته من الإدارة.',
