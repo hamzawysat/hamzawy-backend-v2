@@ -73,7 +73,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
 
       // Pending records retain the existing administrative workflow and do not charge the wallet.
       if (req.body.status !== 'active') {
-        const client = await Client.findOne({ phone: req.body.clientPhone });
+        const client = await Client.findOne({ phone: req.body.clientPhone, archivedAt: null });
         if (!client) return res.status(404).json({ message: 'العميل غير موجود. تأكد من رقم الهاتف.' });
         const amount = Number(item.price);
         const subscription = await ClientSubscription.create({
@@ -91,7 +91,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       session.startTransaction();
       const clientFilter = { phone: req.body.clientPhone, status: 'نشط' };
       if (amount > 0) clientFilter.walletFrozen = { $ne: true };
-      const client = await Client.findOne(clientFilter).session(session);
+      const client = await Client.findOne({ ...clientFilter, archivedAt: null }).session(session);
       if (!client) {
         await session.abortTransaction();
         const exists = await Client.exists({ phone: req.body.clientPhone });
@@ -180,7 +180,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         if (!Number.isFinite(amount) || amount < 0) throw new Error('INVALID_SUBSCRIPTION_RENEWAL_AMOUNT');
         let transactionNumber = '';
         if (req.body.paymentStatus === 'paid' && amount > 0) {
-          const client = await Client.findOne({ _id: subscription.client, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
+          const client = await Client.findOne({ _id: subscription.client, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
           if (!client) { result = { kind: 'insufficient' }; return; }
           const before = Number(client.walletBalance || 0);
           const updatedClient = await Client.findOneAndUpdate(
@@ -239,7 +239,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         const priorPayment = await WalletTransaction.findOne({ client: subscription.client, idempotencyKey: paymentKey }).session(session).lean();
         if (!priorPayment) {
           const amount = Number(subscription.amount || 0);
-          const client = await Client.findOne({ _id: subscription.client, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
+          const client = await Client.findOne({ _id: subscription.client, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
           if (!client) { await session.abortTransaction(); return res.status(409).json({ message: 'لا يمكن تفعيل الاشتراك: رصيد العميل غير كافٍ أو المحفظة غير متاحة.' }); }
           const before = Number(client.walletBalance || 0);
           const updatedClient = await Client.findOneAndUpdate(
