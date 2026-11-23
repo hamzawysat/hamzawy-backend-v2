@@ -49,7 +49,7 @@ function renderReferralManagement(){
  const dueTotal=Number(paidClient.inviterDue||0)+Number(paidClient.inviteeDue||0)+Number(paidFanni.inviterDue||0)+Number(paidFanni.inviteeDue||0);
  return `<section class="mt-4 space-y-3">
   <div class="premium-panel p-4">
-   <div class="flex items-center justify-between gap-3"><div><h2 class="text-base font-black">إدارة الدعوات والمكافآت</h2><p class="mt-1 text-[11px] text-slate-500">مراجعة الدعوات ومتابعة استحقاق وصرف المكافآت للطرفين</p></div><span class="rounded-full px-3 py-1 text-[10px] font-extrabold ${s.enabled?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${s.enabled?'النظام يعمل':'الدعوات الجديدة متوقفة'}</span></div>
+   <div class="flex items-center justify-between gap-3"><div><h2 class="text-base font-black">إدارة الدعوات والمكافآت</h2><p class="mt-1 text-[11px] text-slate-500">مراجعة الدعوات ومتابعة استحقاق وصرف المكافآت للطرفين</p></div><span class="rounded-full px-3 py-1 text-[10px] font-extrabold ${s.enabled?'bg-emerald-100 text-emerald-800':'bg-amber-100 text-amber-800'}">${s.enabled?'النظام يعمل':'النظام متوقف'}</span></div>
    <div class="mt-3 flex items-center justify-between gap-3 rounded-xl border p-3"><div><p class="text-xs font-extrabold">تشغيل نظام الدعوات</p><p class="mt-1 text-[10px] text-slate-500">الإيقاف يخفي الكارت ويمنع الدعوات الجديدة؛ الدعوات المسجلة تستمر حتى إلغائها يدويًا</p></div><button type="button" onclick="toggleReferralSystem(${!s.enabled})" class="rounded-xl px-4 py-2.5 text-xs font-extrabold text-white ${s.enabled?'bg-rose-700':'bg-emerald-700'}">${s.enabled?'إيقاف':'تشغيل'}</button></div>
   </div>
   <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
