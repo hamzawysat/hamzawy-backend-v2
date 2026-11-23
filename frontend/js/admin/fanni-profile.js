@@ -42,6 +42,8 @@ async function openFanniUnifiedProfile(id) {
         <button onclick="state.walletSelectedFanniId='${id}';addWalletBalance()" class="pill-btn soft-btn">إضافة للمحفظة</button>
         <button onclick="state.walletSelectedFanniId='${id}';deductWalletBalance()" class="pill-btn soft-btn">خصم من المحفظة</button>
         <button onclick="state.walletSelectedFanniId='${id}';adjustWallet()" class="pill-btn soft-btn">تسوية المحفظة</button>
+        <button onclick="state.walletSelectedFanniId='${id}';loadWalletTransactions()" class="pill-btn soft-btn">كشف الحركات</button>
+        <button onclick="state.walletSelectedFanniId='${id}';freezeWallet()" class="pill-btn soft-btn">تجميد / فك تجميد المحفظة</button>
         <button onclick="saveFanniLimit('${id}')" class="pill-btn soft-btn">حدود الاستقبال</button>
         <button onclick="saveFanniProfileControls('${id}')" class="pill-btn soft-btn">الثقة والظهور</button>
         <button onclick="changeAccountPassword('fanni','${id}')" class="pill-btn soft-btn">تغيير كلمة المرور</button>
