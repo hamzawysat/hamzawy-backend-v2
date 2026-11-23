@@ -239,7 +239,7 @@ function createAdminPlatformRouter({
       const limit = Number.isInteger(limitValue) && limitValue > 0 ? Math.min(limitValue, 100) : 25;
       const filter = { archivedAt: null };
       if (search.length >= 2) {
-        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\$&');');
+        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const rx = new RegExp(escaped, 'i');
         const accountMatches = [{ name: rx }, { phone: rx }];
         // Order numbers are lookup keys only: resolve them to a real Client account
