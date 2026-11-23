@@ -3176,6 +3176,16 @@ async function run() {
         name: 'عميل اختبار الأرشيف', phone: '01055550101', passwordHash: archiveTestHash,
         walletBalance: 125, status: 'نشط'
       });
+      const archiveOrderSn = 'SN' + String((Date.now() + 2) % 1000000).padStart(6, '0');
+      const archiveOrder = await require('../models/Order').create({
+        sn: archiveOrderSn, clientAccount: client._id, clientAccountLinkedAt: new Date(),
+        service: 'اختبار الأرشيف', area: 'القاهرة', clientName: client.name,
+        clientPhone: client.phone, status: 'تم النشر'
+      });
+      const archiveOrderToken = require('jsonwebtoken').sign({
+        purpose: 'client-order', accountId: String(client._id),
+        orderId: String(archiveOrder._id), sn: archiveOrder.sn
+      }, process.env.JWT_SECRET, { expiresIn: '30d' });
       const frontId = new mongoose.Types.ObjectId();
       const backId = new mongoose.Types.ObjectId();
       const photoId = new mongoose.Types.ObjectId();
@@ -3220,6 +3230,9 @@ async function run() {
         .set('Authorization', 'Bearer ' + archivedClientToken);
       assert.equal(archivedClientOperation.status, 403);
       assert.equal(archivedClientOperation.body.code, 'ACCOUNT_ARCHIVED');
+      const archivedOrderTokenAccess = await request(app).get('/api/orders/' + archiveOrderSn)
+        .query({ clientToken: archiveOrderToken });
+      assert.equal(archivedOrderTokenAccess.status, 403, 'archived clients must also lose legacy order-token access');
 
       const oldClientDelete = await request(app).delete('/api/admin/clients/' + client.phone + '/account')
         .set('Authorization', 'Bearer ' + adminToken);
