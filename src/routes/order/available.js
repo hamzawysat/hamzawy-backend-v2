@@ -42,6 +42,7 @@ router.get('/available', auth(), async (req, res, next) => {
       const fanni = await Fanni.findOne({
         _id: req.userId,
         role: 'fanni',
+        archivedAt: null,
         status: 'معتمد'
       }).select('specialties areas acceptingOrders technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
       if (!fanni) {
