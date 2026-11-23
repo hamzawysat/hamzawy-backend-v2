@@ -3261,7 +3261,11 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken).send({ note: 'ملاحظة تدقيق للاختبار' });
       assert.equal(clientNote.status, 200, JSON.stringify(clientNote.body));
       const AdminAuditLog = require('../models/AdminAuditLog');
-      assert.ok(await AdminAuditLog.exists({ category: 'clients', target: String(client._id), action: 'إضافة ملاحظة داخلية على عميل' }));
+      const clientNoteAudit = await AdminAuditLog.findOne({
+        category: 'clients', target: String(client._id), action: 'إضافة ملاحظة داخلية على عميل'
+      }).lean();
+      assert.ok(clientNoteAudit, 'every internal client note must have an audit entry');
+      assert.ok(clientNoteAudit.details.includes('ملاحظة تدقيق للاختبار'), 'the audit entry must retain the note content');
 
       const duplicateClientRestore = await request(app)
         .post('/api/admin/clients/' + client._id + '/restore')
