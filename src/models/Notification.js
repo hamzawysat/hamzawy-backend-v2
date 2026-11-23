@@ -18,6 +18,7 @@ const notificationSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 notificationSchema.index({ recipientRole: 1, recipientId: 1, createdAt: -1 });
+notificationSchema.index({ recipientRole: 1, recipientId: 1, isActive: 1, readAt: 1, updatedAt: -1 });
 notificationSchema.index({ dedupeKey: 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('Notification', notificationSchema);
