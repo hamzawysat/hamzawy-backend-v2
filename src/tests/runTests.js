@@ -3109,100 +3109,27 @@ async function run() {
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
-    await test('admin rejected technician filter and deletion release only exclusive identity ledger', async () => {
-      const vm = require('node:vm');
-      const adminNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
-      const filterStart = adminNavigation.indexOf('function applyFilter(){');
-      const filterEnd = adminNavigation.indexOf('\nfunction applyTopupFilter', filterStart);
-      assert.notEqual(filterStart, -1, 'technician status filter must exist');
-      assert.notEqual(filterEnd, -1, 'technician status filter must have a stable boundary');
-      const filterSource = adminNavigation.slice(filterStart, filterEnd);
-      const sample = [
-        { _id: 'approved', status: 'approved', isApproved: true, isDisabled: false, name: 'معتمد', phone: '01000000011' },
-        { _id: 'rejected', status: 'rejected', actualStatus: 'مرفوض', isApproved: false, isDisabled: false, name: 'مرفوض', phone: '01000000012' },
-        { _id: 'disabled', status: 'disabled', actualStatus: 'معلق', isApproved: false, isDisabled: true, name: 'موقوف', phone: '01000000013' },
-        { _id: 'pending', status: 'pending', actualStatus: 'قيد المراجعة', isApproved: false, isDisabled: false, name: 'معلق مراجعة', phone: '01000000014' }
-      ];
-      for (const [filter, expected] of [
-        ['الكل', ['approved', 'rejected', 'disabled', 'pending']],
-        ['rejected', ['rejected']],
-        ['disabled', ['disabled']],
-        ['approved', ['approved']],
-        ['pending', ['pending']]
-      ]) {
-        const context = { state: { fannis: sample, tab: 'fannis', filter, search: '', silentRefresh: true }, render() {} };
-        vm.runInNewContext(filterSource + ';applyFilter();', context);
-        assert.deepEqual(Array.from(context.state.filtered, item => item._id), expected, 'wrong technician filter result for ' + filter);
-      }
-
+    await test('legacy technician delete endpoint is closed and never releases identity records', async () => {
       const Fanni = require('../models/Fanni');
       const FanniCardLedger = require('../models/FanniCardLedger');
       const rejected = await Fanni.create({
-        name: 'فني مرفوض للحذف', phone: '01000000021', passwordHash: 'test-hash',
+        name: 'فني يجب الاحتفاظ به', phone: '01000000031', passwordHash: 'test-hash',
         specialties: ['تجربة'], areas: ['القاهرة'], status: 'مرفوض', role: 'fanni'
       });
-      const exclusiveHash = 'test-rejected-account-card-hash-exclusive';
-      await FanniCardLedger.create({
-        nationalIdHash: exclusiveHash, nationalIdEncrypted: 'encrypted-test-value',
+      const nationalIdHash = 'test-no-delete-card-ledger-archive';
+      const ledger = await FanniCardLedger.create({
+        nationalIdHash, nationalIdEncrypted: 'encrypted-test-value',
         fanniId: rejected._id, fanniName: rejected.name,
         linkedTechnicians: [{ fanniId: rejected._id, name: rejected.name, phone: rejected.phone }]
       });
-      const removed = await request(app).delete('/api/admin/fannis/' + rejected._id)
+      const response = await request(app).delete('/api/admin/fannis/' + rejected._id)
         .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(removed.status, 200, JSON.stringify(removed.body));
-      assert.equal(await Fanni.exists({ _id: rejected._id }), null, 'rejected account should be removed');
-      assert.equal(await FanniCardLedger.exists({ nationalIdHash: exclusiveHash }), null, 'exclusive national-ID ledger should be released');
-
-      const replacement = await Fanni.create({
-        name: 'فني إعادة التسجيل', phone: rejected.phone, passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'قيد المراجعة', role: 'fanni'
-      });
-      await FanniCardLedger.create({
-        nationalIdHash: exclusiveHash, nationalIdEncrypted: 'encrypted-test-value',
-        fanniId: replacement._id, fanniName: replacement.name,
-        linkedTechnicians: [{ fanniId: replacement._id, name: replacement.name, phone: replacement.phone }]
-      });
-      assert.ok(await FanniCardLedger.exists({ nationalIdHash: exclusiveHash }), 'the released national-ID hash must be reusable');
-
-      const approvedOwner = await Fanni.create({
-        name: 'فني معتمد محذوف', phone: '01000000024', passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni'
-      });
-      const approvedHash = 'test-approved-technician-card-hash-reserved';
-      await FanniCardLedger.create({
-        nationalIdHash: approvedHash, nationalIdEncrypted: 'encrypted-approved-test',
-        fanniId: approvedOwner._id, fanniName: approvedOwner.name,
-        linkedTechnicians: [{ fanniId: approvedOwner._id, name: approvedOwner.name, phone: approvedOwner.phone }]
-      });
-      const approvedRemoval = await request(app).delete('/api/admin/fannis/' + approvedOwner._id)
-        .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(approvedRemoval.status, 200, JSON.stringify(approvedRemoval.body));
-      assert.ok(await FanniCardLedger.exists({ nationalIdHash: approvedHash }), 'deleting an approved technician must not release the identity ledger');
-
-      const sharedOwner = await Fanni.create({
-        name: 'فني صاحب سجل مشترك', phone: '01000000022', passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'مرفوض', role: 'fanni'
-      });
-      const otherLinked = await Fanni.create({
-        name: 'فني مرتبط آخر', phone: '01000000023', passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni'
-      });
-      const sharedHash = 'test-shared-technician-card-hash';
-      const sharedLedger = await FanniCardLedger.create({
-        nationalIdHash: sharedHash, nationalIdEncrypted: 'encrypted-shared-test',
-        fanniId: sharedOwner._id, fanniName: sharedOwner.name,
-        linkedTechnicians: [
-          { fanniId: sharedOwner._id, name: sharedOwner.name, phone: sharedOwner.phone },
-          { fanniId: otherLinked._id, name: otherLinked.name, phone: otherLinked.phone }
-        ]
-      });
-      const sharedRemoval = await request(app).delete('/api/admin/fannis/' + sharedOwner._id)
-        .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(sharedRemoval.status, 200, JSON.stringify(sharedRemoval.body));
-      const preservedLedger = await FanniCardLedger.findById(sharedLedger._id).lean();
-      assert.ok(preservedLedger, 'shared identity ledger must not be deleted');
-      assert.equal(String(preservedLedger.fanniId), String(otherLinked._id), 'primary technician should move to the remaining linked technician');
-      assert.deepEqual(preservedLedger.linkedTechnicians.map(link => String(link.fanniId)), [String(otherLinked._id)]);
+      assert.equal(response.status, 410, JSON.stringify(response.body));
+      assert.ok(await Fanni.exists({ _id: rejected._id }), 'the technician account must remain');
+      const preservedLedger = await FanniCardLedger.findById(ledger._id).lean();
+      assert.ok(preservedLedger, 'the identity ledger must remain');
+      assert.equal(preservedLedger.nationalIdHash, nationalIdHash);
+      assert.equal(String(preservedLedger.fanniId), String(rejected._id));
     });
 
     await test('client and technician archives preserve account identity, reject destructive routes, and restore safely', async () => {
