@@ -189,11 +189,48 @@ function createAdminFanniProfilesRouter({
   router.get('/fannis/:id/profile', auth('admin'), async (req, res, next) => {
     try {
       if (!validId(req.params.id)) return sendBadId(res);
-      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('-passwordHash').lean();
+      const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' })
+        .select('-passwordHash +identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
       if (!fanni) return res.status(404).json({ message: 'حساب الفني غير موجود.' });
       const activeServices = (await getActiveServiceNames(Service)).map(normalizeServiceKey);
       const specialties = (Array.isArray(fanni.specialties) ? fanni.specialties : []).filter(value => activeServices.includes(normalizeServiceKey(value)));
-      return res.set('Cache-Control', 'no-store').json({ fanni: { _id: String(fanni._id), name: fanni.name, phone: fanni.phone, specialties, areas: fanni.areas || [], status: fanni.status } });
+      const [orders, walletTransactions, topups, cardLedger, auditLogs] = await Promise.all([
+        Order.find({ $or: [{ assignedFanni: fanni._id }, { 'offers.fanni': fanni._id }] })
+          .sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
+        WalletTransaction.find({ fanni: fanni._id }).sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
+        TopupRequest.find({ fanni: fanni._id }).sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
+        FanniCardLedger.findOne({ fanniId: fanni._id }).select('+nationalIdEncrypted').lean(),
+        AdminAuditLog.find({ category: 'fannis', target: String(fanni._id) }).sort({ createdAt: -1, _id: -1 }).limit(100).lean()
+      ]);
+      let nationalId = '';
+      try { nationalId = cardLedger?.nationalIdEncrypted ? decryptNationalId(cardLedger.nationalIdEncrypted) : ''; } catch (_) {}
+      const offers = orders.flatMap(order => (order.offers || [])
+        .filter(offer => String(offer.fanni || '') === String(fanni._id))
+        .map(offer => ({ orderSn: order.sn, service: order.service, status: order.status, createdAt: order.createdAt, ...offer.toObject?.() || offer })));
+      return res.set('Cache-Control', 'no-store').json({
+        fanni: {
+          ...fanni,
+          _id: String(fanni._id),
+          specialties,
+          nationalId,
+          identityImages: {
+            profile: fanni.profilePhotoFileId ? '/api/fanni/admin/' + String(fanni._id) + '/photo' : '',
+            front: fanni.identityCardFrontFileId ? '/api/fanni/admin/' + String(fanni._id) + '/identity/front' : '',
+            back: fanni.identityCardBackFileId ? '/api/fanni/admin/' + String(fanni._id) + '/identity/back' : ''
+          }
+        },
+        orders, offers, walletTransactions, topups, decisions: fanni.decisions || [],
+        cardLedger: cardLedger ? {
+          fanniName: cardLedger.fanniName, status: cardLedger.status,
+          firstRegisteredAt: cardLedger.firstRegisteredAt,
+          linkedTechnicians: cardLedger.linkedTechnicians || [],
+          duplicateAttempts: cardLedger.duplicateAttempts || [],
+          lastReviewedAt: cardLedger.lastReviewedAt, lastReviewedBy: cardLedger.lastReviewedBy,
+          lastReviewNote: cardLedger.lastReviewNote
+        } : null,
+        auditLogs,
+        totals: { orders: orders.length, offers: offers.length, walletTransactions: walletTransactions.length, topups: topups.length, decisions: (fanni.decisions || []).length, auditLogs: auditLogs.length }
+      });
     } catch (err) { next(err); }
   });
 
