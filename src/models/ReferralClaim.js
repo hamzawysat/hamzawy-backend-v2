@@ -12,4 +12,6 @@ const referralClaimSchema = new mongoose.Schema({
   invitee: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null }
 }, { timestamps: true, versionKey: false });
 
+referralClaimSchema.index({ inviter: 1, createdAt: -1 });
+
 module.exports = mongoose.models.ReferralClaim || mongoose.model('ReferralClaim', referralClaimSchema);
