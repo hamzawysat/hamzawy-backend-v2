@@ -5,7 +5,7 @@
   "scripts": {
     "start": "node src/server.js",
     "test": "node src/tests/runTests.js",
-    "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js && node src/tests/fanniRegistrationPrivacy.test.js",
+    "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js && node src/tests/fanniRegistrationPrivacy.test.js && node src/tests/referral-download.test.js",
     "build": "node scripts/build-frontend.js"
   },
   "dependencies": {
