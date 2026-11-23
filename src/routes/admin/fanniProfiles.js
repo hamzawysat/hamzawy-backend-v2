@@ -269,7 +269,13 @@ function createAdminFanniProfilesRouter({
   
   router.get('/fannis', auth('admin'), async (req, res, next) => {
     try {
-      const list = await Fanni.find({ $or: [ { role: 'fanni' }, { role: { $ne: 'admin' }, specialties: { $exists: true, $ne: [] }, adminRole: null } ] }).select('-passwordHash').sort({ createdAt: -1 }).limit(MAX_LIST_LIMIT).lean();
+      const list = await Fanni.find({
+        archivedAt: null,
+        $or: [
+          { role: 'fanni' },
+          { role: { $ne: 'admin' }, specialties: { $exists: true, $ne: [] }, adminRole: null }
+        ]
+      }).select('-passwordHash').sort({ createdAt: -1 }).limit(MAX_LIST_LIMIT).lean();
       const ids = list.map(item => item._id);
       const [ratingStats, completedStats] = ids.length ? await Promise.all([
         Rating.aggregate([
