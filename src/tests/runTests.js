@@ -3251,6 +3251,10 @@ async function run() {
       assert.equal(archivedClientList.status, 200, JSON.stringify(archivedClientList.body));
       assert.equal(archivedClientList.body.total, 1);
       assert.equal(String(archivedClientList.body.items[0]._id), String(client._id));
+      const hiddenActiveClient = await request(app).get('/api/admin/clients?search=' + encodeURIComponent(client.phone))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(hiddenActiveClient.status, 200);
+      assert.equal(hiddenActiveClient.body.total, 0, 'archived client must disappear from the active client list');
 
       const nonArchivedClientId = new mongoose.Types.ObjectId().toString();
       const notArchivedRestore = await request(app)
@@ -3318,6 +3322,11 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken);
       assert.equal(archivedFanniList.status, 200, JSON.stringify(archivedFanniList.body));
       assert.equal(archivedFanniList.body.total, 1);
+      const activeFanniList = await request(app).get('/api/admin/fannis')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(activeFanniList.status, 200);
+      const activeFanniRows = activeFanniList.body.fannis || activeFanniList.body.items || [];
+      assert.equal(activeFanniRows.some(item => String(item._id) === String(fanni._id)), false, 'archived technician must disappear from active technician list');
 
       const archivedFanniLogin = await request(app).post('/api/fanni/login')
         .send({ phone: fanni.phone, password: archiveTestPassword });
