@@ -284,6 +284,7 @@ function createAdminPlatformRouter({
         ]),
         Order.aggregate([
           { $match: { clientPhone: { $in: phones } } },
+          { $sort: { createdAt: 1 } },
           { $group: { _id: '$clientPhone', count: { $sum: 1 }, lastOrderAt: { $max: '$createdAt' }, lastOrder: { $last: '$sn' } } }
         ])
       ]) : [[], [], []];
