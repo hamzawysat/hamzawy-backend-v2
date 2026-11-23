@@ -37,6 +37,14 @@ const clientSchema = new mongoose.Schema({
     default: 'نشط',
     index: true
   },
+
+  // Soft archive metadata. The Client document and all related records remain intact.
+  // archivedAt is the single source of truth; null means the account is active.
+  archivedAt: { type: Date, default: null, index: true },
+  archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null },
+  archivedByName: { type: String, trim: true, maxlength: 120, default: '' },
+  archiveReason: { type: String, trim: true, maxlength: 1000, default: '' },
+
   adminNote: { type: String, trim: true, maxlength: 2000, default: '' },
   adminNotesHistory: [{
     note: { type: String, trim: true, maxlength: 2000, required: true },
@@ -48,6 +56,7 @@ const clientSchema = new mongoose.Schema({
   timestamps: true
 });
 
+clientSchema.index({ archivedAt: 1, createdAt: -1 });
 
 clientSchema.methods.toSafeJSON = function () {
   const data = this.toObject();

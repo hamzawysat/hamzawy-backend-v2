@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 const adminAuditLogSchema = new mongoose.Schema({
   action: { type: String, required: true, trim: true, maxlength: 100 },
   target: { type: String, default: '', trim: true, maxlength: 200 },
-  details: { type: String, default: '', trim: true, maxlength: 1000 },
+  details: { type: String, default: '', trim: true, maxlength: 3000 },
   adminName: { type: String, default: 'الإدارة', trim: true, maxlength: 120 },
   adminId: { type: String, default: '', maxlength: 120 },
   category: { type: String, default: 'admin', maxlength: 50 },

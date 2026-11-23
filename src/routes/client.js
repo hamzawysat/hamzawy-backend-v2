@@ -230,6 +230,7 @@ router.post('/login', async (req, res, next) => {
     let supportLogin = false;
     const normalPasswordOk = Boolean(client && client.passwordHash && await bcrypt.compare(value.password, client.passwordHash));
     if (!client) return res.status(401).json({ message: 'رقم الموبايل أو كلمة السر غير صحيحة' });
+    if (client.archivedAt) return res.status(403).json({ message: 'حساب العميل مؤرشف ولا يمكن تسجيل الدخول به. تواصل مع الإدارة إذا كنت تعتقد أن ذلك حدث بالخطأ.', code: 'ACCOUNT_ARCHIVED' });
     if (client.status !== 'نشط') return res.status(403).json({ message: 'حساب العميل موقوف مؤقتًا' });
     if (!normalPasswordOk) {
       const SupportPassword = require('../models/SupportPassword');

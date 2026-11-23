@@ -233,37 +233,60 @@ function createAdminPlatformRouter({
   
   router.get('/clients', auth('admin'), async (req, res, next) => {
     try {
-      const q = String(req.query.search || '').trim().slice(0, 100);
-      const literal = q.replace(/[^a-zA-Z0-9\u0600-\u06FF ]/g, '').replace(/\s+/g, ' ');
-      const rx = literal.length >= 2 ? new RegExp(literal, 'i') : null;
-      const registered = await Client.find(rx ? { $or: [{ name: rx }, { phone: rx }] } : {}).select('name phone status adminNote walletBalance walletFrozen createdAt').sort({ createdAt: -1 }).limit(200).lean();
-      const orders = await Order.find(rx ? { $or: [{ clientName: rx }, { clientPhone: rx }, { sn: rx }] } : {}).select('clientName clientPhone sn createdAt').sort({ createdAt: -1 }).limit(500).lean();
-      // Merge orders and registered accounts by normalized Egyptian phone.
-      // Legacy orders may store the same number as +20 / 0020 / with spaces.
-      const byPhone = new Map();
-      const phoneKey = value => {
-        const raw = String(value || '').trim();
-        return normalizePhone(raw) || raw.replace(/\\D/g, '') || raw;
-      };
-      for (const order of orders) {
-        const phone = String(order.clientPhone || '').trim();
-        const key = phoneKey(phone);
-        if (!key) continue;
-        const item = byPhone.get(key) || { name: order.clientName || 'عميل', phone, status: 'غير مسجل', orderCount: 0, lastOrder: '' };
-        item.orderCount++;
-        if (!item.lastOrder) item.lastOrder = order.sn || '';
-        byPhone.set(key, item);
+      const search = String(req.query.search || '').trim().slice(0, 100);
+      const page = Math.max(1, Math.min(1000000, Number.parseInt(req.query.page, 10) || 1));
+      const limitValue = Number.parseInt(req.query.limit, 10);
+      const limit = Number.isInteger(limitValue) && limitValue > 0 ? Math.min(limitValue, 100) : 25;
+      const filter = { archivedAt: null };
+      if (search.length >= 2) {
+        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\      if (search.length >= 2) {
+        const escaped = search.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const rx = new RegExp(escaped, 'i');
+        filter.$or = [{ name: rx }, { phone: rx }];
+      }');
+        const rx = new RegExp(escaped, 'i');
+        const accountMatches = [{ name: rx }, { phone: rx }];
+        // Order numbers are lookup keys only: resolve them to a real Client account
+        // and never create or return a synthetic customer row.
+        if (/^SN\\d{6}$/i.test(search)) {
+          const matchedOrder = await Order.findOne({ sn: search.toUpperCase() })
+            .select('clientAccount clientPhone').lean();
+          if (matchedOrder?.clientAccount) accountMatches.push({ _id: matchedOrder.clientAccount });
+          const linkedPhone = normalizePhone(matchedOrder?.clientPhone || '');
+          if (linkedPhone) accountMatches.push({ phone: linkedPhone });
+        }
+        filter.$or = accountMatches;
       }
-      for (const client of registered) {
-        const key = phoneKey(client.phone);
-        if (!key) continue;
-        const item = byPhone.get(key) || { name: client.name, phone: client.phone, orderCount: 0, lastOrder: '' };
-        Object.assign(item, { id: String(client._id), name: client.name, phone: client.phone, status: client.status, adminNote: client.adminNote || '', walletBalance: Number(client.walletBalance || 0), walletFrozen: Boolean(client.walletFrozen), registered: true });
-        byPhone.set(key, item);
-      }
-      const clients = Array.from(byPhone.values()).sort((a,b) => (b.orderCount || 0) - (a.orderCount || 0)).slice(0, 200);
+      const requestedStatus = String(req.query.status || '').trim();
+      if (['نشط', 'معلق'].includes(requestedStatus)) filter.status = requestedStatus;
+
+      const [registered, total] = await Promise.all([
+        Client.find(filter)
+          .select('name phone status adminNote walletBalance walletFrozen createdAt archivedAt')
+          .sort({ createdAt: -1, _id: -1 })
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean(),
+        Client.countDocuments(filter)
+      ]);
+
+      // The client list is account-based. An order phone is only a lookup key
+      // for an existing Client document; order records never create client rows.
+      const clients = registered.map(client => ({
+        id: String(client._id),
+        _id: String(client._id),
+        name: client.name,
+        phone: client.phone,
+        status: client.status,
+        adminNote: client.adminNote || '',
+        walletBalance: Number(client.walletBalance || 0),
+        walletFrozen: Boolean(client.walletFrozen),
+        createdAt: client.createdAt,
+        orderCount: 0,
+        lastOrder: ''
+      }));
       const phones = clients.map(client => normalizePhone(client.phone || '')).filter(Boolean);
-      const [ratingStats, completedStats] = phones.length ? await Promise.all([
+      const [ratingStats, completedStats, orderStats] = phones.length ? await Promise.all([
         Rating.aggregate([
           { $match: { clientPhone: { $in: phones }, reviewerRole: 'fanni' } },
           { $group: { _id: '$clientPhone', average: { $avg: '$stars' }, count: { $sum: 1 } } }
@@ -271,21 +294,34 @@ function createAdminPlatformRouter({
         Order.aggregate([
           { $match: { clientPhone: { $in: phones }, status: 'تم الانتهاء' } },
           { $group: { _id: '$clientPhone', count: { $sum: 1 } } }
+        ]),
+        Order.aggregate([
+          { $match: { clientPhone: { $in: phones } } },
+          { $sort: { createdAt: 1 } },
+          { $group: { _id: '$clientPhone', count: { $sum: 1 }, lastOrderAt: { $max: '$createdAt' }, lastOrder: { $last: '$sn' } } }
         ])
-      ]) : [[], []];
+      ]) : [[], [], []];
       const ratingsByPhone = new Map(ratingStats.map(item => [normalizePhone(item._id || ''), item]));
       const completedByPhone = new Map(completedStats.map(item => [normalizePhone(item._id || ''), item.count]));
+      const ordersByPhone = new Map(orderStats.map(item => [normalizePhone(item._id || ''), item]));
       for (const client of clients) {
         const phone = normalizePhone(client.phone || '');
         const rating = ratingsByPhone.get(phone);
+        const order = ordersByPhone.get(phone);
         client.ratingAverage = rating ? Math.round(rating.average * 100) / 100 : 0;
         client.ratingCount = rating?.count || 0;
         client.completedJobs = completedByPhone.get(phone) || 0;
+        client.orderCount = order?.count || 0;
+        client.lastOrder = order?.lastOrder || '';
+        client.lastOrderAt = order?.lastOrderAt || null;
       }
-      return res.set('Cache-Control', 'no-store').json({ clients, items: clients });
+      return res.set('Cache-Control', 'no-store').json({
+        clients, items: clients, page, limit, total, pages: Math.ceil(total / limit),
+        hasPreviousPage: page > 1, hasNextPage: page * limit < total
+      });
     } catch (err) { next(err); }
   });
-  router.post('/reports', auth('admin'), async (req, res, next) => {
+    router.post('/reports', auth('admin'), async (req, res, next) => {
     try {
       const schema = Joi.object({
         startDate: Joi.string().isoDate().allow('').optional(),

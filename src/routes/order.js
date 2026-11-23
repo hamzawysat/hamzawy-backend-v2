@@ -121,7 +121,9 @@ async function verifyClientToken(req, order) {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
 
     if (order.clientAccount) {
-      const activeClient = await Client.findOne({ _id: order.clientAccount, status: 'نشط' }).select('_id tokenVersion').lean();
+      const activeClient = await Client.findOne({
+        _id: order.clientAccount, status: 'نشط', archivedAt: null
+      }).select('_id tokenVersion').lean();
       if (!activeClient) return false;
       if (payload.role === 'client') return String(payload.id) === String(order.clientAccount) && Number(payload.tokenVersion || 0) === Number(activeClient.tokenVersion || 0);
 
@@ -130,17 +132,28 @@ async function verifyClientToken(req, order) {
         String(payload.sn).toUpperCase() === String(order.sn).toUpperCase();
       if (!tokenMatchesOrder) return false;
 
-      // New account-bound tokens carry the account id. Old tokens are accepted only
-      // for orders linked before this migration; a legacy claim stamps clientAccountLinkedAt.
+      // Account-bound tokens must match the account. Legacy order tokens remain
+      // valid only until the order is explicitly claimed by its registered account.
       if (payload.accountId) return String(payload.accountId) === String(order.clientAccount);
       return !order.clientAccountLinkedAt;
     }
 
-    return (
-      payload.purpose === 'client-order' &&
+    // Historical orders without a direct account reference are accessible only
+    // when their phone resolves to an active, registered Client account.
+    const legacyClient = await Client.findOne({
+      phone: normalizePhone(order.clientPhone || ''), status: 'نشط', archivedAt: null
+    }).select('_id tokenVersion').lean();
+    if (!legacyClient) return false;
+    if (payload.role === 'client') {
+      return String(payload.id) === String(legacyClient._id) &&
+        Number(payload.tokenVersion || 0) === Number(legacyClient.tokenVersion || 0);
+    }
+    const legacyOrderTokenMatches = payload.purpose === 'client-order' &&
       String(payload.orderId) === String(order._id) &&
-      String(payload.sn).toUpperCase() === String(order.sn).toUpperCase()
-    );
+      String(payload.sn).toUpperCase() === String(order.sn).toUpperCase();
+    if (!legacyOrderTokenMatches) return false;
+    if (payload.accountId) return String(payload.accountId) === String(legacyClient._id);
+    return !order.clientAccountLinkedAt;
   } catch {
     return false;
   }
@@ -184,7 +197,7 @@ const PROFESSIONAL_LEVEL_RANK = {
 
 async function autoPromoteFanni(fanniId, reason) {
   if (!fanniId) return null;
-  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni' });
+  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni', archivedAt: null });
   if (!fanni || typeof fanni.calculateLevel !== 'function') return null;
   const currentLevel = fanni.level || 'مبتدئ';
   const calculatedLevel = fanni.calculateLevel();
@@ -265,7 +278,7 @@ router.use(createOrderAdminPublicationRouter({
  * - بيانات العميل الشخصية لا تُرسل في هذه المرحلة.
  */
 async function hasAcceptedGuidelines(fanniId) {
-  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni', status: 'معتمد' }).select('technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
+  const fanni = await Fanni.findOne({ _id: fanniId, role: 'fanni', archivedAt: null, status: 'معتمد' }).select('technicianGuidelinesAcceptedAt technicianGuidelinesVersion').lean();
   return Boolean(fanni?.technicianGuidelinesAcceptedAt && fanni?.technicianGuidelinesVersion);
 }
 function hasContactDetails(text) { return containsEgyptianMobile(String(text || '')) || /(?:https?:\/\/|www\.|t\.me\/|wa\.me\/|bit\.ly\/)/i.test(String(text || '')); }

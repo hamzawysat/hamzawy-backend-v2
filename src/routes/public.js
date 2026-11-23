@@ -56,7 +56,7 @@ router.get('/areas', async (req, res, next) => {
   try {
     const [adminRegions, approvedTechnicians, activeServiceNames] = await Promise.all([
       Region.find({}).select('name isActive isDeleted isBase').lean(),
-      Fanni.find({ status: 'معتمد', role: 'fanni' }).select('specialties areas').lean(),
+      Fanni.find({ status: 'معتمد', role: 'fanni', archivedAt: null }).select('specialties areas').lean(),
       getActiveServiceNames(Service)
     ]);
     const areas = getEffectiveAreaOptions(adminRegions);
@@ -83,7 +83,7 @@ router.get('/services', async (req, res, next) => {
   try {
     const [savedServices, approvedTechnicians, allRegions] = await Promise.all([
       getServiceRecords(Service),
-      Fanni.find({ status: 'معتمد', role: 'fanni' }).select('specialties areas').lean(),
+      Fanni.find({ status: 'معتمد', role: 'fanni', archivedAt: null }).select('specialties areas').lean(),
       Region.find({}).select('name isActive isDeleted isBase').lean()
     ]);
     const activeAreaNames = getEffectiveAreaOptions(allRegions);

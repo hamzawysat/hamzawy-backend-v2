@@ -27,6 +27,7 @@ const Region = require('../models/Region');
 const { AREA_OPTIONS } = require('../config/areas');
 const AdminConfig = require('../models/AdminConfig');
 const AdminAuditLog = require('../models/AdminAuditLog');
+const SupportCase = require('../models/SupportCase');
 const PageVisit = require('../models/PageVisit');
 
 const {
@@ -89,6 +90,8 @@ const createAdminCommerceRouter = require('./admin/commerce');
 const createAdminFanniManagementRouter = require('./admin/fanniManagement');
 const createAdminStoreRouter = require('./admin/store');
 const createAdminFanniCardLedgerRouter = require('./admin/fanniCardLedger');
+const createAdminArchiveRouter = require('./admin/archive');
+const createAdminClientProfilesRouter = require('./admin/clientProfiles');
 
 const ADMIN_TOKEN_EXPIRY = '1d';
 const CON_ADMIN_TOKEN_EXPIRY = '30d';
@@ -292,6 +295,7 @@ router.get(['/counts', '/stats'], auth('admin'), async (req, res, next) => {
   try {
     const activeServices = await getActiveServiceNames(Service);
     const acceptedFanniFilter = {
+      archivedAt: null,
       $and: [
         { $or: [ { role: 'fanni' }, { role: { $ne: 'admin' }, specialties: { $exists: true, $ne: [] }, adminRole: null } ] },
         { specialties: { $in: activeServices } },
@@ -301,13 +305,17 @@ router.get(['/counts', '/stats'], auth('admin'), async (req, res, next) => {
     const [technicians, verifiedTechnicians, clients] = await Promise.all([
       Fanni.countDocuments(acceptedFanniFilter),
       Fanni.countDocuments({ ...acceptedFanniFilter, status: 'معتمد' }),
-      Client.countDocuments({})
+      Client.countDocuments({ archivedAt: null })
     ]);
     return res.set('Cache-Control', 'no-store').json({
       counts: { technicians, verifiedTechnicians, clients }
     });
   } catch (err) { next(err); }
 });
+
+router.use(createAdminArchiveRouter({
+  auth, Joi, Client, Fanni, adminName, writeAdminAudit, validId, sendBadId
+}));
 
 router.use(createAdminFanniProfilesRouter({
   Region,
@@ -320,6 +328,9 @@ router.use(createAdminFanniProfilesRouter({
   Fanni,
   Rating,
   Order,
+  WalletTransaction,
+  TopupRequest,
+  AdminAuditLog,
   bcrypt,
   createNotification,
   writeAdminAudit,
@@ -354,37 +365,19 @@ router.use(createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Co
 
 router.use(createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTransaction, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }));
 
-router.delete('/clients/:phone/account', auth('admin'), async (req, res, next) => {
-  try {
-    const phone = normalizePhone(String(req.params.phone || '').trim());
-    if (!phone || !/^01[0-9]{9}$/.test(phone)) return res.status(400).json({ message: 'رقم هاتف العميل غير صالح.' });
-    const client = await Client.findOne({ phone });
-    if (!client) return res.status(404).json({ message: 'حساب العميل المسجل غير موجود.' });
-    const activeOrder = await Order.exists({ clientPhone: phone, status: { $in: ['تم النشر', 'وصلتك عروض', 'تم اختيار فني'] } });
-    if (activeOrder) return res.status(409).json({ message: 'لا يمكن حذف الحساب أثناء وجود طلب نشط. تم الحفاظ على الحساب وسجل الطلبات.' });
-    await Client.deleteOne({ _id: client._id, phone });
-    await writeAdminAudit(req, 'حذف حساب عميل', 'clients', phone, `clientId=${String(client._id)}; preservedOrderHistory=true`);
-    return res.json({ message: 'تم حذف حساب العميل المسجل مع الحفاظ على سجل الطلبات التاريخي.' });
-  } catch (err) { next(err); }
+// Legacy destructive client endpoints are intentionally retired at the API boundary.
+router.delete('/clients/:phone/account', auth('admin'), (req, res) => {
+  return res.status(410).json({
+    message: 'الحذف النهائي للحسابات متوقف. استخدم الأرشفة مع كتابة السبب.',
+    code: 'PERMANENT_DELETE_DISABLED'
+  });
 });
 
-router.delete('/clients/:phone', auth('admin'), async (req, res, next) => {
-  try {
-    const rawPhone = String(req.params.phone || '').trim();
-    const phone = normalizePhone(rawPhone);
-    if (!phone || !/^01[0-9]{9}$/.test(phone)) { return res.status(400).json({ message: 'رقم هاتف العميل غير صالح. أدخل رقم موبايل مصري صحيحًا.' }); }
-    const orders = await Order.find({ clientPhone: phone }).select('_id sn status assignedFanni commissionCharged').lean();
-    if (orders.length === 0) { return res.status(404).json({ message: 'لا توجد طلبات مسجلة برقم الهاتف ده' }); }
-    const orderIds = orders.map(order => order._id);
-    const hasCommissionTransaction = await WalletTransaction.exists({ order: { $in: orderIds }, type: 'commission' });
-    const protectedStatuses = ['تم اختيار فني', 'تم الانتهاء'];
-    const hasProtectedOrder = orders.some(order => order.commissionCharged === true || Boolean(order.assignedFanni) || protectedStatuses.includes(order.status));
-    if (hasProtectedOrder || hasCommissionTransaction) { return res.status(409).json({ message: 'لا يمكن حذف العميل لأن عنده طلبًا مرتبطًا بفني أو بعملية مالية. لم يتم حذف أي طلب.' }); }
-    const result = await Order.deleteMany({ _id: { $in: orderIds }, clientPhone: phone, commissionCharged: { $ne: true }, assignedFanni: { $in: [null, undefined] }, status: { $nin: protectedStatuses } });
-    if (result.deletedCount !== orders.length) { return res.status(409).json({ message: 'لم يتم حذف كل الطلبات المتوقعة؛ قد تكون بيانات تغيرت أثناء العملية. راجع الطلبات قبل إعادة المحاولة.', deleted: result.deletedCount }); }
-    await writeAdminAudit(req, 'حذف طلبات عميل', 'clients', phone, `deletedOrders=${result.deletedCount}`);
-    return res.json({ message: 'تم حذف طلبات العميل التجريبية بنجاح', deleted: result.deletedCount, phone });
-  } catch (err) { next(err); }
+router.delete('/clients/:phone', auth('admin'), (req, res) => {
+  return res.status(410).json({
+    message: 'حذف حساب العميل أو طلباته من هذا المسار متوقف نهائيًا. استخدم الأرشفة دون المساس بالسجلات.',
+    code: 'PERMANENT_DELETE_DISABLED'
+  });
 });
 
 router.use(createAdminOffersRouter({ auth, Order, Fanni, adminName, writeAdminAudit }));
@@ -428,7 +421,7 @@ async function writeAdminAudit(req, action, category, target, details) {
       action: String(action || '').slice(0, 100),
       category: String(category || 'admin').slice(0, 50),
       target: String(target || '').slice(0, 200),
-      details: String(details || '').slice(0, 1000),
+      details: String(details || '').slice(0, 3000),
       adminName: adminName(req),
       adminId: String(req.user?._id || ''),
       ip: String(req.ip || '').slice(0, 80)
@@ -437,9 +430,12 @@ async function writeAdminAudit(req, action, category, target, details) {
 }
 
 router.use(createAdminClientsRouter({ auth, Joi, Client, normalizePhone, adminName, writeAdminAudit }));
+router.use(createAdminClientProfilesRouter({
+  auth, Client, Order, Complaint, WalletTransaction, ClientSubscription,
+  ClientTopupRequest, StoreOrder, SupportCase, AdminAuditLog, validId, sendBadId
+}));
 
-// GET /clients is intentionally provided by the platform router below.
-// Its response merges registered accounts with order-only customers and sets registered=true.
+// GET /clients is provided by the platform router and lists registered Client accounts only.
 
 
 router.use(createAdminServicesRouter({

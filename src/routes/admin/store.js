@@ -3,6 +3,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const { normalizeStoreCategoryName, buildStoreCategories } = require('../../utils/storeCategories');
+const Notification = require('../../models/Notification');
 
 function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTransaction, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }) {
   const router = express.Router();
@@ -404,6 +405,15 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       await order.save({ session });
       await session.commitTransaction();
       await writeAdminAudit(req, 'تحديث حالة طلب متجر', 'store-orders', String(order._id), order.status);
+      if (['مكتمل', 'مرفوض', 'ملغي'].includes(order.status)) {
+        // The original admin alert is keyed by order ID. Retire it only when
+        // that exact order reaches a terminal state; other orders stay visible.
+        await Notification.updateMany({
+          recipientRole: 'admin',
+          dedupeKey: new RegExp('^store-order:' + String(order._id) + ':')
+        }, { $set: { isActive: false, readAt: new Date() } })
+          .catch(error => console.error('Could not retire terminal store-order notification:', error.message));
+      }
       const refundMessage = refundAmount > 0
         ? ' وتم استرداد مبلغ ' + refundAmount.toLocaleString('ar-EG') + ' جنيه إلى محفظتك.'
         : '';
@@ -412,7 +422,11 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         type: refundAmount > 0 ? (order.buyerRole === 'client' ? 'client_wallet_credit' : 'wallet_credit') : 'store_order_update',
         title: refundAmount > 0 ? (order.status === 'مرفوض' ? 'تم رفض الطلب واسترداد المبلغ' : 'تم إلغاء الطلب واسترداد المبلغ') : 'تحديث طلب المتجر',
         message: 'طلب ' + order.productName + ': ' + order.status + '، الدفع: ' + order.paymentMethod + refundMessage + (order.adminNote ? ' — ' + order.adminNote : ''),
-        link: order.buyerRole === 'client' ? '/client?tab=store' : '/fanni?tab=store'
+        link: order.buyerRole === 'client' ? '/client?tab=store' : '/fanni?tab=store',
+        dedupeKey: 'store-order-status:' + String(order._id),
+        refreshExisting: true,
+        relatedEntityType: 'store_order',
+        relatedEntityId: order._id
       });
       return res.json({ message: refundAmount > 0 ? 'تم إلغاء الطلب واسترداد المبلغ إلى المحفظة وإرسال الإشعار.' : 'تم تحديث حالة الطلب وإرسال إشعار لصاحبه.', order, refundedAmount: refundAmount });
     } catch (error) {

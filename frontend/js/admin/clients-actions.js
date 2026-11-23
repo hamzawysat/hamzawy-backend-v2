@@ -1,12 +1,12 @@
 'use strict';
 
-async function loadClients(query=''){state.clientsLoading=true;state.clientSearch=String(query||'').trim();if(state.tab==='clients')render();try{const url='/api/admin/clients'+(state.clientSearch?'?search='+encodeURIComponent(state.clientSearch):'');const data=await tryApi([url],{method:'GET'});state.clients=extractList(data,['clients','items']);applyClientFilter();}catch(e){state.clients=[];state.filteredClients=[];showToast(e.message||'تعذر تحميل العملاء','error');}finally{state.clientsLoading=false;if(state.tab==='clients')render();}}
+async function loadClients(query=state.clientSearch||'',page=state.clientPage||1){state.clientsLoading=true;state.clientSearch=String(query||'').trim();state.clientPage=Math.max(1,Number(page)||1);if(state.tab==='clients')render();try{const params=new URLSearchParams({page:String(state.clientPage),limit:String(state.clientLimit||25)});if(state.clientSearch)params.set('search',state.clientSearch);if(state.clientStatusFilter==='active')params.set('status','نشط');if(state.clientStatusFilter==='suspended')params.set('status','معلق');const data=await tryApi(['/api/admin/clients?'+params.toString()],{method:'GET'});state.clients=extractList(data,['clients','items']);state.clientTotal=Number(data.total||0);state.clientPages=Number(data.pages||0);state.clientPage=Number(data.page||state.clientPage);applyClientFilter();}catch(e){state.clients=[];state.filteredClients=[];showToast(e.message||'تعذر تحميل العملاء','error');}finally{state.clientsLoading=false;if(state.tab==='clients')render();}}
 
 
-async function searchClients(){await loadClients(String(document.getElementById('client-search')?.value||'').trim());}
+async function searchClients(){await loadClients(String(document.getElementById('client-search')?.value||'').trim(),1);}
 
 
-async function openClient(phone){setTab('orders'); state.search=phone; applyOrderFilter(); showToast('عرض طلبات العميل '+phone);}
+async function openClient(phone){const client=(state.clients||[]).find(item=>String(item.phone||'')===String(phone||''));if(!client||!(client.id||client._id))return showToast('حساب العميل غير موجود في القائمة الحالية','error');return openClientProfile(String(client.id||client._id));}
 
 
 async function blockClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');const reason=prompt('سبب تعليق حساب العميل '+phone+' (مطلوب للتوثيق):','مراجعة إدارية');if(reason===null)return;if(reason.trim().length<2)return showToast('اكتب سببًا واضحًا من حرفين على الأقل','error');if(!confirm('تأكيد تعليق حساب العميل '+phone+'؟ سيُمنع من تسجيل الدخول واستخدام المسارات المحمية.'))return;try{const data=await tryApi([`/api/admin/clients/${encodeURIComponent(phone)}/block`],{method:'POST',body:JSON.stringify({reason:reason.trim()})});showToast(data.message||'تم تعليق حساب العميل');await loadClients(state.clientSearch||'');}catch(e){showToast(e.message||'تعذر تعليق حساب العميل','error');}}
@@ -33,7 +33,7 @@ async function changeAccountPassword(role,identifier){
 }
 
 
-async function deleteRegisteredClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');if(!confirm('حذف حساب العميل المسجل '+phone+'؟ سجل الطلبات التاريخي سيظل محفوظًا، والحذف مرفوض أثناء وجود طلب نشط.'))return;try{const result=await tryApi(['/api/admin/clients/'+encodeURIComponent(phone)+'/account'],{method:'DELETE'});showToast(result.message||'تم حذف الحساب');await loadClients(state.clientSearch||'');}catch(e){showToast(e.message||'تعذر حذف الحساب','error');}}
+async function deleteRegisteredClient(phone){return showToast('الحذف النهائي متوقف. استخدم أرشفة الحساب من ملف العميل أو قائمة الإجراءات.','error');}
 
 
 async function noteClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');const note=prompt('الملاحظة الداخلية للعميل '+phone+' (حتى 2000 حرف):');if(note===null)return;if(!note.trim())return showToast('اكتب الملاحظة قبل الحفظ','error');try{const data=await tryApi([`/api/admin/clients/${encodeURIComponent(phone)}/note`],{method:'POST',body:JSON.stringify({note:note.trim()})});showToast(data.message||'تم حفظ الملاحظة الداخلية');}catch(e){showToast(e.message||'تعذر حفظ الملاحظة','error');}}

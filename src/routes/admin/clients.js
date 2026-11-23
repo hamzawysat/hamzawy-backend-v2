@@ -16,7 +16,7 @@ router.post('/clients/:phone/force-password-change', auth('admin'), async (req, 
   try {
     const phone = normalizePhone(req.params.phone);
     if (!phone) return res.status(400).json({ message: 'رقم هاتف العميل غير صالح' });
-    const client = await Client.findOne({ phone });
+    const client = await Client.findOne({ phone, archivedAt: null });
     if (!client) return res.status(404).json({ message: 'حساب العميل غير موجود' });
     client.mustChangePassword = true;
     client.tokenVersion = Number(client.tokenVersion || 0) + 1;
@@ -29,7 +29,7 @@ router.delete('/clients/:phone/force-password-change', auth('admin'), async (req
   try {
     const phone = normalizePhone(req.params.phone);
     if (!phone) return res.status(400).json({ message: 'رقم هاتف العميل غير صالح' });
-    const client = await Client.findOne({ phone });
+    const client = await Client.findOne({ phone, archivedAt: null });
     if (!client) return res.status(404).json({ message: 'حساب العميل غير موجود' });
     client.mustChangePassword = false;
     client.tokenVersion = Number(client.tokenVersion || 0) + 1;
@@ -46,8 +46,8 @@ router.post('/clients/:phone/block', auth('admin'), async (req, res, next) => {
     const schema = Joi.object({ reason: Joi.string().trim().min(2).max(500).required() }).required();
     const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
     if (error) return res.status(400).json({ message: 'اكتب سبب الحظر من حرفين إلى 500 حرف' });
-    const client = await Client.findOne({ phone });
-    if (!client) return res.status(404).json({ message: 'لا يوجد حساب عميل مسجل بهذا الرقم. الطلبات المنشأة دون حساب لا يمكن حظرها من هذه الخاصية.' });
+    const client = await Client.findOne({ phone, archivedAt: null });
+    if (!client) return res.status(404).json({ message: 'حساب العميل غير موجود أو مؤرشف.' });
     if (client.status === 'معلق') return res.json({ message: 'حساب العميل معلق بالفعل', client: { id: String(client._id), name: client.name, phone: client.phone, status: client.status } });
     client.status = 'معلق';
     await client.save();
@@ -60,7 +60,7 @@ router.post('/clients/:phone/unblock', auth('admin'), async (req, res, next) => 
   try {
     const phone = normalizePhone(req.params.phone);
     if (!phone) return res.status(400).json({ message: 'رقم هاتف العميل غير صالح' });
-    const client = await Client.findOne({ phone });
+    const client = await Client.findOne({ phone, archivedAt: null });
     if (!client) return res.status(404).json({ message: 'لا يوجد حساب عميل مسجل بهذا الرقم' });
     if (client.status !== 'معلق') return res.json({ message: 'حساب العميل نشط بالفعل', client: { id: String(client._id), name: client.name, phone: client.phone, status: client.status } });
     client.status = 'نشط';
@@ -77,13 +77,15 @@ router.post('/clients/:phone/note', auth('admin'), async (req, res, next) => {
     const schema = Joi.object({ note: Joi.string().trim().min(1).max(2000).required() }).required();
     const { error, value } = schema.validate(req.body || {}, { abortEarly: false });
     if (error) return res.status(400).json({ message: 'الملاحظة مطلوبة وبحد أقصى 2000 حرف' });
-    const client = await Client.findOne({ phone });
+    const client = await Client.findOne({ phone, archivedAt: null });
     if (!client) return res.status(404).json({ message: 'لا يوجد حساب عميل مسجل بهذا الرقم لحفظ الملاحظة عليه' });
     const note = value.note.trim();
     client.adminNote = note;
     client.adminNotesHistory.push({ note, date: new Date(), by: adminName(req), byId: req.user?._id });
     await client.save();
-    return res.json({ message: 'تم حفظ الملاحظة الداخلية وسجلها', client: { id: String(client._id), name: client.name, phone: client.phone, adminNote: client.adminNote } });
+    await writeAdminAudit(req, 'إضافة ملاحظة داخلية على عميل', 'clients', String(client._id),
+      JSON.stringify({ phone: client.phone, note, noteLength: note.length }));
+    return res.json({ message: 'تم حفظ الملاحظة الداخلية وسجلها في سجل التدقيق', client: { id: String(client._id), name: client.name, phone: client.phone, adminNote: client.adminNote } });
   } catch (error) { return next(error); }
 });
 

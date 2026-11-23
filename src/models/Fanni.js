@@ -100,6 +100,13 @@ const fanniSchema = new mongoose.Schema({
     default: 'قيد المراجعة',
     index: true
   },
+
+  // Soft archive metadata. Keep the technician identity and all GridFS references intact.
+  // archivedAt is the single source of truth; null means the account is active.
+  archivedAt: { type: Date, default: null, index: true },
+  archivedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null },
+  archivedByName: { type: String, trim: true, maxlength: 120, default: '' },
+  archiveReason: { type: String, trim: true, maxlength: 1000, default: '' },
   // Technician can pause new opportunities without affecting assigned jobs or chats.
   acceptingOrders: { type: Boolean, default: true, index: true },
   rejectionReason: { type: String, maxlength: 500 },
@@ -233,6 +240,8 @@ const fanniSchema = new mongoose.Schema({
 
 }, { timestamps: true });
 
+
+fanniSchema.index({ archivedAt: 1, createdAt: -1 });
 
 // فهارس منفصلة لتجنب جمع مصفوفتين في فهرس مركب واحد
 fanniSchema.index({ status: 1, specialties: 1 });

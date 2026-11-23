@@ -129,6 +129,7 @@ router.post('/:sn/accept', async (req, res, next) => {
     const fanniBefore = await Fanni.findOne({
       _id: fanniId,
       role: 'fanni',
+      archivedAt: null,
       status: 'معتمد',
       isFrozen: { $ne: true }
     }).session(session);
@@ -160,6 +161,7 @@ router.post('/:sn/accept', async (req, res, next) => {
       {
         _id: fanniId,
         role: 'fanni',
+        archivedAt: null,
         status: 'معتمد',
         isFrozen: { $ne: true },
         walletBalance: { $gte: commissionAmount }
@@ -533,7 +535,7 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
       return res.status(409).json({ message: existing.status === 'تم الانتهاء' ? 'المهمة مكتملة بالفعل' : 'حالة الطلب لا تسمح بإكمال المهمة' });
     }
 
-    const fanni = await Fanni.findOne({ _id: req.userId, role: 'fanni' }).session(session);
+    const fanni = await Fanni.findOne({ _id: req.userId, role: 'fanni', archivedAt: null }).session(session);
     if (!fanni) { await session.abortTransaction(); return res.status(404).json({ message: 'حساب الفني غير موجود.' }); }
 
     // Completing the work only records the technician's declaration.

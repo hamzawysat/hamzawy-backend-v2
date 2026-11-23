@@ -41,7 +41,7 @@ function createOrderChatRouter({
     try {
       const payload = jwt.verify(token, process.env.JWT_SECRET);
       if (payload.role !== 'fanni' || !payload.id) return null;
-      const fanni = await Fanni.findOne({ _id: payload.id, role: 'fanni', status: 'معتمد' })
+      const fanni = await Fanni.findOne({ _id: payload.id, role: 'fanni', archivedAt: null, status: 'معتمد' })
         .select('_id tokenVersion').lean();
       if (!fanni || Number(payload.tokenVersion || 0) !== Number(fanni.tokenVersion || 0)) return null;
       return String(fanni._id);
@@ -178,7 +178,7 @@ function createOrderChatRouter({
         const oldCommission = money(Number(order.commissionAmount || 0));
         const newCommission = money(Number(request.newPrice) * rate / 100);
         const delta = money(newCommission - oldCommission);
-        const fanni = await Fanni.findOne({ _id: request.fanniId, role: 'fanni' }).session(session);
+        const fanni = await Fanni.findOne({ _id: request.fanniId, role: 'fanni', archivedAt: null }).session(session);
         if (!fanni) { await session.abortTransaction(); return res.status(409).json({ message: 'تعذر العثور على محفظة الفني لتنفيذ تسوية العمولة.' }); }
         const balanceBefore = Number(fanni.walletBalance || 0);
         if (!Number.isFinite(balanceBefore) || balanceBefore < 0 || (delta > 0 && balanceBefore < delta)) { await session.abortTransaction(); return res.status(409).json({ message: 'رصيد الفني لا يكفي لتسوية عمولة السعر الجديد؛ لم يتم اعتماد التعديل.' }); }

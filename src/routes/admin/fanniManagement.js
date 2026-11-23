@@ -12,7 +12,7 @@ function createAdminFanniManagementRouter({
 router.post('/fannis/:id/force-password-change', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     fanni.mustChangePassword = true;
     fanni.tokenVersion = Number(fanni.tokenVersion || 0) + 1;
@@ -24,7 +24,7 @@ router.post('/fannis/:id/force-password-change', auth('admin'), async (req, res,
 router.delete('/fannis/:id/force-password-change', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     fanni.mustChangePassword = false;
     fanni.tokenVersion = Number(fanni.tokenVersion || 0) + 1;
@@ -37,7 +37,7 @@ router.delete('/fannis/:id/force-password-change', auth('admin'), async (req, re
 router.post('/fannis/:id/approve', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).select('+identityCardFrontFileId');
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null }).select('+identityCardFrontFileId');
     if (!fanni) { return res.status(404).json({ message: 'الفني غير موجود' }); }
     if (fanni.identityCardFrontFileId && fanni.identityReviewStatus !== 'approved') return res.status(409).json({ message: 'لا يمكن اعتماد الفني قبل مراجعة صور البطاقة والرقم القومي من شاشة انتظار الاعتماد.' });
     if (fanni.status === 'معلق') { return res.status(409).json({ message: 'الفني معلق. أعد تفعيله أولاً قبل القبول' }); }
@@ -57,7 +57,7 @@ router.post('/fannis/:id/approve', auth('admin'), async (req, res, next) => {
 router.post('/fannis/:id/reject', auth('admin'), validate(Joi.object({ reason: reasonSchema.optional() })), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) { return res.status(404).json({ message: 'الفني غير موجود' }); }
     if (fanni.status === 'معلق') { return res.status(409).json({ message: 'لا يمكن رفض حساب معلق. أعده للمراجعة أولاً' }); }
     if (fanni.status === 'مرفوض') { return res.json({ message: 'الفني مرفوض بالفعل', fanni: publicFanni(fanni) }); }
@@ -71,7 +71,7 @@ router.post('/fannis/:id/reject', auth('admin'), validate(Joi.object({ reason: r
 router.post('/fannis/:id/disable', auth('admin'), validate(Joi.object({ reason: reasonSchema.optional() })), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) { return res.status(404).json({ message: 'الفني غير موجود' }); }
     if (fanni.status === 'معلق') { return res.json({ message: 'حساب الفني معلق بالفعل', fanni: publicFanni(fanni) }); }
     const reason = String(req.body.reason || '').trim();
@@ -84,7 +84,7 @@ router.post('/fannis/:id/disable', auth('admin'), validate(Joi.object({ reason: 
 router.post('/fannis/:id/enable', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) { return res.status(404).json({ message: 'الفني غير موجود' }); }
     if (fanni.status !== 'معلق') { return res.json({ message: 'حساب الفني غير معلق', fanni: publicFanni(fanni) }); }
     const previousDecision = [...(fanni.decisions || [])].reverse().find(item => !['تعليق', 'إعادة تفعيل'].includes(item.action));
@@ -95,72 +95,12 @@ router.post('/fannis/:id/enable', auth('admin'), async (req, res, next) => {
   } catch (err) { next(err); }
 });
 
-router.delete('/fannis/:id', auth('admin'), async (req, res, next) => {
-  let session;
-  try {
-    if (!validId(req.params.id)) { return sendBadId(res); }
-    session = await Fanni.db.startSession();
-    let fanni;
-    let summary;
-    let releasedRejectedIdentityLedger = false;
-    await session.withTransaction(async () => {
-      fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' }).session(session);
-      if (!fanni) {
-        const error = new Error('الفني غير موجود');
-        error.status = 404;
-        throw error;
-      }
-      const fanniId = fanni._id;
-      const [topupCount, pendingTopupCount, transactionCount, relatedOrderCount, activeOrderCount] = await Promise.all([
-        TopupRequest.countDocuments({ fanni: fanniId }).session(session),
-        TopupRequest.countDocuments({ fanni: fanniId, status: 'قيد المراجعة' }).session(session),
-        WalletTransaction.countDocuments({ fanni: fanniId }).session(session),
-        Order.countDocuments({ $or: [{ assignedFanni: fanniId }, { 'offers.fanni': fanniId }] }).session(session),
-        Order.countDocuments({ status: { $in: ['قيد المراجعة', 'تم النشر', 'وصلتك عروض', 'تم اختيار فني'] }, $or: [{ assignedFanni: fanniId }, { 'offers.fanni': fanniId }] }).session(session)
-      ]);
-      summary = { balance: Number(fanni.walletBalance || 0), topupCount, pendingTopupCount, transactionCount, relatedOrderCount, activeOrderCount };
-
-      // Release only card-ledger entries that belong exclusively to this technician.
-      // Shared identity ledgers remain reserved for their other linked technicians.
-      const ledgers = fanni.status === 'مرفوض'
-        ? await FanniCardLedger.find({ $or: [{ fanniId }, { 'linkedTechnicians.fanniId': fanniId }] }).session(session)
-        : [];
-      for (const ledger of ledgers) {
-        const remainingLinks = (ledger.linkedTechnicians || []).filter(link => String(link.fanniId || '') !== String(fanniId));
-        const wasPrimary = String(ledger.fanniId || '') === String(fanniId);
-        ledger.linkedTechnicians = remainingLinks;
-        if (wasPrimary) {
-          ledger.fanniId = remainingLinks[0]?.fanniId || null;
-          if (remainingLinks[0]?.name) ledger.fanniName = remainingLinks[0].name;
-        }
-        if (wasPrimary && remainingLinks.length === 0) {
-          await FanniCardLedger.deleteOne({ _id: ledger._id }, { session });
-          releasedRejectedIdentityLedger = true;
-        } else {
-          await ledger.save({ session });
-        }
-      }
-
-      const deleted = await Fanni.deleteOne({ _id: fanniId, role: 'fanni' }, { session });
-      if (deleted.deletedCount !== 1) {
-        const error = new Error('لم يتم حذف حساب الفني. حدّث القائمة وحاول مرة أخرى.');
-        error.status = 409;
-        throw error;
-      }
-    });
-    const fanniId = String(fanni._id);
-    await writeAdminAudit(req, 'حذف حساب فني', 'fannis', fanniId, `name=${fanni.name}; balance=${summary.balance}; transactions=${summary.transactionCount}; orders=${summary.relatedOrderCount}; releasedRejectedIdentityLedger=${releasedRejectedIdentityLedger}`);
-    const message = releasedRejectedIdentityLedger
-      ? 'تم حذف الحساب المرفوض وتحرير سجل هويته لإتاحة إعادة التسجيل. احتُفظ بسجلات الطلبات والشحنات والحركات المالية.'
-      : 'تم حذف حساب الفني. احتُفظ بسجل الهوية لمنع إعادة استخدامه، وكذلك بسجلات الطلبات والشحنات والحركات المالية.';
-    return res.json({ message, deleted: 1, fanniId, summary, releasedRejectedIdentityLedger });
-  } catch (err) {
-    if (err?.status === 404) return res.status(404).json({ message: err.message });
-    if (err?.status === 409) return res.status(409).json({ message: err.message });
-    next(err);
-  } finally {
-    if (session) await session.endSession();
-  }
+// The legacy technician deletion endpoint is retained only as a closed compatibility route.
+router.delete('/fannis/:id', auth('admin'), (req, res) => {
+  return res.status(410).json({
+    message: 'الحذف النهائي للفنيين متوقف. استخدم الأرشفة مع كتابة السبب.',
+    code: 'PERMANENT_DELETE_DISABLED'
+  });
 });
 
 const VALID_LEVELS = ['مبتدئ', 'ممارس', 'محترف', 'خبير مبتدئ', 'خبير', 'خبير أول', 'استشاري فني', 'نخبة', 'أسطوري'];
@@ -175,7 +115,7 @@ router.patch('/fannis/:id/level', auth('admin'), async (req, res, next) => {
       return res.status(400).json({ message: 'المستوى غير صالح. القيم: ' + VALID_LEVELS.join(', ') });
     }
     const newLevel = String(level).trim();
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     const oldLevel = fanni.level;
     if (oldLevel === newLevel) return res.json({ message: 'المستوى هو نفسه بالفعل', fanni: publicFanni(fanni) });
@@ -198,7 +138,7 @@ router.patch('/fannis/:id/badge', auth('admin'), async (req, res, next) => {
     }
     const b = String(badge).trim();
     const act = String(action||'add').trim(); // add | remove | toggle
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     const hasBadge = Array.isArray(fanni.badges) && fanni.badges.includes(b);
     if (act === 'add' || act === '' || act === 'toggle' && !hasBadge) {
@@ -226,7 +166,7 @@ router.patch('/fannis/:id/note', auth('admin'), async (req, res, next) => {
     const { note } = req.body;
     const clean = String(note||'').trim().slice(0,2000);
     if (!clean) return res.status(400).json({ message: 'الملاحظة لا يمكن أن تكون فارغة' });
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     fanni.adminNote = clean;
     fanni.adminNotesHistory.push({ note: clean, date: new Date(), by: adminName(req), byId: req.user?._id });
@@ -242,7 +182,7 @@ router.patch('/fannis/:id/limit', auth('admin'), async (req, res, next) => {
   try {
     if (!validId(req.params.id)) return sendBadId(res);
     const { maxOrders, maxOffers, dailyLimit, isLimited, reason } = req.body;
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     const limits = fanni.limits || {};
     if (maxOrders !== undefined) {
@@ -290,7 +230,7 @@ router.patch('/fannis/:id/profile-controls', auth('admin'), async (req, res, nex
     if (value.isFeatured === true && normalizedFeaturedUntil && new Date(normalizedFeaturedUntil) <= new Date()) {
       return res.status(400).json({ message: 'تاريخ انتهاء التمييز يجب أن يكون اليوم أو تاريخًا مستقبليًا' });
     }
-    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni' });
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
     if (!fanni) return res.status(404).json({ message: 'الفني غير موجود' });
     const before = { trustScore: fanni.trustScore, isVerified: fanni.isVerified, isFeatured: fanni.isFeatured, featuredUntil: fanni.featuredUntil };
     if (value.trustScore !== undefined) fanni.trustScore = value.trustScore;

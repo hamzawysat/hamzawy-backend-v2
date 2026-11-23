@@ -153,6 +153,9 @@ async function run() {
 
       const storeRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/store.js'), 'utf8');
       assert.match(storeRoute, /StoreOrder\.countDocuments\(\{ status: 'جديد' \}\)/, 'cancelled and completed orders must not count as pending');
+      assert.match(storeRoute, /Notification\.updateMany/, 'terminal store states must retire the exact admin order notification');
+      assert.match(storeRoute, /\['مكتمل', 'مرفوض', 'ملغي'\]/, 'admin order alerts are retired only for terminal states');
+      assert.match(storeRoute, /store-order:/, 'admin alert cleanup is scoped to the exact store-order dedupe key');
     });
 
     await test('admin FCM channel routing is isolated from Expo client and technician notifications', async () => {
@@ -576,8 +579,12 @@ async function run() {
     await test('wallet balance mutations are governed by wallet permissions, not technician-list permissions', async () => {
       const user = { role: 'fanni', adminRole: 'مدير', adminPermissions: { __customOverrides: true, fannis: { read: false, write: false }, wallet: { read: true, write: true } } };
       assert.equal(canAccessAdmin(user, { path: '/fannis/507f1f77bcf86cd799439011/set-balance', method: 'POST' }), true);
+      assert.equal(canAccessAdmin(user, { path: '/fannis/507f1f77bcf86cd799439011/deduct-balance', method: 'POST' }), true, 'technician deductions must use wallet permission');
       user.adminPermissions.wallet.write = false;
       assert.equal(canAccessAdmin(user, { path: '/fannis/507f1f77bcf86cd799439011/set-balance', method: 'POST' }), false);
+      const identityReader = { role: 'fanni', adminRole: 'مدير', adminPermissions: { __customOverrides: true, fannis: { read: true, write: false }, wallet: { read: false, write: false } } };
+      assert.equal(canAccessAdmin(identityReader, { path: '/admin/507f1f77bcf86cd799439011/identity/front', method: 'GET' }), true, 'identity images must use fanni read permission');
+      assert.equal(canAccessAdmin({ ...identityReader, adminPermissions: { __customOverrides: true, fannis: { read: false, write: false } } }, { path: '/admin/507f1f77bcf86cd799439011/identity/front', method: 'GET' }), false);
     });
 
     await test('browser push assets are wired without removing Expo notifications', async () => {
@@ -1212,6 +1219,38 @@ async function run() {
       const afterAll = await request(app).get('/api/notifications/client')
         .set('Authorization', 'Bearer ' + clientToken);
       assert.equal(afterAll.body.unreadCount, 0);
+    });
+
+    await test('inactive notifications stay out of the inbox and refreshed store-order status replaces the old item', async () => {
+      const Notification = require('../models/Notification');
+      const { createNotification } = require('../utils/notifications');
+      const relatedEntityId = new mongoose.Types.ObjectId();
+      const dedupeKey = 'test-store-order-status:' + String(relatedEntityId);
+      const first = await createNotification({
+        recipientRole: 'client', recipientId: clientId, type: 'store_order_update',
+        title: 'طلب جديد', message: 'طلب جهاز: تم التواصل', link: '/client?tab=store',
+        dedupeKey, refreshExisting: true, relatedEntityType: 'store_order', relatedEntityId
+      });
+      assert.ok(first?._id);
+      await Notification.updateOne({ _id: first._id }, { $set: { readAt: new Date() } });
+      const refreshed = await createNotification({
+        recipientRole: 'client', recipientId: clientId, type: 'store_order_update',
+        title: 'تم اكتمال طلب المتجر', message: 'طلب جهاز: مكتمل',
+        link: '/client?tab=store', dedupeKey, refreshExisting: true,
+        relatedEntityType: 'store_order', relatedEntityId
+      });
+      assert.equal(String(refreshed._id), String(first._id), 'one notification record should be refreshed for this order');
+      assert.equal(refreshed.message, 'طلب جهاز: مكتمل');
+      assert.equal(refreshed.readAt, null, 'a status update should reset the current notification to unread');
+
+      await Notification.updateOne({ _id: refreshed._id }, { $set: { isActive: false } });
+      const inbox = await request(app).get('/api/notifications/client')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(inbox.status, 200);
+      assert.equal(inbox.body.notifications.some(item => item.id === String(refreshed._id)), false);
+      const readInactive = await request(app).patch('/api/notifications/client/' + refreshed._id + '/read')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(readInactive.status, 404, 'inactive notification cannot be marked read through the API');
     });
 
     await test('second client receives a distinct account', async () => {
@@ -3109,100 +3148,266 @@ async function run() {
       await AdminConfig.findOneAndUpdate({ key: 'main' }, { $set: { 'settings.referralsEnabled': true } }, { upsert: true, setDefaultsOnInsert: true });
     });
 
-    await test('admin rejected technician filter and deletion release only exclusive identity ledger', async () => {
-      const vm = require('node:vm');
-      const adminNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
-      const filterStart = adminNavigation.indexOf('function applyFilter(){');
-      const filterEnd = adminNavigation.indexOf('\nfunction applyTopupFilter', filterStart);
-      assert.notEqual(filterStart, -1, 'technician status filter must exist');
-      assert.notEqual(filterEnd, -1, 'technician status filter must have a stable boundary');
-      const filterSource = adminNavigation.slice(filterStart, filterEnd);
-      const sample = [
-        { _id: 'approved', status: 'approved', isApproved: true, isDisabled: false, name: 'معتمد', phone: '01000000011' },
-        { _id: 'rejected', status: 'rejected', actualStatus: 'مرفوض', isApproved: false, isDisabled: false, name: 'مرفوض', phone: '01000000012' },
-        { _id: 'disabled', status: 'disabled', actualStatus: 'معلق', isApproved: false, isDisabled: true, name: 'موقوف', phone: '01000000013' },
-        { _id: 'pending', status: 'pending', actualStatus: 'قيد المراجعة', isApproved: false, isDisabled: false, name: 'معلق مراجعة', phone: '01000000014' }
-      ];
-      for (const [filter, expected] of [
-        ['الكل', ['approved', 'rejected', 'disabled', 'pending']],
-        ['rejected', ['rejected']],
-        ['disabled', ['disabled']],
-        ['approved', ['approved']],
-        ['pending', ['pending']]
-      ]) {
-        const context = { state: { fannis: sample, tab: 'fannis', filter, search: '', silentRefresh: true }, render() {} };
-        vm.runInNewContext(filterSource + ';applyFilter();', context);
-        assert.deepEqual(Array.from(context.state.filtered, item => item._id), expected, 'wrong technician filter result for ' + filter);
-      }
-
+    await test('legacy technician delete endpoint is closed and never releases identity records', async () => {
       const Fanni = require('../models/Fanni');
       const FanniCardLedger = require('../models/FanniCardLedger');
       const rejected = await Fanni.create({
-        name: 'فني مرفوض للحذف', phone: '01000000021', passwordHash: 'test-hash',
+        name: 'فني يجب الاحتفاظ به', phone: '01000000031', passwordHash: 'test-hash',
         specialties: ['تجربة'], areas: ['القاهرة'], status: 'مرفوض', role: 'fanni'
       });
-      const exclusiveHash = 'test-rejected-account-card-hash-exclusive';
-      await FanniCardLedger.create({
-        nationalIdHash: exclusiveHash, nationalIdEncrypted: 'encrypted-test-value',
+      const nationalIdHash = 'test-no-delete-card-ledger-archive';
+      const ledger = await FanniCardLedger.create({
+        nationalIdHash, nationalIdEncrypted: 'encrypted-test-value',
         fanniId: rejected._id, fanniName: rejected.name,
         linkedTechnicians: [{ fanniId: rejected._id, name: rejected.name, phone: rejected.phone }]
       });
-      const removed = await request(app).delete('/api/admin/fannis/' + rejected._id)
+      const response = await request(app).delete('/api/admin/fannis/' + rejected._id)
         .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(removed.status, 200, JSON.stringify(removed.body));
-      assert.equal(await Fanni.exists({ _id: rejected._id }), null, 'rejected account should be removed');
-      assert.equal(await FanniCardLedger.exists({ nationalIdHash: exclusiveHash }), null, 'exclusive national-ID ledger should be released');
+      assert.equal(response.status, 410, JSON.stringify(response.body));
+      assert.ok(await Fanni.exists({ _id: rejected._id }), 'the technician account must remain');
+      const preservedLedger = await FanniCardLedger.findById(ledger._id).lean();
+      assert.ok(preservedLedger, 'the identity ledger must remain');
+      assert.equal(preservedLedger.nationalIdHash, nationalIdHash);
+      assert.equal(String(preservedLedger.fanniId), String(rejected._id));
+    });
 
-      const replacement = await Fanni.create({
-        name: 'فني إعادة التسجيل', phone: rejected.phone, passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'قيد المراجعة', role: 'fanni'
+    await test('client and technician archives preserve account identity, reject destructive routes, and restore safely', async () => {
+      const Client = require('../models/Client');
+      const Fanni = require('../models/Fanni');
+      const archiveTestPassword = 'archive-test-password';
+      const archiveTestHash = require('bcryptjs').hashSync(archiveTestPassword, 4);
+      const client = await Client.create({
+        name: 'عميل اختبار الأرشيف', phone: '01055550101', passwordHash: archiveTestHash,
+        walletBalance: 125, status: 'نشط'
       });
-      await FanniCardLedger.create({
-        nationalIdHash: exclusiveHash, nationalIdEncrypted: 'encrypted-test-value',
-        fanniId: replacement._id, fanniName: replacement.name,
-        linkedTechnicians: [{ fanniId: replacement._id, name: replacement.name, phone: replacement.phone }]
+      const archiveOrderSn = 'SN' + String((Date.now() + 2) % 1000000).padStart(6, '0');
+      const archiveOrder = await require('../models/Order').create({
+        sn: archiveOrderSn, clientAccount: client._id, clientAccountLinkedAt: new Date(),
+        service: 'اختبار الأرشيف', area: 'القاهرة', clientName: client.name,
+        clientPhone: client.phone, status: 'تم النشر'
       });
-      assert.ok(await FanniCardLedger.exists({ nationalIdHash: exclusiveHash }), 'the released national-ID hash must be reusable');
+      const archiveOrderToken = require('jsonwebtoken').sign({
+        purpose: 'client-order', accountId: String(client._id),
+        orderId: String(archiveOrder._id), sn: archiveOrder.sn
+      }, process.env.JWT_SECRET, { expiresIn: '30d' });
+      const frontId = new mongoose.Types.ObjectId();
+      const backId = new mongoose.Types.ObjectId();
+      const photoId = new mongoose.Types.ObjectId();
+      const fanni = await Fanni.create({
+        name: 'فني اختبار الأرشيف', phone: '01055550102', passwordHash: archiveTestHash,
+        specialties: ['اختبار'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni',
+        walletBalance: 75, identityCardFrontFileId: frontId,
+        identityCardBackFileId: backId, profilePhotoFileId: photoId
+      });
 
-      const approvedOwner = await Fanni.create({
-        name: 'فني معتمد محذوف', phone: '01000000024', passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni'
-      });
-      const approvedHash = 'test-approved-technician-card-hash-reserved';
-      await FanniCardLedger.create({
-        nationalIdHash: approvedHash, nationalIdEncrypted: 'encrypted-approved-test',
-        fanniId: approvedOwner._id, fanniName: approvedOwner.name,
-        linkedTechnicians: [{ fanniId: approvedOwner._id, name: approvedOwner.name, phone: approvedOwner.phone }]
-      });
-      const approvedRemoval = await request(app).delete('/api/admin/fannis/' + approvedOwner._id)
+      const missingReason = await request(app)
+        .post('/api/admin/clients/' + client._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({});
+      assert.equal(missingReason.status, 400, 'archive reason must be mandatory');
+
+      const archivedClient = await request(app)
+        .post('/api/admin/clients/' + client._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'طلب الإدارة إيقاف الحساب مؤقتًا للاختبار.' });
+      assert.equal(archivedClient.status, 200, JSON.stringify(archivedClient.body));
+      const clientAfterArchive = await Client.findById(client._id).lean();
+      assert.ok(clientAfterArchive.archivedAt);
+      assert.equal(clientAfterArchive.archiveReason, 'طلب الإدارة إيقاف الحساب مؤقتًا للاختبار.');
+      assert.ok(clientAfterArchive.archivedBy);
+      assert.ok(clientAfterArchive.archivedByName);
+      assert.equal(clientAfterArchive.walletBalance, 125);
+      assert.equal(clientAfterArchive.tokenVersion, 1);
+
+      const duplicateClientArchive = await request(app)
+        .post('/api/admin/clients/' + client._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'محاولة أرشفة مكررة.' });
+      assert.equal(duplicateClientArchive.status, 409);
+      const archivedClientLogin = await request(app).post('/api/client/login')
+        .send({ phone: client.phone, password: archiveTestPassword });
+      assert.equal(archivedClientLogin.status, 403);
+      assert.equal(archivedClientLogin.body.code, 'ACCOUNT_ARCHIVED');
+      const archivedClientToken = require('jsonwebtoken').sign({
+        id: String(client._id), role: 'client', tokenVersion: 0
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const archivedClientOperation = await request(app).get('/api/store/client/orders')
+        .set('Authorization', 'Bearer ' + archivedClientToken);
+      assert.equal(archivedClientOperation.status, 403);
+      assert.equal(archivedClientOperation.body.code, 'ACCOUNT_ARCHIVED');
+      const archivedOrderTokenAccess = await request(app).get('/api/orders/' + archiveOrderSn)
+        .query({ clientToken: archiveOrderToken });
+      assert.equal(archivedOrderTokenAccess.status, 403, 'archived clients must also lose legacy order-token access');
+
+      const oldClientDelete = await request(app).delete('/api/admin/clients/' + client.phone + '/account')
         .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(approvedRemoval.status, 200, JSON.stringify(approvedRemoval.body));
-      assert.ok(await FanniCardLedger.exists({ nationalIdHash: approvedHash }), 'deleting an approved technician must not release the identity ledger');
-
-      const sharedOwner = await Fanni.create({
-        name: 'فني صاحب سجل مشترك', phone: '01000000022', passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'مرفوض', role: 'fanni'
-      });
-      const otherLinked = await Fanni.create({
-        name: 'فني مرتبط آخر', phone: '01000000023', passwordHash: 'test-hash',
-        specialties: ['تجربة'], areas: ['القاهرة'], status: 'معتمد', role: 'fanni'
-      });
-      const sharedHash = 'test-shared-technician-card-hash';
-      const sharedLedger = await FanniCardLedger.create({
-        nationalIdHash: sharedHash, nationalIdEncrypted: 'encrypted-shared-test',
-        fanniId: sharedOwner._id, fanniName: sharedOwner.name,
-        linkedTechnicians: [
-          { fanniId: sharedOwner._id, name: sharedOwner.name, phone: sharedOwner.phone },
-          { fanniId: otherLinked._id, name: otherLinked.name, phone: otherLinked.phone }
-        ]
-      });
-      const sharedRemoval = await request(app).delete('/api/admin/fannis/' + sharedOwner._id)
+      const oldClientDeleteByPhone = await request(app).delete('/api/admin/clients/' + client.phone)
         .set('Authorization', 'Bearer ' + adminToken);
-      assert.equal(sharedRemoval.status, 200, JSON.stringify(sharedRemoval.body));
-      const preservedLedger = await FanniCardLedger.findById(sharedLedger._id).lean();
-      assert.ok(preservedLedger, 'shared identity ledger must not be deleted');
-      assert.equal(String(preservedLedger.fanniId), String(otherLinked._id), 'primary technician should move to the remaining linked technician');
-      assert.deepEqual(preservedLedger.linkedTechnicians.map(link => String(link.fanniId)), [String(otherLinked._id)]);
+      assert.equal(oldClientDelete.status, 410);
+      assert.equal(oldClientDeleteByPhone.status, 410);
+      assert.ok(await Client.exists({ _id: client._id }), 'legacy delete endpoints must not delete client accounts');
+
+      const archivedClientList = await request(app).get('/api/admin/clients/archive?search=' + encodeURIComponent(client.phone))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(archivedClientList.status, 200, JSON.stringify(archivedClientList.body));
+      assert.equal(archivedClientList.body.total, 1);
+      assert.equal(String(archivedClientList.body.items[0]._id), String(client._id));
+      const hiddenActiveClient = await request(app).get('/api/admin/clients?search=' + encodeURIComponent(client.phone))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(hiddenActiveClient.status, 200);
+      assert.equal(hiddenActiveClient.body.total, 0, 'archived client must disappear from the active client list');
+
+      const nonArchivedClientId = new mongoose.Types.ObjectId().toString();
+      const notArchivedRestore = await request(app)
+        .post('/api/admin/clients/' + nonArchivedClientId + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.ok([400, 404, 409].includes(notArchivedRestore.status), 'restore must reject a non-archived/invalid account reference');
+
+      const restoredClient = await request(app)
+        .post('/api/admin/clients/' + client._id + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(restoredClient.status, 200, JSON.stringify(restoredClient.body));
+      const clientAfterRestore = await Client.findById(client._id).lean();
+      assert.equal(String(clientAfterRestore._id), String(client._id));
+      assert.equal(clientAfterRestore.archivedAt, null);
+      assert.equal(clientAfterRestore.archiveReason, '');
+      assert.equal(clientAfterRestore.walletBalance, 125);
+      assert.equal(clientAfterRestore.tokenVersion, 2);
+      const clientProfile = await request(app).get('/api/admin/clients/' + client._id + '/profile')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(clientProfile.status, 200, JSON.stringify(clientProfile.body));
+      for (const key of ['client', 'orders', 'walletTransactions', 'subscriptions', 'topups', 'storeOrders', 'complaints', 'supportCases', 'auditLogs']) {
+        assert.ok(Object.prototype.hasOwnProperty.call(clientProfile.body, key), 'client profile should include ' + key);
+      }
+      const clientNote = await request(app).post('/api/admin/clients/' + client.phone + '/note')
+        .set('Authorization', 'Bearer ' + adminToken).send({ note: 'ملاحظة تدقيق للاختبار' });
+      assert.equal(clientNote.status, 200, JSON.stringify(clientNote.body));
+      const AdminAuditLog = require('../models/AdminAuditLog');
+      const clientNoteAudit = await AdminAuditLog.findOne({
+        category: 'clients', target: String(client._id), action: 'إضافة ملاحظة داخلية على عميل'
+      }).lean();
+      assert.ok(clientNoteAudit, 'every internal client note must have an audit entry');
+      assert.ok(clientNoteAudit.details.includes('ملاحظة تدقيق للاختبار'), 'the audit entry must retain the note content');
+
+      const duplicateClientRestore = await request(app)
+        .post('/api/admin/clients/' + client._id + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(duplicateClientRestore.status, 409);
+
+      const archivedFanni = await request(app)
+        .post('/api/admin/fannis/' + fanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ reason: 'إيقاف ملف الفني مؤقتًا للاختبار.' });
+      assert.equal(archivedFanni.status, 200, JSON.stringify(archivedFanni.body));
+      const fanniAfterArchive = await Fanni.findById(fanni._id)
+        .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
+      assert.ok(fanniAfterArchive.archivedAt);
+      assert.equal(fanniAfterArchive.archiveReason, 'إيقاف ملف الفني مؤقتًا للاختبار.');
+      assert.ok(fanniAfterArchive.archivedBy);
+      assert.ok(fanniAfterArchive.archivedByName);
+      assert.equal(fanniAfterArchive.walletBalance, 75);
+      assert.equal(String(fanniAfterArchive.identityCardFrontFileId), String(frontId));
+      assert.equal(String(fanniAfterArchive.identityCardBackFileId), String(backId));
+      assert.equal(String(fanniAfterArchive.profilePhotoFileId), String(photoId));
+
+      const oldFanniDelete = await request(app).delete('/api/admin/fannis/' + fanni._id)
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(oldFanniDelete.status, 410);
+      assert.ok(await Fanni.exists({ _id: fanni._id }), 'legacy delete endpoint must not delete technician accounts');
+      const duplicateFanniArchive = await request(app)
+        .post('/api/admin/fannis/' + fanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'محاولة أرشفة مكررة.' });
+      assert.equal(duplicateFanniArchive.status, 409);
+
+      const archivedFanniList = await request(app).get('/api/admin/fannis/archive?search=' + encodeURIComponent(fanni.phone))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(archivedFanniList.status, 200, JSON.stringify(archivedFanniList.body));
+      assert.equal(archivedFanniList.body.total, 1);
+      const activeFanniList = await request(app).get('/api/admin/fannis')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(activeFanniList.status, 200);
+      const activeFanniRows = activeFanniList.body.fannis || activeFanniList.body.items || [];
+      assert.equal(activeFanniRows.some(item => String(item._id) === String(fanni._id)), false, 'archived technician must disappear from active technician list');
+
+      const archivedFanniLogin = await request(app).post('/api/fanni/login')
+        .send({ phone: fanni.phone, password: archiveTestPassword });
+      assert.equal(archivedFanniLogin.status, 403);
+      assert.equal(archivedFanniLogin.body.code, 'ACCOUNT_ARCHIVED');
+      const archivedFanniToken = require('jsonwebtoken').sign({
+        id: String(fanni._id), role: 'fanni', tokenVersion: 0
+      }, process.env.JWT_SECRET, { expiresIn: '1h' });
+      const archivedFanniOperation = await request(app).get('/api/store/fanni/orders')
+        .set('Authorization', 'Bearer ' + archivedFanniToken);
+      assert.equal(archivedFanniOperation.status, 403);
+      assert.equal(archivedFanniOperation.body.code, 'ACCOUNT_ARCHIVED');
+
+      const restoredFanni = await request(app)
+        .post('/api/admin/fannis/' + fanni._id + '/restore')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(restoredFanni.status, 200, JSON.stringify(restoredFanni.body));
+      const fanniAfterRestore = await Fanni.findById(fanni._id)
+        .select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId').lean();
+      assert.equal(String(fanniAfterRestore._id), String(fanni._id));
+      assert.equal(fanniAfterRestore.archivedAt, null);
+      assert.equal(fanniAfterRestore.walletBalance, 75);
+      assert.equal(String(fanniAfterRestore.identityCardFrontFileId), String(frontId));
+      assert.equal(String(fanniAfterRestore.identityCardBackFileId), String(backId));
+      assert.equal(String(fanniAfterRestore.profilePhotoFileId), String(photoId));
+      const technicianProfile = await request(app).get('/api/admin/fannis/' + fanni._id + '/profile')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(technicianProfile.status, 200, JSON.stringify(technicianProfile.body));
+      assert.equal(technicianProfile.body.fanni.identityImages.front, '/api/fanni/admin/' + String(fanni._id) + '/identity/front');
+      for (const key of ['orders', 'offers', 'walletTransactions', 'topups', 'decisions', 'cardLedger', 'auditLogs']) {
+        assert.ok(Object.prototype.hasOwnProperty.call(technicianProfile.body, key), 'technician profile should include ' + key);
+      }
+    });
+
+    await test('active client list is paginated and contains registered Client accounts only', async () => {
+      const Client = require('../models/Client');
+      await Client.create([
+        { name: 'عميل صفحة أولى', phone: '01055550201', passwordHash: 'test-hash' },
+        { name: 'عميل صفحة ثانية', phone: '01055550202', passwordHash: 'test-hash' }
+      ]);
+      const orderOnlySn = 'SN' + String(Date.now() % 1000000).padStart(6, '0');
+      const orphanOrder = await require('../models/Order').create({
+        sn: orderOnlySn, service: 'اختبار', area: 'القاهرة',
+        clientName: 'سجل طلب بلا صف عميل', clientPhone: '01055550299',
+        status: 'تم النشر'
+      });
+      const orphanToken = require('jsonwebtoken').sign({
+        purpose: 'client-order', orderId: String(orphanOrder._id), sn: orphanOrder.sn
+      }, process.env.JWT_SECRET, { expiresIn: '30d' });
+      const orphanTracking = await request(app).get('/api/orders/' + orderOnlySn)
+        .query({ clientToken: orphanToken });
+      assert.equal(orphanTracking.status, 403, 'an order token without a matching registered Client account must not grant customer access');
+      const pageOne = await request(app).get('/api/admin/clients?page=1&limit=1')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(pageOne.status, 200, JSON.stringify(pageOne.body));
+      assert.equal(pageOne.body.limit, 1);
+      assert.ok(pageOne.body.total >= 2);
+      assert.equal(pageOne.body.items.length, 1);
+      assert.ok(pageOne.body.items[0]._id, 'every client row must be a real registered account');
+      const orderOnly = await request(app).get('/api/admin/clients?search=01055550299')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(orderOnly.status, 200, JSON.stringify(orderOnly.body));
+      assert.equal(orderOnly.body.total, 0, 'an order phone must not create a synthetic client account');
+      const orderCodeSearch = await request(app).get('/api/admin/clients?search=' + encodeURIComponent(orderOnlySn))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(orderCodeSearch.status, 200);
+      assert.equal(orderCodeSearch.body.total, 0, 'an order number without a registered Client account must not create a synthetic row');
+
+      const linkedClient = await Client.create({
+        name: 'عميل مرتبط بطلب', phone: '01055550301', passwordHash: 'test-hash'
+      });
+      const linkedOrderSn = 'SN' + String((Date.now() + 1) % 1000000).padStart(6, '0');
+      await require('../models/Order').create({
+        sn: linkedOrderSn, clientAccount: linkedClient._id, service: 'اختبار', area: 'القاهرة',
+        clientName: linkedClient.name, clientPhone: linkedClient.phone, status: 'تم النشر'
+      });
+      const linkedOrderSearch = await request(app).get('/api/admin/clients?search=' + encodeURIComponent(linkedOrderSn))
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(linkedOrderSearch.status, 200);
+      assert.equal(linkedOrderSearch.body.total, 1, 'order numbers should resolve to the existing Client account');
+      assert.equal(String(linkedOrderSearch.body.items[0]._id), String(linkedClient._id));
     });
 
     await test('unknown API route returns JSON 404', async () => {

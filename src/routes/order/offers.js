@@ -221,6 +221,7 @@ function createOrderOfferRouter({
       const fanni = await Fanni.findOne({
         _id: req.userId,
         role: 'fanni',
+        archivedAt: null,
         status: 'معتمد'
       }).select('specialties areas acceptingOrders walletBalance level isFrozen limits badges isVerified isFeatured featuredUntil +profilePhotoFileId');
   

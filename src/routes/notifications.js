@@ -91,17 +91,17 @@ function mountRoleRoutes(role) {
       const [unreadNotifications, recentReadNotifications] = await Promise.all([
         // Return every unread item so login replay never silently drops older
         // requests/orders simply because the inbox's recent-history window is full.
-        Notification.find({ recipientRole: role, recipientId, readAt: null }).sort({ createdAt: -1 }).lean(),
-        Notification.find({ recipientRole: role, recipientId, readAt: { $ne: null } }).sort({ createdAt: -1 }).limit(50).lean()
+        Notification.find({ recipientRole: role, recipientId, isActive: { $ne: false }, readAt: null }).sort({ updatedAt: -1, createdAt: -1 }).lean(),
+        Notification.find({ recipientRole: role, recipientId, isActive: { $ne: false }, readAt: { $ne: null } }).sort({ updatedAt: -1, createdAt: -1 }).limit(50).lean()
       ]);
       const notifications = [...unreadNotifications, ...recentReadNotifications]
-        .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+        .sort((a, b) => new Date(b.updatedAt || b.createdAt || 0).getTime() - new Date(a.updatedAt || a.createdAt || 0).getTime());
       const unreadCount = unreadNotifications.length;
       return res.set('Cache-Control', 'no-store').json({
         notifications: notifications.map(item => ({
           id: String(item._id), type: item.type, title: item.title,
           message: item.message, link: normalizeNotificationLink(item.link || '', item.type),
-          read: Boolean(item.readAt), createdAt: item.createdAt
+          read: Boolean(item.readAt), createdAt: item.updatedAt || item.createdAt
         })),
         unreadCount
       });
@@ -111,7 +111,7 @@ function mountRoleRoutes(role) {
   router.patch('/' + role + '/read-all', guard, async (req, res, next) => {
     try {
       const result = await Notification.updateMany(
-        { recipientRole: role, recipientId: owner(req, role), readAt: null },
+        { recipientRole: role, recipientId: owner(req, role), isActive: { $ne: false }, readAt: null },
         { $set: { readAt: new Date() } }
       );
       return res.json({ message: 'تم تعليم الإشعارات كمقروءة', modified: result.modifiedCount || 0 });
@@ -122,11 +122,11 @@ function mountRoleRoutes(role) {
     try {
       if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الإشعار غير صالح' });
       const item = await Notification.findOneAndUpdate(
-        { _id: req.params.id, recipientRole: role, recipientId: owner(req, role), readAt: null },
+        { _id: req.params.id, recipientRole: role, recipientId: owner(req, role), isActive: { $ne: false }, readAt: null },
         { $set: { readAt: new Date() } }, { new: true }
       );
       if (!item) {
-        const exists = await Notification.exists({ _id: req.params.id, recipientRole: role, recipientId: owner(req, role) });
+        const exists = await Notification.exists({ _id: req.params.id, recipientRole: role, recipientId: owner(req, role), isActive: { $ne: false } });
         if (!exists) return res.status(404).json({ message: 'الإشعار غير موجود' });
       }
       return res.json({ message: 'تم تعليم الإشعار كمقروء' });

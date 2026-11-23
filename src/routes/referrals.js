@@ -50,7 +50,7 @@ router.post('/prepare-fanni', prepareFanniReferralLimiter, async (req, res, next
     if (!decoded || decoded.kind !== 'fanni') return res.status(400).json({ message: 'رابط الدعوة غير صالح أو غير مخصص للفنيين.' });
     const config = await AdminConfig.findOne({ key: 'main' }).select('settings').lean();
     if (config?.settings?.referralsEnabled === false) return res.status(403).json({ message: 'نظام الدعوات متوقف حاليًا.' });
-    const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni' }).select('_id').lean();
+    const inviter = await Fanni.findOne({ _id: decoded.inviterId, role: 'fanni', archivedAt: null }).select('_id').lean();
     if (!inviter) return res.status(404).json({ message: 'صاحب كود الدعوة غير موجود.' });
     // Bound claim minting per inviter as well as per source IP. Claims are short-lived
     // handoff credentials, not reusable referral codes.

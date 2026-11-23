@@ -28,8 +28,8 @@ function defaultAdminPermissions(role) {
 
 const PERMISSION_SECTIONS = {
   dashboard: [/^\/me$/, /^\/counts$/, /^\/mobile-panel$/, /^\/reports?(\/|$)/, /^\/stats?(\/|$)/],
-  wallet: [/^\/wallet(\/|$)/, /^\/client-wallet(\/|$)/, /^\/clients\/[^/]+\/wallet\/(add-balance|deduct-balance|set-balance)$/, /^\/fannis\/[^/]+\/(set-balance|add-balance)$/],
-  fannis: [/^\/fannis(\/|$)/, /^\/fanni-profile-edits(\/|$)/, /^\/fanni-card-ledger(\/|$)/],
+  wallet: [/^\/wallet(\/|$)/, /^\/client-wallet(\/|$)/, /^\/clients\/[^/]+\/wallet\/(add-balance|deduct-balance|set-balance)$/, /^\/fannis\/[^/]+\/(set-balance|add-balance|deduct-balance)$/],
+  fannis: [/^\/fannis(\/|$)/, /^\/fanni-profile-edits(\/|$)/, /^\/fanni-card-ledger(\/|$)/, /^\/admin\/[^/]+\/(?:photo|identity\/(?:front|back))$/],
   publishOrders: [/^\/admin\/[^/]+\/publish$/],
   voiceReview: [/^\/[^/]+\/voice$/, /^\/admin\/[^/]+\/voice-reviewed$/],
   passwordRecovery: [/^\/password-recovery\/admin\/requests(\/|$)/, /^\/password-recovery\/admin\/support-passwords(\/|$)/, /^\/password-recovery\/admin\/force-password-change(\/|$)/],
@@ -106,6 +106,9 @@ function auth(requiredRole = null) {
       }
       const user = await Fanni.findById(decoded.id);
       if (!user) return res.status(401).json({ message: 'المستخدم غير موجود' });
+      if (user.archivedAt) {
+        return res.status(403).json({ message: 'الحساب مؤرشف ولا يمكن استخدامه. تواصل مع الإدارة إذا كنت تعتقد أن ذلك حدث بالخطأ.', code: 'ACCOUNT_ARCHIVED' });
+      }
       if (Number(decoded.tokenVersion || 0) !== Number(user.tokenVersion || 0)) return res.status(401).json({ message: 'انتهت صلاحية الجلسة بعد تغيير كلمة المرور. سجّل الدخول مرة أخرى.' });
       if ((decoded.mustChangePassword === true || user.mustChangePassword === true) && !/^\/api\/password-recovery\/change\/fanni(?:\?|$)/.test(String(req.originalUrl || ''))) {
         return res.status(403).json({ message: 'يجب تغيير كلمة المرور أولًا قبل استخدام الحساب.', mustChangePassword: true });

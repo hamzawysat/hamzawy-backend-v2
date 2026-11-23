@@ -308,22 +308,35 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
     return report;
   }
 }
-async function createNotification({ recipientRole, recipientId, type, title, message, link = '', dedupeKey = null }) {
+async function createNotification({
+  recipientRole, recipientId, type, title, message, link = '', dedupeKey = null,
+  refreshExisting = false, relatedEntityType = '', relatedEntityId = null
+}) {
   if (!recipientId || !['client', 'fanni', 'admin'].includes(recipientRole)) return null;
   try {
-    const payload = { recipientRole, recipientId, type, title, message, link: normalizeNotificationLink(link, type) };
+    const payload = {
+      recipientRole, recipientId, type, title, message,
+      link: normalizeNotificationLink(link, type),
+      isActive: true,
+      ...(relatedEntityType ? { relatedEntityType: String(relatedEntityType).slice(0, 50) } : {}),
+      ...(relatedEntityId && /^[a-f0-9]{24}$/i.test(String(relatedEntityId)) ? { relatedEntityId } : {})
+    };
     let notification, isNew = true;
     if (dedupeKey) {
+      const update = refreshExisting
+        ? { $set: { ...payload, readAt: null }, $setOnInsert: { dedupeKey } }
+        : { $setOnInsert: { ...payload, dedupeKey } };
       const result = await Notification.findOneAndUpdate(
-        { dedupeKey }, { $setOnInsert: { ...payload, dedupeKey } },
+        { dedupeKey }, update,
         { upsert: true, new: true, setDefaultsOnInsert: true, includeResultMetadata: true }
       );
       notification = result?.value || result;
       isNew = !result?.lastErrorObject?.updatedExisting;
     } else notification = await Notification.create(payload);
+    const shouldDeliver = isNew || refreshExisting;
     // The database notification is the source of truth. External push providers
     // are best-effort and must never hold the user's primary action indefinitely.
-    if (isNew) {
+    if (shouldDeliver) {
       const deliveryLog = await NotificationDelivery.findOneAndUpdate(
         { notificationId: notification._id },
         { $setOnInsert: {
@@ -385,8 +398,10 @@ async function retryPendingNotificationDeliveries(limit = 25) {
     if (!locked) continue;
     try {
       const notification = await Notification.findById(item.notificationId).lean();
-      if (!notification) {
-        await NotificationDelivery.updateOne({ _id: item._id }, { $set: { overallStatus: 'error', nextAttemptAt: null, retryLockUntil: null } });
+      if (!notification || notification.isActive === false) {
+        await NotificationDelivery.updateOne({ _id: item._id }, { $set: {
+          overallStatus: 'error', nextAttemptAt: null, retryLockUntil: null
+        } });
         continue;
       }
       const previous = locked.channels || {};
