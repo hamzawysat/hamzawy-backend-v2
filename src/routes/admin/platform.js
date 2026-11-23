@@ -282,7 +282,6 @@ function createAdminPlatformRouter({
         walletBalance: Number(client.walletBalance || 0),
         walletFrozen: Boolean(client.walletFrozen),
         createdAt: client.createdAt,
-        registered: true,
         orderCount: 0,
         lastOrder: ''
       }));
