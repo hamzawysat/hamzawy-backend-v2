@@ -17,6 +17,9 @@ const clientSchema = new mongoose.Schema({
     trim: true,
     match: /^01[0-9]{9}$/
   },
+  // HMAC-only signup signals used for referral fraud review; raw IP/UA are never persisted.
+  registrationIpHash: { type: String, default: '', select: false },
+  registrationUserAgentHash: { type: String, default: '', select: false },
   passwordHash: {
     type: String,
     required: true,
