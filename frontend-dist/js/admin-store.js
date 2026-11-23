@@ -329,6 +329,9 @@ async function pollStoreAdminNotifications(){
         showStoreAdminNotificationToasts(toShow);
         state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...toShow.map(item=>String(item.id))])).slice(-200);
       }
+    }else{
+      // Establish a silent baseline once per page load; do not replay old unread alerts on the next poll.
+      state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...fresh.map(item=>String(item.id))])).slice(-200);
     }
     state.storeAdminNotificationsInitialized=true;
   }catch(_){
