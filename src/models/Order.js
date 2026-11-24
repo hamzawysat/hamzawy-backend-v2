@@ -86,6 +86,8 @@ index: true
 },
 // Marks the moment a legacy tracking token was invalidated by linking the order.
 clientAccountLinkedAt: { type: Date, default: null },
+// آخر وقت فتح فيه العميل صفحة الطلبات الجارية؛ أي عرض بعده يظهر كعرض جديد.
+clientOffersSeenAt: { type: Date, default: null },
 // Client-generated request key prevents duplicate order creation after retries.
 requestKey: { type: String, trim: true, maxlength: 150, default: undefined },
 

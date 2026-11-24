@@ -358,3 +358,10 @@ html[data-sonaa-theme="client"] body #app .app-header button[onclick="toggleNoti
   color: #1E5BE6 !important;
   -webkit-text-fill-color: #1E5BE6 !important;
 }
+
+
+/* Client dashboard: blinking count of unread offers on the active-orders card. */
+#app .client-home-stat-card{position:relative}
+#app .client-new-offers-badge{position:absolute;top:7px;left:7px;z-index:2;display:inline-flex;align-items:center;justify-content:center;max-width:calc(100% - 14px);padding:4px 8px;border:1px solid #FCA5A5;border-radius:999px;background:#DC2626;color:#FFFFFF;font-size:9px;line-height:1.3;font-weight:900;white-space:nowrap;box-shadow:0 2px 7px rgba(220,38,38,.25);animation:clientNewOffersBlink 1.05s ease-in-out infinite}
+@keyframes clientNewOffersBlink{0%,100%{opacity:1;filter:brightness(1)}50%{opacity:.28;filter:brightness(.85)}}
+@media(prefers-reduced-motion:reduce){#app .client-new-offers-badge{animation:none}}

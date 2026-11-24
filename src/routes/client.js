@@ -79,6 +79,13 @@ function safeOrder(order, clientRating = null, ratingsByFanni = new Map(), compl
     warrantyStartsAt: data.warrantyStartsAt || null,
     warrantyExpiresAt: data.warrantyExpiresAt || null,
     warrantyStatus: data.warrantyStatus || 'pending',
+    unreadOffersCount: (() => {
+      const seenAt = data.clientOffersSeenAt ? new Date(data.clientOffersSeenAt).getTime() : 0;
+      return (Array.isArray(data.offers) ? data.offers : []).filter(offer => {
+        const offeredAt = offer?.date ? new Date(offer.date).getTime() : 0;
+        return Number.isFinite(offeredAt) && offeredAt > seenAt;
+      }).length;
+    })(),
     offers: (() => {
       const seenTechnicians = new Set();
       const uniqueOffers = (Array.isArray(data.offers) ? data.offers : []).filter(offer => {
@@ -358,6 +365,20 @@ router.post('/orders/claim', clientAuth, async (req, res, next) => {
     if (!linked) return res.status(409).json({ message: 'تعذر ربط الطلب؛ قد يكون مرتبطًا بحساب آخر بالفعل' });
 
     return res.json({ message: 'تم ربط الطلب القديم بحسابك بنجاح', order: safeOrder(linked) });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+router.post('/orders/offers/mark-viewed', clientAuth, async (req, res, next) => {
+  try {
+    const now = new Date();
+    const closedStatuses = ['تم الانتهاء', 'منتهي', 'مكتمل', 'مكتملة', 'ملغي', 'مؤرشف', 'منتهي - اعتذار', 'completed', 'complete', 'finished'];
+    const result = await Order.updateMany(
+      { clientAccount: req.clientId, status: { $nin: closedStatuses }, 'offers.0': { $exists: true } },
+      { $set: { clientOffersSeenAt: now } }
+    );
+    return res.set('Cache-Control', 'no-store').json({ success: true, viewedAt: now, modifiedCount: result.modifiedCount ?? result.nModified ?? 0 });
   } catch (error) {
     return next(error);
   }

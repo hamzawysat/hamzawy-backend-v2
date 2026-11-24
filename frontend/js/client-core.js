@@ -170,6 +170,7 @@ const API={
   async loginClient(payload){return this.request('/api/client/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});},
   async getClientMe(token){return this.request('/api/client/me',{method:'GET',headers:{Authorization:'Bearer '+token}});},
   async getMyOrders(){return this.request('/api/client/orders',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});},
+  async markClientOffersViewed(){return this.request('/api/client/orders/offers/mark-viewed',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+state.accountToken},body:JSON.stringify({})});},
   async getClientWallet(){return this.request('/api/client/wallet',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});},
   async payForClientOrder(sn){return this.request('/api/client/orders/'+encodeURIComponent(sn)+'/pay',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+state.accountToken},body:JSON.stringify({})});},
   async getClientCommerce(){return this.request('/api/client/commerce/catalog',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});},
