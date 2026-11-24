@@ -136,7 +136,9 @@ async function run() {
     await test('admin store order polling suppresses old unread notifications and duplicate count toasts', async () => {
       const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
       const deployed = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-store.js'), 'utf8');
-      const countMatch = source.match(/async function loadStoreOrderCount\\([^)]*\\)\\s*\\{([\\s\\S]*?)\\n\\}/);\n      assert.ok(countMatch, 'pending-count refresh function must exist');\n      const countFn = countMatch[1];
+      const countMatch = source.match(/async function loadStoreOrderCount\([^)]*\)\s*\{([\s\S]*?)\n\}/);
+      assert.ok(countMatch, 'pending-count refresh function must exist');
+      const countFn = countMatch[1];
       assert.doesNotMatch(countFn, /showToast/ , 'pending-count refresh must never create a second order toast');
       assert.match(source, /storeAdminNotificationsPollInFlight/, 'overlapping notification polls must be serialized');
       assert.match(source, /sonaa\.admin\.storeOrderNotificationSeen\.v1/, 'seen notification IDs must survive browser reloads');
