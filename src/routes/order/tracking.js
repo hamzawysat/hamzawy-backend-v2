@@ -88,7 +88,7 @@ function createOrderTrackingRouter({
       // Platform commission is internal financial data and must not be returned to clients.
       if (Array.isArray(safe.offers) && order.acceptedOfferId && ['تم اختيار فني', 'تم الانتهاء'].includes(order.status)) safe.offers = safe.offers.map(offer => ({ ...offer, offerStatus: String(offer._id) === String(order.acceptedOfferId) ? 'تم قبول العرض' : 'تم رفض العرض' }));
       safe.chatMessages = (order.chatMessages || []).map(m => ({ senderRole: m.senderRole, text: m.text, targetOfferId: m.targetOfferId || '', createdAt: m.createdAt }));
-      safe.priceChangeRequests = (order.priceChangeRequests || []).map(r => ({ _id: String(r._id), oldPrice: r.oldPrice, newPrice: r.newPrice, reason: r.reason, status: r.status, requestedAt: r.requestedAt, decidedAt: r.decidedAt }));
+      safe.priceChangeRequests = (order.priceChangeRequests || []).map(r => ({ _id: String(r._id), oldPrice: r.oldPrice, newPrice: r.newPrice, reason: r.reason, status: r.status, requestedAt: r.requestedAt, decidedAt: r.decidedAt, paymentMethod: r.paymentMethod || '', walletAmount: Number(r.walletAmount || 0), cashAmount: Number(r.cashAmount || 0) }));
   
       if (isOrderOwner && order.status === 'تم الانتهاء') {
         const ratings = await Rating.find({ orderId: order._id }).sort({ createdAt: 1 }).lean();

@@ -280,7 +280,7 @@ const API={
   },
   async chat(sn){const token=this.getClientToken(sn)||state.accountToken;if(!token)throw new Error('سجّل الدخول لمتابعة المحادثة.');return this.request('/api/orders/'+encodeURIComponent(sn)+'/chat',{method:'GET',headers:{Authorization:'Bearer '+token}});},
   async sendChat(sn,text,offerId){const token=this.getClientToken(sn)||state.accountToken;if(!token)throw new Error('سجّل الدخول لمتابعة المحادثة.');return this.request('/api/orders/'+encodeURIComponent(sn)+'/chat',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({text,...(offerId?{offerId}:{})})});},
-  async decidePrice(sn,id,approved){const token=this.getClientToken(sn)||state.accountToken;if(!token)throw new Error('سجّل الدخول لمتابعة الطلب.');return this.request('/api/orders/'+encodeURIComponent(sn)+'/price-change/'+encodeURIComponent(id)+'/decision',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({approved})});},
+  async decidePrice(sn,id,approved,paymentMethod){const token=this.getClientToken(sn)||state.accountToken;if(!token)throw new Error('سجّل الدخول لمتابعة الطلب.');return this.request('/api/orders/'+encodeURIComponent(sn)+'/price-change/'+encodeURIComponent(id)+'/decision',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({approved,...(paymentMethod?{paymentMethod}:{})})});},
   async rateOrder(sn,payload){
     const cleanSN=sanitizeInput(sn,20).toUpperCase();
     if(!VALIDATORS.sn(cleanSN))throw new Error('كود الطلب غير صحيح.');

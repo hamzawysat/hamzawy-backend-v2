@@ -18,12 +18,19 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       session.startTransaction();
       const order = await Order.findOne({ sn, clientAccount: req.clientId, status: 'تم اختيار فني', assignedFanni: { $ne: null } }).session(session);
       if (!order) { await session.abortTransaction(); return res.status(404).json({ message: 'الطلب غير موجود بحسابك أو لم يتم تعيين فني عليه بعد.' }); }
-      if (order.clientPaymentStatus === 'held' || order.clientPaymentStatus === 'settled') {
+      if (order.clientPaymentStatus === 'settled') {
         await session.abortTransaction();
-        return res.status(200).json({ message: order.clientPaymentStatus === 'settled' ? 'تم سداد الطلب وتسوية مستحقات الفني بالفعل.' : 'تم حجز قيمة الخدمة بالفعل من محفظتك.', paymentStatus: order.clientPaymentStatus, balance: Number(req.client.walletBalance || 0), transactionNumber: order.clientPaymentTransactionNumber || '' });
+        return res.status(200).json({ message: 'تم سداد الطلب وتسوية مستحقات الفني بالفعل.', paymentStatus: 'settled', balance: Number(req.client.walletBalance || 0), transactionNumber: order.clientPaymentTransactionNumber || '', totalHeldAmount: Number(order.clientPaymentAmount || 0), remainingWalletAmount: 0 });
       }
-      const amount = Number(order.acceptedOfferPrice);
-      if (!Number.isFinite(amount) || amount <= 0) { await session.abortTransaction(); return res.status(409).json({ message: 'سعر الخدمة غير صالح؛ تواصل مع خدمة العملاء.' }); }
+      const totalPrice = Number(order.acceptedOfferPrice);
+      if (!Number.isFinite(totalPrice) || totalPrice <= 0) { await session.abortTransaction(); return res.status(409).json({ message: 'سعر الخدمة غير صالح؛ تواصل مع خدمة العملاء.' }); }
+      const cashIncreaseAmount = Math.round(((order.priceChangeRequests || []).filter(item => item.status === 'مقبول' && item.paymentMethod === 'cash').reduce((sum, item) => sum + Number(item.cashAmount || 0), 0) + Number.EPSILON) * 100) / 100;
+      const alreadyHeld = Math.round((Number(order.clientPaymentAmount || 0) + Number.EPSILON) * 100) / 100;
+      const amount = Math.round((totalPrice - cashIncreaseAmount - alreadyHeld + Number.EPSILON) * 100) / 100;
+      if (amount <= 0) {
+        await session.abortTransaction();
+        return res.status(200).json({ message: 'تم حجز الجزء المستحق من محفظتك بالفعل.', paymentStatus: 'held', balance: Number(req.client.walletBalance || 0), transactionNumber: order.clientPaymentTransactionNumber || '', amount: 0, totalHeldAmount: alreadyHeld, remainingWalletAmount: 0 });
+      }
       const client = await Client.findOne({ _id: req.clientId, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
       if (!client) { await session.abortTransaction(); return res.status(409).json({ message: 'رصيد محفظتك غير كافٍ أو المحفظة غير متاحة.', required: amount, balance: Number(req.client.walletBalance || 0) }); }
       const before = Number(client.walletBalance || 0);
@@ -33,22 +40,24 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       );
       if (!updatedClient) { await session.abortTransaction(); return res.status(409).json({ message: 'تغير رصيد المحفظة أثناء الدفع. حدّث الصفحة وحاول مرة أخرى.' }); }
       order.clientPaymentStatus = 'held';
-      order.clientPaymentAmount = amount;
-      order.clientPaymentAt = new Date();
+      order.clientPaymentAmount = Math.round((alreadyHeld + amount + Number.EPSILON) * 100) / 100;
+      if (!order.clientPaymentAt) order.clientPaymentAt = new Date();
       await order.save({ session });
       const paymentTransaction = new WalletTransaction({
         client: client._id, order: order._id, orderSN: order.sn,
         type: 'client_escrow_hold', amount: -amount, balanceBefore: before,
         balanceAfter: Number(updatedClient.walletBalance),
         description: 'حجز قيمة الخدمة للطلب ' + order.sn + ' لحين إتمام الفني للمهمة',
-        idempotencyKey: 'client-service-hold:' + String(order._id)
+        idempotencyKey: alreadyHeld > 0
+          ? 'client-service-balance-hold:' + String(order._id) + ':' + String(alreadyHeld) + ':' + String(totalPrice) + ':' + String(cashIncreaseAmount)
+          : 'client-service-hold:' + String(order._id)
       });
       await paymentTransaction.save({ session });
-      order.clientPaymentTransactionNumber = paymentTransaction.transactionNumber;
+      if (!order.clientPaymentTransactionNumber) order.clientPaymentTransactionNumber = paymentTransaction.transactionNumber;
       await order.save({ session });
       await session.commitTransaction();
       notice = { fanniId: order.assignedFanni, sn: order.sn, orderId: order._id, amount, transactionNumber: paymentTransaction.transactionNumber };
-      return res.json({ message: 'تم حجز قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد إتمام المهمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount, transactionNumber: paymentTransaction.transactionNumber });
+      return res.json({ message: 'تم حجز المبلغ المتبقي من قيمة الخدمة من محفظتك بأمان. سيحصل الفني على مستحقاته بعد تأكيد استلام الخدمة.', balance: Number(updatedClient.walletBalance), paymentStatus: 'held', amount, totalHeldAmount: Number(order.clientPaymentAmount), remainingWalletAmount: 0, transactionNumber: paymentTransaction.transactionNumber });
     } catch (error) {
       if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
       if (error && error.code === 11000) return res.status(409).json({ message: 'عملية دفع هذا الطلب مسجلة بالفعل.' });
