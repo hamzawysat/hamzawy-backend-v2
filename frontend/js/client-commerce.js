@@ -86,7 +86,7 @@ async function payForClientOrder(sn){
     const result=await API.payForClientOrder(sn);
     if(state.tracked&&String(state.tracked.sn)===String(sn)){
       state.tracked.clientPaymentStatus=result.paymentStatus||'held';
-      state.tracked.clientPaymentAmount=Number(result.amount||state.tracked.acceptedOfferPrice||0);
+      state.tracked.clientPaymentAmount=Number(result.totalHeldAmount??(Number(state.tracked.clientPaymentAmount||0)+Number(result.amount||0)));
     }
     if(result.balance!==undefined)state.walletBalance=Number(result.balance);
     await loadClientWallet();
