@@ -51,6 +51,7 @@ function renderFannis(){
                 <div class="dropdown-menu">
                   ${!f.isApproved&&!f.isDisabled?`<button onclick="event.stopPropagation();setPendingAction('${menuKey}','approve','قبول الفني')" class="dropdown-item">✓ قبول الفني</button><button onclick="event.stopPropagation();setPendingAction('${menuKey}','reject','رفض الفني')" class="dropdown-item">✕ رفض الفني</button>`:''}
                   ${!f.isDisabled?`<button onclick="event.stopPropagation();setPendingAction('${menuKey}','disable','تعطيل الفني')" class="dropdown-item">⛔ تعطيل</button>`: `<button onclick="event.stopPropagation();setPendingAction('${menuKey}','enable','استعادة الفني')" class="dropdown-item">♻️ استعادة</button>`}
+                  ${f.acceptingOrders===false?`<button onclick="event.stopPropagation();setFanniAvailability('${id}',true)" class="dropdown-item text-emerald-700">🟢 جعل الفني متصلًا واستقبال الطلبات</button>`:`<button onclick="event.stopPropagation();setFanniAvailability('${id}',false)" class="dropdown-item text-amber-700">⏸ جعل الفني غير متصل وإيقاف الطلبات</button>`}
                   <div class="h-px bg-slate-100 my-1"></div>
                   <div class="p-2 space-y-2 border-y border-slate-100 my-1">
                     <label class="block text-[10px] font-black text-slate-500">المستوى المهني</label>
@@ -80,7 +81,7 @@ function renderFannis(){
               </div>
             </div>
           `:''}
-          <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="openFanniProfileEditor('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-extrabold text-blue-800">✏️ تعديل البيانات</button><button type="button" onclick="viewFanniIdentityCard('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-extrabold text-emerald-800">🖼️ عرض الصور</button>${f.isApproved?'<button type="button" onclick="returnFanniToReview(\''+id+'\')" class="pill-btn soft-btn col-span-2">↩️ إعادة الفني إلى قيد المراجعة</button><button type="button" onclick="requestFanniChanges(\''+id+'\')" class="pill-btn danger-pill col-span-2">✏️ طلب تعديل بيانات أو صور</button>':''}</div>
+          <div class="mt-3 grid grid-cols-2 gap-2"><button type="button" onclick="openFanniUnifiedProfile('${id}')" class="pill-btn primary-pill col-span-2">ملف الفني الموحد</button><button type="button" onclick="openFanniProfileEditor('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-blue-200 bg-blue-50 text-[11px] font-extrabold text-blue-800">✏️ تعديل البيانات</button><button type="button" onclick="viewFanniIdentityCard('${id}')" class="flex h-10 w-full items-center justify-center rounded-xl border border-emerald-200 bg-emerald-50 text-[11px] font-extrabold text-emerald-800">🖼️ عرض الصور</button>${f.isApproved?'<button type="button" onclick="returnFanniToReview(\''+id+'\')" class="pill-btn soft-btn col-span-2">↩️ إعادة الفني إلى قيد المراجعة</button><button type="button" onclick="requestFanniChanges(\''+id+'\')" class="pill-btn danger-pill col-span-2">✏️ طلب تعديل بيانات أو صور</button>':''}</div>
           <div class="mt-4 grid grid-cols-2 gap-2">
             <div class="rounded-[14px] bg-slate-50 border p-3"><p class="text-[10px] font-black text-slate-400">خدمات حمزاوي سات المعتمدة</p><p class="text-[11.5px] font-black mt-1 leading-6 whitespace-pre-wrap break-words">${escHtml((Array.isArray(f.activeSpecialties)?f.activeSpecialties:[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')}</p></div>
             <div class="rounded-[14px] bg-emerald-50 border border-emerald-100 p-3"><p class="text-[10px] font-black text-emerald-700">الرصيد</p><p class="text-[13px] font-black text-emerald-700 mt-1">${escHtml(String(f.balance??f.walletBalance??0))} ج</p></div>
@@ -115,6 +116,16 @@ function renderFannis(){
       `;
     }).join('')}
   </div>`;
+}
+
+async function setFanniAvailability(id, acceptingOrders){
+  const label=acceptingOrders?'توصيل الفني':'فصل الفني';
+  if(!confirm('تأكيد '+label+'؟ سيتم تحديث استقبال الطلبات وإرسال إشعار للفني.'))return;
+  try{
+    const result=await tryApi(['/api/admin/fannis/'+encodeURIComponent(id)+'/availability'],{method:'PATCH',body:JSON.stringify({acceptingOrders})});
+    showToast(result.message||(acceptingOrders?'تم توصيل الفني':'تم فصل الفني'));
+    await loadAll();
+  }catch(error){showToast(error.message||'تعذر تغيير حالة الفني','error');}
 }
 
 function renderLevels(){
