@@ -303,6 +303,7 @@ async function applyClientPriceDecision(sn,id,approved,paymentMethod){
  await API.decidePrice(sn,id,approved,paymentMethod);
  if(state.trackInput===sn&&state.tracked)await doTrack();
  if(state.accountToken&&state.account)await loadMyOrders(false);
+ if(state.accountToken&&state.account&&typeof loadClientWallet==='function')await loadClientWallet();
  render();
  showToast(approved?(paymentMethod==='cash'?'تمت الموافقة. ستدفع الزيادة نقدًا بعد استلام الخدمة.':'تمت الموافقة وحجز الزيادة من محفظتك.'):'تم رفض طلب الزيادة.','success');
 }
