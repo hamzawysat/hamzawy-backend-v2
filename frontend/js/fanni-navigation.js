@@ -19,7 +19,19 @@ if(tab==='myOrders')loadMyOffers();
  if(tab==='store'&&getToken())loadStoreForRole('fanni');
 }
 
-function goBack(fromPopState=false){if(!fromPopState&&TECHNICIAN_TAB_HISTORY.length){window.history.back();return true;}if(fromPopState&&TECHNICIAN_TAB_HISTORY.length){setTab(TECHNICIAN_TAB_HISTORY.pop(),true);return true;}window.location.href='/';return true;}
+function goBack(fromPopState=false,targetState=null){
+ if(fromPopState){
+  const target=String(targetState?.sonaaFanniTab||'');
+  if(!target)return false;
+  if(TECHNICIAN_TAB_HISTORY[TECHNICIAN_TAB_HISTORY.length-1]===target)TECHNICIAN_TAB_HISTORY.pop();
+  else if(state.tab!==target){TECHNICIAN_TAB_HISTORY.push(state.tab);if(TECHNICIAN_TAB_HISTORY.length>50)TECHNICIAN_TAB_HISTORY.shift();}
+  setTab(target,true);
+  return true;
+ }
+ if(TECHNICIAN_TAB_HISTORY.length){window.history.back();return true;}
+ window.location.href='/';
+ return true;
+}
 
 function setMyOrdersView(view){if(!['active','completed'].includes(view))return;state.myOrdersView=view;render();}
 

@@ -13,17 +13,13 @@
     case 'browser-back': {
       if (window.__sonaaBrowserBackInstalled) break;
       window.__sonaaBrowserBackInstalled = true;
-      if (window.history && window.history.pushState) window.history.pushState({ sonaaBackRoot: true }, '', location.href);
-      window.addEventListener('popstate', function () {
-        let handled = false;
+      // Let the browser own the history stack. Dashboard tab entries carry
+      // their destination in history.state; do not add a synthetic root entry
+      // or re-arm one after popstate, otherwise Back gets trapped and can jump
+      // to the public home page when the in-panel stack is empty.
+      window.addEventListener('popstate', function (event) {
         if (typeof window.goBack === 'function') {
-          try { handled = window.goBack(true) === true; } catch (_) {}
-        }
-        // Re-arm the in-panel history guard after every Back press. This
-        // prevents the browser from leaving the admin page when its internal
-        // section history is empty.
-        if (window.history && window.history.pushState) {
-          window.history.pushState({ sonaaBackRoot: true }, '', location.href);
+          try { window.goBack(true, event && event.state); } catch (_) {}
         }
       });
       break;
