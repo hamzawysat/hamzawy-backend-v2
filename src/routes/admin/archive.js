@@ -178,11 +178,21 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             .select('_id').session(session).lean();
           const referralIds = referrals.map(item => item._id);
 
+          // Remove only this client's wallet entries. Other users' financial ledger rows
+          // may reference the same order/referral and must remain intact.
+          const ownWalletTransactions = await WalletTransaction.deleteMany({ client: account._id }, { session });
+          const detachedWalletTransactions = await WalletTransaction.updateMany({
+            client: { $ne: account._id },
+            $or: [
+              { order: { $in: orderIds } },
+              { referral: { $in: referralIds } }
+            ]
+          }, { $set: { order: null, referral: null } }, { session });
+
           const results = await Promise.all([
             Order.deleteMany({ _id: { $in: orderIds } }, { session }),
             Complaint.deleteMany({ $or: [{ order: { $in: orderIds } }, { sn: { $in: orderNumbers } }] }, { session }),
             Rating.deleteMany({ $or: [{ clientPhone: account.phone }, { orderId: { $in: orderIds } }] }, { session }),
-            WalletTransaction.deleteMany({ $or: [{ client: account._id }, { order: { $in: orderIds } }, { referral: { $in: referralIds } }] }, { session }),
             ClientTopupRequest.deleteMany({ client: account._id }, { session }),
             ClientSubscription.deleteMany({ client: account._id }, { session }),
             StoreOrder.deleteMany({ buyerRole: 'client', buyerId: account._id }, { session }),
@@ -195,14 +205,15 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             orders: results[0].deletedCount || 0,
             complaints: results[1].deletedCount || 0,
             ratings: results[2].deletedCount || 0,
-            walletTransactions: results[3].deletedCount || 0,
-            topups: results[4].deletedCount || 0,
-            subscriptions: results[5].deletedCount || 0,
-            storeOrders: results[6].deletedCount || 0,
-            supportCases: results[7].deletedCount || 0,
-            notifications: results[8].deletedCount || 0,
-            supportPasswords: results[9].deletedCount || 0,
-            referrals: results[10].deletedCount || 0
+            walletTransactions: ownWalletTransactions.deletedCount || 0,
+            otherWalletTransactionsPreserved: detachedWalletTransactions.modifiedCount || 0,
+            topups: results[3].deletedCount || 0,
+            subscriptions: results[4].deletedCount || 0,
+            storeOrders: results[5].deletedCount || 0,
+            supportCases: results[6].deletedCount || 0,
+            notifications: results[7].deletedCount || 0,
+            supportPasswords: results[8].deletedCount || 0,
+            referrals: results[9].deletedCount || 0
           };
         } else if (mode === 'all' && isFanni) {
           const orders = await Order.find({
@@ -238,9 +249,15 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             $or: [{ fanniId: account._id }, { 'linkedTechnicians.fanniId': account._id }]
           }).session(session);
 
+          // Preserve referral reward transactions owned by the other participant.
+          const ownWalletTransactions = await WalletTransaction.deleteMany({ fanni: account._id }, { session });
+          const detachedWalletTransactions = await WalletTransaction.updateMany({
+            fanni: { $ne: account._id },
+            referral: { $in: referralIds }
+          }, { $set: { referral: null } }, { session });
+
           const results = await Promise.all([
             Rating.deleteMany({ $or: [{ fanniId: account._id }, { reviewerId: account._id }] }, { session }),
-            WalletTransaction.deleteMany({ $or: [{ fanni: account._id }, { referral: { $in: referralIds } }] }, { session }),
             TopupRequest.deleteMany({ fanni: account._id }, { session }),
             StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }),
             SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }),
@@ -268,14 +285,15 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           deleted = {
             relatedOrdersUpdated: orderIds.length,
             ratings: results[0].deletedCount || 0,
-            walletTransactions: results[1].deletedCount || 0,
-            topups: results[2].deletedCount || 0,
-            storeOrders: results[3].deletedCount || 0,
-            supportCases: results[4].deletedCount || 0,
-            notifications: results[5].deletedCount || 0,
-            supportPasswords: results[6].deletedCount || 0,
-            referrals: results[7].deletedCount || 0,
-            referralClaims: results[8].deletedCount || 0,
+            walletTransactions: ownWalletTransactions.deletedCount || 0,
+            otherWalletTransactionsPreserved: detachedWalletTransactions.modifiedCount || 0,
+            topups: results[1].deletedCount || 0,
+            storeOrders: results[2].deletedCount || 0,
+            supportCases: results[3].deletedCount || 0,
+            notifications: results[4].deletedCount || 0,
+            supportPasswords: results[5].deletedCount || 0,
+            referrals: results[6].deletedCount || 0,
+            referralClaims: results[7].deletedCount || 0,
             identityLedgersUpdated: ledgers.length
           };
         } else {
