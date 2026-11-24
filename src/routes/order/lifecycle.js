@@ -479,7 +479,7 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
       }
       await refreshReferralProgress({ kind: 'fanni', inviteeId: completedFanni._id, mongoose, session });
     }
-    if (order.clientAccount) {
+    if (newlyPendingCompletion && order.clientAccount) {
       await refreshReferralProgress({ kind: 'client', inviteeId: order.clientAccount, mongoose, session });
     }
 
