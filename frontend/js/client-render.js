@@ -83,6 +83,7 @@ function render(){
       const isPreviousOrder=o=>closed.has(String(o?.status||o?.orderStatus||'').trim().toLowerCase());
       const activeCount=orders.filter(o=>!isPreviousOrder(o)).length;
       const completedCount=orders.filter(isPreviousOrder).length;
+      const unreadOffersCount=orders.reduce((total,o)=>total+(isPreviousOrder(o)?0:Number(o.unreadOffersCount||0)),0);
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
@@ -99,22 +100,23 @@ function render(){
           <h2 id="clientHomeTitle">الإحصائيات</h2>
         </div>
         <div class="client-home-stats">
-          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
+          <button type="button" onclick="state.accountOrdersTab='current';setTab('orders')" class="client-home-stat-card">
             <span class="client-home-stat-icon">📋</span>
             <span class="client-home-stat-label">طلبات جارية</span>
             <strong>${activeCount}</strong>
+            ${unreadOffersCount>0?`<span class="client-new-offers-badge">${unreadOffersCount} ${unreadOffersCount===1?'عرض جديد':'عروض جديدة'}</span>`:''}
           </button>
           <button type="button" onclick="setTab('wallet')" class="client-home-stat-card">
             <span class="client-home-stat-icon">💳</span>
             <span class="client-home-stat-label">رصيد المحفظة</span>
             <strong>${walletValue} <small>ج</small></strong>
           </button>
-          <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-stat-card">
+          <button type="button" onclick="state.accountOrdersTab='previous';setTab('orders')" class="client-home-stat-card">
             <span class="client-home-stat-icon">✓</span>
             <span class="client-home-stat-label">طلبات سابقة</span>
             <strong>${completedCount}</strong>
           </button>
-          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-stat-card">
+          <button type="button" onclick="state.accountOrdersTab='current';setTab('orders')" class="client-home-stat-card">
             <span class="client-home-stat-icon">📄</span>
             <span class="client-home-stat-label">إجمالي الطلبات</span>
             <strong>${orders.length}</strong>
@@ -134,8 +136,8 @@ function render(){
           <h2>إجراءات سريعة</h2>
         </div>
         <div class="client-home-actions">
-          <button type="button" onclick="setTab('orders');state.accountOrdersTab='current';render()" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
-          <button type="button" onclick="setTab('orders');state.accountOrdersTab='previous';render()" class="client-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+          <button type="button" onclick="state.accountOrdersTab='current';setTab('orders')" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
+          <button type="button" onclick="state.accountOrdersTab='previous';setTab('orders')" class="client-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
           <a href="password.html?role=client&mode=account" class="client-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></a>
           <a href="/support" class="client-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></a>
         </div>
