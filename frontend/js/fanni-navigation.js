@@ -2,6 +2,7 @@
 
 const TECHNICIAN_TAB_DEFINITIONS=[{id:'home',label:'الرئيسية'},{id:'available',label:'الطلبات المتاحة'},{id:'myOrders',label:'عروضي'},{id:'wallet',label:'المحفظة'},{id:'store',label:'المتجر'},{id:'profile',label:'حسابي'},{id:'support',label:'الدعم الفني'}];
 const TECHNICIAN_TAB_HISTORY=[];
+if(window.history&&window.history.replaceState)window.history.replaceState({...window.history.state,sonaaFanniTab:state.tab},'',window.location.href);
 function setTab(tab,fromBack=false){
  if(tab==='myOffers'){tab='myOrders';state.myOrdersView='active';}
  if(tab==='completed'){tab='myOrders';state.myOrdersView='completed';}

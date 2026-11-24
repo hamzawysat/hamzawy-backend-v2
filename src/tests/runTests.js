@@ -442,7 +442,7 @@ async function run() {
       const clientPrefix = clientNavigation.slice(0, clientNavigation.indexOf('function toggleService()'));
       const clientState = { tab: 'store' };
       const clientContext = vm.createContext({
-        state: clientState, window: { history: { back() {} }, location: { href: '/' } },
+        state: clientState, window: { history: { back() {}, replaceState() {} }, location: { href: '/' } },
         render() {}
       });
       vm.runInContext(clientPrefix, clientContext);
@@ -452,6 +452,9 @@ async function run() {
       assert.equal(vm.runInContext('CLIENT_TAB_HISTORY.length', clientContext), 0);
       clientContext.goBack(true, { sonaaBackRoot: true });
       assert.equal(clientState.tab, 'home', 'an external/root history entry must not force a dashboard redirect');
+      clientContext.goBack(true, { sonaaClientTab: 'store' });
+      assert.equal(clientState.tab, 'store', 'Forward should restore the next client tab');
+      assert.equal(vm.runInContext('CLIENT_TAB_HISTORY.length', clientContext), 1, 'Forward should restore the tab needed by the next Back');
 
       const technicianNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-navigation.js'), 'utf8');
       const technicianState = { tab: 'store', error: '', success: '', pendingMsg: '' };
@@ -467,6 +470,9 @@ async function run() {
       assert.equal(vm.runInContext('TECHNICIAN_TAB_HISTORY.length', technicianContext), 0);
       technicianContext.goBack(true, { sonaaBackRoot: true });
       assert.equal(technicianState.tab, 'home', 'an external/root history entry must not force a technician redirect');
+      technicianContext.goBack(true, { sonaaFanniTab: 'store' });
+      assert.equal(technicianState.tab, 'store', 'Forward should restore the next technician tab');
+      assert.equal(vm.runInContext('TECHNICIAN_TAB_HISTORY.length', technicianContext), 1, 'Forward should restore the tab needed by the next Back');
     });
 
     await test('store admin reuses saved product categories and browser catalogs open image-backed category cards', async () => {
