@@ -286,8 +286,12 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
                 ledger.fanniName = remaining[0].name || ledger.fanniName;
               }
               await ledger.save({ session });
-            } else {
+            } else if (String(ledger.fanniId || '') === String(account._id)) {
               await FanniCardLedger.deleteOne({ _id: ledger._id }, { session });
+            } else {
+              // This ledger belongs to another technician; retain its national-ID record.
+              ledger.linkedTechnicians = [];
+              await ledger.save({ session });
             }
           }
 
