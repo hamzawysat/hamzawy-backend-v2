@@ -87,7 +87,7 @@ function createOrderChatRouter({
       if (!isClient && !ownOffer) return res.status(403).json({ message: 'غير مسموح بإرسال رسالة لهذا الطلب.' });
       if (!isClient && !(await hasAcceptedGuidelines(fanniId))) return res.status(428).json({ code: 'TECHNICIAN_GUIDELINES_REQUIRED', message: 'يجب الموافقة على ميثاق التعامل المهني أولًا.' });
       if (order.status === 'تم الانتهاء') return res.status(409).json({ message: 'المهمة مكتملة؛ المحادثة للقراءة فقط.' });
-      const accepted = order.status === 'تم اختيار فني';
+      const accepted = ['تم اختيار فني', 'بانتظار تأكيد العميل'].includes(order.status);
       const targetOfferId = String(req.body?.offerId || (accepted ? order.acceptedOfferId || '' : '')).trim();
       if (accepted) {
         if (!order.acceptedOfferId || targetOfferId !== String(order.acceptedOfferId)) return res.status(409).json({ message: 'المحادثة متاحة للعرض المقبول فقط.' });
@@ -167,7 +167,7 @@ function createOrderChatRouter({
       const order = await Order.findOne({ sn }).session(session);
       if (!order) { await session.abortTransaction(); return res.status(404).json({ message: 'الطلب غير موجود.' }); }
       if (!(await verifyClientToken(req, order))) { await session.abortTransaction(); return res.status(403).json({ message: 'غير مسموح بتعديل سعر هذا الطلب.' }); }
-      if (order.status === 'تم الانتهاء') { await session.abortTransaction(); return res.status(409).json({ message: 'المهمة مكتملة؛ لا يمكن اتخاذ قرار جديد بشأن تعديل السعر.' }); }
+      if (['بانتظار تأكيد العميل', 'تم الانتهاء'].includes(order.status)) { await session.abortTransaction(); return res.status(409).json({ message: 'الفني أعلن إنهاء الخدمة؛ لا يمكن اتخاذ قرار جديد بشأن تعديل السعر.' }); }
       const request = order.priceChangeRequests.id(req.params.requestId);
       if (!request || request.status !== 'قيد الموافقة') { await session.abortTransaction(); return res.status(409).json({ message: 'طلب تعديل السعر غير متاح أو تم اتخاذ قرار بشأنه.' }); }
       if (typeof req.body?.approved !== 'boolean') { await session.abortTransaction(); return res.status(400).json({ message: 'حدد الموافقة أو الرفض بشكل صريح.' }); }
