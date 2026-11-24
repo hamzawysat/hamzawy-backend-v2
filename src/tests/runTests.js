@@ -300,7 +300,7 @@ async function run() {
         'client order-history filters must classify the same completed statuses and status fields as the native dashboard'
       );
       assert.ok(
-        (clientRender.match(/onclick="setTab\('orders'\);state\.accountOrdersTab='current';render\(\)"/g) || []).length >= 3,
+        (clientRender.match(/onclick="state\.accountOrdersTab='current';setTab\('orders'\)"/g) || []).length >= 3,
         'client active-orders statistic, total-orders statistic, and order-history shortcut must always open current orders like the native app'
       );
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
@@ -385,7 +385,7 @@ async function run() {
       const clientLogoutEnd = clientRoutes.indexOf("\nrouter.get('/me'", clientLogoutStart);
       const clientLogoutRoute = clientRoutes.slice(clientLogoutStart, clientLogoutEnd);
       assert.notEqual(clientLogoutStart, -1, 'client logout route must exist');
-      assert.ok(clientLogoutRoute.includes("dedupeKey: 'client-logout:'"), 'client logout route must deduplicate repeated requests for the same session token');
+      assert.ok(clientLogoutRoute.includes("dedupeKey: 'client-logout:'") && clientLogoutRoute.includes("crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')"), 'client logout route must deduplicate repeated requests for the same session token');
       const clientLoginStart = clientRoutes.indexOf("router.post('/login'");
       const clientLoginEnd = clientRoutes.indexOf("\nrouter.post('/logout'", clientLoginStart);
       assert.doesNotMatch(clientRoutes.slice(clientLoginStart, clientLoginEnd), /client-logout:/, 'logout dedupe key must not be attached to client login');
@@ -3499,6 +3499,132 @@ async function run() {
       }
     });
 
+    await test('permanent archive deletion keeps history or removes client-related records by selected mode', async () => {
+      const Client = require('../models/Client');
+      const Order = require('../models/Order');
+      const WalletTransaction = require('../models/WalletTransaction');
+      const keepClient = await Client.create({ name: 'عميل حذف مع الاحتفاظ', phone: '01055550881', passwordHash: 'test-hash', walletBalance: 10 });
+      const keepOrder = await Order.create({ sn: 'SN' + String(Date.now() % 1000000).padStart(6, '0'), clientAccount: keepClient._id, service: 'اختبار', area: 'القاهرة', clientName: keepClient.name, clientPhone: keepClient.phone, status: 'تم النشر' });
+      const keepTransaction = await WalletTransaction.create({ client: keepClient._id, type: 'client_topup', amount: 10, balanceBefore: 0, balanceAfter: 10, description: 'اختبار الاحتفاظ بالسجل', idempotencyKey: 'archive-keep-' + keepClient._id });
+      const keepArchive = await request(app).post('/api/admin/clients/' + keepClient._id + '/archive').set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار الحذف مع الاحتفاظ' });
+      assert.equal(keepArchive.status, 200, JSON.stringify(keepArchive.body));
+      const invalidMode = await request(app).delete('/api/admin/clients/' + keepClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'unknown' });
+      assert.equal(invalidMode.status, 400);
+      assert.ok(await Client.exists({ _id: keepClient._id }), 'invalid deletion mode must not remove the account');
+      const keepResult = await request(app).delete('/api/admin/clients/' + keepClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'keep' });
+      assert.equal(keepResult.status, 200, JSON.stringify(keepResult.body));
+      assert.equal(await Client.exists({ _id: keepClient._id }), null, 'keep mode must permanently remove the account');
+      assert.ok(await Order.exists({ _id: keepOrder._id }), 'keep mode must preserve the customer order');
+      const retainedClientOrder = await Order.findById(keepOrder._id).lean();
+      assert.equal(retainedClientOrder.clientAccount, null, 'kept orders must not retain a dangling deleted-client reference');
+      assert.equal(retainedClientOrder.clientPhone, keepClient.phone, 'kept orders must retain the customer phone snapshot');
+      assert.ok(await WalletTransaction.exists({ _id: keepTransaction._id }), 'keep mode must preserve the wallet transaction');
+
+      const allClient = await Client.create({ name: 'عميل حذف شامل', phone: '01055550882', passwordHash: 'test-hash', walletBalance: 10 });
+      const allOrder = await Order.create({ sn: 'SN' + String((Date.now() + 1) % 1000000).padStart(6, '0'), clientAccount: allClient._id, service: 'اختبار', area: 'القاهرة', clientName: allClient.name, clientPhone: allClient.phone, status: 'تم النشر' });
+      const allTransaction = await WalletTransaction.create({ client: allClient._id, order: allOrder._id, orderSN: allOrder.sn, type: 'client_topup', amount: 10, balanceBefore: 0, balanceAfter: 10, description: 'اختبار الحذف الشامل', idempotencyKey: 'archive-all-' + allClient._id });
+      const Notification = require('../models/Notification');
+      const NotificationDelivery = require('../models/NotificationDelivery');
+      const allClientNotification = await Notification.create({
+        recipientRole: 'client', recipientId: allClient._id, type: 'archive_test',
+        title: 'اختبار حذف الإشعار', message: 'اختبار حذف سجل التسليم'
+      });
+      const allClientDelivery = await NotificationDelivery.create({
+        notificationId: allClientNotification._id, recipientRole: 'client',
+        recipientId: allClient._id, type: 'archive_test'
+      });
+      const otherClient = await Client.create({ name: 'عميل آخر محفوظ', phone: '01055550883', passwordHash: 'test-hash' });
+      const otherClientTransaction = await WalletTransaction.create({
+        client: otherClient._id, order: allOrder._id, orderSN: allOrder.sn,
+        type: 'client_topup', amount: 5, balanceBefore: 0, balanceAfter: 5,
+        description: 'حركة مالية تخص عميلاً آخر', idempotencyKey: 'archive-other-' + otherClient._id
+      });
+      const allArchive = await request(app).post('/api/admin/clients/' + allClient._id + '/archive').set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار الحذف الشامل' });
+      assert.equal(allArchive.status, 200, JSON.stringify(allArchive.body));
+      const allResult = await request(app).delete('/api/admin/clients/' + allClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'all' });
+      assert.equal(allResult.status, 200, JSON.stringify(allResult.body));
+      assert.equal(await Client.exists({ _id: allClient._id }), null, 'all mode must permanently remove the account');
+      assert.equal(await Order.exists({ _id: allOrder._id }), null, 'all mode must remove the customer orders');
+      assert.equal(await WalletTransaction.exists({ _id: allTransaction._id }), null, 'all mode must remove related wallet transactions');
+      assert.equal(await Notification.exists({ _id: allClientNotification._id }), null, 'all mode must remove notifications owned by the deleted account');
+      assert.equal(await NotificationDelivery.exists({ _id: allClientDelivery._id }), null, 'all mode must remove delivery records for deleted notifications');
+      const retainedOtherTransaction = await WalletTransaction.findById(otherClientTransaction._id).lean();
+      assert.ok(retainedOtherTransaction, 'another client wallet transaction must survive the deleted order');
+      assert.equal(retainedOtherTransaction.order, null, 'the retained wallet transaction must no longer reference the deleted order');
+
+      const Fanni = require('../models/Fanni');
+      const fanni = await Fanni.create({
+        name: 'فني حذف نهائي اختبار', phone: '01055550884',
+        passwordHash: 'test-hash', specialties: ['اختبار']
+      });
+      const keepFanni = await Fanni.create({
+        name: 'فني حذف مع الاحتفاظ', phone: '01055550885',
+        passwordHash: 'test-hash', specialties: ['اختبار']
+      });
+      const keepFanniOrder = await Order.create({
+        sn: 'SN' + String((Date.now() + 2) % 1000000).padStart(6, '0'),
+        service: 'اختبار فني محفوظ', area: 'القاهرة', clientName: 'عميل محفوظ',
+        clientPhone: '01055550887', status: 'بانتظار تأكيد العميل',
+        assignedFanni: keepFanni._id, assignedFanniName: keepFanni.name
+      });
+      const ReferralClaim = require('../models/ReferralClaim');
+      const keepFanniClaim = await ReferralClaim.create({
+        tokenHash: 'archive-keep-fanni-' + keepFanni._id,
+        kind: 'fanni', inviter: keepFanni._id, inviteCodeUsed: 'TEST-KEEP',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+      const PushToken = require('../models/PushToken');
+      const WebPushSubscription = require('../models/WebPushSubscription');
+      const sharedRecipient = await Client.create({
+        name: 'عميل اشتراك مشترك', phone: '01055550886', passwordHash: 'test-hash'
+      });
+      const keepFanniPushToken = await PushToken.create({
+        recipientRole: 'fanni', recipientId: keepFanni._id,
+        token: 'archive-push-token-' + keepFanni._id, platform: 'android'
+      });
+      const sharedSubscription = await WebPushSubscription.create({
+        recipientRole: 'fanni', recipientId: keepFanni._id,
+        endpoint: 'https://fcm.googleapis.com/fcm/send/archive-' + keepFanni._id,
+        keys: { p256dh: 'test-public-key', auth: 'test-auth-key' },
+        recipients: [
+          { recipientRole: 'fanni', recipientId: keepFanni._id },
+          { recipientRole: 'client', recipientId: sharedRecipient._id }
+        ]
+      });
+      const keepFanniArchive = await request(app).post('/api/admin/fannis/' + keepFanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار حذف الفني مع الاحتفاظ' });
+      assert.equal(keepFanniArchive.status, 200, JSON.stringify(keepFanniArchive.body));
+      const keepFanniDelete = await request(app).delete('/api/admin/fannis/' + keepFanni._id + '/permanent-delete')
+        .set('Authorization', 'Bearer ' + adminToken).send({ mode: 'keep' });
+      assert.equal(keepFanniDelete.status, 200, JSON.stringify(keepFanniDelete.body));
+      assert.equal(await Fanni.exists({ _id: keepFanni._id }), null, 'keep mode must remove the technician account');
+      const retainedFanniOrder = await Order.findById(keepFanniOrder._id).lean();
+      assert.ok(retainedFanniOrder, 'keep mode must preserve the order history');
+      assert.equal(retainedFanniOrder.assignedFanni, null, 'kept orders must not retain a dangling deleted-technician assignment');
+      assert.equal(retainedFanniOrder.assignedFanniName, keepFanni.name, 'kept orders must retain the technician display snapshot');
+      assert.equal(retainedFanniOrder.status, 'قيد المراجعة', 'an order awaiting a deleted technician confirmation must return to review');
+      assert.equal(await ReferralClaim.exists({ _id: keepFanniClaim._id }), null, 'keep mode must invalidate temporary claims tied to a deleted technician');
+      assert.equal(await PushToken.exists({ _id: keepFanniPushToken._id }), null, 'deleted technician native push credentials must be revoked');
+      const retainedSharedSubscription = await WebPushSubscription.findById(sharedSubscription._id).lean();
+      assert.ok(retainedSharedSubscription, 'a browser subscription shared with another account must survive');
+      assert.equal(retainedSharedSubscription.recipientRole, 'client', 'shared browser subscription ownership must move to the remaining account');
+      assert.equal(String(retainedSharedSubscription.recipientId), String(sharedRecipient._id));
+      assert.equal(retainedSharedSubscription.recipients.length, 1);
+      assert.equal(String(retainedSharedSubscription.recipients[0].recipientId), String(sharedRecipient._id));
+
+      const fanniTransaction = await WalletTransaction.create({
+        fanni: fanni._id, type: 'commission', amount: 5, balanceBefore: 10,
+        balanceAfter: 5, description: 'حركة مالية للفني', idempotencyKey: 'archive-fanni-' + fanni._id
+      });
+      const fanniArchive = await request(app).post('/api/admin/fannis/' + fanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار حذف الفني نهائيًا' });
+      assert.equal(fanniArchive.status, 200, JSON.stringify(fanniArchive.body));
+      const fanniDelete = await request(app).delete('/api/admin/fannis/' + fanni._id + '/permanent-delete')
+        .set('Authorization', 'Bearer ' + adminToken).send({ mode: 'all' });
+      assert.equal(fanniDelete.status, 200, JSON.stringify(fanniDelete.body));
+      assert.equal(await Fanni.exists({ _id: fanni._id }), null, 'all mode must permanently remove the archived technician');
+      assert.equal(await WalletTransaction.exists({ _id: fanniTransaction._id }), null, 'all mode must remove the deleted technician wallet entries');
+    });
     await test('active client list is paginated and contains registered Client accounts only', async () => {
       const Client = require('../models/Client');
       await Client.create([

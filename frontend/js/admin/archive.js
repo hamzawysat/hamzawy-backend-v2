@@ -66,6 +66,50 @@ async function archiveAccount(kind, id, label = '') {
   }
 }
 
+function choosePermanentDeleteMode(kind, id, label = '') {
+  const type = kind === 'fannis' ? 'fannis' : 'clients';
+  if (!id) return showToast('معرّف الحساب غير متاح', 'error');
+  if (!canWriteTab(type)) return showToast('ليس لديك صلاحية حذف هذا الحساب', 'error');
+  document.getElementById('archive-permanent-delete-choice')?.remove();
+  const modal = document.createElement('div');
+  modal.id = 'archive-permanent-delete-choice';
+  modal.className = 'fixed inset-0 z-[10050] flex items-center justify-center bg-slate-950/60 p-4';
+  modal.innerHTML = '<div class="w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl space-y-4" dir="rtl">' +
+    '<div class="flex items-start justify-between gap-3"><div><h3 class="text-base font-black text-slate-900">حذف نهائي</h3><p class="mt-1 text-xs text-slate-500">' + escHtml(label || (type === 'fannis' ? 'الفني' : 'العميل')) + '</p></div><button type="button" data-close class="rounded-lg px-3 py-1 text-slate-500">✕</button></div>' +
+    '<p class="text-xs leading-6 text-slate-600">اختر طريقة الحذف. لن يمكن التراجع عن حذف الحساب.</p>' +
+    '<button type="button" data-delete-mode="all" class="w-full rounded-xl border border-red-200 bg-red-50 p-3 text-right"><span class="block text-sm font-black text-red-800">حذف الحساب وجميع السجلات المرتبطة</span><span class="mt-1 block text-[11px] leading-5 text-red-700">حذف الحساب والطلبات والسجلات والمعاملات التابعة له حسب نوع الحساب.</span></button>' +
+    '<button type="button" data-delete-mode="keep" class="w-full rounded-xl border border-amber-200 bg-amber-50 p-3 text-right"><span class="block text-sm font-black text-amber-900">حذف الحساب مع الاحتفاظ بالسجلات والمعاملات</span><span class="mt-1 block text-[11px] leading-5 text-amber-800">حذف الحساب فقط، مع إبقاء السجلات والطلبات والمعاملات التاريخية.</span></button>' +
+    '<button type="button" data-close class="w-full rounded-xl bg-slate-100 px-4 py-2 text-xs font-bold text-slate-700">إلغاء</button></div>';
+  document.body.appendChild(modal);
+  modal.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => modal.remove()));
+  modal.querySelectorAll('[data-delete-mode]').forEach(button => button.addEventListener('click', () => {
+    const mode = button.getAttribute('data-delete-mode');
+    modal.remove();
+    permanentlyDeleteArchivedAccount(kind, id, mode, label);
+  }));
+}
+
+async function permanentlyDeleteArchivedAccount(kind, id, mode, label = '') {
+  const type = kind === 'fannis' ? 'fannis' : 'clients';
+  if (!id) return showToast('معرّف الحساب غير متاح', 'error');
+  if (!canWriteTab(type)) return showToast('ليس لديك صلاحية حذف هذا الحساب', 'error');
+  const accountLabel = label || (type === 'fannis' ? 'الفني' : 'العميل');
+  const confirmation = mode === 'all'
+    ? 'تأكيد الحذف الشامل لـ ' + accountLabel + '؟ سيتم حذف السجلات والمعاملات المرتبطة وفق نوع الحساب، ولن يمكن التراجع.'
+    : 'تأكيد حذف حساب ' + accountLabel + ' فقط؟ ستظل السجلات والمعاملات التاريخية محفوظة.';
+  if (!confirm(confirmation)) return;
+  try {
+    const data = await tryApi(['/api/admin/' + type + '/' + encodeURIComponent(id) + '/permanent-delete'], {
+      method: 'DELETE', body: JSON.stringify({ mode })
+    });
+    showToast(data.message || 'تم الحذف النهائي');
+    document.getElementById('unified-client-profile')?.remove();
+    document.getElementById('unified-fanni-profile')?.remove();
+    await loadArchive(type, state.archivePage);
+    if (type === 'clients') { state.clientPage = 1; await loadClients(state.clientSearch || '', 1); }
+    else await loadAll();
+  } catch (error) { showToast(error.message || 'تعذر الحذف النهائي', 'error'); }
+}
 async function restoreArchivedAccount(kind, id) {
   const type = kind === 'fannis' ? 'fannis' : 'clients';
   if (!id) return showToast('معرّف الحساب غير متاح', 'error');
@@ -108,7 +152,7 @@ function renderArchive() {
         return `<article class="premium-card p-4 space-y-2">
           <div class="flex items-start justify-between gap-3"><div class="min-w-0"><h3 class="font-black">${escHtml(item.name||kind)}</h3><p dir="ltr" class="text-sm text-slate-600">${escHtml(item.phone||'')}</p>${type==='fannis' ? '<p class="text-[10px] text-slate-500 mt-1">'+escHtml((item.specialties||[]).join('، '))+'</p>' : ''}</div><span class="text-[10px] rounded-full border border-amber-200 bg-amber-50 text-amber-800 px-2 py-1 font-black">مؤرشف</span></div>
           <div class="rounded-xl bg-slate-50 p-3 text-[11px] leading-6"><p><strong>سبب الأرشفة:</strong> ${escHtml(item.archiveReason||'—')}</p><p><strong>بواسطة:</strong> ${escHtml(item.archivedByName||'—')}</p><p><strong>التاريخ:</strong> ${dateText(item.archivedAt)}</p></div>
-          ${canWriteTab(type) ? '<button onclick="restoreArchivedAccount(\''+type+'\',\''+escHtml(id)+'\')" class="pill-btn primary-pill w-full">استعادة الحساب</button>' : ''}
+          ${canWriteTab(type) ? '<div class="grid grid-cols-2 gap-2"><button onclick="restoreArchivedAccount(\''+type+'\',\''+escHtml(id)+'\')" class="pill-btn primary-pill w-full">استعادة</button><button onclick="choosePermanentDeleteMode(\''+type+'\',\''+escHtml(id)+'\',\''+escHtml(item.name||kind)+'\')" class="pill-btn w-full border border-red-200 bg-red-50 text-red-700">حذف نهائي</button></div>' : ''}
         </article>`;
       }).join('') || (!state.archiveLoading ? '<div class="premium-panel p-8 text-center text-[12px] text-slate-500">لا توجد حسابات مؤرشفة في هذا القسم.</div>' : '')}
       <div class="premium-panel p-3 flex items-center justify-between gap-3 text-[11px]"><button class="pill-btn soft-btn" onclick="loadArchive(state.archiveType,Math.max(1,state.archivePage-1))" ${state.archivePage<=1?'disabled':''}>السابق</button><span>صفحة ${state.archivePage} من ${Math.max(1,state.archivePages)}</span><button class="pill-btn soft-btn" onclick="loadArchive(state.archiveType,state.archivePage+1)" ${state.archivePage>=state.archivePages?'disabled':''}>التالي</button></div>
