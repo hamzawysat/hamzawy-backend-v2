@@ -2428,7 +2428,8 @@ async function run() {
         .send({ approved: true, paymentMethod: 'wallet' });
       assert.equal(insufficientIncreaseDecision.status, 409);
       assert.equal(insufficientIncreaseDecision.body.code, 'CLIENT_WALLET_INSUFFICIENT_FOR_PRICE_INCREASE');
-      assert.equal((await Order.findById(order._id).lean()).priceChangeRequests.id ? true : true, true);
+      const pendingCashRequest = (await Order.findById(order._id).lean()).priceChangeRequests.find(item => String(item._id) === cashRequestId);
+      assert.equal(pendingCashRequest.status, 'قيد الموافقة', 'an insufficient wallet response must leave the increase request pending for the cash-or-reject choice');
       assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'failed wallet coverage must roll back the existing commission adjustment transaction');
       const cashIncreaseDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
