@@ -3520,6 +3520,16 @@ async function run() {
       const allClient = await Client.create({ name: 'عميل حذف شامل', phone: '01055550882', passwordHash: 'test-hash', walletBalance: 10 });
       const allOrder = await Order.create({ sn: 'SN' + String((Date.now() + 1) % 1000000).padStart(6, '0'), clientAccount: allClient._id, service: 'اختبار', area: 'القاهرة', clientName: allClient.name, clientPhone: allClient.phone, status: 'تم النشر' });
       const allTransaction = await WalletTransaction.create({ client: allClient._id, order: allOrder._id, orderSN: allOrder.sn, type: 'client_topup', amount: 10, balanceBefore: 0, balanceAfter: 10, description: 'اختبار الحذف الشامل', idempotencyKey: 'archive-all-' + allClient._id });
+      const Notification = require('../models/Notification');
+      const NotificationDelivery = require('../models/NotificationDelivery');
+      const allClientNotification = await Notification.create({
+        recipientRole: 'client', recipientId: allClient._id, type: 'archive_test',
+        title: 'اختبار حذف الإشعار', message: 'اختبار حذف سجل التسليم'
+      });
+      const allClientDelivery = await NotificationDelivery.create({
+        notificationId: allClientNotification._id, recipientRole: 'client',
+        recipientId: allClient._id, type: 'archive_test'
+      });
       const otherClient = await Client.create({ name: 'عميل آخر محفوظ', phone: '01055550883', passwordHash: 'test-hash' });
       const otherClientTransaction = await WalletTransaction.create({
         client: otherClient._id, order: allOrder._id, orderSN: allOrder.sn,
@@ -3533,6 +3543,8 @@ async function run() {
       assert.equal(await Client.exists({ _id: allClient._id }), null, 'all mode must permanently remove the account');
       assert.equal(await Order.exists({ _id: allOrder._id }), null, 'all mode must remove the customer orders');
       assert.equal(await WalletTransaction.exists({ _id: allTransaction._id }), null, 'all mode must remove related wallet transactions');
+      assert.equal(await Notification.exists({ _id: allClientNotification._id }), null, 'all mode must remove notifications owned by the deleted account');
+      assert.equal(await NotificationDelivery.exists({ _id: allClientDelivery._id }), null, 'all mode must remove delivery records for deleted notifications');
       const retainedOtherTransaction = await WalletTransaction.findById(otherClientTransaction._id).lean();
       assert.ok(retainedOtherTransaction, 'another client wallet transaction must survive the deleted order');
       assert.equal(retainedOtherTransaction.order, null, 'the retained wallet transaction must no longer reference the deleted order');
@@ -3552,6 +3564,24 @@ async function run() {
         kind: 'fanni', inviter: keepFanni._id, inviteCodeUsed: 'TEST-KEEP',
         expiresAt: new Date(Date.now() + 60 * 60 * 1000)
       });
+      const PushToken = require('../models/PushToken');
+      const WebPushSubscription = require('../models/WebPushSubscription');
+      const sharedRecipient = await Client.create({
+        name: 'عميل اشتراك مشترك', phone: '01055550886', passwordHash: 'test-hash'
+      });
+      const keepFanniPushToken = await PushToken.create({
+        recipientRole: 'fanni', recipientId: keepFanni._id,
+        token: 'archive-push-token-' + keepFanni._id, platform: 'android'
+      });
+      const sharedSubscription = await WebPushSubscription.create({
+        recipientRole: 'fanni', recipientId: keepFanni._id,
+        endpoint: 'https://fcm.googleapis.com/fcm/send/archive-' + keepFanni._id,
+        keys: { p256dh: 'test-public-key', auth: 'test-auth-key' },
+        recipients: [
+          { recipientRole: 'fanni', recipientId: keepFanni._id },
+          { recipientRole: 'client', recipientId: sharedRecipient._id }
+        ]
+      });
       const keepFanniArchive = await request(app).post('/api/admin/fannis/' + keepFanni._id + '/archive')
         .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار حذف الفني مع الاحتفاظ' });
       assert.equal(keepFanniArchive.status, 200, JSON.stringify(keepFanniArchive.body));
@@ -3560,6 +3590,13 @@ async function run() {
       assert.equal(keepFanniDelete.status, 200, JSON.stringify(keepFanniDelete.body));
       assert.equal(await Fanni.exists({ _id: keepFanni._id }), null, 'keep mode must remove the technician account');
       assert.equal(await ReferralClaim.exists({ _id: keepFanniClaim._id }), null, 'keep mode must invalidate temporary claims tied to a deleted technician');
+      assert.equal(await PushToken.exists({ _id: keepFanniPushToken._id }), null, 'deleted technician native push credentials must be revoked');
+      const retainedSharedSubscription = await WebPushSubscription.findById(sharedSubscription._id).lean();
+      assert.ok(retainedSharedSubscription, 'a browser subscription shared with another account must survive');
+      assert.equal(retainedSharedSubscription.recipientRole, 'client', 'shared browser subscription ownership must move to the remaining account');
+      assert.equal(String(retainedSharedSubscription.recipientId), String(sharedRecipient._id));
+      assert.equal(retainedSharedSubscription.recipients.length, 1);
+      assert.equal(String(retainedSharedSubscription.recipients[0].recipientId), String(sharedRecipient._id));
 
       const fanniTransaction = await WalletTransaction.create({
         fanni: fanni._id, type: 'commission', amount: 5, balanceBefore: 10,
