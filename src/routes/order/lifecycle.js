@@ -389,7 +389,7 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
       await session.abortTransaction();
       return res.status(403).json({ message: 'لا يمكن تأكيد استلام طلب لا يخص حسابك.' });
     }
-    if (order.status !== 'تم الانتهاء' || !order.completionDeclaredAt) {
+    if (!['بانتظار تأكيد العميل', 'تم الانتهاء'].includes(order.status) || !order.completionDeclaredAt) {
       await session.abortTransaction();
       return res.status(409).json({ message: 'لا يمكن تأكيد الاستلام إلا بعد أن يسجل الفني إنهاء الخدمة.' });
     }
@@ -459,13 +459,30 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     }
 
     const confirmedAt = new Date();
+    order.status = 'تم الانتهاء';
     order.clientConfirmedAt = confirmedAt;
     order.warrantyStartsAt = confirmedAt;
     order.warrantyExpiresAt = new Date(confirmedAt.getTime() + 14 * 24 * 60 * 60 * 1000);
     order.warrantyStatus = 'active';
     await order.save({ session });
-    confirmedOrder = order;
 
+    if (order.assignedFanni) {
+      const completedFanni = await Fanni.findOneAndUpdate(
+        { _id: order.assignedFanni, role: 'fanni' },
+        { $inc: { 'stats.completedJobs': 1 } },
+        { new: true, session, runValidators: true }
+      );
+      if (!completedFanni) {
+        await session.abortTransaction();
+        return res.status(409).json({ message: 'تعذر تثبيت إكمال المهمة للفني المعيّن.' });
+      }
+      await refreshReferralProgress({ kind: 'fanni', inviteeId: completedFanni._id, mongoose, session });
+    }
+    if (order.clientAccount) {
+      await refreshReferralProgress({ kind: 'client', inviteeId: order.clientAccount, mongoose, session });
+    }
+
+    confirmedOrder = order;
     await session.commitTransaction();
   } catch (err) {
     if (session && session.inTransaction()) await session.abortTransaction().catch(() => {});
@@ -475,6 +492,10 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     return next(err);
   } finally {
     if (session) await session.endSession();
+  }
+
+  if (confirmedOrder.assignedFanni) {
+    await autoPromoteFanni(confirmedOrder.assignedFanni, 'تأكيد العميل إكمال المهمة ' + confirmedOrder.sn);
   }
 
   if (typeof dismissOrderNotifications === 'function') {
@@ -533,48 +554,33 @@ router.post('/:sn/complete', auth(), async (req, res, next) => {
       const existing = await Order.findOne({ sn }).select('sn status assignedFanni').lean();
       if (!existing) return res.status(404).json({ message: 'الطلب غير موجود' });
       if (String(existing.assignedFanni || '') !== String(req.userId)) return res.status(403).json({ message: 'هذا الطلب غير مسند إليك' });
-      return res.status(409).json({ message: existing.status === 'تم الانتهاء' ? 'المهمة مكتملة بالفعل' : 'حالة الطلب لا تسمح بإكمال المهمة' });
+      return res.status(409).json({ message: existing.status === 'تم الانتهاء' ? 'المهمة مكتملة بالفعل' : existing.status === 'بانتظار تأكيد العميل' ? 'المهمة في انتظار تأكيد العميل بالفعل' : 'حالة الطلب لا تسمح بإكمال المهمة' });
     }
 
     const fanni = await Fanni.findOne({ _id: req.userId, role: 'fanni', archivedAt: null }).session(session);
     if (!fanni) { await session.abortTransaction(); return res.status(404).json({ message: 'حساب الفني غير موجود.' }); }
 
-    // Completing the work only records the technician's declaration.
-    // Customer-wallet funds remain held until /confirm-completion succeeds.
-    await Fanni.updateOne(
-      { _id: fanni._id, role: 'fanni' },
-      { $inc: { 'stats.completedJobs': 1 } },
-      { session }
-    );
-
-    order.status = 'تم الانتهاء';
+    // The technician's action is only a completion declaration.
+    // Keep the order active until the customer explicitly confirms it.
+    order.status = 'بانتظار تأكيد العميل';
     order.completionDeclaredAt = new Date();
     await order.save({ session });
 
-    if (order.clientAccount) {
-      await refreshReferralProgress({ kind: 'client', inviteeId: order.clientAccount, mongoose, session });
-    }
-    await refreshReferralProgress({ kind: 'fanni', inviteeId: fanni._id, mongoose, session });
     await session.commitTransaction();
-
-    await autoPromoteFanni(req.userId, 'إكمال المهمة ' + order.sn);
     if (order.clientAccount) {
       await createNotification({
         recipientRole: 'client', recipientId: order.clientAccount,
-        type: 'order_completed', title: 'الفني أعلن إنهاء الخدمة',
+        type: 'order_completion_pending', title: 'الفني يطلب تأكيد إنهاء الخدمة',
         message: order.clientPaymentStatus === 'held'
-          ? 'أنهى الفني الطلب ' + order.sn + '. المبلغ ما زال محجوزًا ولن يُحوّل إلا بعد تأكيدك استلام الخدمة.'
-          : 'سجّل الفني اكتمال الطلب ' + order.sn + '. يمكنك الآن تأكيد الاستلام وتقييم الخدمة.',
+          ? 'أعلن الفني إنهاء الطلب ' + order.sn + '. المبلغ ما زال محجوزًا ولن يُحوّل إلا بعد تأكيدك استلام الخدمة.'
+          : 'أعلن الفني إنهاء الطلب ' + order.sn + '. أكد استلام الخدمة حتى يتمكن الفني من استقبال شغلانات جديدة.',
         link: '/client.html?tab=orders', dedupeKey: 'order-completed:' + String(order._id)
       });
     }
-    // Terminal orders must not create or push a fresh admin alert.
-    if (typeof dismissOrderNotifications === 'function') {
-      await dismissOrderNotifications(order._id, order.sn, order);
-    }
-
     return res.json({
-      message: 'تم تسجيل إنهاء المهمة. مستحقات الفني تظل محجوزة حتى يؤكد العميل استلام الخدمة.',
+      message: order.clientPaymentStatus === 'held'
+        ? 'أكد على العميل ينهي الخدمة عشان فلوس الشغلانة توصلك.'
+        : 'أكد على العميل ينهي الخدمة عشان تقدر تستقبل شغلانات تانية.',
       order: { sn: order.sn, status: order.status, clientPaymentStatus: order.clientPaymentStatus }
     });
   } catch (err) {
@@ -604,7 +610,7 @@ router.get('/:sn/assigned-details', auth(), async (req, res, next) => {
     }
 
     if (
-      order.status !== 'تم اختيار فني' ||
+      !['تم اختيار فني', 'بانتظار تأكيد العميل'].includes(order.status) ||
       !order.assignedFanni ||
       String(order.assignedFanni) !== String(req.userId) ||
       req.user.role !== 'fanni'
