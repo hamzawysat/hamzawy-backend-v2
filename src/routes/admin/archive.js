@@ -17,6 +17,9 @@ const PhoneIdentity = require('../../models/PhoneIdentity');
 const Referral = require('../../models/Referral');
 const ReferralClaim = require('../../models/ReferralClaim');
 const FanniCardLedger = require('../../models/FanniCardLedger');
+const PushToken = require('../../models/PushToken');
+const WebPushSubscription = require('../../models/WebPushSubscription');
+const NotificationDelivery = require('../../models/NotificationDelivery');
 
 function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -164,6 +167,39 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
         }
 
         accountSnapshot = { id: String(account._id), name: account.name, phone: account.phone };
+
+        const recipientRole = isFanni ? 'fanni' : 'client';
+        // Device credentials are not historical records. Revoke them whenever the
+        // account is removed, while preserving browser endpoints shared by others.
+        await PushToken.deleteMany({ recipientRole, recipientId: account._id }, { session });
+        const subscriptions = await WebPushSubscription.find({
+          $or: [
+            { recipientRole, recipientId: account._id },
+            { recipients: { $elemMatch: { recipientRole, recipientId: account._id } } }
+          ]
+        }).session(session);
+        for (const subscription of subscriptions) {
+          const ownerMatches = subscription.recipientRole === recipientRole &&
+            String(subscription.recipientId || '') === String(account._id);
+          const recipients = Array.isArray(subscription.recipients) ? subscription.recipients : [];
+          if (recipients.length) {
+            const remaining = recipients.filter(item =>
+              item.recipientRole !== recipientRole || String(item.recipientId || '') !== String(account._id));
+            if (!remaining.length) {
+              await WebPushSubscription.deleteOne({ _id: subscription._id }, { session });
+            } else {
+              subscription.recipients = remaining;
+              if (ownerMatches) {
+                subscription.recipientRole = remaining[0].recipientRole;
+                subscription.recipientId = remaining[0].recipientId;
+              }
+              await subscription.save({ session });
+            }
+          } else if (ownerMatches) {
+            await WebPushSubscription.deleteOne({ _id: subscription._id }, { session });
+          }
+        }
+
         if (isFanni) {
           mediaIds = [account.identityCardFrontFileId, account.identityCardBackFileId, account.profilePhotoFileId].filter(Boolean);
         }
@@ -199,6 +235,7 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           results.push(await StoreOrder.deleteMany({ buyerRole: 'client', buyerId: account._id }, { session }));
           results.push(await SupportCase.deleteMany({ ownerRole: 'client', ownerId: account._id }, { session }));
           results.push(await Notification.deleteMany({ recipientRole: 'client', recipientId: account._id }, { session }));
+          await NotificationDelivery.deleteMany({ recipientRole: 'client', recipientId: account._id }, { session });
           // Keep notifications delivered to other roles, but detach links to deleted orders.
           const detachedNotifications = await Notification.updateMany({
             recipientRole: { $ne: 'client' },
@@ -272,6 +309,7 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           results.push(await StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }));
           results.push(await SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }));
           results.push(await Notification.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session }));
+          await NotificationDelivery.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session });
           results.push(await SupportPassword.deleteMany({ ownerRole: 'fanni', accountId: account._id }, { session }));
           results.push(await Referral.deleteMany({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
           results.push(await ReferralClaim.deleteMany({ $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
