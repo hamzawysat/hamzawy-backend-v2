@@ -459,6 +459,7 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     }
 
     const confirmedAt = new Date();
+    const newlyPendingCompletion = order.status === 'بانتظار تأكيد العميل';
     order.status = 'تم الانتهاء';
     order.clientConfirmedAt = confirmedAt;
     order.warrantyStartsAt = confirmedAt;
@@ -466,7 +467,7 @@ router.post('/:sn/confirm-completion', async (req, res, next) => {
     order.warrantyStatus = 'active';
     await order.save({ session });
 
-    if (order.assignedFanni) {
+    if (newlyPendingCompletion && order.assignedFanni) {
       const completedFanni = await Fanni.findOneAndUpdate(
         { _id: order.assignedFanni, role: 'fanni' },
         { $inc: { 'stats.completedJobs': 1 } },
