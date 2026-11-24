@@ -277,6 +277,19 @@ async function loadStoreOrderCount(silent=false){
     if(!silent&&state.pageMode==='home')render();
   }catch(_){}
 }
+const STORE_ORDER_NOTIFICATION_READ_KEY='sonaa.admin.storeOrderNotificationRead.v2';
+const STORE_ORDER_NOTIFICATION_SEEN_KEY='sonaa.admin.storeOrderNotificationSeen.v1';
+function readStoreOrderNotificationIds(key){
+  try{
+    const value=JSON.parse(localStorage.getItem(key)||'[]');
+    return Array.isArray(value)?value.map(String):[];
+  }catch(_){return [];}
+}
+function saveStoreOrderNotificationIds(key,ids){
+  const bounded=Array.from(new Set((Array.isArray(ids)?ids:[]).map(String))).slice(-300);
+  try{localStorage.setItem(key,JSON.stringify(bounded));}catch(_){}
+  return bounded;
+}
 async function dismissStoreAdminNotification(id,button){
   id=String(id||'').trim();
   if(!id)return;
@@ -284,22 +297,17 @@ async function dismissStoreAdminNotification(id,button){
   if(button)button.disabled=true;
   try{
     await tryApi(['/api/notifications/admin/'+encodeURIComponent(id)+'/read'],{method:'PATCH'});
-    let saved=[];
-    try{
-      const current=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');
-      if(Array.isArray(current))saved=current.map(String);
-    }catch(_){}
-    saved=Array.from(new Set([...saved,id])).slice(-300);
-    try{localStorage.setItem('sonaa.admin.storeOrderNotificationRead.v2',JSON.stringify(saved));}catch(_){}
-    state.seenStoreOrderNotificationIds=(state.seenStoreOrderNotificationIds||[]).filter(value=>String(value)!==id);
+    saveStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_READ_KEY,[...readStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_READ_KEY),id]);
+    saveStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_SEEN_KEY,[...readStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_SEEN_KEY),id]);
+    state.seenStoreOrderNotificationIds=Array.from(new Set([...(state.seenStoreOrderNotificationIds||[]).map(String),id])).slice(-300);
     card?.remove();
     const root=document.getElementById('toast');
     if(root&&!root.querySelector('[data-store-order-notification]'))root.innerHTML='';
   }catch(error){
     if(error?.status===404){
-      let saved=[];
-      try{const current=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');if(Array.isArray(current))saved=current.map(String);}catch(_){}
-      try{localStorage.setItem('sonaa.admin.storeOrderNotificationRead.v2',JSON.stringify(Array.from(new Set([...saved,id])).slice(-300)));}catch(_){}
+      saveStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_READ_KEY,[...readStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_READ_KEY),id]);
+      saveStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_SEEN_KEY,[...readStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_SEEN_KEY),id]);
+      state.seenStoreOrderNotificationIds=Array.from(new Set([...(state.seenStoreOrderNotificationIds||[]).map(String),id])).slice(-300);
       card?.remove();
       return;
     }
@@ -326,24 +334,23 @@ async function pollStoreAdminNotifications(){
     const data=await tryApi(['/api/notifications/admin'],{method:'GET'});
     const items=extractList(data,['notifications']);
     const fresh=items.filter(item=>item.type==='admin_store_order'&&!item.read);
-    let persisted=[];
-    try{
-      const saved=JSON.parse(localStorage.getItem('sonaa.admin.storeOrderNotificationRead.v2')||'[]');
-      if(Array.isArray(saved))persisted=saved.map(String);
-    }catch(_){}
-    const readIds=new Set(persisted);
-    const shownIds=new Set((state.seenStoreOrderNotificationIds||[]).map(String));
+    const readIds=new Set(readStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_READ_KEY));
+    const seenIds=new Set([
+      ...readStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_SEEN_KEY),
+      ...(state.seenStoreOrderNotificationIds||[]).map(String)
+    ]);
     const initialized=state.storeAdminNotificationsInitialized===true;
     if(initialized){
-      const toShow=fresh.filter(item=>!readIds.has(String(item.id))&&!shownIds.has(String(item.id))).slice(0,3);
+      const toShow=fresh.filter(item=>!readIds.has(String(item.id))&&!seenIds.has(String(item.id))).slice(0,3);
       if(toShow.length){
         showStoreAdminNotificationToasts(toShow);
-        state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...toShow.map(item=>String(item.id))])).slice(-200);
+        toShow.forEach(item=>seenIds.add(String(item.id)));
       }
     }else{
-      // Establish a silent baseline once per page load; do not replay old unread alerts on the next poll.
-      state.seenStoreOrderNotificationIds=Array.from(new Set([...shownIds,...fresh.map(item=>String(item.id))])).slice(-200);
+      // First inbox response establishes a silent baseline so old unread orders are not replayed.
+      fresh.forEach(item=>seenIds.add(String(item.id)));
     }
+    state.seenStoreOrderNotificationIds=saveStoreOrderNotificationIds(STORE_ORDER_NOTIFICATION_SEEN_KEY,Array.from(seenIds));
     state.storeAdminNotificationsInitialized=true;
   }catch(_){
   }finally{
