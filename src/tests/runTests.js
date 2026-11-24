@@ -3499,6 +3499,35 @@ async function run() {
       }
     });
 
+    await test('permanent archive deletion keeps history or removes client-related records by selected mode', async () => {
+      const Client = require('../models/Client');
+      const Order = require('../models/Order');
+      const WalletTransaction = require('../models/WalletTransaction');
+      const keepClient = await Client.create({ name: 'عميل حذف مع الاحتفاظ', phone: '01055550881', passwordHash: 'test-hash', walletBalance: 10 });
+      const keepOrder = await Order.create({ sn: 'SN' + String(Date.now() % 1000000).padStart(6, '0'), clientAccount: keepClient._id, service: 'اختبار', area: 'القاهرة', clientName: keepClient.name, clientPhone: keepClient.phone, status: 'تم النشر' });
+      const keepTransaction = await WalletTransaction.create({ client: keepClient._id, type: 'client_topup', amount: 10, balanceBefore: 0, balanceAfter: 10, description: 'اختبار الاحتفاظ بالسجل', idempotencyKey: 'archive-keep-' + keepClient._id });
+      const keepArchive = await request(app).post('/api/admin/clients/' + keepClient._id + '/archive').set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار الحذف مع الاحتفاظ' });
+      assert.equal(keepArchive.status, 200, JSON.stringify(keepArchive.body));
+      const invalidMode = await request(app).delete('/api/admin/clients/' + keepClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'unknown' });
+      assert.equal(invalidMode.status, 400);
+      assert.ok(await Client.exists({ _id: keepClient._id }), 'invalid deletion mode must not remove the account');
+      const keepResult = await request(app).delete('/api/admin/clients/' + keepClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'keep' });
+      assert.equal(keepResult.status, 200, JSON.stringify(keepResult.body));
+      assert.equal(await Client.exists({ _id: keepClient._id }), null, 'keep mode must permanently remove the account');
+      assert.ok(await Order.exists({ _id: keepOrder._id }), 'keep mode must preserve the customer order');
+      assert.ok(await WalletTransaction.exists({ _id: keepTransaction._id }), 'keep mode must preserve the wallet transaction');
+
+      const allClient = await Client.create({ name: 'عميل حذف شامل', phone: '01055550882', passwordHash: 'test-hash', walletBalance: 10 });
+      const allOrder = await Order.create({ sn: 'SN' + String((Date.now() + 1) % 1000000).padStart(6, '0'), clientAccount: allClient._id, service: 'اختبار', area: 'القاهرة', clientName: allClient.name, clientPhone: allClient.phone, status: 'تم النشر' });
+      const allTransaction = await WalletTransaction.create({ client: allClient._id, order: allOrder._id, orderSN: allOrder.sn, type: 'client_topup', amount: 10, balanceBefore: 0, balanceAfter: 10, description: 'اختبار الحذف الشامل', idempotencyKey: 'archive-all-' + allClient._id });
+      const allArchive = await request(app).post('/api/admin/clients/' + allClient._id + '/archive').set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار الحذف الشامل' });
+      assert.equal(allArchive.status, 200, JSON.stringify(allArchive.body));
+      const allResult = await request(app).delete('/api/admin/clients/' + allClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'all' });
+      assert.equal(allResult.status, 200, JSON.stringify(allResult.body));
+      assert.equal(await Client.exists({ _id: allClient._id }), null, 'all mode must permanently remove the account');
+      assert.equal(await Order.exists({ _id: allOrder._id }), null, 'all mode must remove the customer orders');
+      assert.equal(await WalletTransaction.exists({ _id: allTransaction._id }), null, 'all mode must remove related wallet transactions');
+    });
     await test('active client list is paginated and contains registered Client accounts only', async () => {
       const Client = require('../models/Client');
       await Client.create([
