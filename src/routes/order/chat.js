@@ -99,7 +99,7 @@ function createOrderChatRouter({
         if (!targetOffer) return res.status(404).json({ message: 'العرض غير موجود في هذا الطلب.' });
         if (!isClient && String(targetOffer.fanni) !== String(fanniId)) return res.status(403).json({ message: 'لا يمكنك الرد إلا على استفسارات العرض الخاص بك.' });
         if (isClient && !['هل السعر شامل؟', 'متى تقدر تيجي؟', 'هل في تكلفة إضافية؟'].includes(text)) return res.status(400).json({ message: 'قبل قبول العرض، استخدم أحد أزرار الاستفسارات السريعة.' });
-        if (!isClient && !['نعم', 'لا', 'حسب الاتفاق'].includes(text)) return res.status(400).json({ message: 'قبل قبول العرض، ردود الفني المسموحة فقط: نعم، لا، حسب الاتفاق.' });
+        if (!isClient && !['نعم', 'لا', 'حسب الاتفاق', 'النهاردة بإذن الله', 'بكرة بإذن الله', 'دلوقتي لو حبيت'].includes(text)) return res.status(400).json({ message: 'قبل قبول العرض، ردود الفني المسموحة فقط: نعم، لا، حسب الاتفاق، النهاردة بإذن الله، بكرة بإذن الله، دلوقتي لو حبيت.' });
       }
       order.chatMessages.push({ senderRole: isClient ? 'client' : 'fanni', senderId: isClient ? String(order.clientAccount || order._id) : String(fanniId), targetOfferId, text, createdAt: new Date() });
       await order.save();
