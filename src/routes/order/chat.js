@@ -61,7 +61,7 @@ function createOrderChatRouter({
       const technicianOffer = fanniId && (order.offers || []).find(o => String(o.fanni) === String(fanniId));
       if (!isClient && !technicianOffer) return res.status(403).json({ message: 'غير مسموح بعرض محادثة هذا الطلب.' });
       if (!isClient && !(await hasAcceptedGuidelines(fanniId))) return res.status(428).json({ code: 'TECHNICIAN_GUIDELINES_REQUIRED', message: 'يجب الموافقة على ميثاق التعامل المهني أولًا.' });
-      const accepted = ['تم اختيار فني', 'تم الانتهاء'].includes(order.status);
+      const accepted = ['تم اختيار فني', 'بانتظار تأكيد العميل', 'تم الانتهاء'].includes(order.status);
       if (!isClient && accepted && String(order.assignedFanni || '') !== String(fanniId)) return res.status(403).json({ message: 'المحادثة بعد القبول متاحة للفني المعيّن فقط.' });
       const requestedOfferId = String(req.query?.offerId || '').trim();
       const visibleMessages = (order.chatMessages || []).filter(m => {
