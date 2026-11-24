@@ -8,8 +8,10 @@ function createOrderChatRouter({
   hasContactDetails,
   Order,
   Fanni,
+  Client,
   WalletTransaction,
   mongoose,
+  normalizePhone,
   createNotification,
   notifyAdmins,
   auth,
@@ -172,6 +174,8 @@ function createOrderChatRouter({
       if (!request || request.status !== 'قيد الموافقة') { await session.abortTransaction(); return res.status(409).json({ message: 'طلب تعديل السعر غير متاح أو تم اتخاذ قرار بشأنه.' }); }
       if (typeof req.body?.approved !== 'boolean') { await session.abortTransaction(); return res.status(400).json({ message: 'حدد الموافقة أو الرفض بشكل صريح.' }); }
       const approved = req.body.approved;
+      const paymentMethod = String(req.body?.paymentMethod || 'wallet');
+      if (approved && !['wallet', 'cash'].includes(paymentMethod)) { await session.abortTransaction(); return res.status(400).json({ message: 'طريقة دفع الزيادة غير صحيحة.' }); }
       if (approved) {
         if (!order.commissionCharged || !order.acceptedOfferPrice || !request.fanniId) { await session.abortTransaction(); return res.status(409).json({ message: 'تعذر اعتماد تعديل السعر قبل تثبيت العرض والعمولة.' }); }
         const rate = Number.isFinite(Number(order.commissionRate)) ? Number(order.commissionRate) : DEFAULT_COMMISSION_RATE;
@@ -205,6 +209,57 @@ function createOrderChatRouter({
         order.commissionAmount = newCommission;
         order.commissionRate = rate;
       }
+      let clientWalletBalance = null;
+      if (approved) {
+        const increaseAmount = money(Number(request.newPrice) - Number(request.oldPrice));
+        if (!Number.isFinite(increaseAmount) || increaseAmount <= 0) { await session.abortTransaction(); return res.status(409).json({ message: 'قيمة الزيادة غير صالحة؛ لم يتم اعتماد التعديل.' }); }
+        if (paymentMethod === 'wallet') {
+          const clientQuery = order.clientAccount
+            ? { _id: order.clientAccount }
+            : { phone: normalizePhone(order.clientPhone || '') };
+          const client = await Client.findOne({ ...clientQuery, status: 'نشط', archivedAt: null, walletFrozen: { $ne: true } }).session(session);
+          const balanceBefore = Number(client?.walletBalance || 0);
+          if (!client || !Number.isFinite(balanceBefore) || balanceBefore < increaseAmount) {
+            await session.abortTransaction();
+            return res.status(409).json({ code: 'CLIENT_WALLET_INSUFFICIENT_FOR_PRICE_INCREASE', message: 'رصيد محفظتك غير كافٍ لطلب الزيادة.', required: increaseAmount, balance: Number.isFinite(balanceBefore) ? balanceBefore : 0 });
+          }
+          const updatedClient = await Client.findOneAndUpdate(
+            { _id: client._id, status: 'نشط', archivedAt: null, walletFrozen: { $ne: true }, walletBalance: { $gte: increaseAmount } },
+            { $inc: { walletBalance: -increaseAmount } },
+            { new: true, session, runValidators: true }
+          );
+          if (!updatedClient) {
+            const latestClient = await Client.findById(client._id).select('walletBalance').session(session);
+            await session.abortTransaction();
+            return res.status(409).json({ code: 'CLIENT_WALLET_INSUFFICIENT_FOR_PRICE_INCREASE', message: 'رصيد محفظتك غير كافٍ لطلب الزيادة.', required: increaseAmount, balance: Number(latestClient?.walletBalance || 0) });
+          }
+          const holdTransaction = new WalletTransaction({
+            client: client._id,
+            order: order._id,
+            orderSN: order.sn,
+            type: 'client_escrow_hold',
+            amount: -increaseAmount,
+            balanceBefore,
+            balanceAfter: Number(updatedClient.walletBalance),
+            description: 'حجز قيمة الزيادة للطلب ' + order.sn + ' لحين تأكيد العميل استلام الخدمة',
+            idempotencyKey: 'client-price-increase-hold:' + String(order._id) + ':' + String(request._id)
+          });
+          await holdTransaction.save({ session });
+          request.paymentMethod = 'wallet';
+          request.walletAmount = increaseAmount;
+          request.cashAmount = 0;
+          request.walletTransactionNumber = holdTransaction.transactionNumber;
+          order.clientPaymentAmount = money(Number(order.clientPaymentAmount || 0) + increaseAmount);
+          order.clientPaymentStatus = 'held';
+          if (!order.clientPaymentAt) order.clientPaymentAt = new Date();
+          clientWalletBalance = Number(updatedClient.walletBalance);
+        } else {
+          request.paymentMethod = 'cash';
+          request.cashAmount = increaseAmount;
+          request.walletAmount = 0;
+          request.walletTransactionNumber = '';
+        }
+      }
       request.status = approved ? 'مقبول' : 'مرفوض';
       request.decidedAt = new Date();
       request.decidedByRole = 'client';
@@ -213,7 +268,7 @@ function createOrderChatRouter({
         senderId: String(order.clientAccount || order._id),
         targetOfferId: String(order.acceptedOfferId || ''),
         text: approved
-          ? 'وافقت على زيادة العرض إلى ' + Number(request.newPrice) + ' جنيه.'
+          ? 'وافقت على زيادة العرض إلى ' + Number(request.newPrice) + ' جنيه. ' + (paymentMethod === 'cash' ? 'سأدفع مبلغ الزيادة نقدًا للفني بعد استلام الخدمة.' : 'تم حجز مبلغ الزيادة من محفظتي لحين تأكيد استلام الخدمة.')
           : 'رفضت زيادة العرض؛ السعر السابق ' + Number(request.oldPrice) + ' جنيه ما زال ساريًا.',
         createdAt: new Date()
       });
@@ -225,12 +280,14 @@ function createOrderChatRouter({
         type: approved ? 'price_change_approved' : 'price_change_rejected',
         title: approved ? 'وافق العميل على زيادة السعر' : 'رفض العميل زيادة السعر',
         message: approved
-          ? 'وافق العميل على تعديل سعر الطلب ' + order.sn + ' إلى ' + order.acceptedOfferPrice + ' جنيه.'
+          ? (paymentMethod === 'cash'
+              ? 'وافق العميل على زيادة سعر الطلب ' + order.sn + '. مبلغ الزيادة ' + Number(request.cashAmount || 0) + ' جنيه ستحصل عليه نقدًا من العميل بعد استلام الخدمة، والمبلغ المحجوز من المحفظة يُسوّى لك بعد تأكيد الاستلام.'
+              : 'وافق العميل على زيادة سعر الطلب ' + order.sn + ' وتم حجز مبلغ الزيادة ' + Number(request.walletAmount || 0) + ' جنيه من محفظته، وسيُضاف إلى مستحقاتك بعد تأكيد استلام الخدمة.')
           : 'رفض العميل تعديل سعر الطلب ' + order.sn + '. يظل السعر السابق ساريًا.',
         link: '/fanni',
         dedupeKey: 'price-change-decision:' + String(order._id) + ':' + String(request._id)
       });
-      return res.json({ message: approved ? 'تمت الموافقة على السعر الجديد.' : 'تم رفض تعديل السعر؛ يظل السعر السابق ساريًا.', acceptedOfferPrice: order.acceptedOfferPrice, request });
+      return res.json({ message: approved ? (paymentMethod === 'cash' ? 'تمت الموافقة على الزيادة؛ ستدفعها نقدًا للفني بعد استلام الخدمة.' : 'تمت الموافقة على الزيادة وحجز مبلغها من محفظتك.') : 'تم رفض تعديل السعر؛ يظل السعر السابق ساريًا.', acceptedOfferPrice: order.acceptedOfferPrice, request, paymentMethod: approved ? paymentMethod : '', clientWalletBalance });
     } catch (err) {
       if (session && session.inTransaction()) { try { await session.abortTransaction(); } catch (_) {} }
       if (err && err.code === 11000) return res.status(409).json({ message: 'تمت معالجة تسوية العمولة بالفعل.' });
