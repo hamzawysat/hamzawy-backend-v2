@@ -3515,6 +3515,9 @@ async function run() {
       assert.equal(keepResult.status, 200, JSON.stringify(keepResult.body));
       assert.equal(await Client.exists({ _id: keepClient._id }), null, 'keep mode must permanently remove the account');
       assert.ok(await Order.exists({ _id: keepOrder._id }), 'keep mode must preserve the customer order');
+      const retainedClientOrder = await Order.findById(keepOrder._id).lean();
+      assert.equal(retainedClientOrder.clientAccount, null, 'kept orders must not retain a dangling deleted-client reference');
+      assert.equal(retainedClientOrder.clientPhone, keepClient.phone, 'kept orders must retain the customer phone snapshot');
       assert.ok(await WalletTransaction.exists({ _id: keepTransaction._id }), 'keep mode must preserve the wallet transaction');
 
       const allClient = await Client.create({ name: 'عميل حذف شامل', phone: '01055550882', passwordHash: 'test-hash', walletBalance: 10 });
@@ -3558,6 +3561,12 @@ async function run() {
         name: 'فني حذف مع الاحتفاظ', phone: '01055550885',
         passwordHash: 'test-hash', specialties: ['اختبار']
       });
+      const keepFanniOrder = await Order.create({
+        sn: 'SN' + String((Date.now() + 2) % 1000000).padStart(6, '0'),
+        service: 'اختبار فني محفوظ', area: 'القاهرة', clientName: 'عميل محفوظ',
+        clientPhone: '01055550887', status: 'بانتظار تأكيد العميل',
+        assignedFanni: keepFanni._id, assignedFanniName: keepFanni.name
+      });
       const ReferralClaim = require('../models/ReferralClaim');
       const keepFanniClaim = await ReferralClaim.create({
         tokenHash: 'archive-keep-fanni-' + keepFanni._id,
@@ -3589,6 +3598,11 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken).send({ mode: 'keep' });
       assert.equal(keepFanniDelete.status, 200, JSON.stringify(keepFanniDelete.body));
       assert.equal(await Fanni.exists({ _id: keepFanni._id }), null, 'keep mode must remove the technician account');
+      const retainedFanniOrder = await Order.findById(keepFanniOrder._id).lean();
+      assert.ok(retainedFanniOrder, 'keep mode must preserve the order history');
+      assert.equal(retainedFanniOrder.assignedFanni, null, 'kept orders must not retain a dangling deleted-technician assignment');
+      assert.equal(retainedFanniOrder.assignedFanniName, keepFanni.name, 'kept orders must retain the technician display snapshot');
+      assert.equal(retainedFanniOrder.status, 'قيد المراجعة', 'an order awaiting a deleted technician confirmation must return to review');
       assert.equal(await ReferralClaim.exists({ _id: keepFanniClaim._id }), null, 'keep mode must invalidate temporary claims tied to a deleted technician');
       assert.equal(await PushToken.exists({ _id: keepFanniPushToken._id }), null, 'deleted technician native push credentials must be revoked');
       const retainedSharedSubscription = await WebPushSubscription.findById(sharedSubscription._id).lean();
