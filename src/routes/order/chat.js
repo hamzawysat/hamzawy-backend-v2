@@ -287,7 +287,7 @@ function createOrderChatRouter({
         link: '/fanni',
         dedupeKey: 'price-change-decision:' + String(order._id) + ':' + String(request._id)
       });
-      return res.json({ message: approved ? (paymentMethod === 'cash' ? 'تمت الموافقة على الزيادة؛ ستدفعها نقدًا للفني بعد استلام الخدمة.' : 'تمت الموافقة على الزيادة وحجز مبلغها من محفظتك.') : 'تم رفض تعديل السعر؛ يظل السعر السابق ساريًا.', acceptedOfferPrice: order.acceptedOfferPrice, request, paymentMethod: approved ? paymentMethod : '', clientWalletBalance });
+      return res.json({ message: approved ? (paymentMethod === 'cash' ? 'تمت الموافقة على السعر الجديد. ستدفع الزيادة نقدًا للفني بعد استلام الخدمة.' : 'تمت الموافقة على السعر الجديد. تم حجز مبلغ الزيادة من محفظتك.') : 'تم رفض تعديل السعر؛ يظل السعر السابق ساريًا.', acceptedOfferPrice: order.acceptedOfferPrice, request, paymentMethod: approved ? paymentMethod : '', clientWalletBalance });
     } catch (err) {
       if (session && session.inTransaction()) { try { await session.abortTransaction(); } catch (_) {} }
       if (err && err.code === 11000) return res.status(409).json({ message: 'تمت معالجة تسوية العمولة بالفعل.' });
