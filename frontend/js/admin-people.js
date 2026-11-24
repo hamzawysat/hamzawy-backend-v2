@@ -51,6 +51,7 @@ function renderFannis(){
                 <div class="dropdown-menu">
                   ${!f.isApproved&&!f.isDisabled?`<button onclick="event.stopPropagation();setPendingAction('${menuKey}','approve','قبول الفني')" class="dropdown-item">✓ قبول الفني</button><button onclick="event.stopPropagation();setPendingAction('${menuKey}','reject','رفض الفني')" class="dropdown-item">✕ رفض الفني</button>`:''}
                   ${!f.isDisabled?`<button onclick="event.stopPropagation();setPendingAction('${menuKey}','disable','تعطيل الفني')" class="dropdown-item">⛔ تعطيل</button>`: `<button onclick="event.stopPropagation();setPendingAction('${menuKey}','enable','استعادة الفني')" class="dropdown-item">♻️ استعادة</button>`}
+                  ${f.acceptingOrders===false?`<button onclick="event.stopPropagation();setFanniAvailability('${id}',true)" class="dropdown-item text-emerald-700">🟢 جعل الفني متصلًا واستقبال الطلبات</button>`:`<button onclick="event.stopPropagation();setFanniAvailability('${id}',false)" class="dropdown-item text-amber-700">⏸ جعل الفني غير متصل وإيقاف الطلبات</button>`}
                   <div class="h-px bg-slate-100 my-1"></div>
                   <div class="p-2 space-y-2 border-y border-slate-100 my-1">
                     <label class="block text-[10px] font-black text-slate-500">المستوى المهني</label>
@@ -116,6 +117,16 @@ function renderFannis(){
       `;
     }).join('')}
   </div>`;
+}
+
+async function setFanniAvailability(id, acceptingOrders){
+  const label=acceptingOrders?'توصيل الفني':'فصل الفني';
+  if(!confirm('تأكيد '+label+'؟ سيتم تحديث استقبال الطلبات وإرسال إشعار للفني.'))return;
+  try{
+    const result=await tryApi(['/api/admin/fannis/'+encodeURIComponent(id)+'/availability'],{method:'PATCH',body:JSON.stringify({acceptingOrders})});
+    showToast(result.message||(acceptingOrders?'تم توصيل الفني':'تم فصل الفني'));
+    await loadAll();
+  }catch(error){showToast(error.message||'تعذر تغيير حالة الفني','error');}
 }
 
 function renderLevels(){
