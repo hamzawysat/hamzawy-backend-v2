@@ -2444,11 +2444,11 @@ async function run() {
         .send({ approved: true });
       assert.equal(duplicateDecision.status, 409, 'a price change decision must be applied only once');
 
-      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 550 } });
+      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 600 } });
       const servicePayment = await request(app).post('/api/client/orders/' + order.sn + '/pay')
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(servicePayment.status, 200, JSON.stringify(servicePayment.body));
-      assert.equal(servicePayment.body.balance, 50);
+      assert.equal(servicePayment.body.balance, 100);
       assert.equal(servicePayment.body.amount, 500);
       assert.equal(servicePayment.body.totalHeldAmount, 650);
       assert.equal(servicePayment.body.paymentStatus, 'held');
