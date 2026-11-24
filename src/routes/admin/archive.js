@@ -189,18 +189,18 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             ]
           }, { $set: { order: null, referral: null } }, { session });
 
-          const results = await Promise.all([
-            Order.deleteMany({ _id: { $in: orderIds } }, { session }),
-            Complaint.deleteMany({ $or: [{ order: { $in: orderIds } }, { sn: { $in: orderNumbers } }] }, { session }),
-            Rating.deleteMany({ $or: [{ clientPhone: account.phone }, { orderId: { $in: orderIds } }] }, { session }),
-            ClientTopupRequest.deleteMany({ client: account._id }, { session }),
-            ClientSubscription.deleteMany({ client: account._id }, { session }),
-            StoreOrder.deleteMany({ buyerRole: 'client', buyerId: account._id }, { session }),
-            SupportCase.deleteMany({ ownerRole: 'client', ownerId: account._id }, { session }),
-            Notification.deleteMany({ recipientRole: 'client', recipientId: account._id }, { session }),
-            SupportPassword.deleteMany({ ownerRole: 'client', accountId: account._id }, { session }),
-            Referral.deleteMany({ kind: 'client', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session })
-          ]);
+          // MongoDB transactions do not support parallel operations on one session.
+          const results = [];
+          results.push(await Order.deleteMany({ _id: { $in: orderIds } }, { session }));
+          results.push(await Complaint.deleteMany({ $or: [{ order: { $in: orderIds } }, { sn: { $in: orderNumbers } }] }, { session }));
+          results.push(await Rating.deleteMany({ $or: [{ clientPhone: account.phone }, { orderId: { $in: orderIds } }] }, { session }));
+          results.push(await ClientTopupRequest.deleteMany({ client: account._id }, { session }));
+          results.push(await ClientSubscription.deleteMany({ client: account._id }, { session }));
+          results.push(await StoreOrder.deleteMany({ buyerRole: 'client', buyerId: account._id }, { session }));
+          results.push(await SupportCase.deleteMany({ ownerRole: 'client', ownerId: account._id }, { session }));
+          results.push(await Notification.deleteMany({ recipientRole: 'client', recipientId: account._id }, { session }));
+          results.push(await SupportPassword.deleteMany({ ownerRole: 'client', accountId: account._id }, { session }));
+          results.push(await Referral.deleteMany({ kind: 'client', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
           deleted = {
             orders: results[0].deletedCount || 0,
             complaints: results[1].deletedCount || 0,
@@ -256,16 +256,16 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             referral: { $in: referralIds }
           }, { $set: { referral: null } }, { session });
 
-          const results = await Promise.all([
-            Rating.deleteMany({ $or: [{ fanniId: account._id }, { reviewerId: account._id }] }, { session }),
-            TopupRequest.deleteMany({ fanni: account._id }, { session }),
-            StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }),
-            SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }),
-            Notification.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session }),
-            SupportPassword.deleteMany({ ownerRole: 'fanni', accountId: account._id }, { session }),
-            Referral.deleteMany({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }),
-            ReferralClaim.deleteMany({ $or: [{ inviter: account._id }, { invitee: account._id }] }, { session })
-          ]);
+          // Keep all operations sequential while sharing the transaction session.
+          const results = [];
+          results.push(await Rating.deleteMany({ $or: [{ fanniId: account._id }, { reviewerId: account._id }] }, { session }));
+          results.push(await TopupRequest.deleteMany({ fanni: account._id }, { session }));
+          results.push(await StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }));
+          results.push(await SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }));
+          results.push(await Notification.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session }));
+          results.push(await SupportPassword.deleteMany({ ownerRole: 'fanni', accountId: account._id }, { session }));
+          results.push(await Referral.deleteMany({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
+          results.push(await ReferralClaim.deleteMany({ $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
 
           for (const ledger of ledgers) {
             const remaining = (ledger.linkedTechnicians || []).filter(item =>
