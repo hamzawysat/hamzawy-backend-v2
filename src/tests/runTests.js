@@ -3542,6 +3542,25 @@ async function run() {
         name: 'فني حذف نهائي اختبار', phone: '01055550884',
         passwordHash: 'test-hash', specialties: ['اختبار']
       });
+      const keepFanni = await Fanni.create({
+        name: 'فني حذف مع الاحتفاظ', phone: '01055550885',
+        passwordHash: 'test-hash', specialties: ['اختبار']
+      });
+      const ReferralClaim = require('../models/ReferralClaim');
+      const keepFanniClaim = await ReferralClaim.create({
+        tokenHash: 'archive-keep-fanni-' + keepFanni._id,
+        kind: 'fanni', inviter: keepFanni._id, inviteCodeUsed: 'TEST-KEEP',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+      });
+      const keepFanniArchive = await request(app).post('/api/admin/fannis/' + keepFanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار حذف الفني مع الاحتفاظ' });
+      assert.equal(keepFanniArchive.status, 200, JSON.stringify(keepFanniArchive.body));
+      const keepFanniDelete = await request(app).delete('/api/admin/fannis/' + keepFanni._id + '/permanent-delete')
+        .set('Authorization', 'Bearer ' + adminToken).send({ mode: 'keep' });
+      assert.equal(keepFanniDelete.status, 200, JSON.stringify(keepFanniDelete.body));
+      assert.equal(await Fanni.exists({ _id: keepFanni._id }), null, 'keep mode must remove the technician account');
+      assert.equal(await ReferralClaim.exists({ _id: keepFanniClaim._id }), null, 'keep mode must invalidate temporary claims tied to a deleted technician');
+
       const fanniTransaction = await WalletTransaction.create({
         fanni: fanni._id, type: 'commission', amount: 5, balanceBefore: 10,
         balanceAfter: 5, description: 'حركة مالية للفني', idempotencyKey: 'archive-fanni-' + fanni._id
