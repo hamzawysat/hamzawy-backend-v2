@@ -309,7 +309,12 @@ async function openNotification(id){
  if(['orders','complaint','wallet','subscriptions','store'].includes(tab)){
   if(typeof rememberClientTab==='function')rememberClientTab(tab);
   state.tab=tab;
-  if(tab==='orders')await loadMyOrders(false);
+  if(tab==='orders'){
+   if(state.accountOrdersTab==='current'){
+    try{await API.markClientOffersViewed();}catch(error){console.warn('تعذر تسجيل مشاهدة عروض الطلبات:',error?.message||error);}
+   }
+   await loadMyOrders(false);
+  }
   else if(tab==='wallet')await loadClientWallet();
   else if(tab==='subscriptions')await loadClientCommerce();
   else if(tab==='store')await loadStoreForRole('client');
