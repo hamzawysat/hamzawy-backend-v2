@@ -154,10 +154,13 @@ async function run() {
       assert.match(deployedNavigation, /window\.location\.reload\(\)/, 'the deployed navigation bundle must include full reload behavior');
 
       const storeRoute = fs.readFileSync(path.join(__dirname, '../routes/admin/store.js'), 'utf8');
+      const notificationUtils = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
       assert.match(storeRoute, /StoreOrder\.countDocuments\(\{ status: 'جديد' \}\)/, 'cancelled and completed orders must not count as pending');
-      assert.match(storeRoute, /Notification\.updateMany/, 'terminal store states must retire the exact admin order notification');
-      assert.match(storeRoute, /\['مكتمل', 'مرفوض', 'ملغي'\]/, 'admin order alerts are retired only for terminal states');
-      assert.match(storeRoute, /store-order:/, 'admin alert cleanup is scoped to the exact store-order dedupe key');
+      assert.match(storeRoute, /if \(\['مكتمل', 'مرفوض', 'ملغي'\]\.includes\(order\.status\)\)/, 'admin order alerts are retired only for terminal states');
+      assert.match(storeRoute, /dismissStoreOrderNotifications\(order\._id, order\)/, 'terminal store states must retire the exact admin order notification');
+      assert.match(notificationUtils, /return Notification\.updateMany\(filter, \{ \$set: \{ isActive: false, readAt: new Date\(\) \} \}\)/, 'notification cleanup helper must retire matched admin alerts');
+      assert.match(notificationUtils, /relatedEntityType: 'store_order'/, 'notification cleanup must target store-order entities');
+      assert.match(notificationUtils, /dedupeKey: \{ \$regex:/, 'notification cleanup must support legacy order dedupe keys');
     });
 
     await test('admin FCM channel routing is isolated from Expo client and technician notifications', async () => {
