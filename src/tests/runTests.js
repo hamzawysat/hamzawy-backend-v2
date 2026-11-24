@@ -415,6 +415,66 @@ async function run() {
       assert.ok(adminShell.includes('رجوع داخل لوحة الإدارة'), 'back action should be labeled as internal admin navigation');
       assert.ok(adminNavigation.includes("previous==='__home__'"), 'Back from the first section should return to the main menu');
     });
+    await test('client and technician browser Back follows tab history without trapping the browser at dashboard home', async () => {
+      const vm = require('node:vm');
+      const behaviors = fs.readFileSync(path.join(__dirname, '../../frontend/js/page-behaviors.js'), 'utf8');
+      let popstateHandler = null;
+      let rootPushes = 0;
+      let receivedState = null;
+      const browserContext = vm.createContext({
+        document: { currentScript: { dataset: { sonaaFeatures: 'browser-back' } } },
+        location: { href: 'https://example.test/client' },
+        window: {
+          history: { pushState() { rootPushes += 1; } },
+          addEventListener(name, handler) { if (name === 'popstate') popstateHandler = handler; },
+          goBack(fromPopState, targetState) { receivedState = { fromPopState, targetState }; return false; }
+        }
+      });
+      vm.runInContext(behaviors, browserContext);
+      assert.equal(rootPushes, 0, 'browser Back must not be trapped by a synthetic root history entry');
+      assert.equal(typeof popstateHandler, 'function', 'browser Back listener should be installed');
+      const targetState = { sonaaClientTab: 'orders' };
+      popstateHandler({ state: targetState });
+      assert.equal(receivedState.fromPopState, true);
+      assert.equal(receivedState.targetState.sonaaClientTab, 'orders');
+
+      const clientNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-actions.js'), 'utf8');
+      const clientPrefix = clientNavigation.slice(0, clientNavigation.indexOf('function toggleService()'));
+      const clientState = { tab: 'store' };
+      const clientContext = vm.createContext({
+        state: clientState, window: { history: { back() {}, replaceState() {} }, location: { href: '/' } },
+        render() {}
+      });
+      vm.runInContext(clientPrefix, clientContext);
+      vm.runInContext("CLIENT_TAB_HISTORY.push('home')", clientContext);
+      clientContext.goBack(true, { sonaaClientTab: 'home' });
+      assert.equal(clientState.tab, 'home', 'client Back should restore the previous tab');
+      assert.equal(vm.runInContext('CLIENT_TAB_HISTORY.length', clientContext), 0);
+      clientContext.goBack(true, { sonaaBackRoot: true });
+      assert.equal(clientState.tab, 'home', 'an external/root history entry must not force a dashboard redirect');
+      clientContext.goBack(true, { sonaaClientTab: 'store' });
+      assert.equal(clientState.tab, 'store', 'Forward should restore the next client tab');
+      assert.equal(vm.runInContext('CLIENT_TAB_HISTORY.length', clientContext), 1, 'Forward should restore the tab needed by the next Back');
+
+      const technicianNavigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-navigation.js'), 'utf8');
+      const technicianState = { tab: 'store', error: '', success: '', pendingMsg: '' };
+      const technicianContext = vm.createContext({
+        state: technicianState, window: { history: { back() {} }, location: { href: '/' } },
+        render() {}, loadOrders() {}, loadMyOffers() {}, loadWalletHistory() {},
+        loadWalletTransferNumbers() {}, loadProfile() {}, getToken() { return ''; }
+      });
+      vm.runInContext(technicianNavigation, technicianContext);
+      vm.runInContext("TECHNICIAN_TAB_HISTORY.push('home')", technicianContext);
+      technicianContext.goBack(true, { sonaaFanniTab: 'home' });
+      assert.equal(technicianState.tab, 'home', 'technician Back should restore the previous tab');
+      assert.equal(vm.runInContext('TECHNICIAN_TAB_HISTORY.length', technicianContext), 0);
+      technicianContext.goBack(true, { sonaaBackRoot: true });
+      assert.equal(technicianState.tab, 'home', 'an external/root history entry must not force a technician redirect');
+      technicianContext.goBack(true, { sonaaFanniTab: 'store' });
+      assert.equal(technicianState.tab, 'store', 'Forward should restore the next technician tab');
+      assert.equal(vm.runInContext('TECHNICIAN_TAB_HISTORY.length', technicianContext), 1, 'Forward should restore the tab needed by the next Back');
+    });
+
     await test('store admin reuses saved product categories and browser catalogs open image-backed category cards', async () => {
       const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
       const browserStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/store-ui.js'), 'utf8');

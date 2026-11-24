@@ -1,11 +1,24 @@
 'use strict';
 
 const CLIENT_TAB_HISTORY=[];
+if(window.history&&window.history.replaceState)window.history.replaceState({...window.history.state,sonaaClientTab:state.tab},'',window.location.href);
 function rememberClientTab(nextTab,fromBack=false){if(!fromBack&&state.tab!==nextTab){CLIENT_TAB_HISTORY.push(state.tab);if(CLIENT_TAB_HISTORY.length>50)CLIENT_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaClientTab:nextTab},'','#'+encodeURIComponent(nextTab));}}
 function setTab(tab,fromBack=false){if(!['home','new','orders','track','wallet','subscriptions','store','complaint','profile'].includes(tab))return;if(tab==='profile'){window.location.href='password.html?role=client&mode=account';return;}rememberClientTab(tab,fromBack);if(tab==='new')state.clientNewRequestChoice='';state.tab=tab;if(tab==='subscriptions')state.commerceView='available';render();if((tab==='home'||tab==='orders')&&state.accountToken&&typeof loadMyOrders==='function')loadMyOrders(false);if(tab==='wallet'&&state.accountToken&&typeof loadClientWallet==='function')loadClientWallet();if(tab==='subscriptions'&&state.accountToken&&typeof loadClientCommerce==='function')loadClientCommerce();if(tab==='store'&&state.accountToken&&typeof loadStoreForRole==='function')loadStoreForRole('client');}
 function chooseClientNewRequest(choice){if(choice==='store'){setTab('store');return;}if(choice==='technician'){state.clientNewRequestChoice='technician';render();}}
 function backToClientNewRequestChooser(){state.clientNewRequestChoice='';render();}
-function goBack(fromPopState=false){if(!fromPopState&&CLIENT_TAB_HISTORY.length){window.history.back();return true;}if(fromPopState&&CLIENT_TAB_HISTORY.length){const previous=CLIENT_TAB_HISTORY.pop();setTab(previous,true);return true;}window.location.href='/';return true;}
+function goBack(fromPopState=false,targetState=null){
+ if(fromPopState){
+  const target=String(targetState?.sonaaClientTab||'');
+  if(!['home','new','orders','track','wallet','subscriptions','store','complaint'].includes(target))return false;
+  if(CLIENT_TAB_HISTORY[CLIENT_TAB_HISTORY.length-1]===target)CLIENT_TAB_HISTORY.pop();
+  else if(state.tab!==target){CLIENT_TAB_HISTORY.push(state.tab);if(CLIENT_TAB_HISTORY.length>50)CLIENT_TAB_HISTORY.shift();}
+  setTab(target,true);
+  return true;
+ }
+ if(CLIENT_TAB_HISTORY.length){window.history.back();return true;}
+ window.location.href='/';
+ return true;
+}
 function toggleService(){
   if(state.servicesLoading){if(state.servicesError)loadServices();return;}
   if(state.servicesError){loadServices();return;}
