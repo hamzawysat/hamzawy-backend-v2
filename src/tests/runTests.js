@@ -300,7 +300,7 @@ async function run() {
         'client order-history filters must classify the same completed statuses and status fields as the native dashboard'
       );
       assert.ok(
-        (clientRender.match(/onclick="setTab\('orders'\);state\.accountOrdersTab='current';render\(\)"/g) || []).length >= 3,
+        (clientRender.match(/onclick="state\.accountOrdersTab='current';setTab\('orders'\)"/g) || []).length >= 3,
         'client active-orders statistic, total-orders statistic, and order-history shortcut must always open current orders like the native app'
       );
       for (const key of ['wallet', 'available', 'completed', 'offers']) {
@@ -385,7 +385,7 @@ async function run() {
       const clientLogoutEnd = clientRoutes.indexOf("\nrouter.get('/me'", clientLogoutStart);
       const clientLogoutRoute = clientRoutes.slice(clientLogoutStart, clientLogoutEnd);
       assert.notEqual(clientLogoutStart, -1, 'client logout route must exist');
-      assert.ok(clientLogoutRoute.includes("dedupeKey: 'client-logout:'"), 'client logout route must deduplicate repeated requests for the same session token');
+      assert.ok(clientLogoutRoute.includes("dedupeKey: 'client-logout:'") && clientLogoutRoute.includes("crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')"), 'client logout route must deduplicate repeated requests for the same session token');
       const clientLoginStart = clientRoutes.indexOf("router.post('/login'");
       const clientLoginEnd = clientRoutes.indexOf("\nrouter.post('/logout'", clientLoginStart);
       assert.doesNotMatch(clientRoutes.slice(clientLoginStart, clientLoginEnd), /client-logout:/, 'logout dedupe key must not be attached to client login');
