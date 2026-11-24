@@ -35,7 +35,7 @@ let clientReferralPageOpen = false;
 function openClientReferralPage(){if(!clientReferralInfo?.enabled)return;clientReferralPageOpen=true;render();}
 function closeClientReferralPage(){clientReferralPageOpen=false;render();}
 function clientReferralCodeFromUrl(){try{return new URLSearchParams(location.search).get('ref')||'';}catch(_){return '';}}
-function clientDownloadUrl(){const url=new URL('/download',location.origin);const code=clientReferralCodeFromUrl().trim().toUpperCase();if(/^C-[A-F0-9]{24}-[A-F0-9]{12}$/.test(code))url.searchParams.set('ref',code);return url.pathname+url.search;}
+function clientDownloadUrl(){const url=new URL('/download',location.origin);const code=clientReferralCodeFromUrl().trim().toUpperCase();if(/^C-[A-F0-9]{24}-(?:[A-F0-9]{12}|[A-Z0-9_-]{22})$/.test(code))url.searchParams.set('ref',code);return url.pathname+url.search;}
 async function loadClientReferralInfo(){if(!state.accountToken)return;try{clientReferralInfo=await API.request('/api/referrals/me/client',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});if(!clientReferralInfo?.enabled)clientReferralPageOpen=false;if(state.tab==='home'||clientReferralPageOpen)render();}catch(error){console.warn('تعذر تحميل دعوات العميل:',error.message);}}
 async function copyClientReferralLink(){const value=clientReferralInfo?.url||'';if(!value)return;try{await navigator.clipboard.writeText(value);showToast('تم نسخ رابط الدعوة','success');}catch(_){showToast('تعذر النسخ تلقائيًا؛ انسخ الرابط يدويًا','error');}}
 async function shareClientReferralLink(){
@@ -43,7 +43,7 @@ async function shareClientReferralLink(){
  let referralUrl;
  try{referralUrl=new URL(String(info.url||''),location.origin);}catch(_){showToast('رابط الدعوة غير صالح','error');return;}
  const code=String(info.code||referralUrl.searchParams.get('ref')||'').trim().toUpperCase();
- if(!/^C-[A-F0-9]{24}-[A-F0-9]{12}$/.test(code)){showToast('كود الدعوة غير صالح. حدّث بيانات الدعوة وحاول مرة أخرى.','error');return;}
+ if(!/^C-[A-F0-9]{24}-(?:[A-F0-9]{12}|[A-Z0-9_-]{22})$/.test(code)){showToast('كود الدعوة غير صالح. حدّث بيانات الدعوة وحاول مرة أخرى.','error');return;}
  referralUrl.pathname='/client';referralUrl.search='';referralUrl.searchParams.set('ref',code);
  const downloadUrl=new URL('/download',referralUrl.origin);downloadUrl.searchParams.set('ref',code);
  const text=[
