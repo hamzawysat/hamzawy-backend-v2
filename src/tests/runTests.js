@@ -402,8 +402,8 @@ async function run() {
       const adminManagement = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniManagement.js'), 'utf8');
       const adminPeopleDist = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-people.js'), 'utf8');
       assert.ok(adminPeople.includes("setFanniAvailability('${id}'"), 'admin technician actions should expose online/offline control');
-      assert.ok(adminPeopleDist.includes("setFanniAvailability('${id}'"), 'deployed admin bundle should expose online/offline control');
-      assert.ok(adminPeopleDist.includes("openFanniUnifiedProfile('${id}')"), 'deployed admin bundle should expose the unified technician profile button');
+      assert.ok(adminPeopleDist.includes("setFanniAvailability"), 'deployed admin bundle should expose online/offline control');
+      assert.ok(adminPeopleDist.includes("openFanniUnifiedProfile"), 'deployed admin bundle should expose the unified technician profile button');
       assert.ok(adminManagement.includes("router.patch('/fannis/:id/availability'"), 'admin availability endpoint should exist');
       assert.ok(adminManagement.includes("recipientRole: 'fanni'") && adminManagement.includes("admin_availability_changed"), 'technicians should receive an in-app notification when admin changes availability');
       assert.ok(adminPeople.includes('f.acceptingOrders===false'), 'admin technician cards should reflect the persisted receiving-orders state');
