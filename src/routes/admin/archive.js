@@ -199,6 +199,11 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           results.push(await StoreOrder.deleteMany({ buyerRole: 'client', buyerId: account._id }, { session }));
           results.push(await SupportCase.deleteMany({ ownerRole: 'client', ownerId: account._id }, { session }));
           results.push(await Notification.deleteMany({ recipientRole: 'client', recipientId: account._id }, { session }));
+          // Keep notifications delivered to other roles, but detach links to deleted orders.
+          const detachedNotifications = await Notification.updateMany({
+            recipientRole: { $ne: 'client' },
+            relatedEntityId: { $in: orderIds }
+          }, { $set: { relatedEntityId: null, relatedEntityType: '', link: '' } }, { session });
           results.push(await SupportPassword.deleteMany({ ownerRole: 'client', accountId: account._id }, { session }));
           results.push(await Referral.deleteMany({ kind: 'client', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
           deleted = {
@@ -207,6 +212,7 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             ratings: results[2].deletedCount || 0,
             walletTransactions: ownWalletTransactions.deletedCount || 0,
             otherWalletTransactionsPreserved: detachedWalletTransactions.modifiedCount || 0,
+            otherNotificationsDetached: detachedNotifications.modifiedCount || 0,
             topups: results[3].deletedCount || 0,
             subscriptions: results[4].deletedCount || 0,
             storeOrders: results[5].deletedCount || 0,
@@ -230,6 +236,8 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
               String(offer.fanni || '') !== String(account._id) && String(offer.fanniId || '') !== String(account._id));
             order.priceChangeRequests = (order.priceChangeRequests || []).filter(item =>
               String(item.fanniId || '') !== String(account._id));
+            order.chatMessages = (order.chatMessages || []).filter(message =>
+              message.senderRole !== 'fanni' || String(message.senderId || '') !== String(account._id));
             if (String(order.assignedFanni || '') === String(account._id)) {
               order.assignedFanni = null;
               order.assignedFanniName = '';
@@ -263,6 +271,10 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           results.push(await StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }));
           results.push(await SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }));
           results.push(await Notification.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session }));
+          const detachedNotifications = await Notification.updateMany({
+            recipientRole: { $ne: 'fanni' },
+            relatedEntityId: account._id
+          }, { $set: { relatedEntityId: null, relatedEntityType: '', link: '' } }, { session });
           results.push(await SupportPassword.deleteMany({ ownerRole: 'fanni', accountId: account._id }, { session }));
           results.push(await Referral.deleteMany({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
           results.push(await ReferralClaim.deleteMany({ $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
@@ -287,6 +299,7 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             ratings: results[0].deletedCount || 0,
             walletTransactions: ownWalletTransactions.deletedCount || 0,
             otherWalletTransactionsPreserved: detachedWalletTransactions.modifiedCount || 0,
+            otherNotificationsDetached: detachedNotifications.modifiedCount || 0,
             topups: results[1].deletedCount || 0,
             storeOrders: results[2].deletedCount || 0,
             supportCases: results[3].deletedCount || 0,
