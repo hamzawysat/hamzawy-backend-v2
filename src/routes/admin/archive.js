@@ -1,6 +1,22 @@
 'use strict';
 
 const express = require('express');
+const mongoose = require('mongoose');
+const WalletTransaction = require('../../models/WalletTransaction');
+const ClientTopupRequest = require('../../models/ClientTopupRequest');
+const ClientSubscription = require('../../models/ClientSubscription');
+const StoreOrder = require('../../models/StoreOrder');
+const SupportCase = require('../../models/SupportCase');
+const Notification = require('../../models/Notification');
+const TopupRequest = require('../../models/TopupRequest');
+const Rating = require('../../models/Rating');
+const Order = require('../../models/Order');
+const Complaint = require('../../models/Complaint');
+const SupportPassword = require('../../models/SupportPassword');
+const PhoneIdentity = require('../../models/PhoneIdentity');
+const Referral = require('../../models/Referral');
+const ReferralClaim = require('../../models/ReferralClaim');
+const FanniCardLedger = require('../../models/FanniCardLedger');
 
 function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,6 +132,188 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
       return res.json({ message: 'تمت أرشفة حساب الفني مع الاحتفاظ بالهوية والصور وكل السجلات المرتبطة.', fanni });
     } catch (error) { return next(error); }
   });
+
+
+  async function permanentlyDeleteAccount(req, res, next, kind) {
+    const isFanni = kind === 'fanni';
+    const Model = isFanni ? Fanni : Client;
+    const collection = isFanni ? 'fannis' : 'clients';
+    const label = isFanni ? 'الفني' : 'العميل';
+    const id = req.params.id;
+    if (!validId(id)) return sendBadId(res);
+
+    const mode = String(req.body?.mode || '');
+    if (!['all', 'keep'].includes(mode)) {
+      return res.status(400).json({ message: 'اختر طريقة الحذف: حذف شامل أو حذف مع الاحتفاظ بالسجلات.' });
+    }
+
+    const session = await mongoose.startSession();
+    let accountSnapshot = null;
+    let deleted = {};
+    let mediaIds = [];
+
+    try {
+      await session.withTransaction(async () => {
+        const accountQuery = isFanni ? { _id: id, role: 'fanni', archivedAt: { $ne: null } } : { _id: id, archivedAt: { $ne: null } };
+        let accountQueryBuilder = Model.findOne(accountQuery);
+        if (isFanni) accountQueryBuilder = accountQueryBuilder.select('+identityCardFrontFileId +identityCardBackFileId +profilePhotoFileId');
+        const account = await accountQueryBuilder.session(session);
+        if (!account) {
+          const exists = await Model.exists(isFanni ? { _id: id, role: 'fanni' } : { _id: id }).session(session);
+          throw Object.assign(new Error(exists ? 'الحساب لم يعد مؤرشفًا.' : 'الحساب غير موجود.'), { statusCode: exists ? 409 : 404 });
+        }
+
+        accountSnapshot = { id: String(account._id), name: account.name, phone: account.phone };
+        if (isFanni) {
+          mediaIds = [account.identityCardFrontFileId, account.identityCardBackFileId, account.profilePhotoFileId].filter(Boolean);
+        }
+
+        if (mode === 'all' && !isFanni) {
+          const orders = await Order.find({
+            $or: [{ clientAccount: account._id }, { clientPhone: account.phone }]
+          }).select('_id sn').session(session).lean();
+          const orderIds = orders.map(item => item._id);
+          const orderNumbers = orders.map(item => item.sn).filter(Boolean);
+          const referrals = await Referral.find({ kind: 'client', $or: [{ inviter: account._id }, { invitee: account._id }] })
+            .select('_id').session(session).lean();
+          const referralIds = referrals.map(item => item._id);
+
+          const results = await Promise.all([
+            Order.deleteMany({ _id: { $in: orderIds } }, { session }),
+            Complaint.deleteMany({ $or: [{ order: { $in: orderIds } }, { sn: { $in: orderNumbers } }] }, { session }),
+            Rating.deleteMany({ $or: [{ clientPhone: account.phone }, { orderId: { $in: orderIds } }] }, { session }),
+            WalletTransaction.deleteMany({ $or: [{ client: account._id }, { order: { $in: orderIds } }, { referral: { $in: referralIds } }] }, { session }),
+            ClientTopupRequest.deleteMany({ client: account._id }, { session }),
+            ClientSubscription.deleteMany({ client: account._id }, { session }),
+            StoreOrder.deleteMany({ buyerRole: 'client', buyerId: account._id }, { session }),
+            SupportCase.deleteMany({ ownerRole: 'client', ownerId: account._id }, { session }),
+            Notification.deleteMany({ recipientRole: 'client', recipientId: account._id }, { session }),
+            SupportPassword.deleteMany({ ownerRole: 'client', accountId: account._id }, { session }),
+            Referral.deleteMany({ kind: 'client', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session })
+          ]);
+          deleted = {
+            orders: results[0].deletedCount || 0,
+            complaints: results[1].deletedCount || 0,
+            ratings: results[2].deletedCount || 0,
+            walletTransactions: results[3].deletedCount || 0,
+            topups: results[4].deletedCount || 0,
+            subscriptions: results[5].deletedCount || 0,
+            storeOrders: results[6].deletedCount || 0,
+            supportCases: results[7].deletedCount || 0,
+            notifications: results[8].deletedCount || 0,
+            supportPasswords: results[9].deletedCount || 0,
+            referrals: results[10].deletedCount || 0
+          };
+        } else if (mode === 'all' && isFanni) {
+          const orders = await Order.find({
+            $or: [
+              { assignedFanni: account._id },
+              { 'offers.fanni': account._id },
+              { 'offers.fanniId': String(account._id) },
+              { 'priceChangeRequests.fanniId': account._id }
+            ]
+          }).session(session);
+          const orderIds = orders.map(item => item._id);
+          for (const order of orders) {
+            order.offers = (order.offers || []).filter(offer =>
+              String(offer.fanni || '') !== String(account._id) && String(offer.fanniId || '') !== String(account._id));
+            order.priceChangeRequests = (order.priceChangeRequests || []).filter(item =>
+              String(item.fanniId || '') !== String(account._id));
+            if (String(order.assignedFanni || '') === String(account._id)) {
+              order.assignedFanni = null;
+              order.assignedFanniName = '';
+              order.acceptedOfferId = null;
+              order.acceptedOfferPrice = null;
+              if (['تم اختيار فني', 'بانتظار تأكيد العميل'].includes(order.status)) {
+                order.status = order.offers.length ? 'تم النشر' : 'قيد المراجعة';
+              }
+            }
+            await order.save({ session });
+          }
+
+          const referrals = await Referral.find({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] })
+            .select('_id').session(session).lean();
+          const referralIds = referrals.map(item => item._id);
+          const ledgers = await FanniCardLedger.find({
+            $or: [{ fanniId: account._id }, { 'linkedTechnicians.fanniId': account._id }]
+          }).session(session);
+
+          const results = await Promise.all([
+            Rating.deleteMany({ $or: [{ fanniId: account._id }, { reviewerId: account._id }] }, { session }),
+            WalletTransaction.deleteMany({ $or: [{ fanni: account._id }, { referral: { $in: referralIds } }] }, { session }),
+            TopupRequest.deleteMany({ fanni: account._id }, { session }),
+            StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }),
+            SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }),
+            Notification.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session }),
+            SupportPassword.deleteMany({ ownerRole: 'fanni', accountId: account._id }, { session }),
+            Referral.deleteMany({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }),
+            ReferralClaim.deleteMany({ $or: [{ inviter: account._id }, { invitee: account._id }] }, { session })
+          ]);
+
+          for (const ledger of ledgers) {
+            const remaining = (ledger.linkedTechnicians || []).filter(item =>
+              String(item.fanniId || '') !== String(account._id));
+            if (remaining.length) {
+              ledger.linkedTechnicians = remaining;
+              if (String(ledger.fanniId || '') === String(account._id)) {
+                ledger.fanniId = remaining[0].fanniId || null;
+                ledger.fanniName = remaining[0].name || ledger.fanniName;
+              }
+              await ledger.save({ session });
+            } else {
+              await FanniCardLedger.deleteOne({ _id: ledger._id }, { session });
+            }
+          }
+
+          deleted = {
+            relatedOrdersUpdated: orderIds.length,
+            ratings: results[0].deletedCount || 0,
+            walletTransactions: results[1].deletedCount || 0,
+            topups: results[2].deletedCount || 0,
+            storeOrders: results[3].deletedCount || 0,
+            supportCases: results[4].deletedCount || 0,
+            notifications: results[5].deletedCount || 0,
+            supportPasswords: results[6].deletedCount || 0,
+            referrals: results[7].deletedCount || 0,
+            referralClaims: results[8].deletedCount || 0,
+            identityLedgersUpdated: ledgers.length
+          };
+        } else {
+          await SupportPassword.deleteMany({ ownerRole: isFanni ? 'fanni' : 'client', accountId: account._id }, { session });
+        }
+
+        await PhoneIdentity.deleteOne({ ownerRole: isFanni ? 'fanni' : 'client', ownerId: account._id }, { session });
+        await Model.deleteOne({ _id: account._id }, { session });
+      });
+
+      if (isFanni && mode === 'all' && mongoose.connection.db && mediaIds.length) {
+        const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+        for (const fileId of mediaIds) {
+          try { await bucket.delete(fileId); }
+          catch (error) { console.error('Could not remove archived technician media:', String(fileId), error.message); }
+        }
+      }
+
+      await writeAdminAudit(req, 'حذف نهائي ' + label, collection, accountSnapshot.id,
+        JSON.stringify({ mode, name: accountSnapshot.name, phone: accountSnapshot.phone, deleted }));
+      return res.set('Cache-Control', 'no-store').json({
+        message: mode === 'all'
+          ? 'تم حذف الحساب وتنفيذ الحذف الشامل للسجلات المرتبطة وفق نوع الحساب.'
+          : 'تم حذف الحساب فقط مع الاحتفاظ بالسجلات والمعاملات التاريخية.',
+        deleted
+      });
+    } catch (error) {
+      if (error.statusCode) return res.status(error.statusCode).json({ message: error.message });
+      return next(error);
+    } finally {
+      await session.endSession();
+    }
+  }
+
+  router.delete('/clients/:id/permanent-delete', auth('admin'), (req, res, next) =>
+    permanentlyDeleteAccount(req, res, next, 'client'));
+  router.delete('/fannis/:id/permanent-delete', auth('admin'), (req, res, next) =>
+    permanentlyDeleteAccount(req, res, next, 'fanni'));
 
   router.post('/clients/:id/restore', auth('admin'), async (req, res, next) => {
     try {
