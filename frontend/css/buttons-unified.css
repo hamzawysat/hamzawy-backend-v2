@@ -1,0 +1,60 @@
+/* مصدر واحد لكل الزراير في المشروع - يتحمل آخر واحد */
+/* قاعدة عامة للشكل */
+#app button, #app [role="button"], #app a.btn, #app .btn {
+  border-radius: 13px !important;
+  font-weight: 800 !important;
+  line-height: 1.4 !important;
+  min-height: 44px !important;
+}
+/* زرار أساسي بيتضغط - كل الأكشن الأساسي في المشروع */
+#app .btn, #app .btn-primary, #app .primary-btn, #app .blue-btn, #app button.btn-primary, #app button.primary-btn, #app button.blue-btn {
+  background: linear-gradient(135deg, #1E5BE6 0%, #2E7CF6 100%) !important;
+  background-color: #1E5BE6 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border: 0 !important;
+  box-shadow: 0 5px 0 #123B85, 0 9px 16px rgba(29,78,216,.18) !important;
+  text-shadow: none !important;
+}
+/* زرار ثانوي */
+#app .btn-secondary, #app .secondary-btn, #app button.btn-secondary, #app button.secondary-btn {
+  background: #DCEEFF !important;
+  background-color: #DCEEFF !important;
+  color: #0B4DB3 !important;
+  -webkit-text-fill-color: #0B4DB3 !important;
+  border: 1px solid #BFD9FF !important;
+  box-shadow: 0 3px 0 #BFD9FF !important;
+  text-shadow: none !important;
+}
+/* زرار نجاح */
+#app .btn-success, #app .success-btn, #app button.btn-success {
+  background: #059669 !important;
+  background-color: #059669 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border: 0 !important;
+  box-shadow: 0 5px 0 #065F46 !important;
+}
+/* زرار خطر */
+#app .btn-danger, #app .danger-btn, #app button.btn-danger {
+  background: #FEF2F2 !important;
+  background-color: #FEF2F2 !important;
+  color: #B91C1C !important;
+  -webkit-text-fill-color: #B91C1C !important;
+  border: 1px solid #FECACA !important;
+  box-shadow: none !important;
+}
+/* زرار ثابت مش بيتضغط - مش باين إنه زرار */
+#app button:disabled, #app .btn:disabled {
+  opacity: .6 !important;
+  box-shadow: none !important;
+  transform: none !important;
+}
+/* ممنوع زرار أكشن يبقى أبيض أو رمادي فاتح */
+#app main button.bg-slate-100, #app main button.bg-white, #app main button.bg-transparent {
+  background: #DCEEFF !important;
+  background-color: #DCEEFF !important;
+  color: #0B4DB3 !important;
+  -webkit-text-fill-color: #0B4DB3 !important;
+  border: 1px solid #BFD9FF !important;
+}
