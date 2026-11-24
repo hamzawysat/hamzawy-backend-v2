@@ -65,7 +65,7 @@ function createOrderOfferRouter({
   
           const isAcceptedByThisFanni =
             isAssignedToThisFanni &&
-            ['تم اختيار فني', 'تم الانتهاء'].includes(order.status);
+            ['تم اختيار فني', 'بانتظار تأكيد العميل', 'تم الانتهاء'].includes(order.status);
   
           const safeOffer = {
             ...sanitizeOffer(offer),
