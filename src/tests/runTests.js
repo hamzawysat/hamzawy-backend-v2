@@ -3520,6 +3520,12 @@ async function run() {
       const allClient = await Client.create({ name: 'عميل حذف شامل', phone: '01055550882', passwordHash: 'test-hash', walletBalance: 10 });
       const allOrder = await Order.create({ sn: 'SN' + String((Date.now() + 1) % 1000000).padStart(6, '0'), clientAccount: allClient._id, service: 'اختبار', area: 'القاهرة', clientName: allClient.name, clientPhone: allClient.phone, status: 'تم النشر' });
       const allTransaction = await WalletTransaction.create({ client: allClient._id, order: allOrder._id, orderSN: allOrder.sn, type: 'client_topup', amount: 10, balanceBefore: 0, balanceAfter: 10, description: 'اختبار الحذف الشامل', idempotencyKey: 'archive-all-' + allClient._id });
+      const otherClient = await Client.create({ name: 'عميل آخر محفوظ', phone: '01055550883', passwordHash: 'test-hash' });
+      const otherClientTransaction = await WalletTransaction.create({
+        client: otherClient._id, order: allOrder._id, orderSN: allOrder.sn,
+        type: 'client_topup', amount: 5, balanceBefore: 0, balanceAfter: 5,
+        description: 'حركة مالية تخص عميلاً آخر', idempotencyKey: 'archive-other-' + otherClient._id
+      });
       const allArchive = await request(app).post('/api/admin/clients/' + allClient._id + '/archive').set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار الحذف الشامل' });
       assert.equal(allArchive.status, 200, JSON.stringify(allArchive.body));
       const allResult = await request(app).delete('/api/admin/clients/' + allClient._id + '/permanent-delete').set('Authorization', 'Bearer ' + adminToken).send({ mode: 'all' });
@@ -3527,16 +3533,9 @@ async function run() {
       assert.equal(await Client.exists({ _id: allClient._id }), null, 'all mode must permanently remove the account');
       assert.equal(await Order.exists({ _id: allOrder._id }), null, 'all mode must remove the customer orders');
       assert.equal(await WalletTransaction.exists({ _id: allTransaction._id }), null, 'all mode must remove related wallet transactions');
-
-      const otherClient = await Client.create({ name: 'عميل آخر محفوظ', phone: '01055550883', passwordHash: 'test-hash' });
-      const otherClientTransaction = await WalletTransaction.create({
-        client: otherClient._id, order: allOrder._id, orderSN: allOrder.sn,
-        type: 'client_topup', amount: 5, balanceBefore: 0, balanceAfter: 5,
-        description: 'حركة مالية تخص عميلاً آخر', idempotencyKey: 'archive-other-' + otherClient._id
-      });
-      // The previous order is already deleted, so this verifies the dangling-reference
-      // cleanup path independently by checking the retained transaction's own data.
-      assert.ok(await WalletTransaction.exists({ _id: otherClientTransaction._id }));
+      const retainedOtherTransaction = await WalletTransaction.findById(otherClientTransaction._id).lean();
+      assert.ok(retainedOtherTransaction, 'another client wallet transaction must survive the deleted order');
+      assert.equal(retainedOtherTransaction.order, null, 'the retained wallet transaction must no longer reference the deleted order');
 
       const Fanni = require('../models/Fanni');
       const fanni = await Fanni.create({
