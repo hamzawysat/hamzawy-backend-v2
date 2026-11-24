@@ -37,6 +37,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Build deployed frontend assets before integration tests
+        run: npm run build
       - name: Run integration and security tests
         run: npm test
       - name: Check for high and critical dependency vulnerabilities
