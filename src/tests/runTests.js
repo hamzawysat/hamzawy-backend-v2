@@ -2445,13 +2445,20 @@ async function run() {
         .set('Authorization', 'Bearer ' + fanniToken).send({});
       assert.equal(completed.status, 200, JSON.stringify(completed.body));
       assert.equal(completed.body.settlement, undefined, 'technician completion must never release held customer funds');
-      assert.match(completed.body.message, /تظل محجوزة حتى يؤكد العميل/);
+      assert.match(completed.body.message, /أكد على العميل ينهي الخدمة عشان فلوس الشغلانة توصلك/);
       const pendingConfirmationOrder = await Order.findById(order._id).lean();
-      assert.equal(pendingConfirmationOrder.status, 'تم الانتهاء');
+      assert.equal(pendingConfirmationOrder.status, 'بانتظار تأكيد العميل');
       assert.equal(pendingConfirmationOrder.clientPaymentStatus, 'held', 'customer funds must remain held after technician completion');
       assert.equal(pendingConfirmationOrder.technicianSettledAt, null);
       assert.ok(pendingConfirmationOrder.completionDeclaredAt, 'technician completion must be timestamped for the customer confirmation flow');
       assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'technician wallet must not be credited before customer confirmation');
+      const completedJobsBeforeConfirmation = Number((await Fanni.findById(fanni._id).lean()).stats?.completedJobs || 0);
+      const blockedSecondOffer = await request(app).post('/api/orders/SN999999/offer')
+        .set('Authorization', 'Bearer ' + fanniToken).send({ price: 700, message: 'عرض أثناء انتظار تأكيد العميل' });
+      assert.equal(blockedSecondOffer.status, 409, 'technician must remain blocked from new offers while customer confirmation is pending');
+      const duplicateCompletion = await request(app).post('/api/orders/' + order.sn + '/complete')
+        .set('Authorization', 'Bearer ' + fanniToken).send({});
+      assert.equal(duplicateCompletion.status, 409, 'technician cannot complete a pending-confirmation order twice');
       assert.equal(await WalletTransaction.countDocuments({ order: order._id, type: 'technician_settlement' }), 0, 'no settlement ledger entry may exist before customer confirmation');
       const deniedConfirmation = await request(app).post('/api/orders/' + order.sn + '/confirm-completion')
         .set('Authorization', 'Bearer ' + secondClientToken).send({});
@@ -2463,6 +2470,8 @@ async function run() {
       assert.match(confirmedAtResponse.body.settlement.transactionNumber, /^HZW-[0-9A-F]{24}$/);
       const confirmedOrder = await Order.findById(order._id).lean();
       assert.ok(confirmedOrder.clientConfirmedAt);
+      assert.equal(confirmedOrder.status, 'تم الانتهاء', 'the order becomes completed only after customer confirmation');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).stats?.completedJobs || 0), completedJobsBeforeConfirmation + 1, 'completed job stats update only after customer confirmation');
       assert.equal(confirmedOrder.clientPaymentStatus, 'settled');
       assert.ok(confirmedOrder.technicianSettledAt);
       assert.equal(confirmedOrder.warrantyStatus, 'active');
