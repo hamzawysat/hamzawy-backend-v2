@@ -349,12 +349,27 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           };
         } else {
           await SupportPassword.deleteMany({ ownerRole: isFanni ? 'fanni' : 'client', accountId: account._id }, { session });
-          // A removed technician must not leave usable temporary registration claims
-          // pointing to a deleted inviter/invitee account, even when history is kept.
           if (isFanni) {
+            // Keep historical offers/messages and their display snapshots, but detach
+            // the deleted technician from any currently assigned live order.
+            const assignedOrders = await Order.find({ assignedFanni: account._id }).session(session);
+            for (const order of assignedOrders) {
+              order.assignedFanni = null;
+              order.acceptedOfferId = null;
+              order.acceptedOfferPrice = null;
+              if (['تم اختيار فني', 'بانتظار تأكيد العميل'].includes(order.status)) {
+                order.status = order.offers?.length ? 'تم النشر' : 'قيد المراجعة';
+              }
+              await order.save({ session });
+            }
+            // A removed technician must not leave usable temporary registration claims
+            // pointing to a deleted inviter/invitee account, even when history is kept.
             await ReferralClaim.deleteMany({
               $or: [{ inviter: account._id }, { invitee: account._id }]
             }, { session });
+          } else {
+            // Preserve order history and customer snapshots without dangling account refs.
+            await Order.updateMany({ clientAccount: account._id }, { $set: { clientAccount: null } }, { session });
           }
         }
 
