@@ -177,6 +177,60 @@ router.patch('/fannis/:id/note', auth('admin'), async (req, res, next) => {
   } catch(e){ next(e); }
 });
 
+// تحكم الإدارة في استقبال الطلبات وحالة اتصال الفني
+router.patch('/fannis/:id/availability', auth('admin'), async (req, res, next) => {
+  try {
+    if (!validId(req.params.id)) return sendBadId(res);
+    if (typeof req.body?.acceptingOrders !== 'boolean') {
+      return res.status(400).json({ message: 'حدد حالة الفني بشكل صحيح.' });
+    }
+    const fanni = await Fanni.findOne({ _id: req.params.id, role: 'fanni', archivedAt: null });
+    if (!fanni) return res.status(404).json({ message: 'الفني غير موجود.' });
+    const before = fanni.acceptingOrders !== false;
+    const after = req.body.acceptingOrders;
+    if (before === after) {
+      return res.set('Cache-Control', 'no-store').json({
+        acceptingOrders: after,
+        message: after ? 'الفني متصل بالفعل ويستقبل الطلبات.' : 'الفني غير متصل بالفعل ولا يستقبل طلبات جديدة.'
+      });
+    }
+    fanni.acceptingOrders = after;
+    fanni.decisions.push({
+      action: after ? 'توصيل الفني واستقبال الطلبات' : 'فصل الفني وإيقاف استقبال الطلبات',
+      reason: 'تغيير حالة استقبال الطلبات من لوحة الإدارة',
+      date: new Date(), by: adminName(req), byId: req.user?._id,
+      meta: { before, after }
+    });
+    await fanni.save();
+    await writeAdminAudit(
+      req,
+      after ? 'توصيل فني' : 'فصل فني',
+      'fannis',
+      String(fanni._id),
+      JSON.stringify({ acceptingOrders: after })
+    );
+    try {
+      await createNotification({
+        recipientRole: 'fanni',
+        recipientId: fanni._id,
+        type: 'admin_availability_changed',
+        title: after ? 'الإدارة فعّلت استقبال الطلبات' : 'الإدارة أوقفت استقبال الطلبات',
+        message: after
+          ? 'قامت الإدارة بتفعيل حالتك. أنت الآن متصل ويمكنك استقبال طلبات جديدة.'
+          : 'قامت الإدارة بإيقاف استقبال الطلبات الجديدة لحسابك. لن تصلك طلبات جديدة حتى تعيد تفعيل حالتك.',
+        link: '/fanni',
+        dedupeKey: 'admin-fanni-availability:' + String(fanni._id) + ':' + String(after) + ':' + Date.now()
+      });
+    } catch (notificationError) {
+      console.error('Could not notify technician about admin availability change:', notificationError.message);
+    }
+    return res.set('Cache-Control', 'no-store').json({
+      acceptingOrders: after,
+      message: after ? 'تم توصيل الفني وإبلاغه، ويمكنه استقبال الطلبات الجديدة.' : 'تم فصل الفني وإبلاغه، ولن يستقبل طلبات جديدة.'
+    });
+  } catch (error) { next(error); }
+});
+
 // حدود الاستقبال
 router.patch('/fannis/:id/limit', auth('admin'), async (req, res, next) => {
   try {
