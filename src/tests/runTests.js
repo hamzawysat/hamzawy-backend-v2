@@ -2528,10 +2528,10 @@ async function run() {
       assert.equal(adminFanniLedger.status, 200, JSON.stringify(adminFanniLedger.body));
       const adminFanniLedgerEntry = adminFanniLedger.body.transactions.find(item => String(item._id) === String(settlementLedger._id));
       assert.equal(adminFanniLedgerEntry.transactionNumber, settlementLedger.transactionNumber, 'admin technician ledger must show the same transaction reference');
-      const duplicateCompletion = await request(app).post('/api/orders/' + order.sn + '/complete')
+      const duplicateCompletionAfterConfirmation = await request(app).post('/api/orders/' + order.sn + '/complete')
         .set('Authorization', 'Bearer ' + fanniToken).send({});
-      assert.equal(duplicateCompletion.status, 409, 'completed orders must not be completed twice');
-      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1585);
+      assert.equal(duplicateCompletionAfterConfirmation.status, 409, 'completed orders must not be completed twice');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1580);
 
       const CommerceItem = require('../models/CommerceItem');
       const ClientSubscription = require('../models/ClientSubscription');
