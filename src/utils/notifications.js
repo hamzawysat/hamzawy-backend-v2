@@ -225,7 +225,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
   const report = { expo: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' }, fcm: { status: 'no_devices', attempted: 0, accepted: 0, failed: 0, lastError: '' } };
   try {
     const devices = await PushToken.find({ recipientRole, recipientId }).select('token platform').lean();
-    const expo = channels.includes('expo') ? devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token)) : [];
+    const expo = recipientRole !== 'admin' && channels.includes('expo') ? devices.filter(d => d.platform !== 'fcm-android' && /^(Exponent|Expo)PushToken\[[^\]]+\]$/.test(d.token)) : [];
     const fcm = channels.includes('fcm') ? devices.filter(d => d.platform === 'fcm-android') : [];
     report.expo.attempted = expo.length;
     report.fcm.attempted = fcm.length;
