@@ -65,7 +65,7 @@ function createOrderOfferRouter({
   
           const isAcceptedByThisFanni =
             isAssignedToThisFanni &&
-            ['تم اختيار فني', 'تم الانتهاء'].includes(order.status);
+            ['تم اختيار فني', 'بانتظار تأكيد العميل', 'تم الانتهاء'].includes(order.status);
   
           const safeOffer = {
             ...sanitizeOffer(offer),
@@ -140,7 +140,7 @@ function createOrderOfferRouter({
         });
       }
   
-      const activeTask = await Order.exists({ assignedFanni: req.userId, status: 'تم اختيار فني' });
+      const activeTask = await Order.exists({ assignedFanni: req.userId, status: { $in: ['تم اختيار فني', 'بانتظار تأكيد العميل'] } });
       if (activeTask) {
         return res.status(409).json({ message: 'لديك مهمة جارية حاليًا. برجاء إنهاء المهمة الحالية أولًا قبل التقدم لأي طلب جديد.' });
       }
