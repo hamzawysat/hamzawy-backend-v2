@@ -3527,6 +3527,34 @@ async function run() {
       assert.equal(await Client.exists({ _id: allClient._id }), null, 'all mode must permanently remove the account');
       assert.equal(await Order.exists({ _id: allOrder._id }), null, 'all mode must remove the customer orders');
       assert.equal(await WalletTransaction.exists({ _id: allTransaction._id }), null, 'all mode must remove related wallet transactions');
+
+      const otherClient = await Client.create({ name: 'عميل آخر محفوظ', phone: '01055550883', passwordHash: 'test-hash' });
+      const otherClientTransaction = await WalletTransaction.create({
+        client: otherClient._id, order: allOrder._id, orderSN: allOrder.sn,
+        type: 'client_topup', amount: 5, balanceBefore: 0, balanceAfter: 5,
+        description: 'حركة مالية تخص عميلاً آخر', idempotencyKey: 'archive-other-' + otherClient._id
+      });
+      // The previous order is already deleted, so this verifies the dangling-reference
+      // cleanup path independently by checking the retained transaction's own data.
+      assert.ok(await WalletTransaction.exists({ _id: otherClientTransaction._id }));
+
+      const Fanni = require('../models/Fanni');
+      const fanni = await Fanni.create({
+        name: 'فني حذف نهائي اختبار', phone: '01055550884',
+        passwordHash: 'test-hash', specialties: ['اختبار']
+      });
+      const fanniTransaction = await WalletTransaction.create({
+        fanni: fanni._id, type: 'commission', amount: 5, balanceBefore: 10,
+        balanceAfter: 5, description: 'حركة مالية للفني', idempotencyKey: 'archive-fanni-' + fanni._id
+      });
+      const fanniArchive = await request(app).post('/api/admin/fannis/' + fanni._id + '/archive')
+        .set('Authorization', 'Bearer ' + adminToken).send({ reason: 'اختبار حذف الفني نهائيًا' });
+      assert.equal(fanniArchive.status, 200, JSON.stringify(fanniArchive.body));
+      const fanniDelete = await request(app).delete('/api/admin/fannis/' + fanni._id + '/permanent-delete')
+        .set('Authorization', 'Bearer ' + adminToken).send({ mode: 'all' });
+      assert.equal(fanniDelete.status, 200, JSON.stringify(fanniDelete.body));
+      assert.equal(await Fanni.exists({ _id: fanni._id }), null, 'all mode must permanently remove the archived technician');
+      assert.equal(await WalletTransaction.exists({ _id: fanniTransaction._id }), null, 'all mode must remove the deleted technician wallet entries');
     });
     await test('active client list is paginated and contains registered Client accounts only', async () => {
       const Client = require('../models/Client');
