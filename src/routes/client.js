@@ -74,6 +74,7 @@ function safeOrder(order, clientRating = null, ratingsByFanni = new Map(), compl
     acceptedOfferPrice: data.acceptedOfferPrice ?? null,
     clientPaymentStatus: data.clientPaymentStatus || 'unpaid',
     clientPaymentAmount: Number(data.clientPaymentAmount || 0),
+    priceChangeRequests: (data.priceChangeRequests || []).map(item => ({ _id: String(item._id), oldPrice: item.oldPrice, newPrice: item.newPrice, reason: item.reason, status: item.status, requestedAt: item.requestedAt, decidedAt: item.decidedAt, paymentMethod: item.paymentMethod || '', walletAmount: Number(item.walletAmount || 0), cashAmount: Number(item.cashAmount || 0) })),
     completionDeclaredAt: data.completionDeclaredAt || null,
     clientConfirmedAt: data.clientConfirmedAt || null,
     warrantyStartsAt: data.warrantyStartsAt || null,
