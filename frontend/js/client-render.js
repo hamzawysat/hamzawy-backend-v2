@@ -218,7 +218,7 @@ function render(){
                           <button type="button" onclick="selectServiceByIndex(${ALL_SERVICES.indexOf(s)})" class="service-choice ${state.service===s?'selected':'hover:bg-[#E8EDFF]'}">
                             <span class="service-icon" aria-hidden="true">${serviceIconFor(s)}</span>
                             <span class="service-choice-name">${escHtml(s)}</span>
-                            <span class="service-choice-availability">${Number(state.area?(c.serviceTechnicianCountsByArea?.[s]?.[state.area]||0):(TECHNICIAN_COUNTS[s]||0))||0} فنيين ${state.area?'في المنطقة':'مسجلين'}</span>
+                            <span class="service-choice-availability">${Number(state.area?(selectedCategory.serviceTechnicianCountsByArea?.[s]?.[state.area]||0):(TECHNICIAN_COUNTS[s]||0))||0} فنيين ${state.area?'في المنطقة':'مسجلين'}</span>
                           </button>
                         `).join('')}
                       </div>
