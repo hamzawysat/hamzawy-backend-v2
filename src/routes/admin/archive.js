@@ -202,6 +202,7 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           // Keep notifications delivered to other roles, but detach links to deleted orders.
           const detachedNotifications = await Notification.updateMany({
             recipientRole: { $ne: 'client' },
+            relatedEntityType: 'order',
             relatedEntityId: { $in: orderIds }
           }, { $set: { relatedEntityId: null, relatedEntityType: '', link: '' } }, { session });
           results.push(await SupportPassword.deleteMany({ ownerRole: 'client', accountId: account._id }, { session }));
@@ -271,10 +272,6 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           results.push(await StoreOrder.deleteMany({ buyerRole: 'fanni', buyerId: account._id }, { session }));
           results.push(await SupportCase.deleteMany({ ownerRole: 'fanni', ownerId: account._id }, { session }));
           results.push(await Notification.deleteMany({ recipientRole: 'fanni', recipientId: account._id }, { session }));
-          const detachedNotifications = await Notification.updateMany({
-            recipientRole: { $ne: 'fanni' },
-            relatedEntityId: account._id
-          }, { $set: { relatedEntityId: null, relatedEntityType: '', link: '' } }, { session });
           results.push(await SupportPassword.deleteMany({ ownerRole: 'fanni', accountId: account._id }, { session }));
           results.push(await Referral.deleteMany({ kind: 'fanni', $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
           results.push(await ReferralClaim.deleteMany({ $or: [{ inviter: account._id }, { invitee: account._id }] }, { session }));
@@ -299,7 +296,6 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
             ratings: results[0].deletedCount || 0,
             walletTransactions: ownWalletTransactions.deletedCount || 0,
             otherWalletTransactionsPreserved: detachedWalletTransactions.modifiedCount || 0,
-            otherNotificationsDetached: detachedNotifications.modifiedCount || 0,
             topups: results[1].deletedCount || 0,
             storeOrders: results[2].deletedCount || 0,
             supportCases: results[3].deletedCount || 0,
