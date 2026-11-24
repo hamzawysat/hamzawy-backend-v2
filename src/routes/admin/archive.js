@@ -311,6 +311,13 @@ function createAdminArchiveRouter({ auth, Joi, Client, Fanni, adminName, writeAd
           };
         } else {
           await SupportPassword.deleteMany({ ownerRole: isFanni ? 'fanni' : 'client', accountId: account._id }, { session });
+          // A removed technician must not leave usable temporary registration claims
+          // pointing to a deleted inviter/invitee account, even when history is kept.
+          if (isFanni) {
+            await ReferralClaim.deleteMany({
+              $or: [{ inviter: account._id }, { invitee: account._id }]
+            }, { session });
+          }
         }
 
         await PhoneIdentity.deleteOne({ ownerRole: isFanni ? 'fanni' : 'client', ownerId: account._id }, { session });
