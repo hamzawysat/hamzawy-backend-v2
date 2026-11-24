@@ -2455,7 +2455,7 @@ async function run() {
       const heldOrder = await Order.findById(order._id).lean();
       assert.equal(heldOrder.clientPaymentStatus, 'held');
       assert.equal(heldOrder.clientPaymentAmount, 650);
-      const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold', idempotencyKey: 'client-service-hold:' + String(order._id) }).lean();
+      const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold', idempotencyKey: 'client-service-balance-hold:' + String(order._id) + ':150:700:50' }).lean();
       assert.ok(holdLedger);
       assert.equal(holdLedger.amount, -500);
       assert.equal((await Order.findById(order._id).lean()).clientPaymentTransactionNumber, holdLedger.transactionNumber, 'service order must retain the exact escrow transaction reference');
