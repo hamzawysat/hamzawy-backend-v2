@@ -20,7 +20,7 @@ function showToast(message,type='error'){
   const el=document.getElementById('toast');
   if(!el)return;
   const color=type==='success'?'bg-[#2E7CF6]':'bg-[#2E7CF6]';
-  el.innerHTML=`<div class="pointer-events-auto mx-auto max-w-[480px] rounded-[14px] ${color} text-white text-[13px] font-bold px-4 py-3 shadow-2xl flex justify-between items-center gap-3">
+  el.innerHTML=`<div class="pointer-events-auto mx-auto max-w-[480px] rounded-[14px] ${color} text-white text-[13px] font-bold px-4 py-3 shadow-2xl flex justify-between items-center gap-3" style="background:#2E7CF6 !important;color:#FFFFFF !important">
     <span class="leading-6">${escHtml(message)}</span>
     <button onclick="this.parentElement.remove()" class="shrink-0 h-7 px-3 rounded-full bg-white/20">إغلاق</button>
   </div>`;
