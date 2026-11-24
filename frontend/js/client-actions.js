@@ -276,7 +276,50 @@ async function sendClientOfferQuestion(sn,offerId,question){if(state.tracked?.st
 function renderClientChatMessages(messages,mode){return (Array.isArray(messages)?messages:[]).map(function(m){const isClient=m.senderRole==='client';const color=mode==='accepted'?(isClient?'bg-blue-50':'bg-emerald-50'):(isClient?'bg-white':'bg-emerald-50');return '<div class="mt-2 rounded-lg p-2 '+color+'"><p class="text-[10px] font-bold">'+(isClient?'أنت':'الفني')+'</p><p class="text-[12px] '+(mode==='accepted'?'whitespace-pre-wrap break-words':'')+'">'+escHtml(m.text||'')+'</p></div>';}).join('');}
 let clientChatPollInFlight=false,clientLiveRenderPending=false;
 function updateClientChatDom(messages){if(!state.tracked)return;const sn=String(state.tracked.sn||state.trackInput||'').toUpperCase();const all=Array.isArray(messages)?messages:[];(state.tracked.offers||[]).forEach(function(offer){const offerId=String(offer._id||'');const box=document.getElementById('client-prechat-'+sn+'-'+offerId);if(box)box.innerHTML=renderClientChatMessages(all.filter(function(m){return String(m.targetOfferId||'')===offerId;}),'pre');});const accepted=document.getElementById('client-accepted-chat-'+sn);if(accepted)accepted.innerHTML=renderClientChatMessages(all,'accepted');}
-async function decideClientPrice(sn,id,approved){try{await API.decidePrice(sn,id,approved);if(state.trackInput===sn&&state.tracked){await doTrack();}if(state.accountToken&&state.account)await loadMyOrders(false);render();showToast(approved?'تمت الموافقة على السعر الجديد.':'تم رفض تعديل السعر.','success');}catch(e){showToast(e.message||'تعذر تسجيل القرار.');}}
+function chooseClientPriceIncreasePayment(sn,request){
+ return new Promise(resolve=>{
+  const modalId='client-price-increase-payment-choice';
+  document.getElementById(modalId)?.remove();
+  const amount=Math.max(0,Number(request?.newPrice||0)-Number(request?.oldPrice||0));
+  const overlay=document.createElement('div');
+  overlay.id=modalId;
+  overlay.className='fixed inset-0 z-[10000] flex items-center justify-center bg-slate-950/60 p-4';
+  overlay.innerHTML='<div role="dialog" aria-modal="true" aria-labelledby="client-price-increase-title" class="w-full max-w-sm rounded-2xl bg-white p-5 text-right shadow-2xl">'+
+   '<h3 id="client-price-increase-title" class="text-[15px] font-black text-slate-900">محفظتك غير كافية لطلب الزيادة</h3>'+
+   '<p class="mt-2 text-[12px] leading-6 text-slate-600">مبلغ الزيادة '+escHtml(amount.toLocaleString('ar-EG'))+' جنيه. هل توافق على دفع مبلغ الزيادة نقدًا للفني بعد استلام الخدمة؟</p>'+
+   '<div class="mt-4 grid gap-2">'+
+    '<button type="button" data-choice="cash" class="w-full rounded-xl bg-emerald-600 p-3 text-[12px] font-extrabold text-white">نعم، سأدفع الزيادة كاش بعد استلام الخدمة</button>'+
+    '<button type="button" data-choice="reject" class="w-full rounded-xl bg-red-600 p-3 text-[12px] font-extrabold text-white">لا، ارفض طلب الزيادة</button>'+
+    '<button type="button" data-choice="back" class="w-full rounded-xl border border-slate-300 bg-white p-3 text-[12px] font-extrabold text-slate-700">رجوع</button>'+
+   '</div></div>';
+  const finish=choice=>{document.removeEventListener('keydown',onKey);overlay.remove();resolve(choice);};
+  const onKey=event=>{if(event.key==='Escape')finish('back');};
+  overlay.addEventListener('click',event=>{const button=event.target.closest('[data-choice]');if(button)finish(button.dataset.choice);});
+  document.addEventListener('keydown',onKey);
+  document.body.appendChild(overlay);
+ });
+}
+async function applyClientPriceDecision(sn,id,approved,paymentMethod){
+ await API.decidePrice(sn,id,approved,paymentMethod);
+ if(state.trackInput===sn&&state.tracked)await doTrack();
+ if(state.accountToken&&state.account)await loadMyOrders(false);
+ render();
+ showToast(approved?(paymentMethod==='cash'?'تمت الموافقة. ستدفع الزيادة نقدًا بعد استلام الخدمة.':'تمت الموافقة وحجز الزيادة من محفظتك.'):'تم رفض طلب الزيادة.','success');
+}
+async function decideClientPrice(sn,id,approved){
+ try{
+  if(!approved){await applyClientPriceDecision(sn,id,false);return;}
+  try{
+   await applyClientPriceDecision(sn,id,true,'wallet');
+  }catch(error){
+   if(error.status!==409||!String(error.message||'').includes('رصيد محفظتك غير كافٍ لطلب الزيادة'))throw error;
+   const request=(state.tracked?.priceChangeRequests||[]).find(item=>String(item._id)===String(id));
+   const choice=await chooseClientPriceIncreasePayment(sn,request);
+   if(choice==='cash')await applyClientPriceDecision(sn,id,true,'cash');
+   else if(choice==='reject')await applyClientPriceDecision(sn,id,false);
+  }
+ }catch(error){showToast(error.message||'تعذر تسجيل القرار.');}
+}
 async function submitClientRating(sn){
   if(state.ratingSubmitting)return;
   const stars=Number(state.ratingStars);
