@@ -272,7 +272,7 @@ router.post('/logout', clientAuth, async (req, res, next) => {
       type: 'admin_client_logout', title: 'تسجيل خروج عميل',
       message: 'سجّل العميل ' + req.client.name + ' (' + req.client.phone + ') الخروج من حسابه.',
       link: '/admin?tab=clients',
-      dedupeKey: 'client-logout:' + crypto.createHash('sha256').update(String(req.headers.authorization || '')).digest('hex')
+      // Each successful logout is a distinct event; do not deduplicate by the long-lived client token.
     });
     return res.json({ message: 'تم تسجيل الخروج بنجاح.' });
   } catch (error) { return next(error); }
