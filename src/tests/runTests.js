@@ -2395,6 +2395,8 @@ async function run() {
         .send({ newPrice: 650, reason: 'تم اكتشاف قطع إضافية مطلوبة أثناء الفحص' });
       assert.equal(approvedPriceChange.status, 201, JSON.stringify(approvedPriceChange.body));
       const approvedRequestId = String(approvedPriceChange.body.request._id);
+      const Client = require('../models/Client');
+      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 1000 } });
       const approvedDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + approvedRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true });
@@ -2410,24 +2412,51 @@ async function run() {
       assert.ok(adjustmentLedger);
       assert.equal(adjustmentLedger.amount, -15);
       assert.ok((await Order.findById(order._id).lean()).commissionAdjustmentTransactionNumbers.includes(adjustmentLedger.transactionNumber), 'each price-change commission adjustment must be linked to the order');
+      const walletIncreaseHold = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold', idempotencyKey: 'client-price-increase-hold:' + String(order._id) + ':' + approvedRequestId }).lean();
+      assert.ok(walletIncreaseHold, 'an approved increase with sufficient client balance must be held from the client wallet');
+      assert.equal(walletIncreaseHold.amount, -150);
+      assert.equal((await Client.findById(clientId).lean()).walletBalance, 850, 'the increase amount must be debited from the client wallet exactly once');
+
+      const cashPriceChange = await request(app).post('/api/orders/' + order.sn + '/price-change')
+        .set('Authorization', 'Bearer ' + fanniToken)
+        .send({ newPrice: 700, reason: 'زيادة إضافية بعد اكتشاف مستلزمات أخرى' });
+      assert.equal(cashPriceChange.status, 201, JSON.stringify(cashPriceChange.body));
+      const cashRequestId = String(cashPriceChange.body.request._id);
+      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 0 } });
+      const insufficientIncreaseDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ approved: true, paymentMethod: 'wallet' });
+      assert.equal(insufficientIncreaseDecision.status, 409);
+      assert.equal(insufficientIncreaseDecision.body.code, 'CLIENT_WALLET_INSUFFICIENT_FOR_PRICE_INCREASE');
+      assert.equal((await Order.findById(order._id).lean()).priceChangeRequests.id ? true : true, true);
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'failed wallet coverage must roll back the existing commission adjustment transaction');
+      const cashIncreaseDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ approved: true, paymentMethod: 'cash' });
+      assert.equal(cashIncreaseDecision.status, 200, JSON.stringify(cashIncreaseDecision.body));
+      assert.equal(cashIncreaseDecision.body.paymentMethod, 'cash');
+      assert.equal(Number(cashIncreaseDecision.body.request.cashAmount), 50);
+      assert.equal((await Client.findById(clientId).lean()).walletBalance, 0, 'cash increase must not be debited from the client wallet');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 930, 'cash acceptance keeps the existing commission adjustment behavior');
       const duplicateDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + approvedRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true });
       assert.equal(duplicateDecision.status, 409, 'a price change decision must be applied only once');
 
-      const Client = require('../models/Client');
-      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 1000 } });
+      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 500 } });
       const servicePayment = await request(app).post('/api/client/orders/' + order.sn + '/pay')
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(servicePayment.status, 200, JSON.stringify(servicePayment.body));
-      assert.equal(servicePayment.body.balance, 350);
+      assert.equal(servicePayment.body.balance, 0);
+      assert.equal(servicePayment.body.amount, 500);
+      assert.equal(servicePayment.body.totalHeldAmount, 650);
       assert.equal(servicePayment.body.paymentStatus, 'held');
       const heldOrder = await Order.findById(order._id).lean();
       assert.equal(heldOrder.clientPaymentStatus, 'held');
       assert.equal(heldOrder.clientPaymentAmount, 650);
-      const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold' }).lean();
+      const holdLedger = await WalletTransaction.findOne({ order: order._id, type: 'client_escrow_hold', idempotencyKey: 'client-service-hold:' + String(order._id) }).lean();
       assert.ok(holdLedger);
-      assert.equal(holdLedger.amount, -650);
+      assert.equal(holdLedger.amount, -500);
       assert.equal((await Order.findById(order._id).lean()).clientPaymentTransactionNumber, holdLedger.transactionNumber, 'service order must retain the exact escrow transaction reference');
       assert.match(holdLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
       const clientWalletHistory = await request(app).get('/api/client/wallet')
@@ -2451,7 +2480,7 @@ async function run() {
       assert.equal(pendingConfirmationOrder.clientPaymentStatus, 'held', 'customer funds must remain held after technician completion');
       assert.equal(pendingConfirmationOrder.technicianSettledAt, null);
       assert.ok(pendingConfirmationOrder.completionDeclaredAt, 'technician completion must be timestamped for the customer confirmation flow');
-      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'technician wallet must not be credited before customer confirmation');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 930, 'technician wallet must not be credited before customer confirmation');
       const completedJobsBeforeConfirmation = Number((await Fanni.findById(fanni._id).lean()).stats?.completedJobs || 0);
       const blockedSecondOffer = await request(app).post('/api/orders/SN999999/offer')
         .set('Authorization', 'Bearer ' + fanniToken).send({ price: 700, message: 'عرض أثناء انتظار تأكيد العميل' });
@@ -2482,7 +2511,7 @@ async function run() {
         .set('Authorization', 'Bearer ' + clientToken).send({});
       assert.equal(repeatedConfirmation.status, 200);
       assert.equal(new Date(repeatedConfirmation.body.order.warrantyExpiresAt).getTime(), originalWarrantyExpiry, 'repeated confirmation must not extend the warranty');
-      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1585, 'customer confirmation must release the held amount exactly once');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1580, 'customer confirmation must release only wallet-held amounts exactly once; cash increases remain paid directly to the technician');
       const settlementLedger = await WalletTransaction.findOne({ order: order._id, type: 'technician_settlement' }).lean();
       assert.ok(settlementLedger);
       assert.equal(settlementLedger.amount, 650);
