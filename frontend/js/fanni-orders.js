@@ -54,10 +54,10 @@ async function completeOrder(sn){
 
  try{
   const result=await API.complete(code);
-  toast(result?.message||'تم إكمال المهمة بنجاح');
-  state.tab='completed';
+  toast(result?.message||'تم تسجيل طلب إنهاء الخدمة، في انتظار تأكيد العميل.');
+  state.tab='myOrders';
+  state.myOrdersView='active';
   await loadMyOffers();
-  setTimeout(()=>focusRatingPrompt(code),120);
  }catch(e){
   toast(e?.message||'تعذر إكمال المهمة','error');
  }
