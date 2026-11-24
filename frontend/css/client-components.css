@@ -283,10 +283,10 @@ html[data-sonaa-theme="client"] body #app .app-header button[onclick="toggleNoti
 .panel .primary-btn, .panel .blue-btn,
 .client-home-hero-cta, .fanni-home-jobs-banner em,
 .client-home-referral-cta, .fanni-home-referral b {
-  background: #FFFFFF !important;
+  background: #DCEEFF !important;
   background-image: none !important;
-  color: #1E5BE6 !important;
-  -webkit-text-fill-color: #1E5BE6 !important;
+  color: #0B4DB3 !important;
+  -webkit-text-fill-color: #0B4DB3 !important;
   font-weight: 900 !important;
   box-shadow: 0 4px 12px rgba(0,0,0,.12) !important;
 }
