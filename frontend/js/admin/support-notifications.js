@@ -2,19 +2,19 @@
 
 function renderAdminInbox(){
   const list=Array.isArray(state.adminInboxNotifications)?state.adminInboxNotifications:[];
-  const unread=Number(state.adminInboxUnread||0);
-  let html='<div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">الوارد الإداري</p><p class="text-[10px] text-slate-500">تنبيهات موجهة لحساب الإدارة الحالي — غير المقروء: '+unread+'</p></div><div class="flex gap-2"><button type="button" onclick="loadAdminInbox()" class="pill-btn soft-btn">تحديث</button><button type="button" onclick="markAllAdminInboxRead()" class="pill-btn soft-btn">قراءة الكل</button></div></div><div id="admin-inbox-list" class="space-y-2">';
-  if(!list.length)html+='<p class="p-4 text-center text-[11px] text-slate-500">لا توجد تنبيهات واردة حاليًا.</p>';
-  list.forEach(item=>{const id=escHtml(item.id);html+='<article class="flex items-start gap-2 rounded-xl border p-3 '+(item.read?'border-slate-200 bg-white':'border-blue-200 bg-blue-50')+'"><button type="button" data-admin-inbox-id="'+id+'" onclick="openAdminInboxNotification(this.dataset.adminInboxId)" class="min-w-0 flex-1 text-right"><b class="block text-[11px] font-black">'+escHtml(item.title||'تنبيه إداري')+'</b><span class="mt-1 block text-[10px] leading-5 text-slate-700">'+escHtml(item.message||'')+'</span><small class="mt-1 block text-[9px] text-slate-500">'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</small></button><button type="button" data-admin-inbox-dismiss="'+id+'" onclick="dismissAdminInboxNotification(this.dataset.adminInboxDismiss)" class="shrink-0 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black text-slate-600" aria-label="إغلاق الإشعار">إغلاق ✕</button></article>';});
-  return html+'</div>';
+  if(!list.length)return '<p class="p-4 text-center text-[11px] text-slate-500">لا توجد تنبيهات واردة حاليًا.</p>';
+  return list.map(item=>{
+    const id=escHtml(item.id);
+    return '<article class="flex items-start gap-2 rounded-xl border p-3 '+(item.read?'border-slate-200 bg-white':'border-blue-200 bg-blue-50')+'"><button type="button" data-admin-inbox-id="'+id+'" onclick="openAdminInboxNotification(this.dataset.adminInboxId)" class="min-w-0 flex-1 text-right"><b class="block text-[11px] font-black">'+escHtml(item.title||'تنبيه إداري')+'</b><span class="mt-1 block text-[10px] leading-5 text-slate-700">'+escHtml(item.message||'')+'</span><small class="mt-1 block text-[9px] text-slate-500">'+escHtml(item.createdAt?new Date(item.createdAt).toLocaleString('ar-EG'):'')+'</small></button></article>';
+  }).join('');
 }
 async function loadAdminInbox(){
   try{const data=await tryApi(['/api/notifications/admin'],{method:'GET'});state.adminInboxNotifications=extractList(data,['notifications']);state.adminInboxUnread=Math.max(0,Number(data.unreadCount||0));}
   catch(e){state.adminInboxNotifications=Array.isArray(state.adminInboxNotifications)?state.adminInboxNotifications:[];console.warn('تعذر تحميل الوارد الإداري:',e.message||e);}
-  const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();
+  const root=document.getElementById('admin-inbox-list');if(root)root.innerHTML=renderAdminInbox();
 }
 async function markAllAdminInboxRead(){
-  try{await tryApi(['/api/notifications/admin/read-all'],{method:'PATCH'});state.adminInboxNotifications=(state.adminInboxNotifications||[]).map(item=>({...item,read:true}));state.adminInboxUnread=0;const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
+  try{await tryApi(['/api/notifications/admin/read-all'],{method:'PATCH'});state.adminInboxNotifications=(state.adminInboxNotifications||[]).map(item=>({...item,read:true}));state.adminInboxUnread=0;const root=document.getElementById('admin-inbox-list');if(root)root.innerHTML=renderAdminInbox();}
   catch(e){showToast(e.message||'تعذر تعليم التنبيهات كمقروءة','error');}
 }
 async function dismissAdminInboxNotification(id){
@@ -76,7 +76,7 @@ function renderNotifications(){
     <div class="premium-panel p-3 space-y-3">
       <div class="flex items-center justify-between gap-3"><div><p class="text-[12px] font-black">سجل الإشعارات</p><p class="mt-1 text-[10px] text-slate-500">الوارد الإداري، وسجل الإرسال، وحالة وصول الإشعارات</p></div><button id="notification-log-toggle" type="button" onclick="toggleNotificationLog()" aria-expanded="false" aria-controls="notification-log-panel" class="pill-btn soft-btn shrink-0">عرض سجل الإشعارات</button></div>
       <div id="notification-log-panel" class="hidden space-y-4">
-        <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">الوارد الإداري</p><p class="text-[10px] text-slate-500">الإشعارات والتنبيهات المرسلة إلى الإدارة</p></div><button type="button" onclick="loadAdminInbox()" class="pill-btn soft-btn">تحديث</button></div>${renderAdminInbox()}</div>
+        <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">الوارد الإداري</p><p class="text-[10px] text-slate-500">الإشعارات والتنبيهات المرسلة إلى الإدارة — غير المقروء: ${Number(state.adminInboxUnread||0)}</p></div><div class="flex gap-2"><button type="button" onclick="loadAdminInbox()" class="pill-btn soft-btn">تحديث</button><button type="button" onclick="markAllAdminInboxRead()" class="pill-btn soft-btn">قراءة الكل</button></div></div><div id="admin-inbox-list" class="space-y-2">${renderAdminInbox()}</div></div>
         <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><p class="text-[12px] font-black">تتبع تسليم الإشعارات</p><p class="text-[10px] text-slate-500">نتائج مزودي الإرسال لكل قناة، دون تخزين رموز الأجهزة</p></div><button type="button" onclick="loadNotificationDeliveryAudit()" class="pill-btn soft-btn">تحديث</button></div><div id="admin-delivery-log-list" class="space-y-2">${renderDeliveryAudit()}</div></div>
         <div class="premium-panel p-4 space-y-3"><div class="flex items-center justify-between gap-3"><div><p class="text-[12px] font-black">سجل الإشعارات المرسلة</p><p class="mt-1 text-[10px] text-slate-500">الحذف هنا يزيل الإشعار من جميع الحسابات التي أُرسل إليها.</p></div><button type="button" onclick="loadNotificationHistory()" class="pill-btn soft-btn shrink-0">تحديث</button></div><div id="notification-history-list" class="space-y-2">${renderNotificationHistory()}</div></div>
       </div>
