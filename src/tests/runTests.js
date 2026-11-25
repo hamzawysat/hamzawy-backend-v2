@@ -522,7 +522,7 @@ async function run() {
       assert.ok(browserStore.includes('selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);})'), 'opening a category should show only its products');
     });
 
-    await test('store admin groups product tools and store settings separately and collapses category manager by default', async () => {
+    await test('store admin renders separate product and settings views with collapsible category and ad controls', async () => {
       const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
       const categoryStart = adminStore.indexOf('function renderStoreCategoryManager(products)');
       const categoryEnd = adminStore.indexOf('async function uploadStoreCategoryImage', categoryStart);
@@ -530,19 +530,22 @@ async function run() {
       const renderStart = adminStore.indexOf('function renderStore(){');
       const renderEnd = adminStore.indexOf('function renderStoreOrders(){', renderStart);
       const storeRenderer = adminStore.slice(renderStart, renderEnd);
-      assert.match(adminStore, /function toggleStoreCategoryManager\(\)/);
-      assert.match(categoryRenderer, /state\.storeCategoryManagerOpen=false/);
-      assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\(\)"/);
+      assert.match(adminStore, /function storeAdminMenu\\(\\)/, 'store navigation must expose its top-level views');
+      assert.match(adminStore, /function setStoreAdminView\\(view\\)/, 'top-level store navigation must switch views');
+      assert.match(adminStore, /function toggleStoreCategoryManager\\(\\)/);
+      assert.match(categoryRenderer, /state\\.storeCategoryManagerOpen=false/);
+      assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\\(\\)"/);
       assert.match(categoryRenderer, /aria-expanded=/);
-      assert.match(categoryRenderer, /isOpen\?'<div class=/, 'category rows should stay hidden until the manager is expanded');
-      assert.ok(storeRenderer.includes("const productManagement='<section"), 'product tools should be grouped in their own section');
-      assert.ok(storeRenderer.includes("'+csvImporter+form+"), 'CSV import and product form should live in product management');
-      assert.ok(storeRenderer.includes("const storeManagement='<section"), 'store settings should be grouped separately');
-      assert.ok(storeRenderer.includes("'+renderStoreCategoryManager(products)+rotationSettings"), 'category management and ad rotation should live in store settings');
-      assert.ok(storeRenderer.indexOf("'+storeManagement+productManagement")>=0, 'store settings should appear above product and advertisement tools');
-      assert.match(adminStore,/function toggleStoreAdRotationSettings\(\)/,'ad rotation settings should have a dedicated collapse toggle');
-      assert.match(storeRenderer,/state\.storeAdRotationSettingsOpen=false/,'ad rotation settings should be collapsed by default');
-      assert.match(storeRenderer,/rotationOpen\?'<div class=/,'ad rotation controls should stay hidden until expanded');
+      assert.match(categoryRenderer, /isOpen\\?'<div class=/, 'category rows should stay hidden until the manager is expanded');
+      assert.ok(storeRenderer.includes('const subMenu='), 'product view must provide product-list, add, and CSV-import navigation');
+      assert.ok(storeRenderer.includes("const productManagement=(state.storeProductSub==='add'?form:(state.storeProductSub==='import'?csvImporter:productsList))"), 'product subview must select the requested product tool');
+      assert.ok(storeRenderer.includes('const settingsMenu='), 'settings view must provide category and ad-duration navigation');
+      assert.ok(storeRenderer.includes("const storeManagement=(state.storeSettingsSub==='ad'?rotationSettings:renderStoreCategoryManager(products))"), 'settings subview must render either categories or ad rotation');
+      assert.ok(storeRenderer.includes("if(state.storeAdminView==='settings')return"), 'settings must render as a distinct top-level view');
+      assert.ok(storeRenderer.includes("'+menu+subMenu+productManagement+'</section>'"), 'products must remain the default top-level view');
+      assert.match(adminStore,/function toggleStoreAdRotationSettings\\(\\)/,'ad rotation settings should have a dedicated collapse toggle');
+      assert.match(storeRenderer,/state\\.storeAdRotationSettingsOpen=false/,'ad rotation settings should be collapsed by default');
+      assert.match(storeRenderer,/rotationOpen\\?'<div class=/,'ad rotation controls should stay hidden until expanded');
     });
 
     await test('only the configured root administrator bypasses the permission matrix', async () => {
@@ -2750,12 +2753,20 @@ async function run() {
         .send({ status: 'تم التواصل', adminNote: 'اختبار الحفاظ على طريقة الدفع عند عدم إرسالها' });
       assert.equal(paymentMethodPreservation.status, 200, JSON.stringify(paymentMethodPreservation.body));
       assert.equal(paymentMethodPreservation.body.order.paymentMethod, 'محفظة الفني', 'omitting paymentMethod must not erase the original wallet payment method');
+      const rejectedPaidOrderPaymentMethodChange = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'تم التواصل', paymentMethod: 'تحويل', adminNote: 'اختبار منع تغيير طريقة الدفع بعد السداد' });
+      assert.equal(rejectedPaidOrderPaymentMethodChange.status, 409, JSON.stringify(rejectedPaidOrderPaymentMethodChange.body));
+      assert.match(rejectedPaidOrderPaymentMethodChange.body.message, /طريقة الدفع لا تتغير بعد الدفع/);
+      const unchangedPaidOrder = await require('../models/StoreOrder').findById(storedOrder._id).lean();
+      assert.equal(unchangedPaidOrder.paymentMethod, 'محفظة الفني', 'rejected payment-method changes must preserve the original paid method');
       const singleCancelAfterMethodChange = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار الاسترداد بعد تعديل طريقة الدفع' });
+        .send({ status: 'ملغي', adminNote: 'اختبار إلغاء الطلب المدفوع دون تغيير طريقة الدفع' });
       assert.equal(singleCancelAfterMethodChange.status, 200, JSON.stringify(singleCancelAfterMethodChange.body));
-      assert.equal(singleCancelAfterMethodChange.body.refundedAmount, 150, 'changing the displayed payment method must not remove wallet refund eligibility');
+      assert.equal(singleCancelAfterMethodChange.body.refundedAmount, 150, 'cancelling a paid wallet order must refund the original wallet payment');
       assert.equal(singleCancelAfterMethodChange.body.order.paymentStatus, 'مسترد');
+      assert.equal(singleCancelAfterMethodChange.body.order.paymentMethod, 'محفظة الفني', 'cancellation must preserve the original payment method');
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 5, 'cancelling a single wallet order must restore reserved stock');
       const fanniBalanceBeforeCodCancel = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
