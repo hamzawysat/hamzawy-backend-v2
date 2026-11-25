@@ -29,30 +29,30 @@ async function openFanniUnifiedProfile(id) {
     const decisions = list(data.decisions, x => '<article class="rounded-lg bg-slate-50 p-2 text-xs"><strong>' + val(x.action) + '</strong><p>' + val(x.reason) + '</p><p class="text-slate-500">' + val(x.by) + ' • ' + date(x.date) + '</p></article>', 'لا يوجد سجل قرارات');
     const audits = list(data.auditLogs, x => '<article class="rounded-lg bg-slate-50 p-2 text-xs"><strong>' + val(x.action) + '</strong><p>' + val(x.details) + '</p><p class="text-slate-500">' + val(x.adminName) + ' • ' + date(x.createdAt) + '</p></article>', 'لا يوجد سجل تدقيق');
     const image = (key, title) => f.identityImages?.[key] ? '<div><p class="text-xs font-bold mb-1">' + title + '</p><div id="fanni-profile-image-' + key + '" class="w-full min-h-24 rounded-xl border bg-slate-50 flex items-center justify-center text-xs text-slate-400">تحميل الصورة...</div></div>' : '<div class="text-xs text-slate-400">' + title + ': غير متاحة</div>';
-    const id = escHtml(String(f._id || id));
+    const fanniId = escHtml(String(f._id || id));
     modal.querySelector('.premium-panel').innerHTML = `
       <div class="flex items-start justify-between gap-3"><div><h2 class="font-black text-lg">${val(f.name)}</h2><p dir="ltr" class="text-sm text-slate-600 mt-1">${val(f.phone)}</p><p class="text-xs mt-2">${val(f.status)} • ${val(f.level)} • الرصيد ${val(f.walletBalance)} ج</p></div><button data-close class="pill-btn soft-btn">إغلاق</button></div>
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 my-4 text-center">${[['الطلبات',data.totals?.orders],['العروض',data.totals?.offers],['حركات المحفظة',data.totals?.walletTransactions],['الشحن',data.totals?.topups],['القرارات',data.totals?.decisions]].map(([k,v])=>'<div class="rounded-xl bg-slate-50 p-2"><strong class="block text-lg">'+Number(v||0)+'</strong><span class="text-[10px] text-slate-500">'+k+'</span></div>').join('')}</div>
       <div class="flex flex-wrap gap-2 mb-4">
         ${f.status === 'قيد المراجعة' || f.status === 'مرفوض' ? '<button onclick="approveFanni(\''+id+'\')" class="pill-btn primary-pill">اعتماد الفني</button><button onclick="rejectFanni(\''+id+'\')" class="pill-btn soft-btn">رفض الفني</button>' : ''}
         ${f.status === 'معلق' ? '<button onclick="enableFanni(\''+id+'\')" class="pill-btn primary-pill">إعادة تفعيل الفني</button>' : f.status === 'معتمد' ? '<button onclick="disableFanni(\''+id+'\')" class="pill-btn soft-btn">تعليق الفني</button>' : ''}
-        <button onclick="openFanniProfileEditor('${id}')" class="pill-btn soft-btn">تعديل البيانات</button>
-        <button onclick="viewFanniIdentityCard('${id}')" class="pill-btn soft-btn">عرض ومراجعة الصور</button>
-        <button onclick="toggleTrustBadge('${id}')" class="pill-btn soft-btn">تبديل شارة موثوق</button>
-        <button onclick="state.walletSelectedFanniId='${id}';addWalletBalance()" class="pill-btn soft-btn">إضافة للمحفظة</button>
-        <button onclick="state.walletSelectedFanniId='${id}';deductWalletBalance()" class="pill-btn soft-btn">خصم من المحفظة</button>
-        <button onclick="state.walletSelectedFanniId='${id}';adjustWallet()" class="pill-btn soft-btn">تسوية المحفظة</button>
-        <button onclick="state.walletSelectedFanniId='${id}';loadWalletTransactions()" class="pill-btn soft-btn">كشف الحركات</button>
-        <button onclick="state.walletSelectedFanniId='${id}';freezeWallet()" class="pill-btn soft-btn">تجميد / فك تجميد المحفظة</button>
-        <button onclick="saveFanniLimit('${id}')" class="pill-btn soft-btn">حدود الاستقبال</button>
-        <button onclick="saveFanniProfileControls('${id}')" class="pill-btn soft-btn">الثقة والظهور</button>
-        <button onclick="changeAccountPassword('fanni','${id}')" class="pill-btn soft-btn">تغيير كلمة المرور</button>
-        <button onclick="setForcedPasswordChange('fanni','${id}',true)" class="pill-btn soft-btn">إلزام تغيير كلمة المرور</button>
-        <button onclick="setForcedPasswordChange('fanni','${id}',false)" class="pill-btn soft-btn">إلغاء الإلزام</button>
-        <button onclick="issueSupportPassword('fanni','${id}')" class="pill-btn soft-btn">كلمة الدعم</button>
-        <button onclick="changeFanniProfileLevel('${id}','${val(f.level)}')" class="pill-btn soft-btn">تغيير المستوى</button>
-        <button onclick="saveFanniProfileNote('${id}')" class="pill-btn soft-btn">الملاحظات الداخلية</button>
-        <button onclick="archiveAccount('fanni','${id}','${val(f.name)}')" class="pill-btn danger-pill">أرشفة الفني</button>
+        <button onclick="openFanniProfileEditor('${fanniId}')" class="pill-btn soft-btn">تعديل البيانات</button>
+        <button onclick="viewFanniIdentityCard('${fanniId}')" class="pill-btn soft-btn">عرض ومراجعة الصور</button>
+        <button onclick="toggleTrustBadge('${fanniId}')" class="pill-btn soft-btn">تبديل شارة موثوق</button>
+        <button onclick="state.walletSelectedFanniId='${fanniId}';addWalletBalance()" class="pill-btn soft-btn">إضافة للمحفظة</button>
+        <button onclick="state.walletSelectedFanniId='${fanniId}';deductWalletBalance()" class="pill-btn soft-btn">خصم من المحفظة</button>
+        <button onclick="state.walletSelectedFanniId='${fanniId}';adjustWallet()" class="pill-btn soft-btn">تسوية المحفظة</button>
+        <button onclick="state.walletSelectedFanniId='${fanniId}';loadWalletTransactions()" class="pill-btn soft-btn">كشف الحركات</button>
+        <button onclick="state.walletSelectedFanniId='${fanniId}';freezeWallet()" class="pill-btn soft-btn">تجميد / فك تجميد المحفظة</button>
+        <button onclick="saveFanniLimit('${fanniId}')" class="pill-btn soft-btn">حدود الاستقبال</button>
+        <button onclick="saveFanniProfileControls('${fanniId}')" class="pill-btn soft-btn">الثقة والظهور</button>
+        <button onclick="changeAccountPassword('fanni','${fanniId}')" class="pill-btn soft-btn">تغيير كلمة المرور</button>
+        <button onclick="setForcedPasswordChange('fanni','${fanniId}',true)" class="pill-btn soft-btn">إلزام تغيير كلمة المرور</button>
+        <button onclick="setForcedPasswordChange('fanni','${fanniId}',false)" class="pill-btn soft-btn">إلغاء الإلزام</button>
+        <button onclick="issueSupportPassword('fanni','${fanniId}')" class="pill-btn soft-btn">كلمة الدعم</button>
+        <button onclick="changeFanniProfileLevel('${fanniId}','${val(f.level)}')" class="pill-btn soft-btn">تغيير المستوى</button>
+        <button onclick="saveFanniProfileNote('${fanniId}')" class="pill-btn soft-btn">الملاحظات الداخلية</button>
+        <button onclick="archiveAccount('fanni','${fanniId}','${val(f.name)}')" class="pill-btn danger-pill">أرشفة الفني</button>
       </div>
       <div class="grid md:grid-cols-2 gap-3">
         ${section('بيانات واعتماد الفني','<p class="text-xs">الحالة: '+val(f.status)+'</p><p class="text-xs">المستوى: '+val(f.level)+'</p><p class="text-xs">الخدمات: '+val((f.specialties||[]).join('، '))+'</p><p class="text-xs">مناطق العمل: '+val((f.areas||[]).join('، '))+'</p><p class="text-xs">التقييم: '+val(f.rating?.average)+' ('+val(f.rating?.count)+')</p><p class="text-xs">درجة الثقة: '+val(f.trustScore)+'</p><p class="text-xs">ملاحظة الإدارة: '+val(f.adminNote)+'</p>')}
