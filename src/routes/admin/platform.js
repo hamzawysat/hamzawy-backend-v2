@@ -102,6 +102,7 @@ function createAdminPlatformRouter({
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'نص الإعلان غير صالح؛ الحد الأقصى 1000 حرف' });
       const config = await getAdminConfig();
+      const audienceLabel = value.announcementAudience === 'both' ? 'العميل والفني' : value.announcementAudience === 'fanni' ? 'الفني' : 'العميل';
       const previousLength = String(config.content?.announcement || '').length;
       const faqCount = Array.isArray(config.content?.faqs) ? config.content.faqs.length : 0;
       // Update only the announcement path so unrelated legacy FAQ records are not revalidated.
@@ -118,7 +119,7 @@ function createAdminPlatformRouter({
       if (config.history.length > 200) config.history = config.history.slice(-200);
       await config.save();
       await writeAdminAudit(req, value.announcement ? 'تعديل الإعلان' : 'مسح الإعلان', 'content', 'announcement', 'تم تحديث الإعلان دون تغيير الأسئلة الشائعة');
-      return res.json({ message: value.announcement ? 'تم حفظ الإعلان ونشره لواجهة العميل.' : 'تم مسح الإعلان ونشر التغيير لواجهة العميل.', content: config.content });
+      return res.json({ message: value.announcement ? `تم حفظ الإعلان ونشره لواجهة ${audienceLabel}.` : 'تم مسح الإعلان من واجهتي العميل والفني.', content: config.content });
     } catch (err) { next(err); }
   });
   
@@ -136,6 +137,7 @@ function createAdminPlatformRouter({
       }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'نص الإعلان أو الأسئلة الشائعة غير صالح' });
+      const audienceLabel = value.announcementAudience === 'both' ? 'العميل والفني' : value.announcementAudience === 'fanni' ? 'الفني' : 'العميل';
       const config = await getAdminConfig();
       const before = config.content.toObject ? config.content.toObject() : { ...config.content };
       config.content = value;
@@ -143,7 +145,7 @@ function createAdminPlatformRouter({
       if (config.history.length > 200) config.history = config.history.slice(-200);
       await config.save();
       await writeAdminAudit(req, 'تعديل محتوى الواجهة', 'content', 'content', 'تم حفظ الإعلان والأسئلة الشائعة');
-      return res.json({ message: 'تم حفظ المحتوى ونشره لواجهة العميل.', content: config.content });
+      return res.json({ message: `تم حفظ المحتوى، والإعلان موجّه إلى ${audienceLabel}.`, content: config.content });
     } catch (err) { next(err); }
   });
   router.get('/support/search', auth('admin'), async (req, res, next) => {
