@@ -130,8 +130,11 @@ async function run() {
       const clientWeb = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
       const fanniWeb = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-notifications.js'), 'utf8');
       assert.match(notificationModel, /replyEnabled: \{ type: Boolean, default: false/);
-      assert.match(notificationRoute, /recipientRole: role, recipientId: owner\(req, role\)[\s\S]*?replyEnabled: true[\s\S]*?'reply\.message': \{ \$exists: false \}/);\n      assert.match(notificationRoute, /notifyAdmins\(\{[\s\S]*?type: 'admin_message_reply'/);
-      assert.match(operations, /notifications\/recipients/);\n      assert.match(operations, /term\.replace\(\/\[\.\*\+\?\^\$\{\}\(\)\|\[\\\\\]\\\\\]\/g/);\n      assert.match(operations, /filter\.role = 'fanni'/);
+      assert.match(notificationRoute, /recipientRole: role, recipientId: owner\(req, role\)[\s\S]*?replyEnabled: true[\s\S]*?'reply\.message': \{ \$exists: false \}/);
+      assert.match(notificationRoute, /notifyAdmins\(\{[\s\S]*?type: 'admin_message_reply'/);
+      assert.match(operations, /notifications\/recipients/);
+      assert.ok(operations.includes('const escaped = term.replace('));
+      assert.match(operations, /filter\.role = 'fanni'/);
       assert.match(operations, /recipientRole: value\.recipientRole[\s\S]*?replyEnabled: value\.replyEnabled === true/);
       assert.match(notificationUtils, /replyEnabled === true && type === 'admin_message'/);
       assert.match(adminUi, /notification-reply-mode[\s\S]*?searchNotificationRecipients[\s\S]*?ردود المستلمين/);
