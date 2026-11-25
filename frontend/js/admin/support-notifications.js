@@ -28,7 +28,7 @@ async function dismissAdminInboxNotification(id){
   }
   state.adminInboxNotifications=(state.adminInboxNotifications||[]).filter(entry=>String(entry.id)!==String(id));
   const root=document.getElementById('admin-inbox-list');
-  if(root)root.outerHTML=renderAdminInbox();
+  if(root)root.innerHTML=renderAdminInbox();
 }
 async function openAdminInboxNotification(id){
   const item=(state.adminInboxNotifications||[]).find(entry=>String(entry.id)===String(id));if(!item)return;
