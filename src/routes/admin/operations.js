@@ -82,10 +82,10 @@ function createAdminOperationsRouter({
       const role = String(req.query.role || '');
       const term = String(req.query.q || '').trim().slice(0, 60);
       if (!['client', 'fanni'].includes(role)) return res.status(400).json({ message: 'نوع الحساب غير صحيح.' });
-      if (term.length < 2) return res.json({ recipients: [] });
+      if (term.length < 1) return res.json({ recipients: [] });
       const digits = normalizePhone(term);
       const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const phonePrefix = digits && /^01[0-9]*$/.test(digits) ? digits : '';
+      const phonePrefix = digits && /^[0-9]{1,11}$/.test(digits) ? digits : '';
       const filter = phonePrefix
         ? { phone: { $regex: '^' + phonePrefix } }
         : { name: { $regex: '^' + escaped, $options: 'i' } };
@@ -101,17 +101,21 @@ function createAdminOperationsRouter({
       const schema = Joi.object({
         title: Joi.string().trim().min(2).max(100).required(), message: Joi.string().trim().min(2).max(300).required(),
         recipientRole: Joi.string().valid('fanni', 'client').required(), recipientMode: Joi.string().valid('single', 'group').default('single'),
-        phone: Joi.string().trim().allow('').optional(), replyEnabled: Joi.boolean().default(false),
+        phone: Joi.string().trim().allow('').optional(), recipientId: Joi.string().hex().length(24).optional(), replyEnabled: Joi.boolean().default(false),
         audience: Joi.string().valid('all', 'approved', 'active', 'disabled').when('recipientMode', { is: 'group', then: Joi.required(), otherwise: Joi.optional() })
       }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'بيانات الرسالة أو المستلم غير صحيحة' });
       if (value.recipientMode === 'single') {
         const phone = normalizePhone(value.phone);
-        if (!phone || !/^01[0-9]{9}$/.test(phone)) return res.status(400).json({ message: 'اكتب رقم هاتف مصري صحيحًا للمستلم' });
+        if (!value.recipientId && (!phone || !/^01[0-9]{9}$/.test(phone))) return res.status(400).json({ message: 'اختار مستلمًا صحيحًا من نتائج البحث' });
         let recipient;
-        if (value.recipientRole === 'fanni') recipient = await Fanni.findOne({ phone, role: 'fanni' }).select('_id name phone status').lean();
-        else recipient = await Client.findOne({ phone }).select('_id name phone status').lean();
+        if (value.recipientRole === 'fanni') recipient = value.recipientId
+          ? await Fanni.findOne({ _id: value.recipientId, role: 'fanni' }).select('_id name phone status').lean()
+          : await Fanni.findOne({ phone, role: 'fanni' }).select('_id name phone status').lean();
+        else recipient = value.recipientId
+          ? await Client.findById(value.recipientId).select('_id name phone status').lean()
+          : await Client.findOne({ phone }).select('_id name phone status').lean();
         if (!recipient) return res.status(404).json({ message: value.recipientRole === 'fanni' ? 'لا يوجد فني بهذا الرقم' : 'لا يوجد عميل بهذا الرقم' });
         const campaignId = crypto.randomBytes(16).toString('hex');
         const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true });
