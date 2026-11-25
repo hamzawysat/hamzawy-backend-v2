@@ -84,7 +84,7 @@ function createAdminOperationsRouter({
       if (!['client', 'fanni'].includes(role)) return res.status(400).json({ message: 'نوع الحساب غير صحيح.' });
       if (term.length < 2) return res.json({ recipients: [] });
       const digits = normalizePhone(term);
-      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\  router.post('/notifications/direct', auth('admin'), async (req, res, next) => {');
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const phonePrefix = digits && /^01[0-9]*$/.test(digits) ? digits : '';
       const filter = phonePrefix
         ? { phone: { $regex: '^' + phonePrefix } }
