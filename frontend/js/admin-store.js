@@ -483,7 +483,7 @@ function renderStore(){
   const subMenu='<div class="flex gap-2 flex-wrap"><button onclick="setStoreProductSub(\'list\')">القايمة</button><button onclick="setStoreProductSub(\'add\')">نموذج المنتج</button><button onclick="setStoreProductSub(\'import\')">استيراد جملة</button></div>';
   const undoBar=state.lastDeletedStoreProduct?'<div><button onclick="restoreDeletedStoreProduct()">تراجع: رجع المنتج</button></div>':'';
   const searchBar='<div class="flex gap-2 flex-wrap"><input placeholder="ابحث باسم المنتج" value="'+(state.storeSearch||'')+'" oninput="setStoreSearch(this.value)" /><button onclick="setStoreFilterCat(\'\')">الكل</button><span>مخزون قليل: '+lowStockCount+'</span></div>';
-  const productsList='<section class="premium-panel p-4 space-y-3"><b>المنتجات الحالية ('+(state.storeProductsLoading&&filteredProducts.length===0?'...':filteredProducts.length)+')</b>'+undoBar+searchBar+refreshStatus+emptyProductsState+cards.join('')+'</section>';
+  const productsList='<section class="premium-panel p-4 space-y-3"><b>المنتجات الحالية ('+(state.storeProductsLoading&&filteredProducts.length===0?'...':filteredProducts.length)+')</b>'+undoBar+searchBar+refreshStatus+emptyProductsState+cards+'</section>';
   const productManagement=(state.storeProductSub==='add'?form:(state.storeProductSub==='import'?csvImporter:productsList));
   if(typeof state.storeSettingsSub!=='string')state.storeSettingsSub='categories';
   const settingsMenu='<div class="flex gap-2 flex-wrap"><button onclick="setStoreSettingsSub(\'categories\')">الأقسام</button><button onclick="setStoreSettingsSub(\'ad\')">مدة الإعلان</button></div>';
