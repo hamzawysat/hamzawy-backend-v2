@@ -324,3 +324,15 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 /* Compact action menu; outside clicks and Escape close it without a screen-covering backdrop. */
 #admin-tab-content .action-wrap{position:relative;z-index:61}
 #admin-tab-content .dropdown-menu{width:280px!important;max-width:calc(100vw - 24px)!important;max-height:60vh!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain}
+
+
+/* Admin UX Audit — Phase 1: clearer, full-width navigation groups. */
+.section-nav{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+.section-nav-group{width:100%;min-width:0;padding:12px!important}
+.section-nav-title{min-width:0;margin-bottom:9px}
+.section-nav-heading{margin:0!important;padding:0 2px 5px!important;border-bottom:0!important;font-size:13px!important}
+.section-nav-description{margin:0;padding:0 30px 7px 2px;color:#64748b;font-size:10px;font-weight:600;line-height:1.6}
+.section-nav-items{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+.section-nav-btn{min-width:0;min-height:52px!important;justify-content:center!important;text-align:center!important;overflow-wrap:anywhere}
+.section-nav-label{flex:1 1 auto;text-align:center}
+@media(max-width:380px){.section-nav-items{grid-template-columns:minmax(0,1fr)!important}.section-nav-btn{justify-content:flex-start!important;text-align:right!important}.section-nav-label{text-align:right}}
