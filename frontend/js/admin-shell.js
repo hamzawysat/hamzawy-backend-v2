@@ -90,13 +90,13 @@ function render(){
       ${state.pageMode==='home'?`<section class="mt-4 premium-panel p-3 space-y-3">
         <div class="flex items-center justify-between px-1">
           <h2 class="text-[12px] font-black text-slate-700">مركز التحكم</h2>
-          <span class="text-[10px] text-slate-500">7 أقسام رئيسية</span>
+          <span class="text-[10px] text-slate-500">${visibleSections.length} أقسام رئيسية</span>
         </div>
         
         <div class="section-nav" aria-label="كل أدوات لوحة الإدارة">
           ${ADMIN_SECTIONS.filter(section=>section.tabs.some(item=>canReadTab(item.id))).map(section=>`
             <section class="section-nav-group">
-              <h3 class="section-nav-heading"><span class="section-nav-icon">${section.icon}</span><span>${escHtml(section.label)}</span></h3>
+              <div class="section-nav-title"><h3 class="section-nav-heading"><span class="section-nav-icon">${section.icon}</span><span>${escHtml(section.label)}</span></h3>${section.description?`<p class="section-nav-description">${escHtml(section.description)}</p>`:''}</div>
               <div class="section-nav-items">
                 ${section.tabs.map(item=>`
                   <div>
