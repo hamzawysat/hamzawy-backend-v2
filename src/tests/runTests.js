@@ -964,6 +964,7 @@ async function run() {
       const foreign = await request(app).post('/api/notifications/client/' + new mongoose.Types.ObjectId() + '/reply')
         .set('Authorization', 'Bearer ' + clientToken).send({ message: 'محاولة على إشعار غير مملوك' });
       assert.equal(foreign.status, 404);
+      await Notification.deleteMany({ _id: { $in: [replyable._id, ordinary._id] } });
     });
 
     await test('disabling referrals blocks new invited registrations but allows ordinary registration', async () => {
