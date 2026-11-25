@@ -401,6 +401,7 @@ async function run() {
       const adminRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
       const adminManagement = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniManagement.js'), 'utf8');
       const fanniModel = fs.readFileSync(path.join(__dirname, '../models/Fanni.js'), 'utf8');
+      const Fanni = require('../models/Fanni');
       const fanniProfile = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/fanni-profile.js'), 'utf8');
       const fanniProfileDist = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin/fanni-profile.js'), 'utf8');
       const adminPeopleDist = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-people.js'), 'utf8');
@@ -409,6 +410,8 @@ async function run() {
       assert.ok(adminPeopleDist.includes("openFanniUnifiedProfile"), 'deployed admin bundle should expose the unified technician profile button');
       assert.ok(adminManagement.includes("router.patch('/fannis/:id/availability'"), 'admin availability endpoint should exist');
       assert.ok(fanniModel.includes("'توصيل فني'") && fanniModel.includes("'فصل فني'"), 'technician availability decision actions must be allowed by the Fanni schema');
+      const decisionActionEnum = Fanni.schema.path('decisions').schema.path('action').enumValues;
+      assert.ok(decisionActionEnum.includes('توصيل فني') && decisionActionEnum.includes('فصل فني'), 'Mongoose must accept the technician availability decision actions');
       assert.ok(adminManagement.includes("action: after ? 'توصيل فني' : 'فصل فني'"), 'availability updates must persist schema-approved decision actions');
       assert.ok(fanniProfile.includes('const fanniId = escHtml(String(f._id || id));') && !fanniProfile.includes('const id = escHtml(String(f._id || id));'), 'unified technician profile must not shadow its id parameter during initialization');
       assert.ok(fanniProfileDist.includes('openFanniUnifiedProfile') && !fanniProfileDist.includes('const id = escHtml(String(f._id || id));'), 'deployed unified technician profile bundle must expose the profile without the self-referencing id declaration');
