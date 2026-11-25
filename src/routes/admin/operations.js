@@ -163,13 +163,26 @@ function createAdminOperationsRouter({
         const key = item.campaignId ? 'campaign:' + item.campaignId : 'legacy:' + legacyKey;
         let group = groups.get(key);
         if (!group) {
-          group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0, replies: [] };
+          group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0, replyEnabled: Boolean(item.replyEnabled), replies: [] };
           groups.set(key, group);
         }
         group.count += 1;
         if (item.reply?.message) group.replies.push({ recipientRole: item.recipientRole, recipientId: String(item.recipientId), message: item.reply.message, sentAt: item.reply.sentAt });
       }
-      return res.set('Cache-Control', 'no-store').json({ notifications: Array.from(groups.values()).slice(0, 200) });
+      const resultGroups = Array.from(groups.values()).slice(0, 200);
+      const clientIds = resultGroups.flatMap(group => group.replies.filter(reply => reply.recipientRole === 'client').map(reply => reply.recipientId));
+      const fanniIds = resultGroups.flatMap(group => group.replies.filter(reply => reply.recipientRole === 'fanni').map(reply => reply.recipientId));
+      const [clients, technicians] = await Promise.all([
+        clientIds.length ? Client.find({ _id: { $in: clientIds } }).select('_id name phone').lean() : [],
+        fanniIds.length ? Fanni.find({ _id: { $in: fanniIds }, role: 'fanni' }).select('_id name phone').lean() : []
+      ]);
+      const people = new Map([...clients, ...technicians].map(person => [String(person._id), person]));
+      for (const group of resultGroups) for (const reply of group.replies) {
+        const person = people.get(reply.recipientId);
+        reply.recipientName = person?.name || (reply.recipientRole === 'client' ? 'عميل' : 'فني');
+        reply.recipientPhone = person?.phone || '';
+      }
+      return res.set('Cache-Control', 'no-store').json({ notifications: resultGroups });
     } catch (error) { return next(error); }
   });
   
