@@ -400,11 +400,18 @@ async function run() {
       const adminShell = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-shell.js'), 'utf8');
       const adminRoutes = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
       const adminManagement = fs.readFileSync(path.join(__dirname, '../routes/admin/fanniManagement.js'), 'utf8');
+      const fanniModel = fs.readFileSync(path.join(__dirname, '../models/Fanni.js'), 'utf8');
+      const fanniProfile = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/fanni-profile.js'), 'utf8');
+      const fanniProfileDist = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin/fanni-profile.js'), 'utf8');
       const adminPeopleDist = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-people.js'), 'utf8');
       assert.ok(adminPeople.includes("setFanniAvailability('${id}'"), 'admin technician actions should expose online/offline control');
       assert.ok(adminPeopleDist.includes("setFanniAvailability"), 'deployed admin bundle should expose online/offline control');
       assert.ok(adminPeopleDist.includes("openFanniUnifiedProfile"), 'deployed admin bundle should expose the unified technician profile button');
       assert.ok(adminManagement.includes("router.patch('/fannis/:id/availability'"), 'admin availability endpoint should exist');
+      assert.ok(fanniModel.includes("'توصيل فني'") && fanniModel.includes("'فصل فني'"), 'technician availability decision actions must be allowed by the Fanni schema');
+      assert.ok(adminManagement.includes("action: after ? 'توصيل فني' : 'فصل فني'"), 'availability updates must persist schema-approved decision actions');
+      assert.ok(fanniProfile.includes('const fanniId = escHtml(String(f._id || id));') && !fanniProfile.includes('const id = escHtml(String(f._id || id));'), 'unified technician profile must not shadow its id parameter during initialization');
+      assert.ok(fanniProfileDist.includes('const fanniId = escHtml(String(f._id || id));'), 'deployed unified technician profile bundle must contain the safe id initialization');
       assert.ok(adminManagement.includes("recipientRole: 'fanni'") && adminManagement.includes("admin_availability_changed"), 'technicians should receive an in-app notification when admin changes availability');
       assert.ok(adminPeople.includes('f.acceptingOrders===false'), 'admin technician cards should reflect the persisted receiving-orders state');
       assert.ok(adminPeople.includes('موقف استقبال الطلبات'), 'paused technicians should be visibly marked in the admin');
