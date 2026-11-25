@@ -2770,13 +2770,18 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 5, 'cancelling a single wallet order must restore reserved stock');
       const fanniBalanceBeforeCodCancel = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
+      const rejectedCodPaymentMethodChange = await request(app).patch('/api/admin/store/orders/' + codPurchase.body.order.id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار منع تغيير طريقة دفع طلب عند الاستلام' });
+      assert.equal(rejectedCodPaymentMethodChange.status, 409, JSON.stringify(rejectedCodPaymentMethodChange.body));
       const codCancel = await request(app).patch('/api/admin/store/orders/' + codPurchase.body.order.id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار منع استرداد طلب عند الاستلام بعد تغيير طريقة الدفع إداريًا' });
+        .send({ status: 'ملغي', adminNote: 'إلغاء طلب عند الاستلام دون تغيير طريقة الدفع' });
       assert.equal(codCancel.status, 200, JSON.stringify(codCancel.body));
-      assert.equal(codCancel.body.refundedAmount, 0, 'changing a COD order payment label to wallet must not create a wallet refund');
+      assert.equal(codCancel.body.refundedAmount, 0, 'cancelling an unpaid COD order must not create a wallet refund');
       assert.equal(codCancel.body.order.paymentStatus, 'غير مدفوع');
-      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeCodCancel, 'COD cancellation must not credit the wallet even if its payment label is changed');
+      assert.equal(codCancel.body.order.paymentMethod, 'عند الاستلام', 'cancellation must preserve the original COD payment method');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeCodCancel, 'COD cancellation must not credit the wallet');
       assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'cancelling a single COD order must restore stock');
 
       const bulkProductA = await StoreProduct.create({ name: 'منتج سلة متعدد أ', price: 20, type: 'product', isActive: true, stock: 5 });
@@ -2845,12 +2850,17 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk - 130);
       assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 3);
       assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 7);
+      const rejectedBulkPaymentMethodChange = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار منع تغيير طريقة دفع الطلب المجمع بعد السداد' });
+      assert.equal(rejectedBulkPaymentMethodChange.status, 409, JSON.stringify(rejectedBulkPaymentMethodChange.body));
       const cancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار إلغاء الطلب المجمع' });
+        .send({ status: 'ملغي', adminNote: 'إلغاء الطلب المجمع مع الحفاظ على طريقة الدفع الأصلية' });
       assert.equal(cancelBulk.status, 200, JSON.stringify(cancelBulk.body));
       assert.equal(cancelBulk.body.refundedAmount, 130);
       assert.equal(cancelBulk.body.order.paymentStatus, 'مسترد');
+      assert.equal(cancelBulk.body.order.paymentMethod, 'محفظة الفني');
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk);
       const bulkRefundLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'refund', idempotencyKey: 'store-order-refund:' + String(bulkStoredOrder._id) }).lean();
       assert.ok(bulkRefundLedger);
@@ -2859,7 +2869,7 @@ async function run() {
       assert.equal((await StoreOrder.findById(bulkStoredOrder._id).lean()).refundTransactionNumber, bulkRefundLedger.transactionNumber);
       const duplicateCancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد' });
+        .send({ status: 'ملغي', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد ولا يغير طريقة الدفع' });
       assert.equal(duplicateCancelBulk.status, 200, JSON.stringify(duplicateCancelBulk.body));
       assert.equal(duplicateCancelBulk.body.refundedAmount, 0);
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk);
