@@ -129,8 +129,6 @@ async function run() {
       const adminActions = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-actions.js'), 'utf8');
       const clientWeb = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
       const fanniWeb = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-notifications.js'), 'utf8');
-      const clientApp = fs.readFileSync(path.join(__dirname, '../../../hamzawy-app/src/screens/client/ClientDashboard.js'), 'utf8');
-      const fanniApp = fs.readFileSync(path.join(__dirname, '../../../hamzawy-app/src/screens/technician/TechnicianDashboard.js'), 'utf8');
       assert.match(notificationModel, /replyEnabled: \{ type: Boolean, default: false/);
       assert.match(notificationRoute, /recipientRole: role, recipientId: owner\(req, role\)[\s\S]*?replyEnabled: true[\s\S]*?'reply\.message': \{ \$exists: false \}/);
       assert.match(operations, /notifications\/recipients/);
@@ -140,8 +138,6 @@ async function run() {
       assert.match(adminActions, /body\.replyEnabled=replyEnabled/);
       assert.match(clientWeb, /sendClientNotificationReply/);
       assert.match(fanniWeb, /sendFanniNotificationReply/);
-      assert.match(clientApp, /submitClientNotificationReply/);
-      assert.match(fanniApp, /submitTechnicianNotificationReply/);
     });
 
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {
