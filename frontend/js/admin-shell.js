@@ -50,9 +50,9 @@ function render(){
   document.getElementById('app').innerHTML=`
   <header class="admin-topbar sticky top-0 z-50" role="banner">
     <div class="admin-topbar-inner">
-      <a href="#" onclick="event.preventDefault();goAdminHome()" class="admin-brand" aria-label="ساتڤيو - لوحة الإدارة">
-        <span class="admin-logo-frame"><img class="admin-header-logo" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار ساتڤيو" width="48" height="48" decoding="async"></span>
-        <span class="admin-brand-name">ساتڤيو</span>
+      <a href="#" onclick="event.preventDefault();goAdminHome()" class="admin-brand" aria-label="SATVIEW - لوحة الإدارة">
+        <span class="admin-logo-frame"><img class="admin-header-logo" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار SATVIEW" width="48" height="48" decoding="async"></span>
+        <span class="admin-brand-name">SATVIEW</span>
       </a>
       <label class="admin-header-search">
         <span aria-hidden="true">⌕</span>
