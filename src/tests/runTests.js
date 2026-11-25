@@ -120,7 +120,7 @@ async function run() {
       assert.ok(notificationUtils.includes("sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link"));
     });
 
-    await test('one-reply notifications are wired across admin, browser client/technician, and Android dashboards', async () => {
+    await test('one-reply notifications are wired across admin and browser client/technician surfaces', async () => {
       const notificationModel = fs.readFileSync(path.join(__dirname, '../models/Notification.js'), 'utf8');
       const notificationRoute = fs.readFileSync(path.join(__dirname, '../routes/notifications.js'), 'utf8');
       const operations = fs.readFileSync(path.join(__dirname, '../routes/admin/operations.js'), 'utf8');
