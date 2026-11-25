@@ -5,6 +5,8 @@ async function loadClients(query=state.clientSearch||'',page=state.clientPage||1
 
 async function searchClients(){await loadClients(String(document.getElementById('client-search')?.value||'').trim(),1);}
 
+async function clearClientSearch(){const input=document.getElementById('client-search');if(input)input.value='';await loadClients('',1);}
+
 
 async function openClient(phone){const client=(state.clients||[]).find(item=>String(item.phone||'')===String(phone||''));if(!client||!(client.id||client._id))return showToast('حساب العميل غير موجود في القائمة الحالية','error');return openClientProfile(String(client.id||client._id));}
 
