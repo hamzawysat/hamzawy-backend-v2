@@ -182,6 +182,7 @@ const API={
   async getNotifications(){return this.request('/api/notifications/client',{method:'GET',headers:{Authorization:'Bearer '+state.accountToken}});},
   async readNotification(id){return this.request('/api/notifications/client/'+encodeURIComponent(id)+'/read',{method:'PATCH',headers:{Authorization:'Bearer '+state.accountToken}});},
   async readAllNotifications(){return this.request('/api/notifications/client/read-all',{method:'PATCH',headers:{Authorization:'Bearer '+state.accountToken}});},
+  async replyToNotification(id,message){return this.request('/api/notifications/client/'+encodeURIComponent(id)+'/reply',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+state.accountToken},body:JSON.stringify({message})});},
   async claimOldOrder(sn){
     const oldToken=this.getClientToken(sn);
     if(!oldToken)throw new Error('لم نعثر على رمز الملكية القديم لهذا الطلب على هذا الجهاز. لو فقدته، تواصل مع الإدارة.');
