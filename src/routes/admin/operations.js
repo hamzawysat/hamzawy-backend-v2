@@ -3,6 +3,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { AREA_OPTIONS, ALL_AREAS_LABEL, normalizeArea, canonicalAreaName } = require('../../config/areas');
+const { createNotification } = require('../../utils/notifications');
 
 function createAdminOperationsRouter({
   Region,
@@ -94,7 +95,8 @@ function createAdminOperationsRouter({
         else recipient = await Client.findOne({ phone }).select('_id name phone status').lean();
         if (!recipient) return res.status(404).json({ message: value.recipientRole === 'fanni' ? 'لا يوجد فني بهذا الرقم' : 'لا يوجد عميل بهذا الرقم' });
         const campaignId = crypto.randomBytes(16).toString('hex');
-        await Notification.create({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '', readAt: null });
+        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '' });
+        if (!notification) return res.status(500).json({ message: 'تعذر حفظ الإشعار أو بدء إرساله', sent: 0, campaignId });
         await writeAdminAudit(req, 'إرسال إشعار فردي', 'notifications', recipient.phone, JSON.stringify({ role: value.recipientRole, campaignId }));
         return res.status(201).json({ message: 'تم إرسال الإشعار إلى المستلم المحدد فقط', sent: 1, campaignId, recipient: { role: value.recipientRole, name: recipient.name, phone: recipient.phone } });
       }
@@ -113,12 +115,21 @@ function createAdminOperationsRouter({
       if (total > 5000) return res.status(413).json({ message: 'عدد المستلمين أكبر من الحد الآمن (5000). قسّم الإرسال إلى فئات أصغر.', count: total });
       if (!total) return res.status(404).json({ message: 'لا توجد حسابات تطابق الفئة المحددة', sent: 0 });
       const recipients = await Model.find(filter).select('_id').limit(5000).lean();
-      const createdAt = new Date();
       const campaignId = crypto.randomBytes(16).toString('hex');
-      const docs = recipients.map(person => ({ campaignId, recipientRole: value.recipientRole, recipientId: person._id, type: 'admin_message', title: value.title, message: value.message, link: '', readAt: null, createdAt, updatedAt: createdAt }));
-      await Notification.insertMany(docs, { ordered: true });
-      await writeAdminAudit(req, 'إرسال إشعار جماعي', 'notifications', value.recipientRole + ':' + value.audience, JSON.stringify({ sent: docs.length, campaignId }));
-      return res.status(201).json({ message: 'تم إرسال الإشعار الجماعي داخل التطبيق', sent: docs.length, campaignId, recipientRole: value.recipientRole, audience: value.audience });
+      const deliveryResults = [];
+      for (let start = 0; start < recipients.length; start += 20) {
+        const batch = recipients.slice(start, start + 20);
+        const results = await Promise.all(batch.map(person => createNotification({
+          campaignId, recipientRole: value.recipientRole, recipientId: person._id,
+          type: 'admin_message', title: value.title, message: value.message, link: ''
+        })));
+        deliveryResults.push(...results);
+      }
+      const savedCount = deliveryResults.filter(Boolean).length;
+      if (savedCount !== recipients.length) console.error('Admin notification campaign partially saved:', { campaignId, expected: recipients.length, saved: savedCount });
+      if (!savedCount) return res.status(502).json({ message: 'تعذر حفظ أو إرسال الإشعارات للفئة المحددة', sent: 0, campaignId });
+      await writeAdminAudit(req, 'إرسال إشعار جماعي', 'notifications', value.recipientRole + ':' + value.audience, JSON.stringify({ sent: savedCount, expected: recipients.length, campaignId }));
+      return res.status(201).json({ message: 'تم حفظ الإشعارات وبدء إرسالها إلى أجهزة المستلمين', sent: savedCount, campaignId, recipientRole: value.recipientRole, audience: value.audience });
     } catch (error) { return next(error); }
   });
   

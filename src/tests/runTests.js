@@ -107,6 +107,19 @@ async function run() {
       assert.ok(fanniRoute.includes("notifyAdmins({"));
     });
 
+    await test('admin direct notifications use the durable push delivery pipeline for individual and group audiences', async () => {
+      const operations = fs.readFileSync(path.join(__dirname, '../routes/admin/operations.js'), 'utf8');
+      const notificationUtils = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
+      assert.ok(operations.includes("const { createNotification } = require('../../utils/notifications')"));
+      assert.ok(operations.includes("createNotification({ campaignId, recipientRole: value.recipientRole"));
+      assert.ok(operations.includes("for (let start = 0; start < recipients.length; start += 20)"));
+      assert.ok(operations.includes("deliveryResults.filter(Boolean).length"));
+      assert.ok(!operations.includes("Notification.insertMany(docs"));
+      assert.ok(notificationUtils.includes("campaignId = null"));
+      assert.ok(notificationUtils.includes("...(campaignId ? { campaignId: String(campaignId).slice(0, 100) } : {})"));
+      assert.ok(notificationUtils.includes("sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link"));
+    });
+
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {
       const {
         ADMIN_NOTIFICATION_CATEGORIES,
@@ -509,7 +522,7 @@ async function run() {
       assert.ok(browserStore.includes('selectedItems.forEach(product=>{h+=renderStoreProductCard(product,role);})'), 'opening a category should show only its products');
     });
 
-    await test('store admin groups product tools and store settings separately and collapses category manager by default', async () => {
+    await test('store admin renders separate product and settings views with collapsible category and ad controls', async () => {
       const adminStore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
       const categoryStart = adminStore.indexOf('function renderStoreCategoryManager(products)');
       const categoryEnd = adminStore.indexOf('async function uploadStoreCategoryImage', categoryStart);
@@ -517,19 +530,22 @@ async function run() {
       const renderStart = adminStore.indexOf('function renderStore(){');
       const renderEnd = adminStore.indexOf('function renderStoreOrders(){', renderStart);
       const storeRenderer = adminStore.slice(renderStart, renderEnd);
-      assert.match(adminStore, /function toggleStoreCategoryManager\(\)/);
-      assert.match(categoryRenderer, /state\.storeCategoryManagerOpen=false/);
-      assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\(\)"/);
-      assert.match(categoryRenderer, /aria-expanded=/);
-      assert.match(categoryRenderer, /isOpen\?'<div class=/, 'category rows should stay hidden until the manager is expanded');
-      assert.ok(storeRenderer.includes("const productManagement='<section"), 'product tools should be grouped in their own section');
-      assert.ok(storeRenderer.includes("'+csvImporter+form+"), 'CSV import and product form should live in product management');
-      assert.ok(storeRenderer.includes("const storeManagement='<section"), 'store settings should be grouped separately');
-      assert.ok(storeRenderer.includes("'+renderStoreCategoryManager(products)+rotationSettings"), 'category management and ad rotation should live in store settings');
-      assert.ok(storeRenderer.indexOf("'+storeManagement+productManagement")>=0, 'store settings should appear above product and advertisement tools');
-      assert.match(adminStore,/function toggleStoreAdRotationSettings\(\)/,'ad rotation settings should have a dedicated collapse toggle');
-      assert.match(storeRenderer,/state\.storeAdRotationSettingsOpen=false/,'ad rotation settings should be collapsed by default');
-      assert.match(storeRenderer,/rotationOpen\?'<div class=/,'ad rotation controls should stay hidden until expanded');
+      assert.ok(adminStore.includes('function storeAdminMenu(){'), 'store navigation must expose its top-level views');
+      assert.ok(adminStore.includes('function setStoreAdminView(v){'), 'top-level store navigation must switch views');
+      assert.ok(adminStore.includes('function toggleStoreCategoryManager(){'));
+      assert.ok(categoryRenderer.includes('state.storeCategoryManagerOpen=false'));
+      assert.ok(categoryRenderer.includes('onclick="toggleStoreCategoryManager()"'));
+      assert.ok(categoryRenderer.includes('aria-expanded='));
+      assert.ok(categoryRenderer.includes("isOpen?'<div class="), 'category rows should stay hidden until the manager is expanded');
+      assert.ok(storeRenderer.includes('const subMenu='), 'product view must provide product-list, add, and CSV-import navigation');
+      assert.ok(storeRenderer.includes("const productManagement=(state.storeProductSub==='add'?form:(state.storeProductSub==='import'?csvImporter:productsList))"), 'product subview must select the requested product tool');
+      assert.ok(storeRenderer.includes('const settingsMenu='), 'settings view must provide category and ad-duration navigation');
+      assert.ok(storeRenderer.includes("const storeManagement=(state.storeSettingsSub==='ad'?rotationSettings:renderStoreCategoryManager(products))"), 'settings subview must render either categories or ad rotation');
+      assert.ok(storeRenderer.includes("if(state.storeAdminView==='settings')return"), 'settings must render as a distinct top-level view');
+      assert.ok(storeRenderer.includes("'+menu+subMenu+productManagement+'</section>'"), 'products must remain the default top-level view');
+      assert.ok(adminStore.includes('function toggleStoreAdRotationSettings(){'), 'ad rotation settings should have a dedicated collapse toggle');
+      assert.ok(storeRenderer.includes('state.storeAdRotationSettingsOpen=false'), 'ad rotation settings should be collapsed by default');
+      assert.ok(storeRenderer.includes("rotationOpen?'<div class="), 'ad rotation controls should stay hidden until expanded');
     });
 
     await test('only the configured root administrator bypasses the permission matrix', async () => {
@@ -2737,12 +2753,20 @@ async function run() {
         .send({ status: 'تم التواصل', adminNote: 'اختبار الحفاظ على طريقة الدفع عند عدم إرسالها' });
       assert.equal(paymentMethodPreservation.status, 200, JSON.stringify(paymentMethodPreservation.body));
       assert.equal(paymentMethodPreservation.body.order.paymentMethod, 'محفظة الفني', 'omitting paymentMethod must not erase the original wallet payment method');
+      const rejectedPaidOrderPaymentMethodChange = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'تم التواصل', paymentMethod: 'تحويل', adminNote: 'اختبار منع تغيير طريقة الدفع بعد السداد' });
+      assert.equal(rejectedPaidOrderPaymentMethodChange.status, 409, JSON.stringify(rejectedPaidOrderPaymentMethodChange.body));
+      assert.match(rejectedPaidOrderPaymentMethodChange.body.message, /طريقة الدفع لا تتغير بعد الدفع/);
+      const unchangedPaidOrder = await require('../models/StoreOrder').findById(storedOrder._id).lean();
+      assert.equal(unchangedPaidOrder.paymentMethod, 'محفظة الفني', 'rejected payment-method changes must preserve the original paid method');
       const singleCancelAfterMethodChange = await request(app).patch('/api/admin/store/orders/' + storedOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار الاسترداد بعد تعديل طريقة الدفع' });
+        .send({ status: 'ملغي', adminNote: 'اختبار إلغاء الطلب المدفوع دون تغيير طريقة الدفع' });
       assert.equal(singleCancelAfterMethodChange.status, 200, JSON.stringify(singleCancelAfterMethodChange.body));
-      assert.equal(singleCancelAfterMethodChange.body.refundedAmount, 150, 'changing the displayed payment method must not remove wallet refund eligibility');
+      assert.equal(singleCancelAfterMethodChange.body.refundedAmount, 150, 'cancelling a paid wallet order must refund the original wallet payment');
       assert.equal(singleCancelAfterMethodChange.body.order.paymentStatus, 'مسترد');
+      assert.equal(singleCancelAfterMethodChange.body.order.paymentMethod, 'محفظة الفني', 'cancellation must preserve the original payment method');
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 5, 'cancelling a single wallet order must restore reserved stock');
       const fanniBalanceBeforeCodCancel = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
@@ -2750,7 +2774,7 @@ async function run() {
         .set('Authorization', 'Bearer ' + adminToken)
         .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار منع استرداد طلب عند الاستلام بعد تغيير طريقة الدفع إداريًا' });
       assert.equal(codCancel.status, 200, JSON.stringify(codCancel.body));
-      assert.equal(codCancel.body.refundedAmount, 0, 'changing a COD order payment label to wallet must not create a wallet refund');
+      assert.equal(codCancel.body.refundedAmount, 0, 'changing an unpaid COD order payment label to wallet must not create a wallet refund');
       assert.equal(codCancel.body.order.paymentStatus, 'غير مدفوع');
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeCodCancel, 'COD cancellation must not credit the wallet even if its payment label is changed');
       assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'cancelling a single COD order must restore stock');
@@ -2821,12 +2845,17 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk - 130);
       assert.equal((await StoreProduct.findById(bulkProductA._id).lean()).stock, 3);
       assert.equal((await StoreProduct.findById(bulkProductB._id).lean()).stock, 7);
+      const rejectedBulkPaymentMethodChange = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار منع تغيير طريقة دفع الطلب المجمع بعد السداد' });
+      assert.equal(rejectedBulkPaymentMethodChange.status, 409, JSON.stringify(rejectedBulkPaymentMethodChange.body));
       const cancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'اختبار إلغاء الطلب المجمع' });
+        .send({ status: 'ملغي', adminNote: 'إلغاء الطلب المجمع مع الحفاظ على طريقة الدفع الأصلية' });
       assert.equal(cancelBulk.status, 200, JSON.stringify(cancelBulk.body));
       assert.equal(cancelBulk.body.refundedAmount, 130);
       assert.equal(cancelBulk.body.order.paymentStatus, 'مسترد');
+      assert.equal(cancelBulk.body.order.paymentMethod, 'محفظة الفني');
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk);
       const bulkRefundLedger = await WalletTransaction.findOne({ fanni: fanni._id, type: 'refund', idempotencyKey: 'store-order-refund:' + String(bulkStoredOrder._id) }).lean();
       assert.ok(bulkRefundLedger);
@@ -2835,7 +2864,7 @@ async function run() {
       assert.equal((await StoreOrder.findById(bulkStoredOrder._id).lean()).refundTransactionNumber, bulkRefundLedger.transactionNumber);
       const duplicateCancelBulk = await request(app).patch('/api/admin/store/orders/' + bulkStoredOrder._id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'تحويل', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد' });
+        .send({ status: 'ملغي', adminNote: 'تكرار الإلغاء لا يكرر الاسترداد ولا يغير طريقة الدفع' });
       assert.equal(duplicateCancelBulk.status, 200, JSON.stringify(duplicateCancelBulk.body));
       assert.equal(duplicateCancelBulk.body.refundedAmount, 0);
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), balanceBeforeBulk);
