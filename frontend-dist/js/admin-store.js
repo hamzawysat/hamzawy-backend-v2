@@ -593,6 +593,7 @@ async function bulkStoreApply(patchFn,actionLabel,confirmMessage){
   var succeeded=[],failed=[],missing=[];
   try{
     await loadStoreProducts();
+    if(state.storeProductsLoadError||state.storeProductsLoading)throw new Error(state.storeProductsLoadError||'قائمة المنتجات ما زالت قيد التحديث. حاول مرة أخرى.');
     for(var i=0;i<ids.length;i++){
       var pr=(state.storeProducts||[]).find(function(x){return String(x._id)===ids[i];});
       if(!pr){missing.push(ids[i]);continue;}
