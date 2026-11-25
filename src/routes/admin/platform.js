@@ -26,7 +26,7 @@ function createAdminPlatformRouter({
     try {
       const config = await getAdminConfig();
       const settings = config.settings.toObject ? config.settings.toObject() : { ...config.settings };
-      if (!settings.siteName || settings.siteName === 'صُنّاع') settings.siteName = 'حمزاوي سات';
+      if (!settings.siteName || settings.siteName === 'صُنّاع') settings.siteName = 'ساتفيو';
       return res.set('Cache-Control', 'no-store').json({ settings });
     }
     catch (err) { next(err); }

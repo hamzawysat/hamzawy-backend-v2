@@ -186,7 +186,7 @@ router.get('/content', async (req, res, next) => {
     const announcementAudience = String(content.announcementAudience || 'client');
     const announcementVisible = announcementAudience === 'both' || announcementAudience === role;
     return res.set('Cache-Control', 'no-store').json({
-      siteName: String(config?.settings?.siteName && config.settings.siteName !== 'صُنّاع' ? config.settings.siteName : 'حمزاوي سات'),
+      siteName: String(config?.settings?.siteName && config.settings.siteName !== 'صُنّاع' ? config.settings.siteName : 'ساتفيو'),
       maintenance: Boolean(config?.settings?.maintenance),
       maintenanceMessage: String(config?.settings?.maintenanceMessage || ''),
       announcement: announcementVisible ? String(content.announcement || '') : '',

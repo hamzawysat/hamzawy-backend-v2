@@ -41,7 +41,7 @@ function renderRequestedFanniProfileFields(f,p){
  const isChanged=key=>changed.size?changed.has(key):(key==='phone'?String(p.phone||'')!==String(before.phone||''):JSON.stringify(p[key]||[])!==JSON.stringify(before[key]||[]));
  const rows=[
   ['phone','رقم الهاتف',escHtml(p.phone||'—')],
-  ['specialties','خدمات حمزاوي سات المعتمدة',escHtml((p.activeSpecialties||[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')],
+  ['specialties','خدمات ساتفيو المعتمدة',escHtml((p.activeSpecialties||[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')],
   ['areas','مناطق العمل',escHtml((p.areas||[]).join('، ')||'—')]
  ];
  return rows.map(([key,label,value])=>isChanged(key)

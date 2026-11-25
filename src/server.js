@@ -63,7 +63,7 @@ app.use((req, res, next) => {
 });
 
 // Retire the legacy Sonaa website hostname without interrupting the API
-// consumed by the Hamzawy Sat website and apps. This runs before static files
+// consumed by the SATVIEW website and apps. This runs before static files
 // and page routes, so every non-API URL on the retired hostname returns 404.
 const RETIRED_SONAA_HOST = 'sonaa-backend-v2.vercel.app';
 app.use((req, res, next) => {
@@ -79,7 +79,7 @@ app.use((req, res, next) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <title>موقع حمزاوي سات القديم</title>
+  <title>موقع ساتفيو القديم</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f7fb;color:#172033;font-family:Tahoma,Arial,sans-serif;text-align:center}
@@ -93,8 +93,8 @@ app.use((req, res, next) => {
 <body>
   <main>
     <h1>هذا الموقع القديم لم يعد يعمل.</h1>
-    <p>برجاء زيارة موقع حمزاوي سات من خلال الرابط التالي:</p>
-    <a href="https://www.hamzawy-sat.dynv6.net/">زيارة موقع حمزاوي سات</a>
+    <p>برجاء زيارة موقع ساتفيو من خلال الرابط التالي:</p>
+    <a href="https://www.hamzawy-sat.dynv6.net/">زيارة موقع ساتفيو</a>
   </main>
 </body>
 </html>`);
@@ -461,7 +461,7 @@ app.use('/frontend', (req, res, next) => {
   dotfiles: 'ignore'
 }));
 
-// Keep the public Hamzawy Sat download page available on the main domain.
+// Keep the public SATVIEW download page available on the main domain.
 app.get('/download.html', (req, res) => {
   return res.redirect(302, 'https://hamzawysat.github.io/hamzawy-download/');
 });

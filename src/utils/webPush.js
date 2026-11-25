@@ -134,7 +134,7 @@ async function sendOne(subscription, notification, keys) {
     return { status: 'invalid_endpoint' };
   }
   const body = encrypt(subscription, {
-    title: String(notification.title || 'إشعار من حمزاوي سات').slice(0, 100),
+    title: String(notification.title || 'إشعار من ساتفيو').slice(0, 100),
     body: String(notification.message || '').slice(0, 300),
     data: { url: normalizeNotificationPath(notification.link), notificationId: String(notification.notificationId || '') }
   });

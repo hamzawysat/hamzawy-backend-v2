@@ -378,7 +378,7 @@ let dashboardSpecialtiesCollapsed=true;
 function toggleDashboardSpecialties(){dashboardSpecialtiesCollapsed=!dashboardSpecialtiesCollapsed;render();}
 let forceTechnicianRegistration=false;
 let state={
- storeProducts:[],myStoreOrders:[],publicContent:{siteName:'حمزاوي سات',announcement:'',faqs:[]},
+ storeProducts:[],myStoreOrders:[],publicContent:{siteName:'ساتفيو',announcement:'',faqs:[]},
  tab:forceTechnicianRegistration?'register':'login',myOrdersView:'active',
  loginPhone:'',loginPass:'',loginSubmitAllowed:false,
  regName:'',regPhone:'',regPass:'',regPassConfirm:'',regGuidelinesAccepted:false,

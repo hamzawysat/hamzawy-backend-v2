@@ -172,7 +172,7 @@ function clearRegistrationIdImage(side){
 }
 
 async function doRegister(){
- toast('تسجيل الفنيين متاح من تطبيق حمزاوي سات فقط. حمّل التطبيق لإكمال التسجيل.','error');
+ toast('تسجيل الفنيين متاح من تطبيق ساتفيو فقط. حمّل التطبيق لإكمال التسجيل.','error');
  return;
  if(state.loading)return;
 
@@ -187,7 +187,7 @@ async function doRegister(){
  if(!areas.length){state.error='اختار منطقة عمل واحدة على الأقل من القائمة';render();return}
  if(!V.text(state.regPass,6,100)){state.error='كلمة السر لازم تكون 6 أحرف على الأقل';render();return}
  if(state.regPass!==state.regPassConfirm){state.error='تأكيد كلمة السر غير مطابق. اكتب نفس كلمة السر في الخانتين.';render();return}
- if(!state.regGuidelinesAccepted){state.error='لازم تقرأ ميثاق حمزاوي سات للتعامل المهني وتحدد الموافقة قبل إنشاء الحساب.';render();return}
+ if(!state.regGuidelinesAccepted){state.error='لازم تقرأ ميثاق ساتفيو للتعامل المهني وتحدد الموافقة قبل إنشاء الحساب.';render();return}
  const nationalId=String(state.regNationalId||'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/\D/g,'');
  if(nationalId.length!==14){state.error='اكتب الرقم القومي المكوّن من 14 رقمًا.';render();return}
  if(!state.regIdFrontFileId||!state.regIdBackFileId||state.regIdFrontUploading||state.regIdBackUploading){state.error='لازم ترفع صورة البطاقة من الأمام والخلف وتنتظر اكتمال الرفع قبل التسجيل.';render();return}
