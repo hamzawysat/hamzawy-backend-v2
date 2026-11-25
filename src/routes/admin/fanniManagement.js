@@ -196,7 +196,7 @@ router.patch('/fannis/:id/availability', auth('admin'), async (req, res, next) =
     }
     fanni.acceptingOrders = after;
     fanni.decisions.push({
-      action: after ? 'توصيل الفني واستقبال الطلبات' : 'فصل الفني وإيقاف استقبال الطلبات',
+      action: after ? 'توصيل فني' : 'فصل فني',
       reason: 'تغيير حالة استقبال الطلبات من لوحة الإدارة',
       date: new Date(), by: adminName(req), byId: req.user?._id,
       meta: { before, after }
