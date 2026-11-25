@@ -132,10 +132,10 @@ async function run() {
       assert.match(notificationModel, /replyEnabled: \{ type: Boolean, default: false/);
       assert.match(notificationRoute, /recipientRole: role, recipientId: owner\(req, role\)[\s\S]*?replyEnabled: true[\s\S]*?'reply\.message': \{ \$exists: false \}/);
       assert.match(notificationRoute, /notifyAdmins\(\{[\s\S]*?type: 'admin_message_reply'/);
-      assert.match(notificationRoute, /senderModel = role === 'client' \\? Client : Fanni/);
-      assert.match(notificationRoute, /senderModel\\.findById\\(owner\\(req, role\\)\\)\\.select\\('name phone'\\)/);
-      assert.match(notificationRoute, /' — الاسم: ' \\+ senderName/);
-      assert.match(notificationRoute, /' — الهاتف: ' \\+ senderPhone/);
+      assert.ok(notificationRoute.includes("const senderModel = role === 'client' ? Client : Fanni;"));
+      assert.ok(notificationRoute.includes("senderModel.findById(owner(req, role)).select('name phone')"));
+      assert.ok(notificationRoute.includes("' — الاسم: ' + senderName"));
+      assert.ok(notificationRoute.includes("' — الهاتف: ' + senderPhone"));
       assert.match(operations, /notifications\/recipients/);
       assert.ok(operations.includes('const escaped = term.replace('));
       assert.match(operations, /filter\.role = 'fanni'/);
