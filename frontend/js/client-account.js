@@ -47,9 +47,11 @@ async function shareClientReferralLink(){
  referralUrl.pathname='/client';referralUrl.search='';referralUrl.searchParams.set('ref',code);
  const downloadUrl=new URL('/download',referralUrl.origin);downloadUrl.searchParams.set('ref',code);
  const text=[
-  'سجّل حسابك الجديد في ساتڤيو واستمتع بخدماتنا ومتجرنا وأسعاره المميزة 🛍️',
-  '',
-  '🎁 50 جنيه مكافأة بعد إتمام أول طلب ليك، و50 جنيه إضافية عن كل شخص تدعوه ويسجل ويكمل أول طلب له!',
+  'جرب SATVIEW 📱',
+  'كل خدمة تبدأ بخطوة.',
+  'تركيب وصيانة الدش والريسيفرات وكاميرات المراقبة والشاشات، في مكان واحد.',
+  'اطلب الخدمة، وهيوصلك عروض من فنيين مختلفين، وانت اختار براحتك اللي يناسبك.',
+  'سجل من هنا وخد مكافأة الترحيب 🎁',
   '',
   '📝 تسجيل عميل جديد:',
   referralUrl.toString(),
