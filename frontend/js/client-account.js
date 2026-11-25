@@ -47,7 +47,7 @@ async function shareClientReferralLink(){
  referralUrl.pathname='/client';referralUrl.search='';referralUrl.searchParams.set('ref',code);
  const downloadUrl=new URL('/download',referralUrl.origin);downloadUrl.searchParams.set('ref',code);
  const text=[
-  'سجّل حسابك الجديد في ساتفيو واستمتع بخدماتنا ومتجرنا وأسعاره المميزة 🛍️',
+  'سجّل حسابك الجديد في ساتڤيو واستمتع بخدماتنا ومتجرنا وأسعاره المميزة 🛍️',
   '',
   '🎁 50 جنيه مكافأة بعد إتمام أول طلب ليك، و50 جنيه إضافية عن كل شخص تدعوه ويسجل ويكمل أول طلب له!',
   '',
@@ -57,7 +57,7 @@ async function shareClientReferralLink(){
   '📲 تحميل التطبيق:',
   downloadUrl.toString()
  ].join('\n');
- try{if(navigator.share)await navigator.share({title:'دعوة ساتفيو',text});else{await navigator.clipboard.writeText(text);showToast('تم نسخ رسالة الدعوة','success');}}
+ try{if(navigator.share)await navigator.share({title:'دعوة ساتڤيو',text});else{await navigator.clipboard.writeText(text);showToast('تم نسخ رسالة الدعوة','success');}}
  catch(error){if(error?.name!=='AbortError')showToast('تعذرت مشاركة الرابط','error');}
 }
 function scrollToClientReferralCard(){const card=document.getElementById('clientReferralCard');if(card)card.scrollIntoView({behavior:'smooth',block:'center'});}
@@ -72,7 +72,7 @@ function renderClientReferralCard(){
 }
 function renderAccountGate(){
 var reg=state.accountAuthMode==='register';
-document.title=reg?'تسجيل عميل جديد | ساتفيو':'تسجيل دخول العميل | ساتفيو';
+document.title=reg?'تسجيل عميل جديد | ساتڤيو':'تسجيل دخول العميل | ساتڤيو';
 var h='<main class="account-gate" style="background:#EEF2FF;';
 h+='min-height:100svh;min-height:100dvh;';
 h+='padding-top:max(1rem,env(safe-area-inset-top));';
@@ -96,14 +96,14 @@ h+='<div class="text-center mb-3"><div class="mx-auto w-[68px] h-[68px] ';
 h+='rounded-[28px] bg-white border border-slate-200 flex ';
 h+='items-center justify-center shadow-sm p-3">';
 h+='<img class="sonaa-logo-svg" src="/images/LOGO_UPLOAD_HERE/logo.png" ';
-h+='alt="شعار ساتفيو" style="width:100%;height:100%;object-fit:contain"></div>';
-h+='<h1 class="mt-2 text-[24px] font-black" style="color:#2E7CF6">ساتفيو</h1>';
+h+='alt="شعار ساتڤيو" style="width:100%;height:100%;object-fit:contain"></div>';
+h+='<h1 class="mt-2 text-[24px] font-black" style="color:#2E7CF6">ساتڤيو</h1>';
 h+='<p class="mt-1 text-[15px] font-bold text-slate-500">';
 h+='خدماتك وشغلك... في مكان واحد</p>';
 h+='<div class="mt-4"><span class="inline-block px-4 py-1.5 rounded-full ';
 h+='bg-[#E8EDFF] text-[#2E7CF6] text-[14px] font-extrabold">حساب عميل</span></div>';
 h+='<h2 class="mt-2 text-[18px] font-black leading-7" ';
-h+='style="color:#2E7CF6">'+(reg?'تسجيل عميل جديد':'أهلاً بيك في ساتفيو')+'</h2>';
+h+='style="color:#2E7CF6">'+(reg?'تسجيل عميل جديد':'أهلاً بيك في ساتڤيو')+'</h2>';
 h+='<p class="mt-1 text-[14px] text-slate-500">'+(reg?'أنشئ حساب عميل جديد '+
 'علشان تطلب الخدمات وتتابع طلباتك.':'سجّل دخولك علشان تطلب خدمة '+
 'وتتابع طلباتك من حسابك.')+'</p></div>';
@@ -186,7 +186,7 @@ function renderPublicContent(){
     '</section>';
 }
 async function loadPublicContent(){
-  try{const data=await API.request('/api/content?role=client',{method:'GET'});state.publicContent={siteName:String(data.siteName||'ساتفيو'),maintenance:!!data.maintenance,maintenanceMessage:String(data.maintenanceMessage||''),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};document.title=state.account?'ساتفيو - طلباتي':(state.accountAuthMode==='register'?'تسجيل عميل جديد | ساتفيو':'تسجيل دخول العميل | ساتفيو');render();}catch(error){log('تعذر تحميل محتوى الواجهة:',error);}
+  try{const data=await API.request('/api/content?role=client',{method:'GET'});state.publicContent={siteName:String(data.siteName||'ساتڤيو'),maintenance:!!data.maintenance,maintenanceMessage:String(data.maintenanceMessage||''),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};document.title=state.account?'ساتڤيو - طلباتي':(state.accountAuthMode==='register'?'تسجيل عميل جديد | ساتڤيو':'تسجيل دخول العميل | ساتڤيو');render();}catch(error){log('تعذر تحميل محتوى الواجهة:',error);}
 }
 function setAccountAuthMode(mode){state.accountAuthMode=mode==='register'?'register':'login';state.accountError='';render();}
 async function submitClientAccount(e){

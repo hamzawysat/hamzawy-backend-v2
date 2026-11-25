@@ -772,7 +772,7 @@ async function run() {
       const r = await request(app).get('/download')
         .set('Host', 'www.hamzawy-sat.dynv6.net');
       assert.equal(r.status, 200);
-      assert.match(r.text, /تحميل تطبيق ساتفيو/);
+      assert.match(r.text, /تحميل تطبيق ساتڤيو/);
     });
 
     await test('official links page is served on the main domain without leaving it', async () => {
@@ -2123,7 +2123,7 @@ async function run() {
       if (!config) config = await AdminConfig.create({ key: 'main' });
       const previous = config.settings.toObject ? config.settings.toObject() : { ...config.settings };
       const payload = {
-        siteName: previous.siteName || 'ساتفيو',
+        siteName: previous.siteName || 'ساتڤيو',
         maintenanceMessage: previous.maintenanceMessage || '',
         maxFanniSignupAttempts: previous.maxFanniSignupAttempts || 5,
         walletPhone1: previous.walletPhone1 || '',
@@ -2163,18 +2163,18 @@ async function run() {
         await config.save();
         const response = await request(app).get('/api/admin/settings').set('Authorization', 'Bearer ' + adminToken);
         assert.equal(response.status, 200);
-        assert.equal(response.body.settings.siteName, 'ساتفيو');
+        assert.equal(response.body.settings.siteName, 'ساتڤيو');
         const persisted = await AdminConfig.findOne({ key: 'main' }).lean();
         assert.equal(persisted.settings.siteName, 'صُنّاع', 'GET must not rewrite persisted settings');
       } finally {
-        config.settings.siteName = previousSiteName || 'ساتفيو';
+        config.settings.siteName = previousSiteName || 'ساتڤيو';
         await config.save();
       }
     });
 
     await test('client account screens use Hamzawy Sat branding', async () => {
       const clientAccount = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
-      assert.ok(clientAccount.includes('ساتفيو'));
+      assert.ok(clientAccount.includes('ساتڤيو'));
       assert.equal(clientAccount.includes('صُنّاع'), false);
     });
 

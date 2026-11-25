@@ -79,7 +79,7 @@ app.use((req, res, next) => {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#ffffff">
-  <title>موقع ساتفيو القديم</title>
+  <title>موقع ساتڤيو القديم</title>
   <style>
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f7fb;color:#172033;font-family:Tahoma,Arial,sans-serif;text-align:center}
@@ -93,8 +93,8 @@ app.use((req, res, next) => {
 <body>
   <main>
     <h1>هذا الموقع القديم لم يعد يعمل.</h1>
-    <p>برجاء زيارة موقع ساتفيو من خلال الرابط التالي:</p>
-    <a href="https://www.hamzawy-sat.dynv6.net/">زيارة موقع ساتفيو</a>
+    <p>برجاء زيارة موقع ساتڤيو من خلال الرابط التالي:</p>
+    <a href="https://www.hamzawy-sat.dynv6.net/">زيارة موقع ساتڤيو</a>
   </main>
 </body>
 </html>`);

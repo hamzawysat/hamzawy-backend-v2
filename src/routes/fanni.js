@@ -214,7 +214,7 @@ router.post(
   (req, res, next) => {
     // Native React Native requests do not carry a browser Origin header.
     // Prevent technician account creation through the web dashboard/browser.
-    if (req.get('origin')) return res.status(403).json({ message: 'تسجيل الفنيين متاح من تطبيق ساتفيو فقط.' });
+    if (req.get('origin')) return res.status(403).json({ message: 'تسجيل الفنيين متاح من تطبيق ساتڤيو فقط.' });
     return next();
   },
   validate(registerSchema),
@@ -243,7 +243,7 @@ router.post(
       const specialties = [...new Set((req.body.specialties || []).map(value => String(value || '').normalize('NFC').trim()).filter(Boolean))];
       const activeServiceKeys = new Set((await getActiveServiceNames(Service)).map(normalizeServiceKey));
       if (!specialties.length || specialties.some(specialty => !activeServiceKeys.has(normalizeServiceKey(specialty)))) {
-        return res.status(400).json({ message: 'التسجيل متاح للخدمات الظاهرة حاليًا في قائمة خدمات ساتفيو فقط.' });
+        return res.status(400).json({ message: 'التسجيل متاح للخدمات الظاهرة حاليًا في قائمة خدمات ساتڤيو فقط.' });
       }
 
       const [existing, existingClient] = await Promise.all([
@@ -531,7 +531,7 @@ router.post('/guidelines/accept', auth(), requireFanni, requireApprovedFanni, as
     if (req.body?.accepted !== true || req.body?.version !== TECHNICIAN_GUIDELINES_VERSION) return res.status(400).json({ message: 'اقرأ التعليمات وحدد الموافقة لتأكيد الالتزام بها.' });
     const fanni = await Fanni.findOneAndUpdate({ _id: req.userId, role: 'fanni', status: 'معتمد' }, { $set: { technicianGuidelinesAcceptedAt: new Date(), technicianGuidelinesVersion: TECHNICIAN_GUIDELINES_VERSION } }, { new: true, runValidators: true });
     if (!fanni) return res.status(403).json({ message: 'حساب الفني غير معتمد.' });
-    return res.json({ message: 'تم تسجيل موافقتك على ميثاق ساتفيو.', acceptedAt: fanni.technicianGuidelinesAcceptedAt, version: fanni.technicianGuidelinesVersion });
+    return res.json({ message: 'تم تسجيل موافقتك على ميثاق ساتڤيو.', acceptedAt: fanni.technicianGuidelinesAcceptedAt, version: fanni.technicianGuidelinesVersion });
   } catch (err) { next(err); }
 });
 
@@ -744,7 +744,7 @@ router.patch('/me', auth(), requireFanni, validate(profileUpdateSchema), async (
       ? [...new Set(requestedSpecialties.map(value => String(value).normalize('NFC').trim()).filter(value => value && activeServiceKeys.has(normalizeServiceKey(value))))]
       : null;
     if (requestedSpecialties && !normalizedSpecialties.length) {
-      return res.status(400).json({ message: 'اختار تخصصًا واحدًا على الأقل من الخدمات الظاهرة حاليًا في ساتفيو.' });
+      return res.status(400).json({ message: 'اختار تخصصًا واحدًا على الأقل من الخدمات الظاهرة حاليًا في ساتڤيو.' });
     }
     const current = {
       phone: String(req.user.phone || ''),

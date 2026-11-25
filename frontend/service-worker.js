@@ -45,7 +45,7 @@ self.addEventListener('push', event => {
   try { payload = event.data ? event.data.json() : {}; } catch (_) {}
   const data = payload.data && typeof payload.data === 'object' ? payload.data : {};
   const target = notificationTarget(data.url || payload.link || '/');
-  event.waitUntil(self.registration.showNotification(String(payload.title || 'إشعار من ساتفيو'), {
+  event.waitUntil(self.registration.showNotification(String(payload.title || 'إشعار من ساتڤيو'), {
     body: String(payload.body || ''),
     dir: 'rtl',
     lang: 'ar',
