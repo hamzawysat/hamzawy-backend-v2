@@ -790,6 +790,10 @@ async function run() {
       assert.match(adminNotificationUi, /function renderNotifications[\s\S]*?admin-delivery-log-list/);
       assert.match(adminNotificationUi, /new URL\(String\(item\.link\|\|''\),window\.location\.origin\)/);
       assert.match(adminNotificationUi, /target\.searchParams\.get\('tab'\)/);
+      assert.doesNotMatch(adminNotificationUi, /data-admin-inbox-dismiss/, 'admin inbox cards must not include the oversized dismiss button');
+      assert.match(adminNotificationUi, /id="admin-inbox-list" class="space-y-2">\$\{renderAdminInbox\(\)\}/, 'admin inbox must render a stable list container');
+      assert.doesNotMatch(adminNotificationUi, /admin-inbox-list'\);if\(root\)root\.outerHTML/, 'admin inbox refresh must not replace its container with another full inbox header');
+      assert.match(adminNotificationUi, /onclick="markAllAdminInboxRead\(\)"/, 'admin inbox must retain a single read-all action');
 
 
 
