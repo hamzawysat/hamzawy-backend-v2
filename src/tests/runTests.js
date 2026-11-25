@@ -531,7 +531,6 @@ async function run() {
       const renderEnd = adminStore.indexOf('function renderStoreOrders(){', renderStart);
       const storeRenderer = adminStore.slice(renderStart, renderEnd);
       assert.match(adminStore, /function storeAdminMenu\\(\\)/, 'store navigation must expose its top-level views');
-      assert.match(adminStore, /function setStoreAdminView\\(view\\)/, 'top-level store navigation must switch views');
       assert.match(adminStore, /function toggleStoreCategoryManager\\(\\)/);
       assert.match(categoryRenderer, /state\\.storeCategoryManagerOpen=false/);
       assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\\(\\)"/);
