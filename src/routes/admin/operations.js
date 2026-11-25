@@ -77,12 +77,31 @@ function createAdminOperationsRouter({
     } catch (error) { return next(error); }
   });
 
+  router.get('/notifications/recipients', auth('admin'), async (req, res, next) => {
+    try {
+      const role = String(req.query.role || '');
+      const term = String(req.query.q || '').trim().slice(0, 60);
+      if (!['client', 'fanni'].includes(role)) return res.status(400).json({ message: 'نوع الحساب غير صحيح.' });
+      if (term.length < 2) return res.json({ recipients: [] });
+      const digits = normalizePhone(term);
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\  router.post('/notifications/direct', auth('admin'), async (req, res, next) => {');
+      const phonePrefix = digits && /^01[0-9]*$/.test(digits) ? digits : '';
+      const filter = phonePrefix
+        ? { phone: { $regex: '^' + phonePrefix } }
+        : { name: { $regex: '^' + escaped, $options: 'i' } };
+      if (role === 'fanni') filter.role = 'fanni';
+      const Model = role === 'fanni' ? Fanni : Client;
+      const recipients = await Model.find(filter).select('_id name phone').sort({ name: 1 }).limit(12).lean();
+      return res.set('Cache-Control', 'no-store').json({ recipients: recipients.map(person => ({ id: String(person._id), name: person.name || '', phone: person.phone || '', role })) });
+    } catch (error) { return next(error); }
+  });
+
   router.post('/notifications/direct', auth('admin'), async (req, res, next) => {
     try {
       const schema = Joi.object({
         title: Joi.string().trim().min(2).max(100).required(), message: Joi.string().trim().min(2).max(300).required(),
         recipientRole: Joi.string().valid('fanni', 'client').required(), recipientMode: Joi.string().valid('single', 'group').default('single'),
-        phone: Joi.string().trim().allow('').optional(),
+        phone: Joi.string().trim().allow('').optional(), replyEnabled: Joi.boolean().default(false),
         audience: Joi.string().valid('all', 'approved', 'active', 'disabled').when('recipientMode', { is: 'group', then: Joi.required(), otherwise: Joi.optional() })
       }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
@@ -95,7 +114,7 @@ function createAdminOperationsRouter({
         else recipient = await Client.findOne({ phone }).select('_id name phone status').lean();
         if (!recipient) return res.status(404).json({ message: value.recipientRole === 'fanni' ? 'لا يوجد فني بهذا الرقم' : 'لا يوجد عميل بهذا الرقم' });
         const campaignId = crypto.randomBytes(16).toString('hex');
-        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '' });
+        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true, replyEnabled: value.replyEnabled === true });
         if (!notification) return res.status(500).json({ message: 'تعذر حفظ الإشعار أو بدء إرساله', sent: 0, campaignId });
         await writeAdminAudit(req, 'إرسال إشعار فردي', 'notifications', recipient.phone, JSON.stringify({ role: value.recipientRole, campaignId }));
         return res.status(201).json({ message: 'تم إرسال الإشعار إلى المستلم المحدد فقط', sent: 1, campaignId, recipient: { role: value.recipientRole, name: recipient.name, phone: recipient.phone } });
@@ -144,10 +163,10 @@ function createAdminOperationsRouter({
         const key = item.campaignId ? 'campaign:' + item.campaignId : 'legacy:' + legacyKey;
         let group = groups.get(key);
         if (!group) {
-          group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0 };
+          group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0, replies: [] };
           groups.set(key, group);
         }
-        group.count += 1;
+        group.count += 1;\n        if (item.reply?.message) group.replies.push({ recipientRole: item.recipientRole, recipientId: String(item.recipientId), message: item.reply.message, sentAt: item.reply.sentAt });
       }
       return res.set('Cache-Control', 'no-store').json({ notifications: Array.from(groups.values()).slice(0, 200) });
     } catch (error) { return next(error); }
