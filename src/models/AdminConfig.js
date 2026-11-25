@@ -29,7 +29,7 @@ const adminConfigSchema = new mongoose.Schema({
     maxOffer: { type: Number, min: 1, max: 1000000, default: 1000000 }
   },
   settings: {
-    siteName: { type: String, trim: true, maxlength: 100, default: 'ساتفيو' },
+    siteName: { type: String, trim: true, maxlength: 100, default: 'ساتڤيو' },
     maintenance: { type: Boolean, default: false },
     referralsEnabled: { type: Boolean, default: true },
     maintenanceMessage: { type: String, trim: true, maxlength: 500, default: '' },

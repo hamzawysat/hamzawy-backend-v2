@@ -41,7 +41,7 @@
     removeWidget();
     const banner=document.createElement('aside');
     banner.className='store-ad-slot';
-    banner.setAttribute('aria-label','إعلانات متجر ساتفيو');
+    banner.setAttribute('aria-label','إعلانات متجر ساتڤيو');
     banner.setAttribute('aria-live','polite');
     const image=document.createElement('img');
     image.className='store-ad-slot-image';
@@ -52,7 +52,7 @@
     copy.className='store-ad-slot-copy';
     const eyebrow=document.createElement('span');
     eyebrow.className='store-ad-slot-eyebrow';
-    eyebrow.textContent='من متجر ساتفيو';
+    eyebrow.textContent='من متجر ساتڤيو';
     const name=document.createElement('strong');
     name.className='store-ad-slot-name';
     name.textContent=String(product.name||'');

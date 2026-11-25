@@ -15,7 +15,7 @@ function showDownloadNotice(kind){
   box.style.cssText='position:fixed;z-index:99999;left:12px;right:12px;bottom:18px;max-width:620px;margin:auto;padding:14px;border:1px solid #bfdbfe;border-radius:16px;background:#eff6ff;box-shadow:0 8px 28px rgba(15,23,42,.2);color:#1e3a8a;text-align:center;font-weight:800;font-size:13px;line-height:1.8';
   document.body.appendChild(box);
  }
- const message=kind==='offer'?'حمّل تطبيق ساتفيو عشان تقدر تقدم عرضك على الطلب ده.':'حمّل تطبيق ساتفيو عشان تقدر تبعت طلب شحن المحفظة.';
+ const message=kind==='offer'?'حمّل تطبيق ساتڤيو عشان تقدر تقدم عرضك على الطلب ده.':'حمّل تطبيق ساتڤيو عشان تقدر تبعت طلب شحن المحفظة.';
  box.innerHTML='<div>'+message+'</div><a href="'+DOWNLOAD_URL+'" style="display:inline-flex;margin-top:8px;padding:9px 16px;border-radius:10px;background:#2E7CF6;color:#fff;text-decoration:none;font-weight:900">اضغط هنا لتحميل التطبيق</a><button type="button" aria-label="إغلاق" style="margin-right:12px;color:#475569;font-weight:900" onclick="this.parentNode.remove()">إغلاق</button>';
 }
 function openInApp(kind,sn){

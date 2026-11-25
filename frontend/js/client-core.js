@@ -342,7 +342,7 @@ let state={
   complaintSn:'',complaintName:'',complaintText:'',complaintLoading:false,
   complaintTrackSn:'',complaintTrackName:'',complaintTrackLoading:false,complaintTrackError:'',complaintTrackResults:null,
   showService:false,openCategory:'',searchService:'',
-  servicesLoading:true,servicesError:'',servicesLoaded:false,publicContent:{siteName:'ساتفيو',maintenance:false,maintenanceMessage:'',announcement:'',faqs:[]},
+  servicesLoading:true,servicesError:'',servicesLoaded:false,publicContent:{siteName:'ساتڤيو',maintenance:false,maintenanceMessage:'',announcement:'',faqs:[]},
   
 };
 const CLIENT_TAB_DEFINITIONS=[{id:'new',label:'طلب جديد'},{id:'orders',label:'طلباتي'},{id:'wallet',label:'محفظتي'},{id:'subscriptions',label:'الاشتراكات'},{id:'store',label:'المتجر'},{id:'complaint',label:'شكوى'}];
