@@ -115,7 +115,6 @@ function createAdminOperationsRouter({
       if (total > 5000) return res.status(413).json({ message: 'عدد المستلمين أكبر من الحد الآمن (5000). قسّم الإرسال إلى فئات أصغر.', count: total });
       if (!total) return res.status(404).json({ message: 'لا توجد حسابات تطابق الفئة المحددة', sent: 0 });
       const recipients = await Model.find(filter).select('_id').limit(5000).lean();
-      const createdAt = new Date();
       const campaignId = crypto.randomBytes(16).toString('hex');
       const deliveryResults = [];
       for (let start = 0; start < recipients.length; start += 20) {
@@ -129,8 +128,8 @@ function createAdminOperationsRouter({
       const savedCount = deliveryResults.filter(Boolean).length;
       if (savedCount !== recipients.length) console.error('Admin notification campaign partially saved:', { campaignId, expected: recipients.length, saved: savedCount });
       if (!savedCount) return res.status(502).json({ message: 'تعذر حفظ أو إرسال الإشعارات للفئة المحددة', sent: 0, campaignId });
-      await writeAdminAudit(req, 'إرسال إشعار جماعي', 'notifications', value.recipientRole + ':' + value.audience, JSON.stringify({ sent: docs.length, campaignId }));
-      return res.status(201).json({ message: 'تم إرسال الإشعار الجماعي داخل التطبيق', sent: docs.length, campaignId, recipientRole: value.recipientRole, audience: value.audience });
+      await writeAdminAudit(req, 'إرسال إشعار جماعي', 'notifications', value.recipientRole + ':' + value.audience, JSON.stringify({ sent: savedCount, expected: recipients.length, campaignId }));
+      return res.status(201).json({ message: 'تم حفظ الإشعارات وبدء إرسالها إلى أجهزة المستلمين', sent: savedCount, campaignId, recipientRole: value.recipientRole, audience: value.audience });
     } catch (error) { return next(error); }
   });
   
