@@ -1,7 +1,7 @@
 {
   "id": "/download",
-  "name": "حمزاوي سات",
-  "short_name": "حمزاوي",
+  "name": "SATVIEW",
+  "short_name": "SATVIEW",
   "start_url": "/download",
   "scope": "/",
   "display": "standalone",
