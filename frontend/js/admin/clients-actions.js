@@ -11,10 +11,10 @@ async function clearClientSearch(){const input=document.getElementById('client-s
 async function openClient(phone){const client=(state.clients||[]).find(item=>String(item.phone||'')===String(phone||''));if(!client||!(client.id||client._id))return showToast('حساب العميل غير موجود في القائمة الحالية','error');return openClientProfile(String(client.id||client._id));}
 
 
-async function blockClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');const reason=prompt('سبب تعليق حساب العميل '+phone+' (مطلوب للتوثيق):','مراجعة إدارية');if(reason===null)return;if(reason.trim().length<2)return showToast('اكتب سببًا واضحًا من حرفين على الأقل','error');if(!confirm('تأكيد تعليق حساب العميل '+phone+'؟ سيُمنع من تسجيل الدخول واستخدام المسارات المحمية.'))return;try{const data=await tryApi([`/api/admin/clients/${encodeURIComponent(phone)}/block`],{method:'POST',body:JSON.stringify({reason:reason.trim()})});showToast(data.message||'تم تعليق حساب العميل');await loadClients(state.clientSearch||'');}catch(e){showToast(e.message||'تعذر تعليق حساب العميل','error');}}
+async function blockClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');const reason=prompt('سبب تعليق حساب العميل '+phone+' (مطلوب للتوثيق):','مراجعة إدارية');if(reason===null)return;if(reason.trim().length<2)return showToast('اكتب سببًا واضحًا من حرفين على الأقل','error');if(!confirmAdminAction('تأكيد تعليق حساب العميل '+phone+'؟ سيُمنع من تسجيل الدخول واستخدام المسارات المحمية.'))return;try{const data=await tryApi([`/api/admin/clients/${encodeURIComponent(phone)}/block`],{method:'POST',body:JSON.stringify({reason:reason.trim()})});showToast(data.message||'تم تعليق حساب العميل');await loadClients(state.clientSearch||'');}catch(e){showToast(e.message||'تعذر تعليق حساب العميل','error');}}
 
 
-async function unblockClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');if(!confirm('إعادة تفعيل حساب العميل '+phone+'؟'))return;try{const data=await tryApi([`/api/admin/clients/${encodeURIComponent(phone)}/unblock`],{method:'POST',body:JSON.stringify({})});showToast(data.message||'تمت إعادة تفعيل حساب العميل');await loadClients(state.clientSearch||'');}catch(e){showToast(e.message||'تعذر إعادة تفعيل حساب العميل','error');}}
+async function unblockClient(phone){if(!phone)return showToast('رقم هاتف العميل غير متاح','error');if(!confirmAdminAction('إعادة تفعيل حساب العميل '+phone+'؟'))return;try{const data=await tryApi([`/api/admin/clients/${encodeURIComponent(phone)}/unblock`],{method:'POST',body:JSON.stringify({})});showToast(data.message||'تمت إعادة تفعيل حساب العميل');await loadClients(state.clientSearch||'');}catch(e){showToast(e.message||'تعذر إعادة تفعيل حساب العميل','error');}}
 
 
 async function changeAccountPassword(role,identifier){
@@ -26,7 +26,7 @@ async function changeAccountPassword(role,identifier){
  const confirmPassword=prompt('أعد كتابة كلمة السر الجديدة للتأكيد:');
  if(confirmPassword===null)return;
  if(newPassword!==confirmPassword)return showToast('كلمتا السر غير متطابقتين','error');
- if(!confirm('تأكيد تغيير كلمة سر '+label+'؟'))return;
+ if(!confirmAdminAction('تأكيد تغيير كلمة سر '+label+'؟'))return;
  const path=role==='client'?'/api/admin/clients/'+encodeURIComponent(identifier)+'/password':'/api/admin/fannis/'+encodeURIComponent(identifier)+'/password';
  try{
   const data=await tryApi([path],{method:'PATCH',body:JSON.stringify({newPassword,confirmPassword})});
