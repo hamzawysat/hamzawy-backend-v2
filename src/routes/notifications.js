@@ -7,7 +7,7 @@ const PushToken = require('../models/PushToken');
 const WebPushSubscription = require('../models/WebPushSubscription');
 const NotificationDelivery = require('../models/NotificationDelivery');
 const { getVapidKeys, isAllowedPushEndpoint } = require('../utils/webPush');
-const { normalizeNotificationLink } = require('../utils/notifications');
+const { normalizeNotificationLink, notifyAdmins } = require('../utils/notifications');
 const { auth, canAccessAdmin, isRootAdmin } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
 
@@ -127,6 +127,14 @@ function mountRoleRoutes(role) {
         if (!owned.replyEnabled) return res.status(409).json({ message: 'هذا الإشعار لا يسمح بالرد.' });
         return res.status(409).json({ message: 'تم إرسال ردك بالفعل، لا يمكن إرسال رد آخر.' });
       }
+      void notifyAdmins({
+        type: 'admin_message_reply',
+        title: 'رد جديد على إشعار إداري',
+        message: (role === 'client' ? 'رد من عميل: ' : 'رد من فني: ') + updated.title + ' — ' + message.slice(0, 180),
+        link: '/admin?tab=notifications',
+        relatedEntityType: 'notification',
+        relatedEntityId: updated._id
+      });
       return res.status(201).json({ message: 'تم إرسال ردك بنجاح.', reply: { message: updated.reply.message, sentAt: updated.reply.sentAt } });
     } catch (error) { return next(error); }
   });
