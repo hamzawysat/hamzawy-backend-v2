@@ -310,7 +310,7 @@ async function sendPushNotification({ recipientRole, recipientId, title, message
 }
 async function createNotification({
   recipientRole, recipientId, type, title, message, link = '', dedupeKey = null, campaignId = null,
-  refreshExisting = false, relatedEntityType = '', relatedEntityId = null
+  refreshExisting = false, relatedEntityType = '', relatedEntityId = null, replyEnabled = false
 }) {
   if (!recipientId || !['client', 'fanni', 'admin'].includes(recipientRole)) return null;
   try {
@@ -318,6 +318,7 @@ async function createNotification({
       recipientRole, recipientId, type, title, message,
       link: normalizeNotificationLink(link, type),
       isActive: true,
+      ...(replyEnabled === true && type === 'admin_message' ? { replyEnabled: true } : {}),
       ...(campaignId ? { campaignId: String(campaignId).slice(0, 100) } : {}),
       ...(relatedEntityType ? { relatedEntityType: String(relatedEntityType).slice(0, 50) } : {}),
       ...(relatedEntityId && /^[a-f0-9]{24}$/i.test(String(relatedEntityId)) ? { relatedEntityId } : {})
