@@ -261,7 +261,7 @@ async function submitBulkOrder(req, res, next, role) {
       const transaction = new WalletTransaction({
         ...(role === 'client' ? { client: buyer._id, type: 'client_store_payment' } : { fanni: buyer._id, type: 'fanni_store_payment' }),
         amount: -total, balanceBefore, balanceAfter: Number(updatedBuyer.walletBalance),
-        description: 'شراء ' + orderItems.length + ' منتجات من متجر حمزاوي سات',
+        description: 'شراء ' + orderItems.length + ' منتجات من متجر ساتفيو',
         idempotencyKey: 'store-order:' + String(order._id)
       });
       await transaction.save({ session });
@@ -440,7 +440,7 @@ async function submitOrder(req, res, next, role) {
       const transaction = new WalletTransaction({
         ...(role === 'client' ? { client: buyer._id, type: 'client_store_payment' } : { fanni: buyer._id, type: 'fanni_store_payment' }), amount: -total,
         balanceBefore, balanceAfter: Number(updatedClient.walletBalance),
-        description: 'شراء ' + order.productName + ' من متجر حمزاوي سات',
+        description: 'شراء ' + order.productName + ' من متجر ساتفيو',
         idempotencyKey: 'store-order:' + String(order._id)
       });
       await transaction.save({ session });

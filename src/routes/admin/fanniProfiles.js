@@ -451,7 +451,7 @@ function createAdminFanniProfilesRouter({
         if (!requestedSpecialties.length) {
           return res.status(409).json({ message: 'طلب التعديل لا يحتوي على خدمة معتمدة حاليًا. ارفض الطلب واطلب من الفني اختيار خدمة من القائمة الجديدة.' });
         }
-        // Preserve legacy specialties in history; only approved Hamzawy Sat services can be newly activated.
+        // Preserve legacy specialties in history; only approved SATVIEW services can be newly activated.
         fanni.specialties = preserveHistoricalSpecialties(fanni.specialties, requestedSpecialties, activeServices);
       }
       if (changedFields.includes('areas')) fanni.areas = pending.areas;

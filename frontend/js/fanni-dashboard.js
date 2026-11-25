@@ -10,7 +10,7 @@ function openFanniReferralPage(){if(!fanniReferralInfo?.enabled)return;fanniRefe
 function closeFanniReferralPage(){fanniReferralPageOpen=false;renderContent();}
 async function loadFanniReferralInfo(){if(!getToken())return;try{fanniReferralInfo=await apiGet('/api/referrals/me/fanni');if(!fanniReferralInfo?.enabled)fanniReferralPageOpen=false;if(state.tab==='home'||fanniReferralPageOpen)renderContent();}catch(error){console.warn('تعذر تحميل دعوات الفني:',error.message);}}
 async function copyFanniReferralLink(){const value=fanniReferralInfo?.url||'';if(!value)return;try{await navigator.clipboard.writeText(value);toast('تم نسخ رابط الدعوة','success');}catch(_){toast('تعذر النسخ تلقائيًا؛ انسخ الرابط يدويًا','error');}}
-async function shareFanniReferralLink(){const value=fanniReferralInfo?.url||'';if(!value)return;try{if(navigator.share)await navigator.share({title:'دعوة فني - حمزاوي سات',text:'ادعُ فنيًا إلى حمزاوي سات، وبعد أن يُكمل 3 طلبات يحصل كل منكما على 150 جنيهًا.',url:value});else await copyFanniReferralLink();}catch(error){if(error?.name!=='AbortError')toast('تعذرت مشاركة الرابط','error');}}
+async function shareFanniReferralLink(){const value=fanniReferralInfo?.url||'';if(!value)return;try{if(navigator.share)await navigator.share({title:'دعوة فني - ساتفيو',text:'ادعُ فنيًا إلى ساتفيو، وبعد أن يُكمل 3 طلبات يحصل كل منكما على 150 جنيهًا.',url:value});else await copyFanniReferralLink();}catch(error){if(error?.name!=='AbortError')toast('تعذرت مشاركة الرابط','error');}}
 function scrollToFanniReferralCard(){const card=document.getElementById('fanniReferralCard');if(card)card.scrollIntoView({behavior:'smooth',block:'center'});}
 function toggleFanniReferralCard(){fanniReferralExpanded=!fanniReferralExpanded;render();}
 function renderFanniReferralCard(){
@@ -78,4 +78,4 @@ async function start(){
 start();
 startFanniPolling();
 
-async function loadFanniPublicContent(){try{const data=await apiGet('/api/content?role=fanni');state.publicContent={siteName:String(data.siteName||'حمزاوي سات'),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};render();return true;}catch(error){log('تعذر تحميل إعلانات وأسئلة الفني:',error);return false;}}
+async function loadFanniPublicContent(){try{const data=await apiGet('/api/content?role=fanni');state.publicContent={siteName:String(data.siteName||'ساتفيو'),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};render();return true;}catch(error){log('تعذر تحميل إعلانات وأسئلة الفني:',error);return false;}}

@@ -50,9 +50,9 @@ function render(){
   document.getElementById('app').innerHTML=`
   <header class="admin-topbar sticky top-0 z-50" role="banner">
     <div class="admin-topbar-inner">
-      <a href="#" onclick="event.preventDefault();goAdminHome()" class="admin-brand" aria-label="حمزاوي سات - لوحة الإدارة">
-        <span class="admin-logo-frame"><img class="admin-header-logo" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار حمزاوي سات" width="48" height="48" decoding="async"></span>
-        <span class="admin-brand-name">حمزاوي سات</span>
+      <a href="#" onclick="event.preventDefault();goAdminHome()" class="admin-brand" aria-label="ساتفيو - لوحة الإدارة">
+        <span class="admin-logo-frame"><img class="admin-header-logo" src="/images/LOGO_UPLOAD_HERE/logo.png" alt="شعار ساتفيو" width="48" height="48" decoding="async"></span>
+        <span class="admin-brand-name">ساتفيو</span>
       </a>
       <label class="admin-header-search">
         <span aria-hidden="true">⌕</span>
@@ -77,7 +77,7 @@ function render(){
       <section class="mt-8 max-w-[420px] mx-auto premium-panel p-6 sm:p-7 animate-fade">
         <div class="flex items-center gap-3.5">
           <div class="h-12 w-12 rounded-[14px] bg-gradient-to-br from-blue-600 to-indigo-700 text-white flex items-center justify-center font-black">🔐</div>
-          <div><h2 class="font-black text-[18px]">دخول الأدمن</h2><p class="text-[11px] text-slate-500 font-bold">إدارة مشروع حمزاوي سات</p></div>
+          <div><h2 class="font-black text-[18px]">دخول الأدمن</h2><p class="text-[11px] text-slate-500 font-bold">إدارة مشروع ساتفيو</p></div>
         </div>
         <form onsubmit="event.preventDefault();doLogin();" class="mt-5 space-y-4">
           <label class="block"><span class="block text-[11px] font-black text-slate-700 mb-2">البريد الإلكتروني</span><input type="email" value="${escHtml(state.adminEmail)}" oninput="state.adminEmail=this.value" required placeholder="admin@sonaa.com" class="field"></label>
