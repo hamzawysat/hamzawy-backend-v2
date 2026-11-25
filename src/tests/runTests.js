@@ -2464,18 +2464,14 @@ async function run() {
       const pendingCashRequest = (await Order.findById(order._id).lean()).priceChangeRequests.find(item => String(item._id) === cashRequestId);
       assert.equal(pendingCashRequest.status, 'قيد الموافقة', 'an insufficient wallet response must leave the increase request pending for the cash-or-reject choice');
       assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'failed wallet coverage must roll back the existing commission adjustment transaction');
-      const rejectedPaymentMethodChange = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
+      const cashIncreaseDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true, paymentMethod: 'cash' });
-      assert.equal(rejectedPaymentMethodChange.status, 409, JSON.stringify(rejectedPaymentMethodChange.body));
-      assert.match(rejectedPaymentMethodChange.body.message, /طريقة الدفع لا تتغير بعد الدفع/);
-      const rejectedCashIncrease = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ approved: false });
-      assert.equal(rejectedCashIncrease.status, 200, JSON.stringify(rejectedCashIncrease.body));
-      assert.equal(rejectedCashIncrease.body.acceptedOfferPrice, 650, 'rejecting a cash increase that would change an already-paid order must preserve its current accepted price');
-      assert.equal((await Client.findById(clientId).lean()).walletBalance, 0, 'rejected cash increase must not alter the client wallet');
-      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'rejecting the cash increase must not change technician commission');
+      assert.equal(cashIncreaseDecision.status, 200, JSON.stringify(cashIncreaseDecision.body));
+      assert.equal(cashIncreaseDecision.body.paymentMethod, 'cash');
+      assert.equal(Number(cashIncreaseDecision.body.request.cashAmount), 50);
+      assert.equal((await Client.findById(clientId).lean()).walletBalance, 0, 'cash increase must not be debited from the client wallet');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 930, 'cash acceptance keeps the existing commission adjustment behavior');
       const duplicateDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + approvedRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true });
