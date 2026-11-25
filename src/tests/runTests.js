@@ -530,21 +530,22 @@ async function run() {
       const renderStart = adminStore.indexOf('function renderStore(){');
       const renderEnd = adminStore.indexOf('function renderStoreOrders(){', renderStart);
       const storeRenderer = adminStore.slice(renderStart, renderEnd);
-      assert.match(adminStore, /function storeAdminMenu\\(\\)/, 'store navigation must expose its top-level views');
-      assert.match(adminStore, /function toggleStoreCategoryManager\\(\\)/);
-      assert.match(categoryRenderer, /state\\.storeCategoryManagerOpen=false/);
-      assert.match(categoryRenderer, /onclick="toggleStoreCategoryManager\\(\\)"/);
-      assert.match(categoryRenderer, /aria-expanded=/);
-      assert.match(categoryRenderer, /isOpen\\?'<div class=/, 'category rows should stay hidden until the manager is expanded');
+      assert.ok(adminStore.includes('function storeAdminMenu(){'), 'store navigation must expose its top-level views');
+      assert.ok(adminStore.includes('function setStoreAdminView(v){'), 'top-level store navigation must switch views');
+      assert.ok(adminStore.includes('function toggleStoreCategoryManager(){'));
+      assert.ok(categoryRenderer.includes('state.storeCategoryManagerOpen=false'));
+      assert.ok(categoryRenderer.includes('onclick="toggleStoreCategoryManager()"'));
+      assert.ok(categoryRenderer.includes('aria-expanded='));
+      assert.ok(categoryRenderer.includes("isOpen?'<div class="), 'category rows should stay hidden until the manager is expanded');
       assert.ok(storeRenderer.includes('const subMenu='), 'product view must provide product-list, add, and CSV-import navigation');
       assert.ok(storeRenderer.includes("const productManagement=(state.storeProductSub==='add'?form:(state.storeProductSub==='import'?csvImporter:productsList))"), 'product subview must select the requested product tool');
       assert.ok(storeRenderer.includes('const settingsMenu='), 'settings view must provide category and ad-duration navigation');
       assert.ok(storeRenderer.includes("const storeManagement=(state.storeSettingsSub==='ad'?rotationSettings:renderStoreCategoryManager(products))"), 'settings subview must render either categories or ad rotation');
       assert.ok(storeRenderer.includes("if(state.storeAdminView==='settings')return"), 'settings must render as a distinct top-level view');
       assert.ok(storeRenderer.includes("'+menu+subMenu+productManagement+'</section>'"), 'products must remain the default top-level view');
-      assert.match(adminStore,/function toggleStoreAdRotationSettings\\(\\)/,'ad rotation settings should have a dedicated collapse toggle');
-      assert.match(storeRenderer,/state\\.storeAdRotationSettingsOpen=false/,'ad rotation settings should be collapsed by default');
-      assert.match(storeRenderer,/rotationOpen\\?'<div class=/,'ad rotation controls should stay hidden until expanded');
+      assert.ok(adminStore.includes('function toggleStoreAdRotationSettings(){'), 'ad rotation settings should have a dedicated collapse toggle');
+      assert.ok(storeRenderer.includes('state.storeAdRotationSettingsOpen=false'), 'ad rotation settings should be collapsed by default');
+      assert.ok(storeRenderer.includes("rotationOpen?'<div class="), 'ad rotation controls should stay hidden until expanded');
     });
 
     await test('only the configured root administrator bypasses the permission matrix', async () => {
@@ -2463,14 +2464,18 @@ async function run() {
       const pendingCashRequest = (await Order.findById(order._id).lean()).priceChangeRequests.find(item => String(item._id) === cashRequestId);
       assert.equal(pendingCashRequest.status, 'قيد الموافقة', 'an insufficient wallet response must leave the increase request pending for the cash-or-reject choice');
       assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'failed wallet coverage must roll back the existing commission adjustment transaction');
-      const cashIncreaseDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
+      const rejectedPaymentMethodChange = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true, paymentMethod: 'cash' });
-      assert.equal(cashIncreaseDecision.status, 200, JSON.stringify(cashIncreaseDecision.body));
-      assert.equal(cashIncreaseDecision.body.paymentMethod, 'cash');
-      assert.equal(Number(cashIncreaseDecision.body.request.cashAmount), 50);
-      assert.equal((await Client.findById(clientId).lean()).walletBalance, 0, 'cash increase must not be debited from the client wallet');
-      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 930, 'cash acceptance keeps the existing commission adjustment behavior');
+      assert.equal(rejectedPaymentMethodChange.status, 409, JSON.stringify(rejectedPaymentMethodChange.body));
+      assert.match(rejectedPaymentMethodChange.body.message, /طريقة الدفع لا تتغير بعد الدفع/);
+      const rejectedCashIncrease = await request(app).post('/api/orders/' + order.sn + '/price-change/' + cashRequestId + '/decision')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ approved: false });
+      assert.equal(rejectedCashIncrease.status, 200, JSON.stringify(rejectedCashIncrease.body));
+      assert.equal(rejectedCashIncrease.body.acceptedOfferPrice, 650, 'rejecting a cash increase that would change an already-paid order must preserve its current accepted price');
+      assert.equal((await Client.findById(clientId).lean()).walletBalance, 0, 'rejected cash increase must not alter the client wallet');
+      assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 935, 'rejecting the cash increase must not change technician commission');
       const duplicateDecision = await request(app).post('/api/orders/' + order.sn + '/price-change/' + approvedRequestId + '/decision')
         .set('Authorization', 'Bearer ' + clientToken)
         .send({ approved: true });
