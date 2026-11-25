@@ -339,6 +339,7 @@ const API={
  notifications:()=>apiGet('/api/notifications/fanni'),
  readNotification:id=>api('/api/notifications/fanni/'+encodeURIComponent(id)+'/read',{method:'PATCH'}),
  readAllNotifications:()=>api('/api/notifications/fanni/read-all',{method:'PATCH'}),
+ replyNotification:(id,message)=>api('/api/notifications/fanni/'+encodeURIComponent(id)+'/reply',{method:'POST',body:JSON.stringify({message})}),
  areas:()=>apiGet('/api/areas'),
  walletSettings:()=>apiGet('/api/wallet-settings')
 };

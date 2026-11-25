@@ -77,25 +77,48 @@ function createAdminOperationsRouter({
     } catch (error) { return next(error); }
   });
 
+  router.get('/notifications/recipients', auth('admin'), async (req, res, next) => {
+    try {
+      const role = String(req.query.role || '');
+      const term = String(req.query.q || '').trim().slice(0, 60);
+      if (!['client', 'fanni'].includes(role)) return res.status(400).json({ message: 'نوع الحساب غير صحيح.' });
+      if (term.length < 1) return res.json({ recipients: [] });
+      const digits = normalizePhone(term);
+      const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const phonePrefix = digits && /^[0-9]{1,11}$/.test(digits) ? digits : '';
+      const filter = phonePrefix
+        ? { phone: { $regex: '^' + phonePrefix } }
+        : { name: { $regex: '^' + escaped, $options: 'i' } };
+      if (role === 'fanni') filter.role = 'fanni';
+      const Model = role === 'fanni' ? Fanni : Client;
+      const recipients = await Model.find(filter).select('_id name phone').sort({ name: 1 }).limit(12).lean();
+      return res.set('Cache-Control', 'no-store').json({ recipients: recipients.map(person => ({ id: String(person._id), name: person.name || '', phone: person.phone || '', role })) });
+    } catch (error) { return next(error); }
+  });
+
   router.post('/notifications/direct', auth('admin'), async (req, res, next) => {
     try {
       const schema = Joi.object({
         title: Joi.string().trim().min(2).max(100).required(), message: Joi.string().trim().min(2).max(300).required(),
         recipientRole: Joi.string().valid('fanni', 'client').required(), recipientMode: Joi.string().valid('single', 'group').default('single'),
-        phone: Joi.string().trim().allow('').optional(),
+        phone: Joi.string().trim().allow('').optional(), recipientId: Joi.string().hex().length(24).optional(), replyEnabled: Joi.boolean().default(false),
         audience: Joi.string().valid('all', 'approved', 'active', 'disabled').when('recipientMode', { is: 'group', then: Joi.required(), otherwise: Joi.optional() })
       }).required();
       const { error, value } = schema.validate(req.body || {}, { abortEarly: false, stripUnknown: true });
       if (error) return res.status(400).json({ message: 'بيانات الرسالة أو المستلم غير صحيحة' });
       if (value.recipientMode === 'single') {
         const phone = normalizePhone(value.phone);
-        if (!phone || !/^01[0-9]{9}$/.test(phone)) return res.status(400).json({ message: 'اكتب رقم هاتف مصري صحيحًا للمستلم' });
+        if (!value.recipientId && (!phone || !/^01[0-9]{9}$/.test(phone))) return res.status(400).json({ message: 'اختار مستلمًا صحيحًا من نتائج البحث' });
         let recipient;
-        if (value.recipientRole === 'fanni') recipient = await Fanni.findOne({ phone, role: 'fanni' }).select('_id name phone status').lean();
-        else recipient = await Client.findOne({ phone }).select('_id name phone status').lean();
+        if (value.recipientRole === 'fanni') recipient = value.recipientId
+          ? await Fanni.findOne({ _id: value.recipientId, role: 'fanni' }).select('_id name phone status').lean()
+          : await Fanni.findOne({ phone, role: 'fanni' }).select('_id name phone status').lean();
+        else recipient = value.recipientId
+          ? await Client.findById(value.recipientId).select('_id name phone status').lean()
+          : await Client.findOne({ phone }).select('_id name phone status').lean();
         if (!recipient) return res.status(404).json({ message: value.recipientRole === 'fanni' ? 'لا يوجد فني بهذا الرقم' : 'لا يوجد عميل بهذا الرقم' });
         const campaignId = crypto.randomBytes(16).toString('hex');
-        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '' });
+        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true });
         if (!notification) return res.status(500).json({ message: 'تعذر حفظ الإشعار أو بدء إرساله', sent: 0, campaignId });
         await writeAdminAudit(req, 'إرسال إشعار فردي', 'notifications', recipient.phone, JSON.stringify({ role: value.recipientRole, campaignId }));
         return res.status(201).json({ message: 'تم إرسال الإشعار إلى المستلم المحدد فقط', sent: 1, campaignId, recipient: { role: value.recipientRole, name: recipient.name, phone: recipient.phone } });
@@ -121,7 +144,7 @@ function createAdminOperationsRouter({
         const batch = recipients.slice(start, start + 20);
         const results = await Promise.all(batch.map(person => createNotification({
           campaignId, recipientRole: value.recipientRole, recipientId: person._id,
-          type: 'admin_message', title: value.title, message: value.message, link: ''
+          type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true
         })));
         deliveryResults.push(...results);
       }
@@ -144,12 +167,26 @@ function createAdminOperationsRouter({
         const key = item.campaignId ? 'campaign:' + item.campaignId : 'legacy:' + legacyKey;
         let group = groups.get(key);
         if (!group) {
-          group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0 };
+          group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0, replyEnabled: Boolean(item.replyEnabled), replies: [] };
           groups.set(key, group);
         }
         group.count += 1;
+        if (item.reply?.message) group.replies.push({ recipientRole: item.recipientRole, recipientId: String(item.recipientId), message: item.reply.message, sentAt: item.reply.sentAt });
       }
-      return res.set('Cache-Control', 'no-store').json({ notifications: Array.from(groups.values()).slice(0, 200) });
+      const resultGroups = Array.from(groups.values()).slice(0, 200);
+      const clientIds = resultGroups.flatMap(group => group.replies.filter(reply => reply.recipientRole === 'client').map(reply => reply.recipientId));
+      const fanniIds = resultGroups.flatMap(group => group.replies.filter(reply => reply.recipientRole === 'fanni').map(reply => reply.recipientId));
+      const [clients, technicians] = await Promise.all([
+        clientIds.length ? Client.find({ _id: { $in: clientIds } }).select('_id name phone').lean() : [],
+        fanniIds.length ? Fanni.find({ _id: { $in: fanniIds }, role: 'fanni' }).select('_id name phone').lean() : []
+      ]);
+      const people = new Map([...clients, ...technicians].map(person => [String(person._id), person]));
+      for (const group of resultGroups) for (const reply of group.replies) {
+        const person = people.get(reply.recipientId);
+        reply.recipientName = person?.name || (reply.recipientRole === 'client' ? 'عميل' : 'فني');
+        reply.recipientPhone = person?.phone || '';
+      }
+      return res.set('Cache-Control', 'no-store').json({ notifications: resultGroups });
     } catch (error) { return next(error); }
   });
   

@@ -3,11 +3,13 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const Client = require('../models/Client');
+const Fanni = require('../models/Fanni');
 const PushToken = require('../models/PushToken');
 const WebPushSubscription = require('../models/WebPushSubscription');
 const NotificationDelivery = require('../models/NotificationDelivery');
 const { getVapidKeys, isAllowedPushEndpoint } = require('../utils/webPush');
-const { normalizeNotificationLink } = require('../utils/notifications');
+const { normalizeNotificationLink, notifyAdmins } = require('../utils/notifications');
 const { auth, canAccessAdmin, isRootAdmin } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
 
@@ -101,10 +103,49 @@ function mountRoleRoutes(role) {
         notifications: notifications.map(item => ({
           id: String(item._id), type: item.type, title: item.title,
           message: item.message, link: normalizeNotificationLink(item.link || '', item.type),
-          read: Boolean(item.readAt), createdAt: item.updatedAt || item.createdAt
+          read: Boolean(item.readAt), createdAt: item.updatedAt || item.createdAt,
+          replyEnabled: Boolean(item.replyEnabled), reply: item.reply?.message ? { message: item.reply.message, sentAt: item.reply.sentAt } : null
         })),
         unreadCount
       });
+    } catch (error) { return next(error); }
+  });
+
+  router.post('/' + role + '/:id/reply', guard, async (req, res, next) => {
+    try {
+      if (!['client', 'fanni'].includes(role)) return res.status(403).json({ message: 'الرد متاح للعملاء والفنيين فقط.' });
+      if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الإشعار غير صالح' });
+      const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+      if (message.length < 1 || message.length > 1000) return res.status(400).json({ message: 'اكتب ردًا من حرف إلى 1000 حرف.' });
+      const now = new Date();
+      const updated = await Notification.findOneAndUpdate(
+        { _id: req.params.id, recipientRole: role, recipientId: owner(req, role), type: 'admin_message', replyEnabled: true, isActive: { $ne: false }, 'reply.message': { $exists: false } },
+        { $set: { reply: { message, senderRole: role, senderId: owner(req, role), sentAt: now } } },
+        { new: true, runValidators: true }
+      ).lean();
+      if (!updated) {
+        const owned = await Notification.findOne({ _id: req.params.id, recipientRole: role, recipientId: owner(req, role), isActive: { $ne: false } }).select('replyEnabled reply.message').lean();
+        if (!owned) return res.status(404).json({ message: 'الإشعار غير موجود.' });
+        if (!owned.replyEnabled) return res.status(409).json({ message: 'هذا الإشعار لا يسمح بالرد.' });
+        return res.status(409).json({ message: 'تم إرسال ردك بالفعل، لا يمكن إرسال رد آخر.' });
+      }
+      const senderModel = role === 'client' ? Client : Fanni;
+      const sender = await senderModel.findById(owner(req, role)).select('name phone').lean();
+      const senderName = String(sender?.name || 'حساب غير متاح').trim();
+      const senderPhone = String(sender?.phone || 'غير متاح').trim();
+      void notifyAdmins({
+        type: 'admin_message_reply',
+        title: 'رد جديد على إشعار إداري',
+        message: (role === 'client' ? 'رد من عميل' : 'رد من فني') +
+          ' — الاسم: ' + senderName +
+          ' — الهاتف: ' + senderPhone +
+          ' — الإشعار: ' + String(updated.title || '').slice(0, 80) +
+          ' — الرد: ' + message.slice(0, 180),
+        link: '/admin?tab=notifications',
+        relatedEntityType: 'notification',
+        relatedEntityId: updated._id
+      });
+      return res.status(201).json({ message: 'تم إرسال ردك بنجاح.', reply: { message: updated.reply.message, sentAt: updated.reply.sentAt } });
     } catch (error) { return next(error); }
   });
 

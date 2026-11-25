@@ -14,7 +14,14 @@ const notificationSchema = new mongoose.Schema({
   isActive: { type: Boolean, default: true, index: true },
   relatedEntityType: { type: String, trim: true, maxlength: 50, default: '' },
   relatedEntityId: { type: mongoose.Schema.Types.ObjectId, default: null, index: true },
-  dedupeKey: { type: String, trim: true, maxlength: 200, default: undefined }
+  dedupeKey: { type: String, trim: true, maxlength: 200, default: undefined },
+  replyEnabled: { type: Boolean, default: false, index: true },
+  reply: {
+    message: { type: String, trim: true, maxlength: 1000 },
+    senderRole: { type: String, enum: ['client', 'fanni'] },
+    senderId: { type: mongoose.Schema.Types.ObjectId },
+    sentAt: { type: Date }
+  }
 }, { timestamps: true });
 
 notificationSchema.index({ recipientRole: 1, recipientId: 1, createdAt: -1 });
