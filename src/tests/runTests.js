@@ -135,7 +135,7 @@ async function run() {
       assert.match(operations, /recipientRole: value\.recipientRole[\s\S]*?replyEnabled: value\.replyEnabled === true/);
       assert.match(notificationUtils, /replyEnabled === true && type === 'admin_message'/);
       assert.match(adminUi, /notification-reply-mode[\s\S]*?searchNotificationRecipients[\s\S]*?ردود المستلمين/);
-      assert.match(adminActions, /body\.replyEnabled=replyEnabled/);
+      assert.match(adminActions, /recipientMode,replyEnabled/);
       assert.match(clientWeb, /sendClientNotificationReply/);
       assert.match(fanniWeb, /sendFanniNotificationReply/);
     });
