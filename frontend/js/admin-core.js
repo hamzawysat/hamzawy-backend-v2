@@ -133,13 +133,13 @@ function showToast(msg,type='success'){
   };
   const style=styles[kind];
   if(adminToastTimer)clearTimeout(adminToastTimer);
-  el.innerHTML=`<div role="${style.role}" aria-live="${style.live}" class="admin-toast admin-toast-${kind} pointer-events-auto mx-auto max-w-[640px] rounded-2xl px-4 py-3 shadow-2xl animate-fade flex items-center gap-3 text-white text-[12px] font-bold"><span aria-hidden="true" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20">${style.icon}</span><span class="min-w-0 flex-1 leading-6">${escHtml(msg)}</span><button type="button" aria-label="إغلاق الرسالة" onclick="this.closest('.admin-toast')?.remove()" class="shrink-0 min-h-8 px-3 rounded-full bg-white/20 text-[11px]">إغلاق</button></div>`;
+  el.innerHTML=`<div role="${style.role}" aria-live="${style.live}" style="background:${style.background}" class="admin-toast admin-toast-${kind} pointer-events-auto mx-auto max-w-[640px] rounded-2xl px-4 py-3 shadow-2xl animate-fade flex items-center gap-3 text-white text-[12px] font-bold"><span aria-hidden="true" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20">${style.icon}</span><span class="min-w-0 flex-1 leading-6">${escHtml(msg)}</span><button type="button" aria-label="إغلاق الرسالة" onclick="this.closest('.admin-toast')?.remove()" class="shrink-0 min-h-8 px-3 rounded-full bg-white/20 text-[11px]">إغلاق</button></div>`;
   const current=el.firstElementChild;
   adminToastTimer=setTimeout(()=>{if(el.firstElementChild===current)current.remove();adminToastTimer=null;},4500);
 }
 function confirmAdminAction(message,title='تأكيد الإجراء'){
   const text=String(message||'هل تريد المتابعة؟').trim();
-  return window.confirm(String(title||'تأكيد الإجراء')+'\\n\\n'+(text||'هل تريد المتابعة؟'));
+  return window.confirm(String(title||'تأكيد الإجراء')+ '\n\n' +(text||'هل تريد المتابعة؟'));
 }
 function statusLabel(s){const m={'قيد المراجعة':'قيد المراجعة','تم النشر':'تم النشر','وصلتك عروض':'وصلت عروض','تم اختيار فني':'تم اختيار فني','تم الانتهاء':'تم الانتهاء',pending:'قيد المراجعة',approved:'مقبول',rejected:'مرفوض',disabled:'معطل'};return m[String(s||'')]||String(s||'غير محدد');}
 function statusClass(s){const t=String(s||''); if(['تم الانتهاء','منتهي','تم اختيار فني','approved','مقبول'].includes(t))return 'bg-emerald-50 border-emerald-200 text-emerald-700'; if(['مرفوض','rejected','اعتذار','معطل','disabled'].includes(t))return 'bg-red-50 border-red-200 text-red-700'; if(['تم النشر','وصلتك عروض'].includes(t))return 'bg-blue-50 border-blue-200 text-blue-700'; return 'bg-amber-50 border-amber-200 text-amber-800';}
