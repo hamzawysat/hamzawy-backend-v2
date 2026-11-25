@@ -443,9 +443,6 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
   .admin-kpi-card{min-height:82px;padding:8px}
   .admin-kpi-card strong{font-size:20px}
   .admin-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  #admin-tab-content .grid.grid-cols-2{grid-template-columns:minmax(0,1fr)}
-  #admin-tab-content [class*="grid-cols-2"],
-  #admin-tab-content [class*="grid-cols-3"]{grid-template-columns:minmax(0,1fr)}
   #admin-tab-content .flex.flex-wrap{gap:7px}
   #admin-tab-content .action-wrap{max-width:100%}
   #admin-tab-content .dropdown-menu{right:auto;left:0}
