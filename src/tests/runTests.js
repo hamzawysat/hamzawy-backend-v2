@@ -107,6 +107,19 @@ async function run() {
       assert.ok(fanniRoute.includes("notifyAdmins({"));
     });
 
+    await test('admin direct notifications use the durable push delivery pipeline for individual and group audiences', async () => {
+      const operations = fs.readFileSync(path.join(__dirname, '../routes/admin/operations.js'), 'utf8');
+      const notificationUtils = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
+      assert.ok(operations.includes("const { createNotification } = require('../../utils/notifications')"));
+      assert.ok(operations.includes("createNotification({ campaignId, recipientRole: value.recipientRole"));
+      assert.ok(operations.includes("for (let start = 0; start < recipients.length; start += 20)"));
+      assert.ok(operations.includes("deliveryResults.filter(Boolean).length"));
+      assert.ok(!operations.includes("Notification.insertMany(docs"));
+      assert.ok(notificationUtils.includes("campaignId = null"));
+      assert.ok(notificationUtils.includes("...(campaignId ? { campaignId: String(campaignId).slice(0, 100) } : {})"));
+      assert.ok(notificationUtils.includes("sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link"));
+    });
+
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {
       const {
         ADMIN_NOTIFICATION_CATEGORIES,
