@@ -120,6 +120,30 @@ async function run() {
       assert.ok(notificationUtils.includes("sendPushNotification({ recipientRole, recipientId, title, message, type, link: payload.link"));
     });
 
+    await test('one-reply notifications are wired across admin, browser client/technician, and Android dashboards', async () => {
+      const notificationModel = fs.readFileSync(path.join(__dirname, '../models/Notification.js'), 'utf8');
+      const notificationRoute = fs.readFileSync(path.join(__dirname, '../routes/notifications.js'), 'utf8');
+      const operations = fs.readFileSync(path.join(__dirname, '../routes/admin/operations.js'), 'utf8');
+      const notificationUtils = fs.readFileSync(path.join(__dirname, '../utils/notifications.js'), 'utf8');
+      const adminUi = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-notifications.js'), 'utf8');
+      const adminActions = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin/support-actions.js'), 'utf8');
+      const clientWeb = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-account.js'), 'utf8');
+      const fanniWeb = fs.readFileSync(path.join(__dirname, '../../frontend/js/fanni-notifications.js'), 'utf8');
+      const clientApp = fs.readFileSync(path.join(__dirname, '../../../hamzawy-app/src/screens/client/ClientDashboard.js'), 'utf8');
+      const fanniApp = fs.readFileSync(path.join(__dirname, '../../../hamzawy-app/src/screens/technician/TechnicianDashboard.js'), 'utf8');
+      assert.match(notificationModel, /replyEnabled: \{ type: Boolean, default: false/);
+      assert.match(notificationRoute, /recipientRole: role, recipientId: owner\(req, role\)[\s\S]*?replyEnabled: true[\s\S]*?'reply\.message': \{ \$exists: false \}/);
+      assert.match(operations, /notifications\/recipients/);
+      assert.match(operations, /recipientRole: value\.recipientRole[\s\S]*?replyEnabled: value\.replyEnabled === true/);
+      assert.match(notificationUtils, /replyEnabled === true && type === 'admin_message'/);
+      assert.match(adminUi, /notification-reply-mode[\s\S]*?searchNotificationRecipients[\s\S]*?ردود المستلمين/);
+      assert.match(adminActions, /body\.replyEnabled=replyEnabled/);
+      assert.match(clientWeb, /sendClientNotificationReply/);
+      assert.match(fanniWeb, /sendFanniNotificationReply/);
+      assert.match(clientApp, /submitClientNotificationReply/);
+      assert.match(fanniApp, /submitTechnicianNotificationReply/);
+    });
+
     await test('admin notification categories cover the real admin event types and default to enabled', async () => {
       const {
         ADMIN_NOTIFICATION_CATEGORIES,
@@ -915,6 +939,32 @@ async function run() {
       assert.equal(r.body.client.passwordHash, undefined);
       clientToken = r.body.token;
       clientId = r.body.client.id;
+    });
+
+    await test('notification replies are owner-scoped, reply-enabled only, and atomic under concurrent submissions', async () => {
+      const Notification = require('../models/Notification');
+      const replyable = await Notification.create({
+        recipientRole: 'client', recipientId: clientId, type: 'admin_message',
+        title: 'اختبار رد واحد', message: 'يرجى الرد مرة واحدة', replyEnabled: true
+      });
+      const ordinary = await Notification.create({
+        recipientRole: 'client', recipientId: clientId, type: 'admin_message',
+        title: 'اختبار عادي', message: 'لا يسمح بالرد', replyEnabled: false
+      });
+      const submit = message => request(app).post('/api/notifications/client/' + replyable._id + '/reply')
+        .set('Authorization', 'Bearer ' + clientToken).send({ message });
+      const results = await Promise.all([submit('الرد الأول'), submit('محاولة ثانية')]);
+      assert.deepEqual(results.map(result => result.status).sort(), [201, 409]);
+      const stored = await Notification.findById(replyable._id).lean();
+      assert.ok(stored.reply?.message);
+      assert.equal(stored.reply.senderRole, 'client');
+      assert.equal(String(stored.reply.senderId), String(clientId));
+      const rejected = await request(app).post('/api/notifications/client/' + ordinary._id + '/reply')
+        .set('Authorization', 'Bearer ' + clientToken).send({ message: 'رد على إشعار عادي' });
+      assert.equal(rejected.status, 409);
+      const foreign = await request(app).post('/api/notifications/client/' + new mongoose.Types.ObjectId() + '/reply')
+        .set('Authorization', 'Bearer ' + clientToken).send({ message: 'محاولة على إشعار غير مملوك' });
+      assert.equal(foreign.status, 404);
     });
 
     await test('disabling referrals blocks new invited registrations but allows ordinary registration', async () => {
