@@ -40,15 +40,51 @@ function renderWhatsAppButton(phone){
 function normalizePhoneInput(value){return String(value??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[\s\-().]/g,'').replace(/^(\+?20)/,'0');}
 
 const ADMIN_SECTIONS = [
- {id:'dashboard',label:'نظرة عامة',icon:'📊',tabs:[{id:'dashboard',label:'نظرة عامة'}]},
- {id:'clients',label:'الطلبات والعملاء',icon:'👥',tabs:[{id:'orders',label:'طلبات العملاء'},{id:'clients',label:'كل العملاء'}]},
- {id:'central-archive',label:'الأرشيف المركزي',icon:'🗄️',tabs:[{id:'archive',label:'الأرشيف المركزي'}]},
- {id:'technicians',label:'الفنيون',icon:'👷',tabs:[{id:'fannis',label:'كل الفنيين'},{id:'pending',label:'انتظار الاعتماد'},{id:'profileEdits',label:'طلبات تعديل البيانات'},{id:'disabled',label:'الفنيون الموقوفون'},{id:'fanniCardLedger',label:'سجل البطاقات الفنيين'},{id:'levels',label:'المستويات والشارات'},{id:'offers',label:'عروض الفنيين'}]},
- {id:'finance',label:'المحافظ والمالية',icon:'💰',tabs:[{id:'clientWallet',label:'محافظ العملاء'},{id:'wallets',label:'محافظ الفنيين'},{id:'topups',label:'طلبات شحن المحافظ'}]},
- {id:'referrals',label:'الدعوات والمكافآت',icon:'🎁',tabs:[{id:'referrals',label:'إدارة الدعوات والمكافآت'}]},
- {id:'commerce',label:'المتجر والخدمات',icon:'🛍️',tabs:[{id:'commercePlans',label:'باقات الاشتراك'},{id:'commerceSubscriptions',label:'اشتراكات العملاء'},{id:'store',label:'إدارة المتجر'},{id:'storeOrders',label:'طلبات ومبيعات المتجر'},{id:'services',label:'الخدمات'},{id:'regions',label:'مناطق الخدمة'}]},
- {id:'customer-operations',label:'خدمة العملاء',icon:'💬',tabs:[{id:'complaints',label:'الشكاوى'},{id:'support',label:'الدعم والمخالفات'},{id:'notifications',label:'الإشعارات'},{id:'content',label:'الإعلانات والأسئلة الشائعة'}]},
- {id:'platform-admin',label:'إدارة النظام',icon:'⚙️',tabs:[{id:'pricing',label:'الأسعار والعمولات'},{id:'reports',label:'التقارير'},{id:'pageVisits',label:'سجل زيارات الموقع'},{id:'security',label:'سجل التدقيق والأمان'},{id:'settings',label:'إعدادات المنصة'},{id:'roles',label:'صلاحيات المشرفين'}]}
+ {id:'dashboard',label:'الرئيسية',icon:'📊',description:'ملخص المنصة والتنبيهات والمهام التي تحتاج تدخلك',tabs:[{id:'dashboard',label:'نظرة عامة'}]},
+ {id:'account-management',label:'إدارة الحسابات',icon:'👥',description:'العملاء والفنيون وطلبات التسجيل وتعديلات البيانات والأرشيف في مكان واحد',tabs:[
+  {id:'clients',label:'العملاء'},
+  {id:'fannis',label:'كل الفنيين'},
+  {id:'pending',label:'انتظار اعتماد الفنيين'},
+  {id:'profileEdits',label:'طلبات تعديل البيانات'},
+  {id:'disabled',label:'الفنيون الموقوفون'},
+  {id:'fanniCardLedger',label:'سجل البطاقات الفنية'},
+  {id:'levels',label:'المستويات والشارات'},
+  {id:'archive',label:'الأرشيف المركزي'}
+ ]},
+ {id:'operations',label:'الطلبات والتشغيل',icon:'📋',description:'طلبات العملاء وعروض الفنيين ومتابعة مراحل التنفيذ',tabs:[
+  {id:'orders',label:'طلبات العملاء'},
+  {id:'offers',label:'عروض الفنيين'}
+ ]},
+ {id:'commerce',label:'المتجر والاشتراكات',icon:'🛍️',description:'المنتجات والمبيعات وباقات الاشتراك والخدمات ومناطق الخدمة',tabs:[
+  {id:'store',label:'إدارة المتجر'},
+  {id:'storeOrders',label:'طلبات ومبيعات المتجر'},
+  {id:'commercePlans',label:'باقات الاشتراك'},
+  {id:'commerceSubscriptions',label:'اشتراكات العملاء'},
+  {id:'services',label:'الخدمات'},
+  {id:'regions',label:'مناطق الخدمة'}
+ ]},
+ {id:'finance',label:'المالية والمحافظ',icon:'💰',description:'محافظ العملاء والفنيين وطلبات الشحن والحركات المالية',tabs:[
+  {id:'clientWallet',label:'محافظ العملاء'},
+  {id:'wallets',label:'محافظ الفنيين'},
+  {id:'topups',label:'طلبات شحن المحافظ'}
+ ]},
+ {id:'customer-operations',label:'خدمة العملاء',icon:'💬',description:'الشكاوى والدعم والمخالفات والإشعارات والمحتوى',tabs:[
+  {id:'complaints',label:'الشكاوى'},
+  {id:'support',label:'الدعم والمخالفات'},
+  {id:'notifications',label:'الإشعارات'},
+  {id:'content',label:'الإعلانات والأسئلة الشائعة'}
+ ]},
+ {id:'platform-admin',label:'إدارة المنصة',icon:'⚙️',description:'الأسعار والتقارير والأمان والإعدادات وصلاحيات المشرفين',tabs:[
+  {id:'pricing',label:'الأسعار والعمولات'},
+  {id:'reports',label:'التقارير'},
+  {id:'pageVisits',label:'سجل زيارات الموقع'},
+  {id:'security',label:'سجل التدقيق والأمان'},
+  {id:'settings',label:'إعدادات المنصة'},
+  {id:'roles',label:'صلاحيات المشرفين'}
+ ]},
+ {id:'referrals',label:'الدعوات والمكافآت',icon:'🎁',description:'إدارة الدعوات والمكافآت ومتابعة حالتها',tabs:[
+  {id:'referrals',label:'إدارة الدعوات والمكافآت'}
+ ]}
 ];
 function getPendingTechnicianCount(){return state.fannis.filter(f=>!f.isApproved&&!f.isDisabled&&!['rejected','مرفوض'].includes(String(f.status||''))).length;}
 function getPendingOrderCount(){return state.orders.filter(o=>['قيد المراجعة','pending','مراجعة','بانتظار المراجعة'].includes(String(o.status||''))).length;}
@@ -58,7 +94,7 @@ function getPendingComplaintCount(){return state.complaints.filter(c=>['جديد
 function getPendingRecoveryCount(){return (state.recoveryRequests||[]).filter(item=>['بانتظار الدعم','قيد التحقق','جديدة','pending'].includes(String(item.status||''))).length;}
 function getAdminSectionCountById(id){if(id==='dashboard')return getPendingTechnicianCount()+state.pendingProfileEdits.length+getPendingOrderCount()+getPendingTopupCount()+getPendingClientTopupCount()+getPendingComplaintCount()+getPendingRecoveryCount();return 0;}
 function renderSectionCount(){return '';}
-function getAdminSectionCount(section){if(!section)return 0;if(section.id==='dashboard')return getAdminSectionCountById('dashboard');if(section.id==='clients')return getPendingOrderCount();if(section.id==='technicians')return getPendingTechnicianCount()+state.pendingProfileEdits.length;if(section.id==='finance')return getPendingTopupCount()+getPendingClientTopupCount();if(section.id==='customer-operations')return getPendingComplaintCount()+getPendingRecoveryCount();return 0;}
+function getAdminSectionCount(section){if(!section)return 0;if(section.id==='dashboard')return getAdminSectionCountById('dashboard');if(section.id==='account-management')return getPendingTechnicianCount()+state.pendingProfileEdits.length;if(section.id==='operations')return getPendingOrderCount();if(section.id==='finance')return getPendingTopupCount()+getPendingClientTopupCount();if(section.id==='customer-operations')return getPendingComplaintCount()+getPendingRecoveryCount();return 0;}
 function isRootAdminUI(){return state.currentAdminIsRoot===true||['أدمن رئيسي','مدير عام'].includes(currentAdminRoleLabel());}
 function permissionKeyForTab(tab){if(tab==='archive')return 'clients';if(['dashboard','stats','reports','pageVisits'].includes(tab))return 'dashboard';if(['fannis','pending','profileEdits','disabled','fanniCardLedger','levels'].includes(tab))return 'fannis';if(tab==='orders')return 'orders';if(tab==='offers')return 'offers';if(tab==='wallets')return 'wallet';if(tab==='topups')return 'topups';if(tab==='clientWallet')return 'wallet';if(['commercePlans','commerceSubscriptions'].includes(tab))return 'commerce';if(tab==='clients')return 'clients';if(tab==='pricing')return 'pricing';if(tab==='settings')return 'settings';if(tab==='services')return 'services';if(tab==='regions')return 'regions';if(tab==='complaints')return 'complaints';if(tab==='support')return 'support';if(tab==='notifications')return 'notifications';if(tab==='content')return 'content';if(['store','storeOrders'].includes(tab))return 'store';if(tab==='referrals')return 'referrals';return null;}
 function canReadTab(tab){if(tab==='archive'){if(!currentAdminRoleLabel()||isRootAdminUI())return true;return state.currentAdminPermissions?.clients?.read===true||state.currentAdminPermissions?.fannis?.read===true;}if(!currentAdminRoleLabel())return true;if(isRootAdminUI())return true;if(tab==='roles'||tab==='security')return false;const key=permissionKeyForTab(tab);return key?state.currentAdminPermissions?.[key]?.read===true:false;}
