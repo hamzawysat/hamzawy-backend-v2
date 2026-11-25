@@ -41,7 +41,7 @@ async function openAdminInboxNotification(id){
   }catch(_){}
   if(!tab)tab=type.includes('order')||type.includes('offer')?'orders':type.includes('client')?'clients':type.includes('technician')||type.includes('fanni')?'fannis':type.includes('topup')?'topups':type.includes('wallet')?'wallets':type.includes('complaint')?'complaints':type.includes('support')?'support':type.includes('password_recovery')?'passwordRecovery':'';
   if(tab&&typeof setTab==='function'&&canReadTab(tab))setTab(tab);
-  else{const root=document.getElementById('admin-inbox-list');if(root)root.outerHTML=renderAdminInbox();}
+  else{const root=document.getElementById('admin-inbox-list');if(root)root.innerHTML=renderAdminInbox();}
 }
 function renderDeliveryAudit(){
   const entries=Array.isArray(state.adminDeliveryLogs)?state.adminDeliveryLogs:[];
