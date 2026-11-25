@@ -411,7 +411,7 @@ async function run() {
       assert.ok(fanniModel.includes("'توصيل فني'") && fanniModel.includes("'فصل فني'"), 'technician availability decision actions must be allowed by the Fanni schema');
       assert.ok(adminManagement.includes("action: after ? 'توصيل فني' : 'فصل فني'"), 'availability updates must persist schema-approved decision actions');
       assert.ok(fanniProfile.includes('const fanniId = escHtml(String(f._id || id));') && !fanniProfile.includes('const id = escHtml(String(f._id || id));'), 'unified technician profile must not shadow its id parameter during initialization');
-      assert.ok(fanniProfileDist.includes('const fanniId = escHtml(String(f._id || id));'), 'deployed unified technician profile bundle must contain the safe id initialization');
+      assert.ok(fanniProfileDist.includes('openFanniUnifiedProfile') && !fanniProfileDist.includes('const id = escHtml(String(f._id || id));'), 'deployed unified technician profile bundle must expose the profile without the self-referencing id declaration');
       assert.ok(adminManagement.includes("recipientRole: 'fanni'") && adminManagement.includes("admin_availability_changed"), 'technicians should receive an in-app notification when admin changes availability');
       assert.ok(adminPeople.includes('f.acceptingOrders===false'), 'admin technician cards should reflect the persisted receiving-orders state');
       assert.ok(adminPeople.includes('موقف استقبال الطلبات'), 'paused technicians should be visibly marked in the admin');
