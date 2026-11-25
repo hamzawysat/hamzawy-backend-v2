@@ -12,7 +12,7 @@ on:
       - 'package-lock.json'
       - '.github/workflows/**'
   push:
-    branches: [main, feat/fanni-manual-id-review-profile-photo-20261122]
+    branches: [main, feat/fanni-manual-id-review-profile-photo-20261122, feat/admin-reply-notifications-one-reply-20261125]
     paths:
       - 'frontend/**'
       - 'frontend-dist/**'
@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   backend-tests:
@@ -39,6 +39,17 @@ jobs:
       - run: npm ci
       - name: Build deployed frontend assets before integration tests
         run: npm run build
+      - name: Commit generated frontend-dist to this feature branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend-dist
+          if git diff --cached --quiet; then
+            echo "frontend-dist is already up to date"
+          else
+            git commit -m "Build frontend-dist for one-reply notifications"
+            git push origin "HEAD:${GITHUB_REF_NAME}"
+          fi
       - name: Run integration and security tests
         run: npm test
       - name: Check for high and critical dependency vulnerabilities
