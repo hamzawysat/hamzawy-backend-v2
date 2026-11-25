@@ -114,7 +114,7 @@ function createAdminOperationsRouter({
         else recipient = await Client.findOne({ phone }).select('_id name phone status').lean();
         if (!recipient) return res.status(404).json({ message: value.recipientRole === 'fanni' ? 'لا يوجد فني بهذا الرقم' : 'لا يوجد عميل بهذا الرقم' });
         const campaignId = crypto.randomBytes(16).toString('hex');
-        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true, replyEnabled: value.replyEnabled === true });
+        const notification = await createNotification({ campaignId, recipientRole: value.recipientRole, recipientId: recipient._id, type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true });
         if (!notification) return res.status(500).json({ message: 'تعذر حفظ الإشعار أو بدء إرساله', sent: 0, campaignId });
         await writeAdminAudit(req, 'إرسال إشعار فردي', 'notifications', recipient.phone, JSON.stringify({ role: value.recipientRole, campaignId }));
         return res.status(201).json({ message: 'تم إرسال الإشعار إلى المستلم المحدد فقط', sent: 1, campaignId, recipient: { role: value.recipientRole, name: recipient.name, phone: recipient.phone } });
@@ -140,7 +140,7 @@ function createAdminOperationsRouter({
         const batch = recipients.slice(start, start + 20);
         const results = await Promise.all(batch.map(person => createNotification({
           campaignId, recipientRole: value.recipientRole, recipientId: person._id,
-          type: 'admin_message', title: value.title, message: value.message, link: ''
+          type: 'admin_message', title: value.title, message: value.message, link: '', replyEnabled: value.replyEnabled === true
         })));
         deliveryResults.push(...results);
       }
@@ -166,7 +166,8 @@ function createAdminOperationsRouter({
           group = { id: String(item._id), campaignId: item.campaignId || null, recipientRole: item.recipientRole, title: item.title, message: item.message, createdAt: item.createdAt, count: 0, replies: [] };
           groups.set(key, group);
         }
-        group.count += 1;\n        if (item.reply?.message) group.replies.push({ recipientRole: item.recipientRole, recipientId: String(item.recipientId), message: item.reply.message, sentAt: item.reply.sentAt });
+        group.count += 1;
+        if (item.reply?.message) group.replies.push({ recipientRole: item.recipientRole, recipientId: String(item.recipientId), message: item.reply.message, sentAt: item.reply.sentAt });
       }
       return res.set('Cache-Control', 'no-store').json({ notifications: Array.from(groups.values()).slice(0, 200) });
     } catch (error) { return next(error); }
