@@ -101,7 +101,8 @@ function mountRoleRoutes(role) {
         notifications: notifications.map(item => ({
           id: String(item._id), type: item.type, title: item.title,
           message: item.message, link: normalizeNotificationLink(item.link || '', item.type),
-          read: Boolean(item.readAt), createdAt: item.updatedAt || item.createdAt,\n          replyEnabled: Boolean(item.replyEnabled), reply: item.reply?.message ? { message: item.reply.message, sentAt: item.reply.sentAt } : null
+          read: Boolean(item.readAt), createdAt: item.updatedAt || item.createdAt,
+          replyEnabled: Boolean(item.replyEnabled), reply: item.reply?.message ? { message: item.reply.message, sentAt: item.reply.sentAt } : null
         })),
         unreadCount
       });
