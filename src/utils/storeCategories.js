@@ -23,7 +23,7 @@ function buildStoreCategories(products = [], configuredCategories = [], { includ
   });
 
   (Array.isArray(products) ? products : []).forEach((product) => {
-    const name = normalizeStoreCategoryName(product?.category) || 'عام';
+    const name = normalizeStoreCategoryName(product?.category) || 'غير مصنف';
     if (!categories.has(name)) {
       categories.set(name, {
         name, imageUrl: '', customImageUrl: '', imageFileId: null,

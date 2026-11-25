@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 
 const storeProductSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, minlength: 2, maxlength: 120 },
-  category: { type: String, trim: true, maxlength: 80, default: 'عام', index: true },
+  category: { type: String, trim: true, maxlength: 80, default: 'غير مصنف', index: true },
   description: { type: String, trim: true, maxlength: 2000, default: '' },
   details: { type: String, trim: true, maxlength: 5000, default: '' },
   price: { type: Number, required: true, min: 0, max: 100000000 },

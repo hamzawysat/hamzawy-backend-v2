@@ -97,7 +97,7 @@ router.get('/products', async (req, res, next) => {
     ]);
     const configuredSeconds = Number(config?.storeAdRotationSeconds);
     const adRotationSeconds = Number.isInteger(configuredSeconds) && configuredSeconds >= 5 && configuredSeconds <= 60 ? configuredSeconds : 5;
-    const publicProducts = products.map(product => ({ ...product, category: String(product.category || 'عام').trim() || 'عام', imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }));
+    const publicProducts = products.map(product => ({ ...product, category: String(product.category || 'غير مصنف').trim() || 'غير مصنف', imageUrl: product.imageFileId ? '/api/store/media/' + String(product.imageFileId) : (product.imageUrl || '') }));
     const categories = buildStoreCategories(publicProducts, config?.storeCategories);
     return res.set('Cache-Control', 'no-store').json({ products: publicProducts, categories, adRotationSeconds });
   } catch (error) { return next(error); }

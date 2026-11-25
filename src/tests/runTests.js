@@ -1461,8 +1461,8 @@ async function run() {
           .set('Authorization', 'Bearer ' + adminToken);
         assert.equal(deletedCategory.status, 200, JSON.stringify(deletedCategory.body));
         assert.equal(deletedCategory.body.movedProducts, 2, 'deleting a populated category must safely move all normalized products to the default category');
-        assert.equal((await StoreProduct.findById(product.body.product._id).lean()).category, 'عام');
-        assert.equal((await StoreProduct.findById(legacyWhitespaceProduct._id).lean()).category, 'عام', 'all products in the renamed category must remain safe when the category is deleted');
+        assert.equal((await StoreProduct.findById(product.body.product._id).lean()).category, 'غير مصنف');
+        assert.equal((await StoreProduct.findById(legacyWhitespaceProduct._id).lean()).category, 'غير مصنف', 'all products in the renamed category must remain safe when the category is deleted');
         assert.equal((await request(app).get(categoryImage.body.imageUrl)).status, 404, 'deleted category artwork must no longer be publicly served');
         const image = await request(app).get(uploaded.body.imageUrl);
         assert.equal(image.status, 200);

@@ -19,7 +19,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
   }).unknown(false);
   const productSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
-    category: Joi.string().trim().max(80).allow('').default('عام'),
+    category: Joi.string().trim().max(80).allow('').default('غير مصنف'),
     description: Joi.string().trim().max(2000).allow('').default(''),
     details: Joi.string().trim().max(5000).allow('').default(''),
     price: Joi.number().min(0).max(100000000).required(),
@@ -183,13 +183,13 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
     try {
       const name = normalizeStoreCategoryName(req.params.name);
       if (!name) return res.status(400).json({ message: 'اسم القسم غير صالح.' });
-      if (name === 'عام') return res.status(400).json({ message: 'لا يمكن حذف قسم عام الافتراضي.' });
+      if (name === 'غير مصنف') return res.status(400).json({ message: 'لا يمكن حذف القسم الافتراضي الافتراضي.' });
       const config = await AdminConfig.findOne({ key: 'main' });
       const configured = Array.isArray(config?.storeCategories) ? config.storeCategories : [];
       const existing = configured.find(item => normalizeStoreCategoryName(item?.name) === name);
       const productCount = await StoreProduct.countDocuments({ category: name });
       if (!existing && !productCount) return res.status(404).json({ message: 'القسم غير موجود.' });
-      if (productCount) await StoreProduct.updateMany({ category: name }, { $set: { category: 'عام' } });
+      if (productCount) await StoreProduct.updateMany({ category: name }, { $set: { category: 'غير مصنف' } });
       if (config) {
         config.storeCategories = configured.filter(item => normalizeStoreCategoryName(item?.name) !== name);
         await config.save();
@@ -199,7 +199,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         await bucket.delete(new mongoose.Types.ObjectId(existing.imageFileId)).catch(() => {});
       }
       await writeAdminAudit(req, 'حذف قسم من المتجر', 'store-categories', name, 'productsMovedTo=عام; productCount=' + productCount);
-      return res.set('Cache-Control', 'no-store').json({ message: productCount ? 'تم حذف القسم ونقل منتجاته إلى قسم عام.' : 'تم حذف القسم.' , movedProducts: productCount });
+      return res.set('Cache-Control', 'no-store').json({ message: productCount ? 'تم حذف القسم ونقل منتجاته إلى القسم الافتراضي.' : 'تم حذف القسم.' , movedProducts: productCount });
     } catch (error) { return next(error); }
   });
 
@@ -224,7 +224,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       const duplicates = [];
       const seen = new Set();
       const normalizeKey = value => String(value || '').trim().replace(/\s+/g, ' ').toLocaleLowerCase('ar');
-      const productKey = value => normalizeKey(value.name) + '::' + normalizeKey(value.category || 'عام');
+      const productKey = value => normalizeKey(value.name) + '::' + normalizeKey(value.category || 'غير مصنف');
 
       for (let index = 0; index < rows.length; index += 1) {
         const row = rows[index] || {};
@@ -250,7 +250,7 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
 
       if (validRows.length) {
         const existing = await StoreProduct.find({
-          $or: validRows.map(item => ({ name: item.product.name, category: item.product.category || 'عام' }))
+          $or: validRows.map(item => ({ name: item.product.name, category: item.product.category || 'غير مصنف' }))
         }).select('name category').lean();
         const existingKeys = new Set(existing.map(productKey));
         const toInsert = [];
@@ -346,6 +346,9 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         await session.abortTransaction();
         return res.status(404).json({ message: 'المعاملة غير موجودة.' });
       }
+      var allowedNext={ 'جديد':['تم التواصل','قيد التجهيز','مرفوض','ملغي'], 'تم التواصل':['قيد التجهيز','مرفوض','ملغي'], 'قيد التجهيز':['مكتمل','مرفوض','ملغي'], 'مكتمل':[], 'مرفوض':[], 'ملغي':[] };
+      if(!(allowedNext[order.status]||[]).includes(checked.value.status) && checked.value.status!==order.status){await session.abortTransaction();return res.status(409).json({message:'الانتقال من '+order.status+' إلى '+checked.value.status+' غير مسموح.'});}
+      if(order.paymentStatus==='مدفوع' && checked.value.paymentMethod!==undefined && checked.value.paymentMethod!==order.paymentMethod){await session.abortTransaction();return res.status(409).json({message:'طريقة الدفع لا تتغير بعد الدفع، لازم مراجعة قبل التغيير.'});}
       if (['ملغي', 'مرفوض'].includes(order.status) && !['ملغي', 'مرفوض'].includes(checked.value.status)) {
         await session.abortTransaction();
         return res.status(409).json({ message: 'الطلب الملغي لا يمكن إعادة فتحه؛ سجّل طلبًا جديدًا عند الحاجة.' });
@@ -398,13 +401,14 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
           }
         }
       }
+      var oldStatus=order.status;var oldPayment=order.paymentMethod;
       order.status = checked.value.status;
       order.adminNote = checked.value.adminNote;
       if (checked.value.paymentMethod !== undefined) order.paymentMethod = checked.value.paymentMethod;
       order.statusHistory.push({ status: order.status, note: order.adminNote, by: req.user?.name || 'الإدارة', at: new Date() });
       await order.save({ session });
       await session.commitTransaction();
-      await writeAdminAudit(req, 'تحديث حالة طلب متجر', 'store-orders', String(order._id), order.status);
+      await writeAdminAudit(req, 'تحديث حالة طلب متجر: '+oldStatus+' -> '+order.status+' | الدفع: '+oldPayment+' -> '+order.paymentMethod, 'store-orders', String(order._id), order.status);
       if (['مكتمل', 'مرفوض', 'ملغي'].includes(order.status)) {
         // The original admin alert is keyed by order ID. Retire it only when
         // that exact order reaches a terminal state; other orders stay visible.
