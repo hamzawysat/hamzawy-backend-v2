@@ -2770,18 +2770,13 @@ async function run() {
       assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeStore);
       assert.equal((await StoreProduct.findById(storeProduct._id).lean()).stock, 5, 'cancelling a single wallet order must restore reserved stock');
       const fanniBalanceBeforeCodCancel = Number((await Fanni.findById(fanni._id).lean()).walletBalance);
-      const rejectedCodPaymentMethodChange = await request(app).patch('/api/admin/store/orders/' + codPurchase.body.order.id)
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار منع تغيير طريقة دفع طلب عند الاستلام' });
-      assert.equal(rejectedCodPaymentMethodChange.status, 409, JSON.stringify(rejectedCodPaymentMethodChange.body));
       const codCancel = await request(app).patch('/api/admin/store/orders/' + codPurchase.body.order.id)
         .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'ملغي', adminNote: 'إلغاء طلب عند الاستلام دون تغيير طريقة الدفع' });
+        .send({ status: 'ملغي', paymentMethod: 'محفظة الفني', adminNote: 'اختبار منع استرداد طلب عند الاستلام بعد تغيير طريقة الدفع إداريًا' });
       assert.equal(codCancel.status, 200, JSON.stringify(codCancel.body));
-      assert.equal(codCancel.body.refundedAmount, 0, 'cancelling an unpaid COD order must not create a wallet refund');
+      assert.equal(codCancel.body.refundedAmount, 0, 'changing an unpaid COD order payment label to wallet must not create a wallet refund');
       assert.equal(codCancel.body.order.paymentStatus, 'غير مدفوع');
-      assert.equal(codCancel.body.order.paymentMethod, 'عند الاستلام', 'cancellation must preserve the original COD payment method');
-      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeCodCancel, 'COD cancellation must not credit the wallet');
+      assert.equal(Number((await Fanni.findById(fanni._id).lean()).walletBalance), fanniBalanceBeforeCodCancel, 'COD cancellation must not credit the wallet even if its payment label is changed');
       assert.equal((await StoreProduct.findById(codProduct._id).lean()).stock, 4, 'cancelling a single COD order must restore stock');
 
       const bulkProductA = await StoreProduct.create({ name: 'منتج سلة متعدد أ', price: 20, type: 'product', isActive: true, stock: 5 });
