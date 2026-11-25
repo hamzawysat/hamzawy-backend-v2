@@ -162,7 +162,7 @@ async function importStoreCsvProducts(){
   const prepared=prepareStoreCsvImportRows();
   if(!prepared.valid.length)return showToast('لا توجد صفوف سليمة للاستيراد. راجع الأخطاء الظاهرة.','error');
   var preview=prepared.valid.slice(0,5).map(function(r,i){return (i+1)+'- '+r.name+' | '+r.price+' جنيه | '+(r.category||'غير مصنف');}).join('\n');
-  if(!confirm('معاينة نهائية قبل التنفيذ:\n'+preview+'\n---\nسيتم إضافة '+prepared.valid.length+' منتج. المكرر سيتم تخطيه. متأكد؟'))return;
+  if(!confirmAdminAction('معاينة نهائية قبل التنفيذ:\n'+preview+'\n---\nسيتم إضافة '+prepared.valid.length+' منتج. المكرر سيتم تخطيه. متأكد؟'))return;
   storeCsvImportState.busy=true;render();
   try{
     const result=await tryApi(['/api/admin/store/products/import'],{method:'POST',body:JSON.stringify({products:prepared.valid})});
@@ -436,12 +436,12 @@ async function saveStoreCategoryFromButton(button){
     await loadStoreProducts();
   }catch(error){showToast(error.message||'تعذر حفظ القسم.','error');}
 }
-async function deleteStoreCategoryFromButton(button){var catName=button.closest('[data-category]')?.dataset?.category||'';var cnt=(state.storeProducts||[]).filter(function(x){return String(x.category||'غير مصنف')===catName;}).length;if(cnt>0&&!confirm('القسم ده فيه '+cnt+' منتج، هيتنقلوا للقسم الافتراضي (غير مصنف). متأكد؟'))return;
+async function deleteStoreCategoryFromButton(button){var catName=button.closest('[data-category]')?.dataset?.category||'';var cnt=(state.storeProducts||[]).filter(function(x){return String(x.category||'غير مصنف')===catName;}).length;if(cnt>0&&!confirmAdminAction('القسم ده فيه '+cnt+' منتج، هيتنقلوا للقسم الافتراضي (غير مصنف). متأكد؟'))return;
   const row=button?.closest('[data-store-category-row]');
   if(!row)return;
   const name=String(row.dataset.originalName||'');
   if(name==='غير مصنف')return showToast('لا يمكن حذف القسم الافتراضي الافتراضي.','error');
-  if(!confirm('حذف قسم "'+name+'"؟ المنتجات الموجودة فيه هتتنقل إلى القسم الافتراضي، ومش هتتمسح المنتجات نفسها.'))return;
+  if(!confirmAdminAction('حذف قسم "'+name+'"؟ المنتجات الموجودة فيه هتتنقل إلى القسم الافتراضي، ومش هتتمسح المنتجات نفسها.'))return;
   try{
     const result=await tryApi(['/api/admin/store/categories/'+encodeURIComponent(name)],{method:'DELETE'});
     showToast(result.message||'تم حذف القسم.');
@@ -565,7 +565,7 @@ function scrollStoreProductEditFormIntoView() {
     editForm.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }));
 }
-async function deleteStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;if(!confirm('حذف المنتج "'+p.name+'" نهائيًا؟ لو كان في طلبات قبل كده بطلبات سابقة فلن يسمح النظام بالحذف حفاظًا على سجل الطلبات.'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'DELETE'});state.lastDeletedStoreProduct=p;showToast('تم حذف المنتج - فيه تراجع فوق القايمة');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر حذف المنتج','error');}}
+async function deleteStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;if(!confirmAdminAction('حذف المنتج "'+p.name+'" نهائيًا؟ لو كان في طلبات قبل كده بطلبات سابقة فلن يسمح النظام بالحذف حفاظًا على سجل الطلبات.'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'DELETE'});state.lastDeletedStoreProduct=p;showToast('تم حذف المنتج - فيه تراجع فوق القايمة');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر حذف المنتج','error');}}
 function guessStoreProductImage(name){return '';}
 async function autoFillMissingProductImages(){return showToast('الملء التلقائي اتلغى لانه كان بيجيب صور غلط');}
 function toggleStoreProductSelect(id){
@@ -588,7 +588,7 @@ async function bulkStoreApply(patchFn,actionLabel,confirmMessage){
   if(state.storeBulkBusy)return;
   var ids=Array.isArray(state.storeSelectedIds)?state.storeSelectedIds.map(String):[];
   if(!ids.length)return;
-  if(confirmMessage&&!confirm(confirmMessage))return;
+  if(confirmMessage&&!confirmAdminAction(confirmMessage))return;
   state.storeBulkBusy=true;render();
   var succeeded=[],failed=[],missing=[];
   try{
@@ -617,10 +617,10 @@ async function bulkStoreShow(){await bulkStoreApply(function(b){b.isActive=true;
 async function bulkStoreAdvertise(){await bulkStoreApply(function(b){b.isAdvertised=true;if(!b.adExpiresAt)b.adExpiresAt=new Date(Date.now()+7*86400000).toISOString();},'نشر الإعلان');}
 async function bulkStoreUnadvertise(){await bulkStoreApply(function(b){b.isAdvertised=false;},'إيقاف الإعلان');}
 async function bulkStoreMoveCategory(){var cat=prompt('انقل المختارين لقسم ايه؟ اكتب اسم القسم');if(!cat)return;cat=String(cat).trim().slice(0,80);if(!cat)return;await bulkStoreApply(function(b){b.category=cat;},'نقل المنتجات للقسم');}
-async function clearWrongUnsplashImages(){var wrong=(state.storeProducts||[]).filter(function(x){return String(x.imageUrl||'').indexOf('unsplash')>=0;});if(!wrong.length)return showToast('مفيش صور Unsplash غلط');if(!confirm('هنشيل '+wrong.length+' صورة غلط ونرجع المنتجات من غير صورة. متأكد؟'))return;for(var i=0;i<wrong.length;i++){var pr=wrong[i];try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(pr._id)],{method:'PUT',body:JSON.stringify({name:pr.name,category:pr.category||'غير مصنف',description:pr.description||'',details:pr.details||'',price:Number(pr.price),originalPrice:pr.originalPrice??null,offerText:pr.offerText||'',type:pr.type||'product',subscriptionDuration:pr.subscriptionDuration||'',imageUrl:'',imageFileId:null,isActive:pr.isActive!==false,stock:pr.stock??null,isAdvertised:!!pr.isAdvertised,adAudience:pr.adAudience||'both',adPriority:Number(pr.adPriority)||0,adExpiresAt:pr.adExpiresAt||null})});}catch(e){}}
+async function clearWrongUnsplashImages(){var wrong=(state.storeProducts||[]).filter(function(x){return String(x.imageUrl||'').indexOf('unsplash')>=0;});if(!wrong.length)return showToast('مفيش صور Unsplash غلط');if(!confirmAdminAction('هنشيل '+wrong.length+' صورة غلط ونرجع المنتجات من غير صورة. متأكد؟'))return;for(var i=0;i<wrong.length;i++){var pr=wrong[i];try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(pr._id)],{method:'PUT',body:JSON.stringify({name:pr.name,category:pr.category||'غير مصنف',description:pr.description||'',details:pr.details||'',price:Number(pr.price),originalPrice:pr.originalPrice??null,offerText:pr.offerText||'',type:pr.type||'product',subscriptionDuration:pr.subscriptionDuration||'',imageUrl:'',imageFileId:null,isActive:pr.isActive!==false,stock:pr.stock??null,isAdvertised:!!pr.isAdvertised,adAudience:pr.adAudience||'both',adPriority:Number(pr.adPriority)||0,adExpiresAt:pr.adExpiresAt||null})});}catch(e){}}
 showToast('تم شيل الصور الغلط');await loadStoreProducts();}
 async function restoreDeletedStoreProduct(){var p=state.lastDeletedStoreProduct;if(!p)return;try{await tryApi(['/api/admin/store/products'],{method:'POST',body:JSON.stringify({name:p.name,category:p.category||'غير مصنف',price:Number(p.price),description:p.description||'',imageUrl:p.imageUrl||''})});state.lastDeletedStoreProduct=null;showToast('تم التراجع ورجع المنتج');await loadStoreProducts();}catch(e){showToast('تعذر التراجع','error');}}
-async function hideStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p||!confirm('إخفاء المنتج من المتجر؟'))return;await loadStoreProducts();var fresh=(state.storeProducts||[]).find(function(x){return String(x._id)===String(id);});if(fresh)p=fresh;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'غير مصنف',description:p.description||'',details:p.details||'',price:Number(p.price),originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',imageUrl:p.imageUrl||'',imageFileId:p.imageFileId||null,isActive:false,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم إخفاء المنتج');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر إخفاء المنتج','error');}}
+async function hideStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p||!confirmAdminAction('إخفاء المنتج من المتجر؟'))return;await loadStoreProducts();var fresh=(state.storeProducts||[]).find(function(x){return String(x._id)===String(id);});if(fresh)p=fresh;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'غير مصنف',description:p.description||'',details:p.details||'',price:Number(p.price),originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',imageUrl:p.imageUrl||'',imageFileId:p.imageFileId||null,isActive:false,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم إخفاء المنتج');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر إخفاء المنتج','error');}}
 async function updateStoreOrder(id){
   const nextStatus=document.getElementById('store-status-'+id)?.value||'جديد';
   try{
@@ -668,7 +668,7 @@ async function manageStoreProductAdvertisement(id){
   const product=(state.storeProducts||[]).find(item=>String(item._id)===String(id));
   if(!product)return;
   if(product.isAdvertised===true){
-    if(!confirm('إيقاف الإعلان لهذا المنتج؟'))return;
+    if(!confirmAdminAction('إيقاف الإعلان لهذا المنتج؟'))return;
     try{
       await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:product.name,category:product.category||'غير مصنف',description:product.description||'',details:product.details||'',price:Number(product.price),originalPrice:product.originalPrice??null,offerText:product.offerText||'',type:product.type||'product',subscriptionDuration:product.subscriptionDuration||'',imageUrl:product.imageUrl||'',imageFileId:product.imageFileId||null,isActive:product.isActive!==false,stock:product.stock??null,isAdvertised:false,adAudience:product.adAudience||'both',adPriority:Number(product.adPriority)||0,adExpiresAt:product.adExpiresAt||null})});
       showToast('تم إيقاف الإعلان');
