@@ -50,7 +50,7 @@ async function archiveAccount(kind, id, label = '') {
   const reason = prompt('سبب أرشفة ' + (type === 'fannis' ? 'الفني ' : 'العميل ') + label + ' (إجباري):');
   if (reason === null) return;
   if (reason.trim().length < 2) return showToast('سبب الأرشفة مطلوب، ويجب ألا يقل عن حرفين', 'error');
-  if (!confirm('تأكيد أرشفة الحساب؟ سيُمنع من الدخول والعمليات الجديدة، مع الاحتفاظ بكل سجلاته وصوره.')) return;
+  if (!confirmAdminAction('تأكيد أرشفة الحساب؟ سيُمنع من الدخول والعمليات الجديدة، مع الاحتفاظ بكل سجلاته وصوره.')) return;
   try {
     const data = await tryApi(['/api/admin/' + type + '/' + encodeURIComponent(id) + '/archive'], {
       method: 'POST', body: JSON.stringify({ reason: reason.trim() })
@@ -97,7 +97,7 @@ async function permanentlyDeleteArchivedAccount(kind, id, mode, label = '') {
   const confirmation = mode === 'all'
     ? 'تأكيد الحذف الشامل لـ ' + accountLabel + '؟ سيتم حذف السجلات والمعاملات المرتبطة وفق نوع الحساب، ولن يمكن التراجع.'
     : 'تأكيد حذف حساب ' + accountLabel + ' فقط؟ ستظل السجلات والمعاملات التاريخية محفوظة.';
-  if (!confirm(confirmation)) return;
+  if (!confirmAdminAction(confirmation)) return;
   try {
     const data = await tryApi(['/api/admin/' + type + '/' + encodeURIComponent(id) + '/permanent-delete'], {
       method: 'DELETE', body: JSON.stringify({ mode })
@@ -114,7 +114,7 @@ async function restoreArchivedAccount(kind, id) {
   const type = kind === 'fannis' ? 'fannis' : 'clients';
   if (!id) return showToast('معرّف الحساب غير متاح', 'error');
   if (!canWriteTab(type === 'fannis' ? 'fannis' : 'clients')) return showToast('ليس لديك صلاحية استعادة هذا الحساب', 'error');
-  if (!confirm('استعادة الحساب بنفس المعرف؟ سيظل الحظر العادي كما هو، ولن يُعاد تنشيط حساب كان موقوفًا قبل الأرشفة.')) return;
+  if (!confirmAdminAction('استعادة الحساب بنفس المعرف؟ سيظل الحظر العادي كما هو، ولن يُعاد تنشيط حساب كان موقوفًا قبل الأرشفة.')) return;
   try {
     const data = await tryApi(['/api/admin/' + type + '/' + encodeURIComponent(id) + '/restore'], {
       method: 'POST', body: JSON.stringify({})

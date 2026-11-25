@@ -90,13 +90,13 @@ function render(){
       ${state.pageMode==='home'?`<section class="mt-4 premium-panel p-3 space-y-3">
         <div class="flex items-center justify-between px-1">
           <h2 class="text-[12px] font-black text-slate-700">مركز التحكم</h2>
-          <span class="text-[10px] text-slate-500">7 أقسام رئيسية</span>
+          <span class="text-[10px] text-slate-500">${visibleSections.length} أقسام رئيسية</span>
         </div>
         
         <div class="section-nav" aria-label="كل أدوات لوحة الإدارة">
           ${ADMIN_SECTIONS.filter(section=>section.tabs.some(item=>canReadTab(item.id))).map(section=>`
             <section class="section-nav-group">
-              <h3 class="section-nav-heading"><span class="section-nav-icon">${section.icon}</span><span>${escHtml(section.label)}</span></h3>
+              <div class="section-nav-title"><h3 class="section-nav-heading"><span class="section-nav-icon">${section.icon}</span><span>${escHtml(section.label)}</span></h3>${section.description?`<p class="section-nav-description">${escHtml(section.description)}</p>`:''}</div>
               <div class="section-nav-items">
                 ${section.tabs.map(item=>`
                   <div>
@@ -116,7 +116,7 @@ function render(){
         ${state.tab==='orders'?`
           <select onchange="onFilterOrder(this.value)" class="field"><option value="الكل">كل الحالات</option><option value="__new">الطلبات الجديدة</option><option value="قيد المراجعة">قيد المراجعة</option><option value="تم النشر">تم النشر</option><option value="وصلتك عروض">وصلت عروض</option><option value="تم اختيار فني">تم اختيار فني</option><option value="تم الانتهاء">تم الانتهاء</option></select>
         `:state.tab==='fannis'||state.tab==='pending'||state.tab==='disabled'||state.tab==='levels'?`
-          <select onchange="onFilter(this.value)" class="field"><option value="الكل">كل الحالات</option><option value="pending">قيد المراجعة</option><option value="approved">معتمد</option><option value="rejected">مرفوض</option><option value="disabled">معطل</option></select>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2"><label class="text-[10px] font-black text-slate-600">حالة الحساب<select aria-label="تصفية حالة الفني" onchange="onFilter(this.value)" class="field mt-1"><option value="الكل" ${state.filter==='الكل'?'selected':''}>كل الحالات</option><option value="pending" ${state.filter==='pending'?'selected':''}>قيد المراجعة</option><option value="approved" ${state.filter==='approved'?'selected':''}>معتمد</option><option value="rejected" ${state.filter==='rejected'?'selected':''}>مرفوض</option><option value="disabled" ${state.filter==='disabled'?'selected':''}>معطل</option></select></label>${state.tab==='fannis'?'<label class="text-[10px] font-black text-slate-600">استقبال الطلبات<select aria-label="تصفية استقبال الطلبات" onchange="onFanniAvailabilityFilter(this.value)" class="field mt-1"><option value="all" '+((state.fanniAvailabilityFilter||'all')==='all'?'selected':'')+'>كل الفنيين</option><option value="accepting" '+((state.fanniAvailabilityFilter||'all')==='accepting'?'selected':'')+'>يستقبل طلبات</option><option value="paused" '+((state.fanniAvailabilityFilter||'all')==='paused'?'selected':'')+'>متوقف عن استقبال الطلبات</option></select></label>':''}</div>
         `:''}
       </div>`:''}
 

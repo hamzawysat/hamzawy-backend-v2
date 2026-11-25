@@ -40,15 +40,51 @@ function renderWhatsAppButton(phone){
 function normalizePhoneInput(value){return String(value??'').replace(/[٠-٩]/g,d=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(d))).replace(/[۰-۹]/g,d=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d))).replace(/[\s\-().]/g,'').replace(/^(\+?20)/,'0');}
 
 const ADMIN_SECTIONS = [
- {id:'dashboard',label:'نظرة عامة',icon:'📊',tabs:[{id:'dashboard',label:'نظرة عامة'}]},
- {id:'clients',label:'الطلبات والعملاء',icon:'👥',tabs:[{id:'orders',label:'طلبات العملاء'},{id:'clients',label:'كل العملاء'}]},
- {id:'central-archive',label:'الأرشيف المركزي',icon:'🗄️',tabs:[{id:'archive',label:'الأرشيف المركزي'}]},
- {id:'technicians',label:'الفنيون',icon:'👷',tabs:[{id:'fannis',label:'كل الفنيين'},{id:'pending',label:'انتظار الاعتماد'},{id:'profileEdits',label:'طلبات تعديل البيانات'},{id:'disabled',label:'الفنيون الموقوفون'},{id:'fanniCardLedger',label:'سجل البطاقات الفنيين'},{id:'levels',label:'المستويات والشارات'},{id:'offers',label:'عروض الفنيين'}]},
- {id:'finance',label:'المحافظ والمالية',icon:'💰',tabs:[{id:'clientWallet',label:'محافظ العملاء'},{id:'wallets',label:'محافظ الفنيين'},{id:'topups',label:'طلبات شحن المحافظ'}]},
- {id:'referrals',label:'الدعوات والمكافآت',icon:'🎁',tabs:[{id:'referrals',label:'إدارة الدعوات والمكافآت'}]},
- {id:'commerce',label:'المتجر والخدمات',icon:'🛍️',tabs:[{id:'commercePlans',label:'باقات الاشتراك'},{id:'commerceSubscriptions',label:'اشتراكات العملاء'},{id:'store',label:'إدارة المتجر'},{id:'storeOrders',label:'طلبات ومبيعات المتجر'},{id:'services',label:'الخدمات'},{id:'regions',label:'مناطق الخدمة'}]},
- {id:'customer-operations',label:'خدمة العملاء',icon:'💬',tabs:[{id:'complaints',label:'الشكاوى'},{id:'support',label:'الدعم والمخالفات'},{id:'notifications',label:'الإشعارات'},{id:'content',label:'الإعلانات والأسئلة الشائعة'}]},
- {id:'platform-admin',label:'إدارة النظام',icon:'⚙️',tabs:[{id:'pricing',label:'الأسعار والعمولات'},{id:'reports',label:'التقارير'},{id:'pageVisits',label:'سجل زيارات الموقع'},{id:'security',label:'سجل التدقيق والأمان'},{id:'settings',label:'إعدادات المنصة'},{id:'roles',label:'صلاحيات المشرفين'}]}
+ {id:'dashboard',label:'الرئيسية',icon:'📊',description:'ملخص المنصة والتنبيهات والمهام التي تحتاج تدخلك',tabs:[{id:'dashboard',label:'نظرة عامة'}]},
+ {id:'account-management',label:'إدارة الحسابات',icon:'👥',description:'العملاء والفنيون وطلبات التسجيل وتعديلات البيانات والأرشيف في مكان واحد',tabs:[
+  {id:'clients',label:'العملاء'},
+  {id:'fannis',label:'كل الفنيين'},
+  {id:'pending',label:'انتظار اعتماد الفنيين'},
+  {id:'profileEdits',label:'طلبات تعديل البيانات'},
+  {id:'disabled',label:'الفنيون الموقوفون'},
+  {id:'fanniCardLedger',label:'سجل البطاقات الفنية'},
+  {id:'levels',label:'المستويات والشارات'},
+  {id:'archive',label:'الأرشيف المركزي'}
+ ]},
+ {id:'operations',label:'الطلبات والتشغيل',icon:'📋',description:'طلبات العملاء وعروض الفنيين ومتابعة مراحل التنفيذ',tabs:[
+  {id:'orders',label:'طلبات العملاء'},
+  {id:'offers',label:'عروض الفنيين'}
+ ]},
+ {id:'commerce',label:'المتجر والاشتراكات',icon:'🛍️',description:'المنتجات والمبيعات وباقات الاشتراك والخدمات ومناطق الخدمة',tabs:[
+  {id:'store',label:'إدارة المتجر'},
+  {id:'storeOrders',label:'طلبات ومبيعات المتجر'},
+  {id:'commercePlans',label:'باقات الاشتراك'},
+  {id:'commerceSubscriptions',label:'اشتراكات العملاء'},
+  {id:'services',label:'الخدمات'},
+  {id:'regions',label:'مناطق الخدمة'}
+ ]},
+ {id:'finance',label:'المالية والمحافظ',icon:'💰',description:'محافظ العملاء والفنيين وطلبات الشحن والحركات المالية',tabs:[
+  {id:'clientWallet',label:'محافظ العملاء'},
+  {id:'wallets',label:'محافظ الفنيين'},
+  {id:'topups',label:'طلبات شحن المحافظ'}
+ ]},
+ {id:'customer-operations',label:'خدمة العملاء',icon:'💬',description:'الشكاوى والدعم والمخالفات والإشعارات والمحتوى',tabs:[
+  {id:'complaints',label:'الشكاوى'},
+  {id:'support',label:'الدعم والمخالفات'},
+  {id:'notifications',label:'الإشعارات'},
+  {id:'content',label:'الإعلانات والأسئلة الشائعة'}
+ ]},
+ {id:'platform-admin',label:'إدارة المنصة',icon:'⚙️',description:'الأسعار والتقارير والأمان والإعدادات وصلاحيات المشرفين',tabs:[
+  {id:'pricing',label:'الأسعار والعمولات'},
+  {id:'reports',label:'التقارير'},
+  {id:'pageVisits',label:'سجل زيارات الموقع'},
+  {id:'security',label:'سجل التدقيق والأمان'},
+  {id:'settings',label:'إعدادات المنصة'},
+  {id:'roles',label:'صلاحيات المشرفين'}
+ ]},
+ {id:'referrals',label:'الدعوات والمكافآت',icon:'🎁',description:'إدارة الدعوات والمكافآت ومتابعة حالتها',tabs:[
+  {id:'referrals',label:'إدارة الدعوات والمكافآت'}
+ ]}
 ];
 function getPendingTechnicianCount(){return state.fannis.filter(f=>!f.isApproved&&!f.isDisabled&&!['rejected','مرفوض'].includes(String(f.status||''))).length;}
 function getPendingOrderCount(){return state.orders.filter(o=>['قيد المراجعة','pending','مراجعة','بانتظار المراجعة'].includes(String(o.status||''))).length;}
@@ -58,7 +94,7 @@ function getPendingComplaintCount(){return state.complaints.filter(c=>['جديد
 function getPendingRecoveryCount(){return (state.recoveryRequests||[]).filter(item=>['بانتظار الدعم','قيد التحقق','جديدة','pending'].includes(String(item.status||''))).length;}
 function getAdminSectionCountById(id){if(id==='dashboard')return getPendingTechnicianCount()+state.pendingProfileEdits.length+getPendingOrderCount()+getPendingTopupCount()+getPendingClientTopupCount()+getPendingComplaintCount()+getPendingRecoveryCount();return 0;}
 function renderSectionCount(){return '';}
-function getAdminSectionCount(section){if(!section)return 0;if(section.id==='dashboard')return getAdminSectionCountById('dashboard');if(section.id==='clients')return getPendingOrderCount();if(section.id==='technicians')return getPendingTechnicianCount()+state.pendingProfileEdits.length;if(section.id==='finance')return getPendingTopupCount()+getPendingClientTopupCount();if(section.id==='customer-operations')return getPendingComplaintCount()+getPendingRecoveryCount();return 0;}
+function getAdminSectionCount(section){if(!section)return 0;if(section.id==='dashboard')return getAdminSectionCountById('dashboard');if(section.id==='account-management')return getPendingTechnicianCount()+state.pendingProfileEdits.length;if(section.id==='operations')return getPendingOrderCount();if(section.id==='finance')return getPendingTopupCount()+getPendingClientTopupCount();if(section.id==='customer-operations')return getPendingComplaintCount()+getPendingRecoveryCount();return 0;}
 function isRootAdminUI(){return state.currentAdminIsRoot===true||['أدمن رئيسي','مدير عام'].includes(currentAdminRoleLabel());}
 function permissionKeyForTab(tab){if(tab==='archive')return 'clients';if(['dashboard','stats','reports','pageVisits'].includes(tab))return 'dashboard';if(['fannis','pending','profileEdits','disabled','fanniCardLedger','levels'].includes(tab))return 'fannis';if(tab==='orders')return 'orders';if(tab==='offers')return 'offers';if(tab==='wallets')return 'wallet';if(tab==='topups')return 'topups';if(tab==='clientWallet')return 'wallet';if(['commercePlans','commerceSubscriptions'].includes(tab))return 'commerce';if(tab==='clients')return 'clients';if(tab==='pricing')return 'pricing';if(tab==='settings')return 'settings';if(tab==='services')return 'services';if(tab==='regions')return 'regions';if(tab==='complaints')return 'complaints';if(tab==='support')return 'support';if(tab==='notifications')return 'notifications';if(tab==='content')return 'content';if(['store','storeOrders'].includes(tab))return 'store';if(tab==='referrals')return 'referrals';return null;}
 function canReadTab(tab){if(tab==='archive'){if(!currentAdminRoleLabel()||isRootAdminUI())return true;return state.currentAdminPermissions?.clients?.read===true||state.currentAdminPermissions?.fannis?.read===true;}if(!currentAdminRoleLabel())return true;if(isRootAdminUI())return true;if(tab==='roles'||tab==='security')return false;const key=permissionKeyForTab(tab);return key?state.currentAdminPermissions?.[key]?.read===true:false;}
@@ -85,11 +121,25 @@ let state={
   errors:{fannis:'',topups:'',orders:'',complaints:'',services:'',clients:''}, error:''
 };
 
+let adminToastTimer=null;
 function showToast(msg,type='success'){
   const el=document.getElementById('toast'); if(!el)return;
-  const bg=type==='success'?'background:linear-gradient(135deg,#2E7CF6,#2E7CF6)':type==='error'?'background:linear-gradient(135deg,#ef4444,#dc2626)':'background:linear-gradient(135deg,#f59e0b,#d97706)';
-  el.innerHTML=`<div style="${bg}" class="pointer-events-auto mx-auto max-w-[640px] rounded-[16px] text-white text-[12px] font-bold px-4 py-3.5 shadow-2xl animate-fade flex items-center justify-between gap-3"><span>${escHtml(msg)}</span><button onclick="this.parentElement.remove()" class="shrink-0 h-8 px-3 bg-white/20 rounded-full text-[11px]">إغلاق</button></div>`;
-  setTimeout(()=>{if(el.firstElementChild)el.innerHTML=''},4200);
+  const kind=['success','error','warning','info'].includes(String(type))?String(type):'success';
+  const styles={
+    success:{background:'linear-gradient(135deg,#047857,#059669)',icon:'✓',role:'status',live:'polite'},
+    error:{background:'linear-gradient(135deg,#b91c1c,#dc2626)',icon:'!',role:'alert',live:'assertive'},
+    warning:{background:'linear-gradient(135deg,#b45309,#d97706)',icon:'⚠',role:'status',live:'polite'},
+    info:{background:'linear-gradient(135deg,#1d4ed8,#2563eb)',icon:'i',role:'status',live:'polite'}
+  };
+  const style=styles[kind];
+  if(adminToastTimer)clearTimeout(adminToastTimer);
+  el.innerHTML=`<div role="${style.role}" aria-live="${style.live}" style="background:${style.background}" class="admin-toast admin-toast-${kind} pointer-events-auto mx-auto max-w-[640px] rounded-2xl px-4 py-3 shadow-2xl animate-fade flex items-center gap-3 text-white text-[12px] font-bold"><span aria-hidden="true" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/20">${style.icon}</span><span class="min-w-0 flex-1 leading-6">${escHtml(msg)}</span><button type="button" aria-label="إغلاق الرسالة" onclick="this.closest('.admin-toast')?.remove()" class="shrink-0 min-h-8 px-3 rounded-full bg-white/20 text-[11px]">إغلاق</button></div>`;
+  const current=el.firstElementChild;
+  adminToastTimer=setTimeout(()=>{if(el.firstElementChild===current)current.remove();adminToastTimer=null;},4500);
+}
+function confirmAdminAction(message,title='تأكيد الإجراء'){
+  const text=String(message||'هل تريد المتابعة؟').trim();
+  return window.confirm(String(title||'تأكيد الإجراء')+ '\n\n' +(text||'هل تريد المتابعة؟'));
 }
 function statusLabel(s){const m={'قيد المراجعة':'قيد المراجعة','تم النشر':'تم النشر','وصلتك عروض':'وصلت عروض','تم اختيار فني':'تم اختيار فني','تم الانتهاء':'تم الانتهاء',pending:'قيد المراجعة',approved:'مقبول',rejected:'مرفوض',disabled:'معطل'};return m[String(s||'')]||String(s||'غير محدد');}
 function statusClass(s){const t=String(s||''); if(['تم الانتهاء','منتهي','تم اختيار فني','approved','مقبول'].includes(t))return 'bg-emerald-50 border-emerald-200 text-emerald-700'; if(['مرفوض','rejected','اعتذار','معطل','disabled'].includes(t))return 'bg-red-50 border-red-200 text-red-700'; if(['تم النشر','وصلتك عروض'].includes(t))return 'bg-blue-50 border-blue-200 text-blue-700'; return 'bg-amber-50 border-amber-200 text-amber-800';}

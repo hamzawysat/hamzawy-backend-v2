@@ -8,9 +8,25 @@ function renderPendingFanniRegistrations(){
 }
 function renderFannis(){
   if(state.tab==='pending')return renderPendingFanniRegistrations();
+  const allFannis=Array.isArray(state.fannis)?state.fannis:[];
+  const visibleFannis=Array.isArray(state.filtered)?state.filtered:[];
+  const selectedFannis=Array.isArray(state.selectedBulkFanniIds)?state.selectedBulkFanniIds.map(String):[];
+  const selectedVisible=visibleFannis.filter(f=>selectedFannis.includes(String(f._id||''))).length;
+  const allVisibleSelected=visibleFannis.length>0&&selectedVisible===visibleFannis.length;
+  const approvedCount=allFannis.filter(f=>f.isApproved&&!f.isDisabled).length;
+  const disabledCount=allFannis.filter(f=>f.isDisabled).length;
+  const pendingCount=allFannis.filter(f=>!f.isApproved&&!f.isDisabled&&!['rejected','مرفوض'].includes(String(f.status||''))).length;
   return `
   <div class="mt-4 space-y-4">
-    <div class="premium-panel p-3 space-y-2"><div class="flex items-center justify-between gap-2"><label class="text-[11px] font-black"><input type="checkbox" onchange="toggleAllBulkSelection('fannis',state.filtered.map(f=>f._id),this.checked)"> تحديد كل الفنيين الظاهرين</label><span class="text-[10px] text-slate-500">المحدد: ${(state.selectedBulkFanniIds||[]).length}</span></div><div class="flex flex-wrap gap-2"><button onclick="runBulkAction('fannis','approve')" class="pill-btn primary-pill">قبول المحدد</button><button onclick="runBulkAction('fannis','reject')" class="pill-btn soft-btn">رفض المحدد</button><button onclick="runBulkAction('fannis','disable')" class="pill-btn danger-pill">تعليق المحدد</button><button onclick="runBulkAction('fannis','enable')" class="pill-btn soft-btn">إعادة تفعيل المحدد</button><button onclick="runBulkAction('fannis','freeze')" class="pill-btn danger-pill">تجميد محافظ المحدد</button><button onclick="runBulkAction('fannis','unfreeze')" class="pill-btn soft-btn">إلغاء تجميد المحافظ</button></div></div>
+    <header class="premium-panel p-4 space-y-3">
+      <div class="flex items-start justify-between gap-3"><div><h2 class="text-sm font-black text-slate-900">إدارة الفنيين</h2><p class="mt-1 text-[10px] leading-5 text-slate-500">تابع الاعتماد والحالة التشغيلية وبيانات الفني، وافتح ملفه الموحد للإجراءات التفصيلية</p></div><span class="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[10px] font-black text-blue-800">${visibleFannis.length.toLocaleString('ar-EG')} ظاهر</span></div>
+      <div class="grid grid-cols-3 gap-2"><div class="rounded-xl border border-emerald-100 bg-emerald-50 p-2 text-center"><strong class="block text-base text-emerald-800">${approvedCount.toLocaleString('ar-EG')}</strong><span class="text-[9px] font-bold text-emerald-700">معتمدون</span></div><div class="rounded-xl border border-amber-100 bg-amber-50 p-2 text-center"><strong class="block text-base text-amber-800">${pendingCount.toLocaleString('ar-EG')}</strong><span class="text-[9px] font-bold text-amber-700">بانتظار الاعتماد</span></div><div class="rounded-xl border border-rose-100 bg-rose-50 p-2 text-center"><strong class="block text-base text-rose-800">${disabledCount.toLocaleString('ar-EG')}</strong><span class="text-[9px] font-bold text-rose-700">موقوفون</span></div></div>
+    </header>
+    <section class="premium-panel p-3 space-y-3" aria-label="الإجراءات الجماعية للفنيين">
+      <div class="flex items-center justify-between gap-2 flex-wrap"><label class="text-[11px] font-black flex items-center gap-2"><input type="checkbox" ${allVisibleSelected?'checked':''} ${visibleFannis.length?'':'disabled'} onchange="toggleAllBulkSelection('fannis',state.filtered.map(f=>f._id),this.checked)"> تحديد كل الفنيين الظاهرين</label><span class="text-[10px] font-bold text-slate-600">المحدد: ${selectedFannis.length}</span></div>
+      <div><p class="mb-2 text-[10px] font-black text-slate-500">إجراءات حالة الحساب</p><div class="flex flex-wrap gap-2"><button type="button" onclick="runBulkAction('fannis','approve')" class="pill-btn primary-pill">قبول المحدد</button><button type="button" onclick="runBulkAction('fannis','reject')" class="pill-btn soft-btn">رفض المحدد</button><button type="button" onclick="runBulkAction('fannis','disable')" class="pill-btn danger-pill">تعليق المحدد</button><button type="button" onclick="runBulkAction('fannis','enable')" class="pill-btn soft-btn">إعادة تفعيل المحدد</button></div></div>
+      <div class="border-t border-slate-100 pt-3"><p class="mb-2 text-[10px] font-black text-slate-500">إجراءات المحافظ</p><div class="flex flex-wrap gap-2"><button type="button" onclick="runBulkAction('fannis','freeze')" class="pill-btn danger-pill">تجميد محافظ المحدد</button><button type="button" onclick="runBulkAction('fannis','unfreeze')" class="pill-btn soft-btn">إلغاء تجميد المحافظ</button></div></div>
+    </section>
     ${state.errors.fannis?`<div class="bg-red-50 border border-red-200 rounded-[16px] p-4 text-[12px] font-bold text-red-700">${escHtml(state.errors.fannis)}</div>`:''}
     ${state.filtered.length===0&&!state.loading&&!state.errors.fannis?`<div class="premium-panel p-10 text-center text-[13px] font-bold text-slate-400">لا يوجد فنيون</div>`:''}
     ${state.filtered.map(f=>{

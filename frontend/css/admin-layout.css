@@ -324,3 +324,131 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
 /* Compact action menu; outside clicks and Escape close it without a screen-covering backdrop. */
 #admin-tab-content .action-wrap{position:relative;z-index:61}
 #admin-tab-content .dropdown-menu{width:280px!important;max-width:calc(100vw - 24px)!important;max-height:60vh!important;overflow-y:auto!important;overflow-x:hidden!important;overscroll-behavior:contain}
+
+
+
+/* Admin UX Audit — Phase 5: consistent action hierarchy and accessible button states. */
+#admin-tab-content .pill-btn,
+#admin-tab-content button.primary-pill,
+#admin-tab-content button.soft-btn,
+#admin-tab-content button.success-pill,
+#admin-tab-content button.danger-pill{
+  min-height:40px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+  padding:9px 14px;
+  border-radius:12px;
+  font-size:11px;
+  font-weight:800;
+  line-height:1.35;
+  white-space:normal;
+  text-align:center;
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease,transform .16s ease;
+}
+#admin-tab-content .primary-pill,
+#admin-tab-content button.primary-pill{
+  background:linear-gradient(135deg,#1d4ed8,#2563eb);
+  border:1px solid #1d4ed8;
+  color:#fff;
+  box-shadow:0 3px 0 #1e40af,0 5px 10px rgba(30,64,175,.12);
+}
+#admin-tab-content .soft-btn,
+#admin-tab-content button.soft-btn{
+  background:#f8fafc;
+  border:1px solid #dbe3ef;
+  color:#334155;
+  box-shadow:0 2px 0 #e2e8f0;
+}
+#admin-tab-content .success-pill,
+#admin-tab-content button.success-pill{
+  background:#ecfdf5;
+  border:1px solid #a7f3d0;
+  color:#047857;
+  box-shadow:0 2px 0 #d1fae5;
+}
+#admin-tab-content .danger-pill,
+#admin-tab-content button.danger-pill{
+  background:#fff1f2;
+  border:1px solid #fecdd3;
+  color:#be123c;
+  box-shadow:0 2px 0 #ffe4e6;
+}
+#admin-tab-content .pill-btn:focus-visible,
+#admin-tab-content button.primary-pill:focus-visible,
+#admin-tab-content button.soft-btn:focus-visible,
+#admin-tab-content button.success-pill:focus-visible,
+#admin-tab-content button.danger-pill:focus-visible,
+#admin-tab-content .dropdown-item:focus-visible{
+  outline:3px solid rgba(37,99,235,.35);
+  outline-offset:2px;
+}
+#admin-tab-content .pill-btn:disabled,
+#admin-tab-content button.primary-pill:disabled,
+#admin-tab-content button.soft-btn:disabled,
+#admin-tab-content button.success-pill:disabled,
+#admin-tab-content button.danger-pill:disabled{
+  opacity:.48;
+  box-shadow:none;
+  transform:none;
+  cursor:not-allowed;
+}
+#admin-tab-content .dropdown-item{
+  min-height:40px;
+  display:flex;
+  align-items:center;
+  width:100%;
+  padding:9px 12px;
+  border-radius:9px;
+  font-size:11px;
+  font-weight:700;
+  line-height:1.5;
+  text-align:right;
+}
+#admin-tab-content .dropdown-item:hover{background:#f1f5f9}
+@media(max-width:420px){
+  #admin-tab-content .pill-btn,
+  #admin-tab-content button.primary-pill,
+  #admin-tab-content button.soft-btn,
+  #admin-tab-content button.success-pill,
+  #admin-tab-content button.danger-pill{min-height:42px;padding:9px 10px;font-size:10px}
+}
+
+/* Admin UX Audit — Phase 1: clearer, full-width navigation groups. */
+.section-nav{grid-template-columns:minmax(0,1fr)!important;gap:12px!important}
+.section-nav-group{width:100%;min-width:0;padding:12px!important}
+.section-nav-title{min-width:0;margin-bottom:9px}
+.section-nav-heading{margin:0!important;padding:0 2px 5px!important;border-bottom:0!important;font-size:13px!important}
+.section-nav-description{margin:0;padding:0 30px 7px 2px;color:#64748b;font-size:10px;font-weight:600;line-height:1.6}
+.section-nav-items{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important}
+.section-nav-btn{min-width:0;min-height:52px!important;justify-content:center!important;text-align:center!important;overflow-wrap:anywhere}
+.section-nav-label{flex:1 1 auto;text-align:center}
+@media(max-width:380px){.section-nav-items{grid-template-columns:minmax(0,1fr)!important}.section-nav-btn{justify-content:flex-start!important;text-align:right!important}.section-nav-label{text-align:right}}
+
+/* Admin UX Audit — Phase 7: prevent mobile overflow and improve touch layouts. */
+#admin-tab-content{min-width:0;overflow-wrap:anywhere}
+#admin-tab-content .premium-panel,
+#admin-tab-content .premium-card{min-width:0;max-width:100%}
+#admin-tab-content .flex{min-width:0}
+#admin-tab-content input,
+#admin-tab-content select,
+#admin-tab-content textarea{min-width:0}
+#admin-tab-content table{width:100%;max-width:100%;display:block;overflow-x:auto;-webkit-overflow-scrolling:touch}
+#admin-tab-content pre,
+#admin-tab-content code{max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap}
+@media(max-width:560px){
+  main{padding-left:10px!important;padding-right:10px!important}
+  .admin-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+  .admin-kpi-card{min-height:82px;padding:8px}
+  .admin-kpi-card strong{font-size:20px}
+  .admin-quick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  #admin-tab-content .flex.flex-wrap{gap:7px}
+  #admin-tab-content .action-wrap{max-width:100%}
+  #admin-tab-content .dropdown-menu{right:auto;left:0}
+}
+@media(max-width:380px){
+  main{padding-left:8px!important;padding-right:8px!important}
+  .admin-kpi-card>span:last-child{font-size:9px}
+  #admin-tab-content .pill-btn{max-width:100%;overflow-wrap:anywhere}
+}
