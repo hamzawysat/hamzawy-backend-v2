@@ -3,6 +3,8 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const Notification = require('../models/Notification');
+const Client = require('../models/Client');
+const Fanni = require('../models/Fanni');
 const PushToken = require('../models/PushToken');
 const WebPushSubscription = require('../models/WebPushSubscription');
 const NotificationDelivery = require('../models/NotificationDelivery');
@@ -127,10 +129,18 @@ function mountRoleRoutes(role) {
         if (!owned.replyEnabled) return res.status(409).json({ message: 'هذا الإشعار لا يسمح بالرد.' });
         return res.status(409).json({ message: 'تم إرسال ردك بالفعل، لا يمكن إرسال رد آخر.' });
       }
+      const senderModel = role === 'client' ? Client : Fanni;
+      const sender = await senderModel.findById(owner(req, role)).select('name phone').lean();
+      const senderName = String(sender?.name || 'حساب غير متاح').trim();
+      const senderPhone = String(sender?.phone || 'غير متاح').trim();
       void notifyAdmins({
         type: 'admin_message_reply',
         title: 'رد جديد على إشعار إداري',
-        message: (role === 'client' ? 'رد من عميل: ' : 'رد من فني: ') + updated.title + ' — ' + message.slice(0, 180),
+        message: (role === 'client' ? 'رد من عميل' : 'رد من فني') +
+          ' — الاسم: ' + senderName +
+          ' — الهاتف: ' + senderPhone +
+          ' — الإشعار: ' + String(updated.title || '').slice(0, 80) +
+          ' — الرد: ' + message.slice(0, 180),
         link: '/admin?tab=notifications',
         relatedEntityType: 'notification',
         relatedEntityId: updated._id
