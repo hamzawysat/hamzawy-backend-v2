@@ -75,22 +75,33 @@
     });
   }
 
+  let detectionStarted = false;
+  let detectionComplete = false;
+  let detectedVersion = null;
+
   async function detectInstalledApp() {
     if (typeof navigator.getInstalledRelatedApps !== 'function') {
+      detectionComplete = true;
       applyState(null);
       return;
     }
     try {
       const related = await navigator.getInstalledRelatedApps();
       const installed = related.find((item) => item.platform === 'play' && item.id === PACKAGE_ID);
-      applyState(installed ? String(installed.version || '').trim() : null);
+      detectedVersion = installed ? String(installed.version || '').trim() : null;
     } catch (_) {
-      applyState(null);
+      detectedVersion = null;
     }
+    detectionComplete = true;
+    applyState(detectedVersion);
   }
 
   function scan() {
-    void detectInstalledApp();
+    if (detectionComplete) applyState(detectedVersion);
+    else if (!detectionStarted) {
+      detectionStarted = true;
+      void detectInstalledApp();
+    }
   }
 
   scan();
