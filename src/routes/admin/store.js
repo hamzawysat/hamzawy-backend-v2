@@ -266,7 +266,23 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
         }
         const inserted = toInsert.length ? await StoreProduct.insertMany(toInsert, { ordered: false }) : [];
         if (inserted.length) {
-          await writeAdminAudit(req, 'استيراد منتجات المتجر من ملف CSV', 'store-import', 'bulk', 'imported=' + inserted.length + '; duplicates=' + duplicates.length + '; errors=' + errors.length);
+          const config = await AdminConfig.findOne({ key: 'main' }) || new AdminConfig({ key: 'main' });
+          const configuredCategories = Array.isArray(config.storeCategories) ? config.storeCategories : [];
+          const categoryNames = new Map(configuredCategories
+            .map(item => [normalizeStoreCategoryName(item?.name).toLocaleLowerCase('ar'), normalizeStoreCategoryName(item?.name)])
+            .filter(([key, name]) => key && name));
+          const createdAt = new Date();
+          for (const product of inserted) {
+            const categoryName = normalizeStoreCategoryName(product.category) || 'غير مصنف';
+            const categoryKey = categoryName.toLocaleLowerCase('ar');
+            if (!categoryNames.has(categoryKey)) {
+              configuredCategories.push({ name: categoryName, imageUrl: '', imageFileId: null, createdAt, updatedAt: createdAt });
+              categoryNames.set(categoryKey, categoryName);
+            }
+          }
+          config.storeCategories = configuredCategories;
+          await config.save();
+          await writeAdminAudit(req, 'استيراد منتجات المتجر من ملف CSV', 'store-import', 'bulk', 'imported=' + inserted.length + '; categories=' + categoryNames.size + '; duplicates=' + duplicates.length + '; errors=' + errors.length);
         }
         return res.set('Cache-Control', 'no-store').status(inserted.length ? 201 : 200).json({
           message: 'انتهى استيراد ملف المنتجات.',
