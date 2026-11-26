@@ -177,6 +177,26 @@ async function run() {
       assert.equal(isAdminNotificationEnabled('future_admin_event', {}), true, 'unknown future events must default to enabled');
     });
 
+    await test('store bulk advertisements reuse the full individual audience, duration, priority and image validation settings', async () => {
+      const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      assert.match(source, /async function bulkStoreAdvertise\(\)[\s\S]*?openStoreAdvertisementSettings\(ids\)/);
+      assert.match(source, /function openStoreAdvertisementSettings\(productId\)[\s\S]*?العميل فقط[\s\S]*?الفني فقط[\s\S]*?value="365"[\s\S]*?الأولوية القصوى/);
+      assert.match(source, /const invalid=products\.filter/);
+      assert.match(source, /adAudience:selectedAudience,adPriority:selectedPriority,adExpiresAt:expiresAt/);
+    });
+
+    await test('store CSV category aliases and import create each new category once while preserving existing category settings', async () => {
+      const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
+      const route = fs.readFileSync(path.join(__dirname, '../routes/admin/store.js'), 'utf8');
+      assert.match(source, /اسم القسم/);
+      assert.match(source, /اسم الكسب/);
+      assert.match(source, /const category=String\(column\(row,'category'\)\|\|'غير مصنف'\)/);
+      assert.match(route, /const configuredCategories = Array\.isArray\(config\.storeCategories\) \? config\.storeCategories : \[\]/);
+      assert.match(route, /if \(!categoryNames\.has\(categoryKey\)\)/);
+      assert.match(route, /configuredCategories\.push\(\{ name: categoryName, imageUrl: '', imageFileId: null/);
+      assert.match(route, /config\.storeCategories = configuredCategories;[\s\S]*?await config\.save\(\)/);
+    });
+
     await test('admin store order polling suppresses old unread notifications and duplicate count toasts', async () => {
       const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-store.js'), 'utf8');
       const deployed = fs.readFileSync(path.join(__dirname, '../../frontend-dist/js/admin-store.js'), 'utf8');
