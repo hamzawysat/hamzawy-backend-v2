@@ -1265,6 +1265,48 @@ async function run() {
       await approvedFanni.save();
     });
 
+    await test('client referral self-invite risk is detected immediately at registration', async () => {
+      const Client = require('../models/Client');
+      const Referral = require('../models/Referral');
+      const AdminAuditLog = require('../models/AdminAuditLog');
+      const { makeReferralCode } = require('../utils/referralCodes');
+      const { referralFingerprint } = require('../utils/referralFingerprint');
+      const userAgent = 'SATVIEW-client-referral-self-invite-test';
+      const inviterFingerprint = referralFingerprint({
+        ip: '::ffff:127.0.0.1',
+        headers: { 'user-agent': userAgent }
+      });
+      const inviter = await Client.create({
+        name: 'عميل صاحب الدعوة',
+        phone: '01077776661',
+        passwordHash: 'test-hash',
+        ...inviterFingerprint
+      });
+      const registration = await request(app).post('/api/client/register')
+        .set('User-Agent', userAgent)
+        .send({
+          name: 'عميل اختبار الدعوة',
+          phone: '01077776662',
+          password: 'ClientTestPass123',
+          confirmPassword: 'ClientTestPass123',
+          referralCode: makeReferralCode('client', String(inviter._id))
+        });
+      assert.equal(registration.status, 201, JSON.stringify(registration.body));
+      const linkedReferral = await Referral.findOne({
+        kind: 'client', inviter: inviter._id, invitee: registration.body.client.id
+      }).lean();
+      assert.ok(linkedReferral, 'the client inviter must receive a referral record');
+      assert.equal(linkedReferral.status, 'eligible', 'client self-invite signal must hold reward review immediately');
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_ip'));
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_device_signature'));
+      assert.ok(linkedReferral.riskDetectedAt);
+      assert.equal(linkedReferral.completedCount, 0, 'client risk review must not wait for a completed order');
+      assert.ok(await AdminAuditLog.exists({
+        target: String(linkedReferral._id),
+        category: 'referrals'
+      }), 'client registration-time risk must be recorded in the admin audit log');
+    });
+
     await test('wallet top-up requests remain pending and never credit balance before admin review', async () => {
       const Fanni = require('../models/Fanni');
       const TopupRequest = require('../models/TopupRequest');
