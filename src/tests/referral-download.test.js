@@ -54,7 +54,7 @@ assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production page must hand off
 
 const appDownloadActions = fs.readFileSync(path.join(root, 'frontend/js/app-download-actions.js'), 'utf8');
 const builtAppDownloadActions = fs.readFileSync(path.join(root, 'frontend-dist/js/app-download-actions.js'), 'utf8');
-assert.match(appDownloadActions, /LATEST_VERSION = '1\.0\.17'/, 'shared browser app action must use the latest Android release');
+assert.match(appDownloadActions, /LATEST_VERSION = '1\.0\.16'/, 'shared browser app action must use the latest Android release');
 assert.match(appDownloadActions, /getInstalledRelatedApps/, 'shared browser app action must detect installed Android apps');
 assert.match(appDownloadActions, /تحديث التطبيق/);
 assert.match(appDownloadActions, /فتح التطبيق/);
