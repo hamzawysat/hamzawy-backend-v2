@@ -317,6 +317,17 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       const linkedOrders = await StoreOrder.countDocuments({ product: product._id });
       if (linkedOrders > 0) return res.status(409).json({ message: 'لا يمكن حذف هذا المنتج نهائيًا لارتباطه بطلبات سابقة. يمكنك إخفاؤه بدلًا من حذفه للحفاظ على سجل الطلبات.' });
       await StoreProduct.deleteOne({ _id: product._id });
+      // Remove the product's private GridFS image only when no other product references it.
+      // External image URLs are owned by their remote host and cannot be deleted here.
+      if (product.imageFileId && mongoose.connection.db) {
+        const sharedImage = await StoreProduct.exists({ _id: { $ne: product._id }, imageFileId: product.imageFileId });
+        if (!sharedImage) {
+          const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+          const fileId = product.imageFileId instanceof mongoose.Types.ObjectId ? product.imageFileId : new mongoose.Types.ObjectId(String(product.imageFileId));
+          const file = await bucket.find({ _id: fileId, 'metadata.purpose': 'store-product' }).limit(1).toArray();
+          if (file.length) await bucket.delete(fileId);
+        }
+      }
       await writeAdminAudit(req, 'حذف منتج من المتجر نهائيًا', 'store', String(product._id), product.name);
       return res.json({ message: 'تم حذف المنتج نهائيًا.' });
     } catch (error) { return next(error); }
