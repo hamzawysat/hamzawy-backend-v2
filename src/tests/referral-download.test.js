@@ -51,6 +51,25 @@ assert.ok(source.includes('/tag/1.0.17'), 'download page release label must matc
 assert.ok(built.includes('/1.0.17/HSsat.apk'), 'built production download page must serve the exact current HSsat APK');
 assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production page must hand off technician claim tokens');
 
+
+const appDownloadActions = fs.readFileSync(path.join(root, 'frontend/js/app-download-actions.js'), 'utf8');
+const builtAppDownloadActions = fs.readFileSync(path.join(root, 'frontend-dist/js/app-download-actions.js'), 'utf8');
+assert.match(appDownloadActions, /LATEST_VERSION = '1\\.0\\.17'/, 'shared browser app action must use the latest Android release');
+assert.match(appDownloadActions, /getInstalledRelatedApps/, 'shared browser app action must detect installed Android apps');
+assert.match(appDownloadActions, /تحديث التطبيق/);
+assert.match(appDownloadActions, /فتح التطبيق/);
+assert.match(appDownloadActions, /تحميل التطبيق/);
+assert.ok(builtAppDownloadActions.includes('getInstalledRelatedApps'), 'built shared app action script must include installed-app detection');
+for (const page of ['index.html', 'client.html', 'fanni.html']) {
+  const sourcePage = fs.readFileSync(path.join(root, 'frontend', page), 'utf8');
+  const builtPage = fs.readFileSync(path.join(root, 'frontend-dist', page), 'utf8');
+  assert.ok(sourcePage.includes('app-download-actions.js'), page + ' must load the shared app action logic');
+  assert.ok(builtPage.includes('app-download-actions.js'), 'built ' + page + ' must load the shared app action logic');
+}
+const homePage = fs.readFileSync(path.join(root, 'frontend/index.html'), 'utf8');
+assert.ok(homePage.includes('manifest.webmanifest'), 'home page must expose the related-app manifest for installed-app detection');
+assert.ok(n.includes('تحميل التطبيق'), 'download page must use the shared no-install action label');
+
 console.log('Client and technician referral APK download handoff checks passed.');
 
 assert.ok(source.includes('getInstalledRelatedApps'), 'download page must detect installed Android apps');
