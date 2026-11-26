@@ -74,7 +74,7 @@ function renderClientReferralCard(){
 }
 function renderAccountGate(){
 var reg=state.accountAuthMode==='register';
-document.title=reg?'تسجيل عميل جديد | ساتڤيو':'تسجيل دخول العميل | ساتڤيو';
+document.title=reg?'SATVIEW | إنشاء حساب عميل':'SATVIEW | تسجيل دخول العميل';
 var h='<main class="account-gate" style="background:#EEF2FF;';
 h+='min-height:100svh;min-height:100dvh;';
 h+='padding-top:max(1rem,env(safe-area-inset-top));';
@@ -188,7 +188,7 @@ function renderPublicContent(){
     '</section>';
 }
 async function loadPublicContent(){
-  try{const data=await API.request('/api/content?role=client',{method:'GET'});state.publicContent={siteName:String(data.siteName||'ساتڤيو'),maintenance:!!data.maintenance,maintenanceMessage:String(data.maintenanceMessage||''),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};document.title=state.account?'ساتڤيو - طلباتي':(state.accountAuthMode==='register'?'تسجيل عميل جديد | ساتڤيو':'تسجيل دخول العميل | ساتڤيو');render();}catch(error){log('تعذر تحميل محتوى الواجهة:',error);}
+  try{const data=await API.request('/api/content?role=client',{method:'GET'});state.publicContent={siteName:String(data.siteName||'ساتڤيو'),maintenance:!!data.maintenance,maintenanceMessage:String(data.maintenanceMessage||''),announcement:String(data.announcement||''),faqs:Array.isArray(data.faqs)?data.faqs:[]};document.title=state.account?'SATVIEW | لوحة العميل':(state.accountAuthMode==='register'?'SATVIEW | إنشاء حساب عميل':'SATVIEW | تسجيل دخول العميل');render();}catch(error){log('تعذر تحميل محتوى الواجهة:',error);}
 }
 function setAccountAuthMode(mode){state.accountAuthMode=mode==='register'?'register':'login';state.accountError='';render();}
 async function submitClientAccount(e){

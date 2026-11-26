@@ -60,7 +60,8 @@ function render(){
     }
     renderAccountGate();return;
   }
-  if(clientReferralPageOpen&&clientReferralInfo?.enabled){document.title='دعوة صديقك | ساتڤيو';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#2E7CF6]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
+  document.title='SATVIEW | لوحة العميل';
+  if(clientReferralPageOpen&&clientReferralInfo?.enabled){document.title='SATVIEW | دعوات العميل';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#2E7CF6]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
   const matching=CATEGORIES.map(c=>({
