@@ -1185,7 +1185,7 @@ async function run() {
       assert.equal(String(redeemedClaim.invitee), registration.body.id);
       const linkedReferral = await Referral.findOne({ kind: 'fanni', inviter: inviter._id, invitee: registration.body.id }).lean();
       assert.ok(linkedReferral, 'the original inviter must receive the referral record');
-      assert.equal(linkedReferral.status, 'eligible', 'same signup network/device must immediately hold the referral for security review before any completed job');
+      assert.equal(linkedReferral.status, 'held_for_review', 'same signup network/device must immediately hold the referral for security review before any completed job');
       assert.ok(linkedReferral.riskFlags.includes('same_registration_ip'), 'same-device signup must be detected at registration');
       assert.ok(linkedReferral.riskFlags.includes('same_registration_device_signature'), 'same browser signature on the same network must be recorded');
       assert.ok(linkedReferral.riskDetectedAt, 'registration-time suspicion must have a timestamp');
@@ -1296,7 +1296,7 @@ async function run() {
         kind: 'client', inviter: inviter._id, invitee: registration.body.client.id
       }).lean();
       assert.ok(linkedReferral, 'the client inviter must receive a referral record');
-      assert.equal(linkedReferral.status, 'eligible', 'client self-invite signal must hold reward review immediately');
+      assert.equal(linkedReferral.status, 'held_for_review', 'client self-invite signal must hold reward review immediately');
       assert.ok(linkedReferral.riskFlags.includes('same_registration_ip'));
       assert.ok(linkedReferral.riskFlags.includes('same_registration_device_signature'));
       assert.ok(linkedReferral.riskDetectedAt);
@@ -3345,13 +3345,13 @@ async function run() {
         completionDeclaredAt: new Date(Date.now() + 10 + i)
       })));
       const heldOutcome = await refreshReferralProgress({ kind: 'fanni', inviteeId: fraudTechnicians[1]._id, mongoose });
-      assert.equal(heldOutcome.status, 'eligible');
+      assert.equal(heldOutcome.status, 'held_for_review');
       assert.equal(heldOutcome.reviewRequired, true);
       assert.ok(heldOutcome.riskFlags.includes('shared_technician_national_id'));
       const heldBalances = await Fanni.find({ _id: { $in: fraudTechnicians.map(x => x._id) } }).sort({ phone: 1 }).lean();
       assert.deepEqual(heldBalances.map(x => x.walletBalance), [0, 0]);
       const heldReferral = await Referral.findOne({ number: 'RFTESTFRAUD001' }).lean();
-      assert.equal(heldReferral.status, 'eligible');
+      assert.equal(heldReferral.status, 'held_for_review');
       assert.ok(heldReferral.riskDetectedAt);
       assert.ok(heldReferral.riskFlags.includes('shared_technician_national_id'));
       assert.equal(await WalletTransaction.countDocuments({ referralNumber: 'RFTESTFRAUD001' }), 0);
