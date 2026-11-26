@@ -5,7 +5,7 @@ const STORE_CSV_IMPORT_FIELDS=[
   {key:'name',label:'اسم المنتج *',aliases:['name','productname','title','اسم المنتج','اسم','المنتج','الاسم']},
   {key:'price',label:'السعر *',aliases:['price','currentprice','sellingprice','sellprice','السعر','السعر الحالي','سعر البيع']},
   {key:'sourceId',label:'رقم المنتج الأصلي',aliases:['id','sourceid','productid','رقم المنتج','كود المنتج','معرف المنتج']},
-  {key:'category',label:'القسم',aliases:['category','section','group','القسم','الفئة','التصنيف']},
+  {key:'category',label:'القسم',aliases:['category','categoryname','section','sectionname','group','اسم القسم','اسم الكسب','القسم','الفئة','التصنيف','اسم الفئة','اسم التصنيف']},
   {key:'description',label:'الوصف',aliases:['description','shortdescription','الوصف','وصف']},
   {key:'details',label:'التفاصيل والمواصفات',aliases:['details','specifications','المواصفات','التفاصيل']},
   {key:'originalPrice',label:'السعر قبل العرض',aliases:['originalprice','oldprice','السعر الأصلي','السعر قبل الخصم','السعر قبل العرض']},
@@ -90,7 +90,7 @@ function prepareStoreCsvImportRows(){
     if(stockRaw!==''&&(stock===null||!Number.isInteger(stock)||stock<0))rowErrors.push('الكمية يجب أن تكون عددًا صحيحًا غير سالب.');
     const imageUrl=column(row,'imageUrl');
     if(imageUrl){let parsed;try{parsed=new URL(imageUrl);}catch(_){parsed=null;}if(!parsed||!['http:','https:'].includes(parsed.protocol)||imageUrl.length>1000)rowErrors.push('رابط الصورة يجب أن يبدأ بـ https:// أو http://.');}
-    const category=(column(row,'category')||'غير مصنف').slice(0,80);
+    const category=String(column(row,'category')||'غير مصنف').trim().replace(/\\s+/g,' ').slice(0,80)||'غير مصنف';
     const typeRaw=column(row,'type').toLowerCase();
     const type=(typeRaw.includes('اشتراك')||typeRaw.includes('subscription'))?'subscription':'product';
     const activeRaw=column(row,'isActive').toLowerCase();
@@ -642,7 +642,7 @@ async function bulkStoreDelete(){
 }
 async function bulkStoreHide(){var count=(state.storeSelectedIds||[]).length;await bulkStoreApply(function(b){b.isActive=false;},'إخفاء','تأكيد إخفاء '+count+' منتج محدد من المتجر؟');}
 async function bulkStoreShow(){await bulkStoreApply(function(b){b.isActive=true;},'إظهار');}
-async function bulkStoreAdvertise(){await bulkStoreApply(function(b){b.isAdvertised=true;if(!b.adExpiresAt)b.adExpiresAt=new Date(Date.now()+7*86400000).toISOString();},'نشر الإعلان');}
+async function bulkStoreAdvertise(){if(state.storeBulkBusy)return;var ids=Array.isArray(state.storeSelectedIds)?state.storeSelectedIds.map(String):[];if(!ids.length)return showToast('حدد المنتجات المطلوب نشر إعلان لها أولًا.','error');await loadStoreProducts();if(state.storeProductsLoadError||state.storeProductsLoading)return showToast(state.storeProductsLoadError||'قائمة المنتجات ما زالت قيد التحديث. حاول مرة أخرى.','error');openStoreAdvertisementSettings(ids);}
 async function bulkStoreUnadvertise(){await bulkStoreApply(function(b){b.isAdvertised=false;},'إيقاف الإعلان');}
 async function bulkStoreMoveCategory(){var cat=prompt('انقل المختارين لقسم ايه؟ اكتب اسم القسم');if(!cat)return;cat=String(cat).trim().slice(0,80);if(!cat)return;await bulkStoreApply(function(b){b.category=cat;},'نقل المنتجات للقسم');}
 async function clearWrongUnsplashImages(){var wrong=(state.storeProducts||[]).filter(function(x){return String(x.imageUrl||'').indexOf('unsplash')>=0;});if(!wrong.length)return showToast('مفيش صور Unsplash غلط');if(!confirmAdminAction('هنشيل '+wrong.length+' صورة غلط ونرجع المنتجات من غير صورة. متأكد؟'))return;for(var i=0;i<wrong.length;i++){var pr=wrong[i];try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(pr._id)],{method:'PUT',body:JSON.stringify({name:pr.name,category:pr.category||'غير مصنف',description:pr.description||'',details:pr.details||'',price:Number(pr.price),originalPrice:pr.originalPrice??null,offerText:pr.offerText||'',type:pr.type||'product',subscriptionDuration:pr.subscriptionDuration||'',imageUrl:'',imageFileId:null,isActive:pr.isActive!==false,stock:pr.stock??null,isAdvertised:!!pr.isAdvertised,adAudience:pr.adAudience||'both',adPriority:Number(pr.adPriority)||0,adExpiresAt:pr.adExpiresAt||null})});}catch(e){}}
@@ -662,14 +662,17 @@ async function updateStoreOrder(id){
 async function showStoreProduct(id){await loadStoreProducts();const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'PUT',body:JSON.stringify({name:p.name,category:p.category||'غير مصنف',price:p.price,originalPrice:p.originalPrice??null,offerText:p.offerText||'',type:p.type||'product',subscriptionDuration:p.subscriptionDuration||'',description:p.description||'',details:p.details||'',imageUrl:p.imageUrl||'',imageFileId:p.imageFileId||null,isActive:true,stock:p.stock??null,isAdvertised:!!p.isAdvertised,adAudience:p.adAudience||'both',adPriority:Number(p.adPriority)||0,adExpiresAt:p.adExpiresAt||null})});showToast('تم إظهار المنتج');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر إظهار المنتج','error');}}
 
 function openStoreAdvertisementSettings(productId){
-  const product=(state.storeProducts||[]).find(item=>String(item._id)===String(productId));
-  if(!product)return;
+  const productIds=(Array.isArray(productId)?productId:[productId]).map(String);
+  const products=productIds.map(id=>(state.storeProducts||[]).find(item=>String(item._id)===id)).filter(Boolean);
+  if(!products.length)return;
+  const isBulk=Array.isArray(productId);
+  const product=products[0];
   const existing=document.getElementById('store-ad-settings-modal');
   if(existing)existing.remove();
   const modal=document.createElement('div');
   modal.id='store-ad-settings-modal';
   modal.className='fixed inset-0 z-[120] flex items-center justify-center bg-slate-950/50 p-4';
-  modal.innerHTML='<div class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl text-right" dir="rtl"><div class="flex items-center justify-between gap-3 mb-3"><b class="text-base">إعدادات نشر الإعلان</b><button type="button" data-ad-cancel class="rounded-full px-3 py-1 text-lg text-slate-500" aria-label="إغلاق">×</button></div><p class="mb-3 text-xs text-slate-500">'+escHtml(product.name)+'</p><label class="block mb-2 text-xs font-bold">الجمهور المستهدف</label><select id="store-ad-modal-audience" class="field mb-3"><option value="both">العميل والفني</option><option value="client">العميل فقط</option><option value="fanni">الفني فقط</option></select><label class="block mb-2 text-xs font-bold">مدة الإعلان</label><select id="store-ad-modal-days" class="field mb-3"><option value="1">يوم واحد</option><option value="3">3 أيام</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><label class="block mb-2 text-xs font-bold">أولوية الظهور</label><select id="store-ad-modal-priority" class="field mb-4"><option value="0">عادية</option><option value="10">منخفضة جدًا</option><option value="20">منخفضة</option><option value="30">أقل من متوسطة</option><option value="40">متوسطة منخفضة</option><option value="50">متوسطة</option><option value="60">متوسطة مرتفعة</option><option value="70">مرتفعة</option><option value="80">مرتفعة جدًا</option><option value="90">عاجلة</option><option value="100">الأولوية القصوى</option></select><div class="flex gap-2"><button type="button" data-ad-publish class="primary-btn flex-1 rounded-xl py-3">نشر الإعلان</button><button type="button" data-ad-cancel class="rounded-xl border border-slate-200 px-4 py-2 text-sm">إلغاء</button></div></div>';
+  modal.innerHTML='<div class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl text-right" dir="rtl"><div class="flex items-center justify-between gap-3 mb-3"><b class="text-base">إعدادات نشر الإعلان</b><button type="button" data-ad-cancel class="rounded-full px-3 py-1 text-lg text-slate-500" aria-label="إغلاق">×</button></div><p class="mb-3 text-xs text-slate-500">'+(isBulk?'سيتم تطبيق الإعدادات على '+products.length+' منتج محدد.':escHtml(product.name))+'</p><label class="block mb-2 text-xs font-bold">الجمهور المستهدف</label><select id="store-ad-modal-audience" class="field mb-3"><option value="both">العميل والفني</option><option value="client">العميل فقط</option><option value="fanni">الفني فقط</option></select><label class="block mb-2 text-xs font-bold">مدة الإعلان</label><select id="store-ad-modal-days" class="field mb-3"><option value="1">يوم واحد</option><option value="3">3 أيام</option><option value="7">أسبوع</option><option value="14">أسبوعان</option><option value="30">شهر</option><option value="60">شهران</option><option value="90">3 شهور</option><option value="180">6 شهور</option><option value="365">سنة</option></select><label class="block mb-2 text-xs font-bold">أولوية الظهور</label><select id="store-ad-modal-priority" class="field mb-4"><option value="0">عادية</option><option value="10">منخفضة جدًا</option><option value="20">منخفضة</option><option value="30">أقل من متوسطة</option><option value="40">متوسطة منخفضة</option><option value="50">متوسطة</option><option value="60">متوسطة مرتفعة</option><option value="70">مرتفعة</option><option value="80">مرتفعة جدًا</option><option value="90">عاجلة</option><option value="100">الأولوية القصوى</option></select><div class="flex gap-2"><button type="button" data-ad-publish class="primary-btn flex-1 rounded-xl py-3">نشر الإعلان</button><button type="button" data-ad-cancel class="rounded-xl border border-slate-200 px-4 py-2 text-sm">إلغاء</button></div></div>';
   document.body.appendChild(modal);
   const audience=modal.querySelector('#store-ad-modal-audience');
   const days=modal.querySelector('#store-ad-modal-days');
@@ -683,13 +686,35 @@ function openStoreAdvertisementSettings(productId){
   modal.addEventListener('click',event=>{if(event.target===modal)modal.remove();});
   modal.querySelector('[data-ad-publish]').addEventListener('click',async()=>{
     const selectedDays=Number(days.value),selectedPriority=Number(priority.value),selectedAudience=audience.value;
-    if(!(/^https?:\/\//i.test(String(product.imageUrl||''))||/^\/api\/store\/media\/[a-f0-9]{24}$/i.test(String(product.imageUrl||''))))return showToast('أضف صورة صالحة للمنتج أولًا','error');
+    const invalid=products.filter(item=>!(/^https?:\/\//i.test(String(item.imageUrl||''))||/^\/api\/store\/media\/[a-f0-9]{24}$/i.test(String(item.imageUrl||''))));
+    if(invalid.length)return showToast('لا يمكن نشر الإعلان: أضف صورة صالحة إلى '+invalid.length+' منتج من المحددين أولًا.','error');
+    const publishButton=modal.querySelector('[data-ad-publish]');
+    publishButton.disabled=true;
+    publishButton.textContent='جاري نشر '+products.length+' منتج...';
+    const succeeded=[],failed=[];
+    const expiresAt=new Date(Date.now()+selectedDays*86400000).toISOString();
     try{
-      await tryApi(['/api/admin/store/products/'+encodeURIComponent(productId)],{method:'PUT',body:JSON.stringify({name:product.name,category:product.category||'غير مصنف',description:product.description||'',details:product.details||'',price:Number(product.price),originalPrice:product.originalPrice??null,offerText:product.offerText||'',type:product.type||'product',subscriptionDuration:product.subscriptionDuration||'',imageUrl:product.imageUrl||'',imageFileId:product.imageFileId||null,isActive:product.isActive!==false,stock:product.stock??null,isAdvertised:true,adAudience:selectedAudience,adPriority:selectedPriority,adExpiresAt:new Date(Date.now()+selectedDays*86400000).toISOString()})});
+      for(const item of products){
+        try{
+          await tryApi(['/api/admin/store/products/'+encodeURIComponent(item._id)],{method:'PUT',body:JSON.stringify({name:item.name,category:item.category||'غير مصنف',description:item.description||'',details:item.details||'',price:Number(item.price),originalPrice:item.originalPrice??null,offerText:item.offerText||'',type:item.type||'product',subscriptionDuration:item.subscriptionDuration||'',imageUrl:item.imageUrl||'',imageFileId:item.imageFileId||null,isActive:item.isActive!==false,stock:item.stock??null,isAdvertised:true,adAudience:selectedAudience,adPriority:selectedPriority,adExpiresAt:expiresAt})});
+          succeeded.push(String(item._id));
+        }catch(error){failed.push({id:String(item._id),message:error?.message||'تعذر نشر الإعلان'});}
+      }
+      if(isBulk)state.storeSelectedIds=failed.map(item=>item.id);
+      if(failed.length){
+        showToast('تم نشر الإعلان على '+succeeded.length+' من '+products.length+' منتج، وفشل '+failed.length+'.','error');
+        if(!succeeded.length){publishButton.disabled=false;publishButton.textContent='إعادة المحاولة';return;}
+      }else{
+        showToast('تم نشر الإعلان بالإعدادات المحددة على '+succeeded.length+' منتج');
+        if(isBulk)state.storeSelectedIds=[];
+      }
       modal.remove();
-      showToast('تم نشر الإعلان بالإعدادات المحددة');
       await loadStoreProducts();
-    }catch(error){showToast(error.message||'تعذر نشر الإعلان','error');}
+    }catch(error){
+      publishButton.disabled=false;
+      publishButton.textContent='إعادة المحاولة';
+      showToast(error.message||'تعذر نشر الإعلان','error');
+    }
   });
 }
 async function manageStoreProductAdvertisement(id){
