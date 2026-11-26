@@ -665,7 +665,7 @@ function openStoreAdvertisementSettings(productId){
   const productIds=(Array.isArray(productId)?productId:[productId]).map(String);
   const products=productIds.map(id=>(state.storeProducts||[]).find(item=>String(item._id)===id)).filter(Boolean);
   if(!products.length)return;
-  const isBulk=products.length>1;
+  const isBulk=Array.isArray(productId);
   const product=products[0];
   const existing=document.getElementById('store-ad-settings-modal');
   if(existing)existing.remove();
