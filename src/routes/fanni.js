@@ -13,7 +13,7 @@ const PhoneIdentity = require('../models/PhoneIdentity');
 const FanniCardLedger = require('../models/FanniCardLedger');
 const { normalizeNationalId, cardHash, encryptNationalId, isValidNationalId } = require('../services/fanniCardIdentity');
 const AdminConfig = require('../models/AdminConfig');
-const Referral = require('../models/Referral');
+const { createReferralWithRegistrationRisk } = require('../services/referralRegistrationRisk');
 const ReferralClaim = require('../models/ReferralClaim');
 const { readReferralCode } = require('../utils/referralCodes');
 const Service = require('../models/Service');
@@ -378,10 +378,10 @@ router.post(
           }
           if (inviterId) {
             const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
-            await Referral.create([{
-              number, code: number, inviteCodeUsed: usedCode, kind: 'fanni',
-              inviter: inviterId, invitee: fanni._id, requiredCount: 3
-            }], { session });
+            await createReferralWithRegistrationRisk({
+              kind: 'fanni', inviterId, inviteeId: fanni._id, number,
+              usedCode, requiredCount: 3, session
+            });
           }
           if (referralClaim) {
             const consumed = await ReferralClaim.updateOne(
