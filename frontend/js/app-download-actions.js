@@ -1,7 +1,7 @@
 (function () {
   'use strict';
 
-  const LATEST_VERSION = '1.0.16';
+  const LATEST_VERSION = '1.0.17';
   const PACKAGE_ID = 'com.sonaa.app';
   const OPEN_URL = 'hamzawy://';
 
