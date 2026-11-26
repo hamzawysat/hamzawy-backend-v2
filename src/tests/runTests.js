@@ -1144,9 +1144,15 @@ async function run() {
       const Referral = require('../models/Referral');
       const ReferralClaim = require('../models/ReferralClaim');
       const { makeReferralCode } = require('../utils/referralCodes');
+      const { referralFingerprint } = require('../utils/referralFingerprint');
+      const sameSignupDevice = referralFingerprint({
+        ip: '::ffff:127.0.0.1',
+        headers: { 'user-agent': 'SATVIEW-referral-self-invite-test' }
+      });
       const inviter = await Fanni.create({
         name: 'فني صاحب الدعوة', phone: '01012345684', passwordHash: 'test-hash',
-        specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni'
+        specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni',
+        ...sameSignupDevice
       });
       const preparedInvite = await request(app).post('/api/referrals/prepare-fanni')
         .send({ referralCode: makeReferralCode('fanni', String(inviter._id)) });
@@ -1159,7 +1165,9 @@ async function run() {
       assert.equal(savedClaim.claimedAt, null);
       assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000 + 5000, 'technician handoff claims must expire within 24 hours');
       assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() > 23 * 60 * 60 * 1000, 'fresh technician handoff claims must retain a usable 24-hour window');
-      const registration = await request(app).post('/api/fanni/register').send({
+      const registration = await request(app).post('/api/fanni/register')
+        .set('User-Agent', 'SATVIEW-referral-self-invite-test')
+        .send({
         name: 'فني اختبار التسجيل',
         phone,
         password: 'FanniTestPass123',
@@ -1177,6 +1185,11 @@ async function run() {
       assert.equal(String(redeemedClaim.invitee), registration.body.id);
       const linkedReferral = await Referral.findOne({ kind: 'fanni', inviter: inviter._id, invitee: registration.body.id }).lean();
       assert.ok(linkedReferral, 'the original inviter must receive the referral record');
+      assert.equal(linkedReferral.status, 'eligible', 'same signup network/device must immediately hold the referral for security review before any completed job');
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_ip'), 'same-device signup must be detected at registration');
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_device_signature'), 'same browser signature on the same network must be recorded');
+      assert.ok(linkedReferral.riskDetectedAt, 'registration-time suspicion must have a timestamp');
+      assert.equal(linkedReferral.completedCount, 0, 'risk review must not require any completed jobs');
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
 
@@ -1250,6 +1263,48 @@ async function run() {
       approvedFanni.technicianGuidelinesAcceptedAt = null;
       approvedFanni.technicianGuidelinesVersion = '';
       await approvedFanni.save();
+    });
+
+    await test('client referral self-invite risk is detected immediately at registration', async () => {
+      const Client = require('../models/Client');
+      const Referral = require('../models/Referral');
+      const AdminAuditLog = require('../models/AdminAuditLog');
+      const { makeReferralCode } = require('../utils/referralCodes');
+      const { referralFingerprint } = require('../utils/referralFingerprint');
+      const userAgent = 'SATVIEW-client-referral-self-invite-test';
+      const inviterFingerprint = referralFingerprint({
+        ip: '::ffff:127.0.0.1',
+        headers: { 'user-agent': userAgent }
+      });
+      const inviter = await Client.create({
+        name: 'عميل صاحب الدعوة',
+        phone: '01077776661',
+        passwordHash: 'test-hash',
+        ...inviterFingerprint
+      });
+      const registration = await request(app).post('/api/client/register')
+        .set('User-Agent', userAgent)
+        .send({
+          name: 'عميل اختبار الدعوة',
+          phone: '01077776662',
+          password: 'ClientTestPass123',
+          confirmPassword: 'ClientTestPass123',
+          referralCode: makeReferralCode('client', String(inviter._id))
+        });
+      assert.equal(registration.status, 201, JSON.stringify(registration.body));
+      const linkedReferral = await Referral.findOne({
+        kind: 'client', inviter: inviter._id, invitee: registration.body.client.id
+      }).lean();
+      assert.ok(linkedReferral, 'the client inviter must receive a referral record');
+      assert.equal(linkedReferral.status, 'eligible', 'client self-invite signal must hold reward review immediately');
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_ip'));
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_device_signature'));
+      assert.ok(linkedReferral.riskDetectedAt);
+      assert.equal(linkedReferral.completedCount, 0, 'client risk review must not wait for a completed order');
+      assert.ok(await AdminAuditLog.exists({
+        target: String(linkedReferral._id),
+        category: 'referrals'
+      }), 'client registration-time risk must be recorded in the admin audit log');
     });
 
     await test('wallet top-up requests remain pending and never credit balance before admin review', async () => {

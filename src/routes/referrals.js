@@ -149,7 +149,7 @@ router.post('/admin/:id/approve-risk', auth('admin'), async (req, res, next) => 
     try {
       await session.withTransaction(async () => {
         referral = await Referral.findOne({
-          _id: req.params.id, status: 'eligible',
+          _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible'] },
           riskFlags: { $exists: true, $ne: [] },
           'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
         }).session(session);
@@ -157,6 +157,9 @@ router.post('/admin/:id/approve-risk', auth('admin'), async (req, res, next) => 
         const reviewedFlags = [...(referral.riskFlags || [])];
         referral.riskReviewedFlags = [...new Set([...(referral.riskReviewedFlags || []), ...reviewedFlags])];
         referral.riskFlags = [];
+        // A risk hold may be reviewed before the referral reaches its completion threshold.
+        // Restore the natural progress state instead of leaving it marked eligible.
+        referral.status = Number(referral.completedCount || 0) > 0 ? 'in_progress' : 'pending';
         referral.riskReviewedAt = new Date();
         referral.riskReviewedBy = req.user?._id || null;
         await referral.save({ session });
