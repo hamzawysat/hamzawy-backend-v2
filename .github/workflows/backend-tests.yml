@@ -47,10 +47,14 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git diff --binary HEAD -- frontend-dist/ > /tmp/frontend-dist-build.patch
+          git fetch origin "${BRANCH_NAME}"
+          git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
+          git apply /tmp/frontend-dist-build.patch
           git add frontend-dist/
           if ! git diff --cached --quiet; then
             git commit -m 'Build frontend-dist for store fixes'
-            git push origin "HEAD:${BRANCH_NAME}"
+            git push origin "${BRANCH_NAME}"
           else
             echo 'frontend-dist already matches the build output'
           fi
