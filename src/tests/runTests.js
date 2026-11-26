@@ -633,6 +633,15 @@ async function run() {
       assert.ok(adminStore.includes("TextDecoder('windows-1256')"), 'admin should support Arabic Excel CSV files saved with Windows-1256 encoding');
       assert.ok(adminStore.includes('resultDetails'), 'admin should show row-level import errors and duplicate reasons after submission');
       assert.ok(adminStore.includes('اسم المنتج *') && adminStore.includes('السعر *'), 'product name and price must remain required for imports');
+      assert.ok(adminStore.includes("'sellprice'"), 'sell_price must auto-map to product price');
+      assert.ok(adminStore.includes('accept=".csv,.xlsx,text/csv'), 'CSV text files named with .xlsx must be selectable');
+      assert.ok(adminStore.includes("'sourceId'"), 'source id must be retained as sourceId');
+      assert.ok(adminStore.includes("'imageStatus'"), 'image_status must be retained as imageStatus');
+      assert.ok(adminStore.includes('const quantity=item?.product.stock'), 'preview must show imported quantity');
+      assert.ok(adminStore.includes('const imageUrl=item?.product.imageUrl'), 'preview must show image URL');
+      assert.ok(adminStore.includes('const imageStatus=item?.product.imageStatus'), 'preview must show image status');
+      assert.ok(adminStore.includes('const sourceId=item?.product.sourceId'), 'preview must show original source id');
+      assert.ok(adminStore.includes("price:price??0,sourceId:column(row,'sourceId')"), 'source metadata must be sent with imported products');
     });
 
     await test('role defaults are restored and manager can publish orders and moderate offers', async () => {

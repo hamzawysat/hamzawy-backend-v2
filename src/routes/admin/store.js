@@ -19,6 +19,8 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
   }).unknown(false);
   const productSchema = Joi.object({
     name: Joi.string().trim().min(2).max(120).required(),
+    sourceId: Joi.string().trim().max(120).allow('').default(''),
+    imageStatus: Joi.string().trim().max(200).allow('').default(''),
     category: Joi.string().trim().max(80).allow('').default('غير مصنف'),
     description: Joi.string().trim().max(2000).allow('').default(''),
     details: Joi.string().trim().max(5000).allow('').default(''),

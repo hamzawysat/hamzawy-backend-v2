@@ -3,7 +3,8 @@
 let storeCsvImportState={open:false,fileName:'',headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:false,result:null};
 const STORE_CSV_IMPORT_FIELDS=[
   {key:'name',label:'اسم المنتج *',aliases:['name','productname','title','اسم المنتج','اسم','المنتج','الاسم']},
-  {key:'price',label:'السعر *',aliases:['price','currentprice','sellingprice','السعر','السعر الحالي','سعر البيع']},
+  {key:'price',label:'السعر *',aliases:['price','currentprice','sellingprice','sellprice','السعر','السعر الحالي','سعر البيع']},
+  {key:'sourceId',label:'رقم المنتج الأصلي',aliases:['id','sourceid','productid','رقم المنتج','كود المنتج','معرف المنتج']},
   {key:'category',label:'القسم',aliases:['category','section','group','القسم','الفئة','التصنيف']},
   {key:'description',label:'الوصف',aliases:['description','shortdescription','الوصف','وصف']},
   {key:'details',label:'التفاصيل والمواصفات',aliases:['details','specifications','المواصفات','التفاصيل']},
@@ -12,6 +13,7 @@ const STORE_CSV_IMPORT_FIELDS=[
   {key:'type',label:'نوع المنتج',aliases:['type','producttype','نوع المنتج','النوع']},
   {key:'subscriptionDuration',label:'مدة الاشتراك',aliases:['duration','subscriptionduration','مدة الاشتراك']},
   {key:'imageUrl',label:'رابط الصورة',aliases:['image','imageurl','image_url','رابط الصورة','رابط صورة المنتج','صورة المنتج']},
+  {key:'imageStatus',label:'حالة الصورة',aliases:['imagestatus','image_status','حالة الصورة','حالة رابط الصورة']},
   {key:'stock',label:'الكمية / المخزون',aliases:['stock','quantity','qty','الكمية','المخزون','عدد']},
   {key:'isActive',label:'حالة المنتج',aliases:['active','isactive','enabled','نشط','مفعل','حالة المنتج']}
 ];
@@ -94,7 +96,7 @@ function prepareStoreCsvImportRows(){
     const activeRaw=column(row,'isActive').toLowerCase();
     const isActive=activeRaw===''?true:!['0','false','no','inactive','غير مفعل','مخفي','لا'].includes(activeRaw);
     const product={
-      name,category,price:price??0,originalPrice,offerText:column(row,'offerText').slice(0,200),
+      name,category,price:price??0,sourceId:column(row,'sourceId').slice(0,120),imageStatus:column(row,'imageStatus').slice(0,200),originalPrice,offerText:column(row,'offerText').slice(0,200),
       type,subscriptionDuration:column(row,'subscriptionDuration').slice(0,60),
       description:column(row,'description').slice(0,2000),details:column(row,'details').slice(0,5000),
       imageUrl,imageFileId:null,isActive,isAdvertised:false,adAudience:'both',adPriority:0,adExpiresAt:null,stock
@@ -107,7 +109,7 @@ function prepareStoreCsvImportRows(){
 }
 function renderStoreCsvImportPanel(){
   const s=storeCsvImportState;
-  const toggle='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(s.open?'إغلاق':'استيراد CSV')+'</button></div>';
+  const toggle='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة، حتى لو كان اسمه ينتهي بـ .xlsx بشرط أن يكون محتواه CSV نصيًا.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(s.open?'إغلاق':'استيراد CSV')+'</button></div>';
   if(!s.open)return toggle;
   const mapping=s.headers.length?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">'+STORE_CSV_IMPORT_FIELDS.map(field=>'<label class="block text-[11px] font-bold text-slate-600">'+escHtml(field.label)+'<select data-store-csv-map="'+field.key+'" onchange="updateStoreCsvMapping(this)" class="field mt-1"><option value="">— بدون ربط —</option>'+s.headers.map((header,index)=>'<option value="'+index+'" '+(String(s.mapping[field.key]??'')===String(index)?'selected':'')+'>'+escHtml(header||('عمود '+(index+1)))+'</option>').join('')+'</select></label>').join('')+'</div>':'';
   const prepared=s.headers.length?prepareStoreCsvImportRows():{valid:[],errors:[]};
@@ -118,13 +120,17 @@ function renderStoreCsvImportPanel(){
     const name=item?.product.name||issue?.name||'—';
     const price=item?Number(item.product.price).toLocaleString('en-US'):'—';
     const category=item?.product.category||'—';
-    return '<tr class="border-t"><td class="p-2 text-[10px]">'+rowNumber+'</td><td class="p-2 text-[10px]">'+escHtml(name)+'</td><td class="p-2 text-[10px]">'+price+'</td><td class="p-2 text-[10px]">'+escHtml(category)+'</td><td class="p-2 text-[10px] '+(issue?'text-rose-700':'text-emerald-700')+'">'+(issue?escHtml(issue.message):item?'جاهز':'—')+'</td></tr>';
+    const quantity=item?.product.stock==null?'—':String(item.product.stock);
+    const imageUrl=item?.product.imageUrl||'—';
+    const imageStatus=item?.product.imageStatus||'—';
+    const sourceId=item?.product.sourceId||'—';
+    return '<tr class="border-t"><td class="p-2 text-[10px]">'+rowNumber+'</td><td class="p-2 text-[10px]">'+escHtml(sourceId)+'</td><td class="p-2 text-[10px]">'+escHtml(name)+'</td><td class="p-2 text-[10px]">'+price+'</td><td class="p-2 text-[10px]">'+escHtml(quantity)+'</td><td class="p-2 text-[10px]">'+escHtml(category)+'</td><td class="p-2 text-[10px] max-w-[180px] break-all">'+escHtml(imageUrl)+'</td><td class="p-2 text-[10px]">'+escHtml(imageStatus)+'</td><td class="p-2 text-[10px] '+(issue?'text-rose-700':'text-emerald-700')+'">'+(issue?escHtml(issue.message):item?'جاهز':'—')+'</td></tr>';
   }).join('');
   const summary=s.headers.length?'<div class="rounded-xl bg-slate-50 p-3 text-xs flex flex-wrap gap-x-4 gap-y-1"><span>إجمالي الصفوف: <b>'+s.rows.length+'</b></span><span class="text-emerald-700">جاهز: <b>'+prepared.valid.length+'</b></span><span class="text-rose-700">به أخطاء: <b>'+prepared.errors.length+'</b></span></div>':'';
   const result=s.result?'<div class="rounded-xl border border-emerald-200 bg-emerald-50 p-3 text-xs text-emerald-900">تمت الإضافة: <b>'+Number(s.result.importedCount||0)+'</b> • المكرر والمتخطى: <b>'+Number(s.result.duplicateCount||0)+'</b> • صفوف بها أخطاء: <b>'+Number(s.result.errorCount||0)+'</b></div>':'';
   const resultDetails=s.result?[...(s.result.duplicates||[]),...(s.result.errors||[])].slice(0,12).map(item=>'<li class="text-[10px] text-slate-600">الصف '+Number(item.rowNumber||0)+': '+escHtml(item.name||'')+' — '+escHtml(item.message||'تم تخطي الصف')+'</li>').join(''):'';
-  const table=prepared.valid.length||prepared.errors.length?'<div class="overflow-x-auto rounded-xl border"><table class="w-full text-right"><thead><tr class="bg-slate-50"><th class="p-2 text-[10px]">صف</th><th class="p-2 text-[10px]">المنتج</th><th class="p-2 text-[10px]">السعر</th><th class="p-2 text-[10px]">القسم</th><th class="p-2 text-[10px]">المراجعة</th></tr></thead><tbody>'+preview+'</tbody></table><p class="text-[10px] text-slate-500 p-2">المعاينة تعرض أول 8 صفوف فقط. سيتم فحص جميع الصفوف عند الاستيراد.</p></div>':'';
-  return toggle+'<section class="premium-panel p-4 space-y-3"><div><b class="block text-sm">رفع ملف المنتجات CSV</b><p class="text-[10px] text-slate-500 mt-1">يمكن ربط الأعمدة تلقائيًا أو اختيار العمود يدويًا. اسم المنتج والسعر إلزاميان. المنتجات المكررة بنفس الاسم والقسم سيتم تخطيها، ولن يتم تعديل المنتجات الموجودة.</p></div><input type="file" accept=".csv,text/csv" class="field w-full" onchange="handleStoreCsvFile(this.files&&this.files[0])"><p class="text-[10px] text-slate-500">'+(s.fileName?'الملف: '+escHtml(s.fileName):'يدعم CSV بفواصل أو فاصلة منقوطة أو Tab، مع دعم النصوص العربية.')+'</p>'+mapping+summary+table+result+(resultDetails?'<ul class="rounded-xl bg-slate-50 p-3 space-y-1">'+resultDetails+'</ul>':'')+'<div class="flex gap-2"><button type="button" onclick="importStoreCsvProducts()" '+(!prepared.valid.length||s.busy?'disabled':'')+' class="primary-btn rounded-xl px-4 py-3 flex-1 disabled:opacity-40">'+(s.busy?'جاري الاستيراد...':'استيراد '+prepared.valid.length+' منتج')+'</button><button type="button" onclick="resetStoreCsvImporter()" class="rounded-xl border px-4 py-3 text-xs font-bold">مسح الملف</button></div></section>';
+  const table=prepared.valid.length||prepared.errors.length?'<div class="overflow-x-auto rounded-xl border"><table class="w-full text-right"><thead><tr class="bg-slate-50"><th class="p-2 text-[10px]">صف</th><th class="p-2 text-[10px]">رقم المصدر</th><th class="p-2 text-[10px]">المنتج</th><th class="p-2 text-[10px]">السعر</th><th class="p-2 text-[10px]">الكمية</th><th class="p-2 text-[10px]">القسم</th><th class="p-2 text-[10px]">رابط الصورة</th><th class="p-2 text-[10px]">حالة الصورة</th><th class="p-2 text-[10px]">المراجعة</th></tr></thead><tbody>'+preview+'</tbody></table><p class="text-[10px] text-slate-500 p-2">المعاينة تعرض أول 8 صفوف فقط. سيتم فحص جميع الصفوف عند الاستيراد.</p></div>':'';
+  return toggle+'<section class="premium-panel p-4 space-y-3"><div><b class="block text-sm">رفع ملف المنتجات CSV</b><p class="text-[10px] text-slate-500 mt-1">يمكن ربط الأعمدة تلقائيًا أو اختيار العمود يدويًا. اسم المنتج والسعر إلزاميان. المنتجات المكررة بنفس الاسم والقسم سيتم تخطيها، ولن يتم تعديل المنتجات الموجودة.</p></div><input type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/plain" class="field w-full" onchange="handleStoreCsvFile(this.files&&this.files[0])"><p class="text-[10px] text-slate-500">'+(s.fileName?'الملف: '+escHtml(s.fileName):'يدعم CSV بفواصل أو فاصلة منقوطة أو Tab، مع دعم النصوص العربية. يقبل امتداد XLSX إذا كان الملف نفسه CSV نصيًا.')+'</p>'+mapping+summary+table+result+(resultDetails?'<ul class="rounded-xl bg-slate-50 p-3 space-y-1">'+resultDetails+'</ul>':'')+'<div class="flex gap-2"><button type="button" onclick="importStoreCsvProducts()" '+(!prepared.valid.length||s.busy?'disabled':'')+' class="primary-btn rounded-xl px-4 py-3 flex-1 disabled:opacity-40">'+(s.busy?'جاري الاستيراد...':'استيراد '+prepared.valid.length+' منتج')+'</button><button type="button" onclick="resetStoreCsvImporter()" class="rounded-xl border px-4 py-3 text-xs font-bold">مسح الملف</button></div></section>';
 }
 function toggleStoreCsvImporter(){storeCsvImportState.open=!storeCsvImportState.open;render();}
 function resetStoreCsvImporter(){storeCsvImportState={open:true,fileName:'',headers:[],rows:[],mapping:{},prepared:{valid:[],errors:[]},busy:false,result:null};render();}
