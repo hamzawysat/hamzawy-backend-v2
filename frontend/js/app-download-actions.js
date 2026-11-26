@@ -18,10 +18,10 @@
   function isAppDownloadLink(anchor) {
     try {
       const url = new URL(anchor.getAttribute('href') || '', window.location.href);
-      return url.pathname.replace(/\\/+$/, '') === '/download' &&
+      return url.pathname.replace(/\/+$/, '') === '/download' &&
         (url.origin === window.location.origin ||
-          /(^|\\.)hamzawy-sat\\.dynv6\\.net$/i.test(url.hostname) ||
-          /(^|\\.)hamzawy-sat\\.vercel\\.app$/i.test(url.hostname));
+          /(^|\.)hamzawy-sat\.dynv6\.net$/i.test(url.hostname) ||
+          /(^|\.)hamzawy-sat\.vercel\.app$/i.test(url.hostname));
     } catch (_) {
       return false;
     }
