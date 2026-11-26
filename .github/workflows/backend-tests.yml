@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   backend-tests:
@@ -39,24 +39,6 @@ jobs:
       - run: npm ci
       - name: Build deployed frontend assets before integration tests
         run: npm run build
-      - name: Commit generated frontend-dist assets to PR branch
-        if: github.event_name == 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          BRANCH_NAME: ${{ github.head_ref }}
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin "${BRANCH_NAME}"
-          git checkout -B "${BRANCH_NAME}" "origin/${BRANCH_NAME}"
-          npm run build
-          git add frontend-dist/
-          if ! git diff --cached --quiet; then
-            git commit -m 'Build frontend-dist for store fixes'
-            git push origin "${BRANCH_NAME}"
-          else
-            echo 'frontend-dist already matches the build output'
-          fi
       - name: Run integration and security tests
         run: npm test
       - name: Check for high and critical dependency vulnerabilities
