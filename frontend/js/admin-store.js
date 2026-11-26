@@ -109,7 +109,7 @@ function prepareStoreCsvImportRows(){
 }
 function renderStoreCsvImportPanel(){
   const s=storeCsvImportState;
-  const toggle='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(s.open?'إغلاق':'استيراد CSV')+'</button></div>';
+  const toggle='<div class="premium-panel p-3 flex items-center justify-between gap-3"><div><b class="block text-sm">استيراد منتجات دفعة واحدة</b><p class="text-[10px] text-slate-500 mt-1">ارفع ملف CSV لإضافة منتجات كثيرة مرة واحدة، حتى لو كان اسمه ينتهي بـ .xlsx بشرط أن يكون محتواه CSV نصيًا.</p></div><button type="button" onclick="toggleStoreCsvImporter()" class="primary-btn rounded-xl px-4 py-2 text-xs">'+(s.open?'إغلاق':'استيراد CSV')+'</button></div>';
   if(!s.open)return toggle;
   const mapping=s.headers.length?'<div class="grid grid-cols-1 sm:grid-cols-2 gap-2">'+STORE_CSV_IMPORT_FIELDS.map(field=>'<label class="block text-[11px] font-bold text-slate-600">'+escHtml(field.label)+'<select data-store-csv-map="'+field.key+'" onchange="updateStoreCsvMapping(this)" class="field mt-1"><option value="">— بدون ربط —</option>'+s.headers.map((header,index)=>'<option value="'+index+'" '+(String(s.mapping[field.key]??'')===String(index)?'selected':'')+'>'+escHtml(header||('عمود '+(index+1)))+'</option>').join('')+'</select></label>').join('')+'</div>':'';
   const prepared=s.headers.length?prepareStoreCsvImportRows():{valid:[],errors:[]};
