@@ -149,7 +149,7 @@ router.post('/admin/:id/approve-risk', auth('admin'), async (req, res, next) => 
     try {
       await session.withTransaction(async () => {
         referral = await Referral.findOne({
-          _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible'] },
+          _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible', 'held_for_review'] },
           riskFlags: { $exists: true, $ne: [] },
           'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
         }).session(session);
@@ -211,7 +211,7 @@ router.post('/admin/:id/cancel', auth('admin'), async (req, res, next) => {
       await session.withTransaction(async () => {
         referral = await Referral.findOneAndUpdate({
           _id: req.params.id,
-          status: { $in: ['pending', 'in_progress', 'eligible'] },
+          status: { $in: ['pending', 'in_progress', 'eligible', 'held_for_review'] },
           'inviterReward.paidAt': null,
           'inviteeReward.paidAt': null
         }, {
@@ -253,7 +253,7 @@ router.post('/admin/:id/reject', auth('admin'), async (req, res, next) => {
     try {
       await session.withTransaction(async () => {
         referral = await Referral.findOneAndUpdate({
-          _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible'] },
+          _id: req.params.id, status: { $in: ['pending', 'in_progress', 'eligible', 'held_for_review'] },
           riskFlags: { $in: [[], null] },
           'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
         }, {

@@ -333,9 +333,11 @@ router.post(
               usedCode = decoded.code;
             }
           }
+          const _fpFanni = referralFingerprint(req);
+          const _fanniFp = { registrationIpHash: _fpFanni.registrationIpHash, registrationUserAgentHash: _fpFanni.registrationUserAgentHash, registrationDeviceIdHash: _fpFanni.registrationDeviceIdHash };
           const created = await Fanni.create([{
             _id: fanniId, name: req.body.name, phone, passwordHash, specialties, areas: approvedAreas,
-            ...referralFingerprint(req),
+            ..._fanniFp,
             identityCardFrontFileId: identityIds[0], identityCardBackFileId: identityIds[1], profilePhotoFileId: profilePhotoId,
             identityReviewStatus: 'pending',
             ...(req.body.guidelinesAccepted === true ? {

@@ -158,7 +158,8 @@ router.post('/register', async (req, res, next) => {
     if (existing || existingFanni) return res.status(409).json({ message: 'رقم الموبايل مسجل بالفعل. سجّل الدخول بدل إنشاء حساب جديد.' });
 
     const passwordHash = await bcrypt.hash(value.password, 12);
-    const signupFingerprint = referralFingerprint(req);
+    const _fp = referralFingerprint(req);
+    const signupFingerprint = { registrationIpHash: _fp.registrationIpHash, registrationUserAgentHash: _fp.registrationUserAgentHash, registrationDeviceIdHash: _fp.registrationDeviceIdHash };
     let client;
     const session = await mongoose.startSession();
     try {

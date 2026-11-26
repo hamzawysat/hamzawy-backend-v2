@@ -26,9 +26,13 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
   let result = null;
   const settle = async () => {
       const referral = await Referral.findOne({
-        kind, invitee: inviteeId, status: { $in: ['pending', 'in_progress', 'eligible'] }
+        kind, invitee: inviteeId, status: { $in: ['pending', 'in_progress', 'eligible', 'held_for_review'] }
       }).session(session);
       if (!referral) return;
+      if (referral.status === 'held_for_review' && Array.isArray(referral.riskFlags) && referral.riskFlags.length) {
+        result = { status: 'held_for_review', completedCount: count, requiredCount, reviewRequired: true, riskFlags: referral.riskFlags };
+        return;
+      }
 
       const count = Math.min(completedCount, requiredCount);
       referral.completedCount = count;
@@ -41,8 +45,8 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       }
 
       const Model = kind === 'client' ? Client : Fanni;
-      const inviter = await Model.findById(referral.inviter).select('+registrationIpHash +registrationUserAgentHash').session(session);
-      const invitee = await Model.findById(referral.invitee).select('+registrationIpHash +registrationUserAgentHash').session(session);
+      const inviter = await Model.findById(referral.inviter).select('+registrationIpHash +registrationUserAgentHash +registrationDeviceIdHash').session(session);
+      const invitee = await Model.findById(referral.invitee).select('+registrationIpHash +registrationUserAgentHash +registrationDeviceIdHash').session(session);
       if (!inviter || !invitee) throw new Error('REFERRAL_PARTY_NOT_FOUND');
 
       // Identity collisions are financial-risk holds, not automatic bans/rejections.
@@ -51,6 +55,10 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       const inviteePhone = String(invitee.phone || '').trim();
       if (inviterPhone && inviteePhone && inviterPhone === inviteePhone) {
         riskFlags.push('same_phone_identity');
+      }
+      if (inviter.registrationDeviceIdHash && invitee.registrationDeviceIdHash && inviter.registrationDeviceIdHash === invitee.registrationDeviceIdHash) {
+        riskFlags.push('same_device_id');
+        riskFlags.push('same_device_different_phone');
       }
       const sameSignupIp = Boolean(inviter.registrationIpHash && invitee.registrationIpHash &&
         inviter.registrationIpHash === invitee.registrationIpHash);
@@ -70,7 +78,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       if (counterpartyIds.length) {
         const CounterpartyModel = kind === 'client' ? Fanni : Client;
         const counterparties = await CounterpartyModel.find({ _id: { $in: counterpartyIds } })
-          .select('phone +registrationIpHash +registrationUserAgentHash')
+          .select('phone +registrationIpHash +registrationUserAgentHash +registrationDeviceIdHash')
           .session(session).lean();
         const byId = new Map(counterparties.map(account => [String(account._id), account]));
         for (const order of completedOrders) {
@@ -79,6 +87,9 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
           if (!counterparty) continue;
           if (inviteePhone && String(counterparty.phone || '').trim() === inviteePhone) {
             riskFlags.push('same_order_party_phone');
+          }
+          if (invitee.registrationDeviceIdHash && counterparty.registrationDeviceIdHash && invitee.registrationDeviceIdHash === counterparty.registrationDeviceIdHash) {
+            riskFlags.push('same_order_counterparty_device');
           }
           if (invitee.registrationIpHash && counterparty.registrationIpHash &&
               invitee.registrationIpHash === counterparty.registrationIpHash) {
@@ -103,7 +114,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       // Existing holds remain effective. After an administrator reviews a signal,
       // only newly discovered signal types can create another hold.
       if (Array.isArray(referral.riskFlags) && referral.riskFlags.length) {
-        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: referral.riskFlags };
+        result = { status: 'held_for_review', completedCount: count, requiredCount, reviewRequired: true, riskFlags: referral.riskFlags };
         return;
       }
       const reviewedFlags = new Set(referral.riskReviewedFlags || []);
@@ -111,7 +122,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
       if (unreviewedRiskFlags.length) {
         referral.riskFlags = [...new Set([...(referral.riskFlags || []), ...unreviewedRiskFlags])];
         referral.riskDetectedAt = referral.riskDetectedAt || new Date();
-        referral.status = 'eligible';
+        referral.status = 'held_for_review';
         await referral.save({ session });
         await AdminAuditLog.create([{
           action: 'تعليق مكافأة دعوة للاشتباه',
@@ -120,7 +131,7 @@ async function refreshReferralProgress({ kind, inviteeId, mongoose, session: sup
           details: 'number=' + referral.number + '; flags=' + unreviewedRiskFlags.join(',') + '; payout held for manual review',
           adminName: 'النظام'
         }], { session });
-        result = { status: 'eligible', completedCount: count, requiredCount, reviewRequired: true, riskFlags: unreviewedRiskFlags };
+        result = { status: 'held_for_review', completedCount: count, requiredCount, reviewRequired: true, riskFlags: unreviewedRiskFlags };
         return;
       }
 

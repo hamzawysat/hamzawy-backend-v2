@@ -16,7 +16,7 @@ const referralSchema = new mongoose.Schema({
   code: { type: String, required: true, unique: true, index: true },
   inviteCodeUsed: { type: String, required: true, maxlength: 50 },
   invitedAt: { type: Date, default: Date.now, index: true },
-  status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'completed', 'rejected', 'cancelled'], default: 'pending', index: true },
+  status: { type: String, enum: ['pending', 'in_progress', 'eligible', 'held_for_review', 'completed', 'rejected', 'cancelled'], default: 'pending', index: true },
   // Fraud signals are review holds, never automatic account bans or referral rejection.
   riskFlags: { type: [String], default: [] },
   riskReviewedFlags: { type: [String], default: [] },
