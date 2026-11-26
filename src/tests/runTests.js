@@ -144,6 +144,10 @@ async function run() {
       assert.match(adminUi, /notification-reply-mode[\s\S]*?searchNotificationRecipients[\s\S]*?ردود المستلمين/);
       assert.match(adminActions, /recipientMode,replyEnabled/);
       assert.match(clientWeb, /sendClientNotificationReply/);
+      assert.match(clientWeb, /state\.notifications\.find\(function\(n\)\{return n\.replyEnabled&&!n\.reply;\}\)/);
+      assert.match(fanniWeb, /state\.notifications\.find\(n=>n\.replyEnabled&&!n\.reply\)/);
+      assert.ok(!clientWeb.includes('يسمح برد واحد للإدارة'));
+      assert.ok(!fanniWeb.includes('يسمح برد واحد للإدارة'));
       assert.match(fanniWeb, /sendFanniNotificationReply/);
     });
 
