@@ -282,7 +282,7 @@ router.post('/admin/:id/reject-risk', auth('admin'), async (req, res, next) => {
     try {
       await session.withTransaction(async () => {
         referral = await Referral.findOne({
-          _id: req.params.id, status: 'eligible',
+          _id: req.params.id, status: { $in: ['eligible', 'held_for_review'] },
           riskFlags: { $exists: true, $ne: [] },
           'inviterReward.paidAt': null, 'inviteeReward.paidAt': null
         }).session(session);
