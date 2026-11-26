@@ -135,6 +135,7 @@ const API={
     try{return localStorage.getItem(this.tokenKey(sn))||'';}catch(error){log('تعذر قراءة بيانات المتابعة:',error);return '';}
   },
   async request(url,options={}){
+    try{let dv='';try{dv=localStorage.getItem('satview.device-id.v1')||'';}catch(e){}if(!dv){dv='dv-'+Math.random().toString(16).slice(2)+Date.now().toString(16);try{localStorage.setItem('satview.device-id.v1',dv);}catch(e){}}options.headers={...(options.headers||{}),'X-Device-Id':dv};}catch(e){}
     let response;
     let raw;
     const timeoutMs=Number(options.timeoutMs)||20000;

@@ -266,6 +266,7 @@ async function api(path,options={}){
  const headers={'Content-Type':'application/json',...(options.headers||{})};
  const token=getToken();
  if(token)headers.Authorization='Bearer '+token;
+    try{let dv='';try{dv=localStorage.getItem('satview.device-id.v1')||'';}catch(e){}if(!dv){dv='dv-'+Math.random().toString(16).slice(2)+Date.now().toString(16);try{localStorage.setItem('satview.device-id.v1',dv);}catch(e){}}headers['X-Device-Id']=dv;}catch(e){}
 
  let response;
  let raw;
