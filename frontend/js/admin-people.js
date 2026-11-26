@@ -114,7 +114,8 @@ function renderFannis(){
               </summary>
               <div class="border-t border-blue-100 px-3 py-2 text-[11px] font-bold leading-6 whitespace-pre-wrap break-words">${escHtml(Array.isArray(f.areas)&&f.areas.length?f.areas.join('، '):'لم يحدد مناطق عمل')}</div>
             </details>
-          </div>\n          <div class="mt-3 rounded-[14px] border border-emerald-100 bg-emerald-50 p-3">
+          </div>
+          <div class="mt-3 rounded-[14px] border border-emerald-100 bg-emerald-50 p-3">
             <div class="flex items-center justify-between gap-2"><div><p class="text-[10px] font-black text-emerald-800">إدارة محفظة الفني</p><p class="text-[9px] text-emerald-700 mt-1">إضافة وخصم وتسوية ومراجعة سجل الحركات</p></div><strong class="text-[16px] font-black text-emerald-800">${escHtml(String(f.walletBalance??f.balance??0))} ج</strong></div>
             <div class="mt-3 grid grid-cols-2 gap-2">
               <button type="button" onclick="state.walletSelectedFanniId='${id}';addWalletBalance()" class="pill-btn soft-btn">إضافة رصيد</button>
