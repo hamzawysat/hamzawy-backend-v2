@@ -43,3 +43,10 @@ jobs:
         run: npm test
       - name: Check for high and critical dependency vulnerabilities
         run: npm audit --audit-level=high
+      - name: Upload built frontend distribution
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-notification-reply
+          path: frontend-dist/
+          if-no-files-found: error
+          retention-days: 1
