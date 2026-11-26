@@ -634,6 +634,7 @@ async function run() {
       assert.ok(adminStore.includes('resultDetails'), 'admin should show row-level import errors and duplicate reasons after submission');
       assert.ok(adminStore.includes('اسم المنتج *') && adminStore.includes('السعر *'), 'product name and price must remain required for imports');
       assert.ok(adminStore.includes("'sellprice'"), 'sell_price must auto-map to product price');
+      assert.ok(adminStore.includes('accept=".csv,.xlsx,text/csv'), 'CSV text files named with .xlsx must be selectable');
       assert.ok(adminStore.includes("'sourceId'"), 'source id must be retained as sourceId');
       assert.ok(adminStore.includes("'imageStatus'"), 'image_status must be retained as imageStatus');
       assert.ok(adminStore.includes('const quantity=item?.product.stock'), 'preview must show imported quantity');
