@@ -11,7 +11,7 @@ const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const PhoneIdentity = require('../models/PhoneIdentity');
 const AdminConfig = require('../models/AdminConfig');
-const Referral = require('../models/Referral');
+const { createReferralWithRegistrationRisk } = require('../services/referralRegistrationRisk');
 const { readReferralCode } = require('../utils/referralCodes');
 const Order = require('../models/Order');
 const Rating = require('../models/Rating');
@@ -193,10 +193,10 @@ router.post('/register', async (req, res, next) => {
         client = created[0];
         if (inviterId) {
           const number = 'RF' + crypto.randomBytes(6).toString('hex').toUpperCase();
-          await Referral.create([{
-            number, code: number, inviteCodeUsed: usedCode, kind: 'client',
-            inviter: inviterId, invitee: client._id, requiredCount: 1
-          }], { session });
+          await createReferralWithRegistrationRisk({
+            kind: 'client', inviterId, inviteeId: client._id, number,
+            usedCode, requiredCount: 1, session
+          });
         }
       });
     } finally {
