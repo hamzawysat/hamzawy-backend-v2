@@ -54,7 +54,7 @@ assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production page must hand off
 
 const appDownloadActions = fs.readFileSync(path.join(root, 'frontend/js/app-download-actions.js'), 'utf8');
 const builtAppDownloadActions = fs.readFileSync(path.join(root, 'frontend-dist/js/app-download-actions.js'), 'utf8');
-assert.match(appDownloadActions, /LATEST_VERSION = '1\\.0\\.17'/, 'shared browser app action must use the latest Android release');
+assert.match(appDownloadActions, /LATEST_VERSION = '1\.0\.17'/, 'shared browser app action must use the latest Android release');
 assert.match(appDownloadActions, /getInstalledRelatedApps/, 'shared browser app action must detect installed Android apps');
 assert.match(appDownloadActions, /تحديث التطبيق/);
 assert.match(appDownloadActions, /فتح التطبيق/);
@@ -68,7 +68,7 @@ for (const page of ['index.html', 'client.html', 'fanni.html']) {
 }
 const homePage = fs.readFileSync(path.join(root, 'frontend/index.html'), 'utf8');
 assert.ok(homePage.includes('manifest.webmanifest'), 'home page must expose the related-app manifest for installed-app detection');
-assert.ok(n.includes('تحميل التطبيق'), 'download page must use the shared no-install action label');
+assert.ok(source.includes('تحميل التطبيق'), 'download page must use the shared no-install action label');
 
 console.log('Client and technician referral APK download handoff checks passed.');
 
