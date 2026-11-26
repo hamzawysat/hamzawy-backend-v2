@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 
 const storeProductSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true, minlength: 2, maxlength: 120 },
+  sourceId: { type: String, trim: true, maxlength: 120, default: '' },
+  imageStatus: { type: String, trim: true, maxlength: 200, default: '' },
   category: { type: String, trim: true, maxlength: 80, default: 'غير مصنف', index: true },
   description: { type: String, trim: true, maxlength: 2000, default: '' },
   details: { type: String, trim: true, maxlength: 5000, default: '' },
