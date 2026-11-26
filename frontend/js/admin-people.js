@@ -108,7 +108,7 @@ function renderFannis(){
               <div class="border-t border-slate-200 px-3 py-2 text-[11.5px] font-black leading-6 whitespace-pre-wrap break-words">${escHtml((Array.isArray(f.activeSpecialties)?f.activeSpecialties:[]).join('، ')||'لا توجد خدمات معتمدة حاليًا')}</div>
             </details>
             <details class="min-w-0 rounded-[14px] border border-blue-100 bg-blue-50/60 overflow-hidden">
-              <summary class="cursor-pointer list-none flex items-center justify-between gap-2 p-3 text-[10px] font-black text-blue-900">
+              <summary class="cursor-pointer flex items-center justify-between gap-2 p-3 text-[10px] font-black text-blue-900">
                 <span>📍 مناطق العمل المسجلة</span>
                 <span class="shrink-0 text-[9px] font-bold text-blue-700">${Array.isArray(f.areas)?f.areas.length:0} منطقة</span>
               </summary>
