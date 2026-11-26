@@ -1144,9 +1144,15 @@ async function run() {
       const Referral = require('../models/Referral');
       const ReferralClaim = require('../models/ReferralClaim');
       const { makeReferralCode } = require('../utils/referralCodes');
+      const { referralFingerprint } = require('../utils/referralFingerprint');
+      const sameSignupDevice = referralFingerprint({
+        ip: '::ffff:127.0.0.1',
+        headers: { 'user-agent': 'SATVIEW-referral-self-invite-test' }
+      });
       const inviter = await Fanni.create({
         name: 'فني صاحب الدعوة', phone: '01012345684', passwordHash: 'test-hash',
-        specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni'
+        specialties: ['صيانة دش'], areas: ['المعادي'], status: 'معتمد', role: 'fanni',
+        ...sameSignupDevice
       });
       const preparedInvite = await request(app).post('/api/referrals/prepare-fanni')
         .send({ referralCode: makeReferralCode('fanni', String(inviter._id)) });
@@ -1159,7 +1165,9 @@ async function run() {
       assert.equal(savedClaim.claimedAt, null);
       assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000 + 5000, 'technician handoff claims must expire within 24 hours');
       assert.ok(new Date(savedClaim.expiresAt).getTime() - Date.now() > 23 * 60 * 60 * 1000, 'fresh technician handoff claims must retain a usable 24-hour window');
-      const registration = await request(app).post('/api/fanni/register').send({
+      const registration = await request(app).post('/api/fanni/register')
+        .set('User-Agent', 'SATVIEW-referral-self-invite-test')
+        .send({
         name: 'فني اختبار التسجيل',
         phone,
         password: 'FanniTestPass123',
@@ -1177,6 +1185,11 @@ async function run() {
       assert.equal(String(redeemedClaim.invitee), registration.body.id);
       const linkedReferral = await Referral.findOne({ kind: 'fanni', inviter: inviter._id, invitee: registration.body.id }).lean();
       assert.ok(linkedReferral, 'the original inviter must receive the referral record');
+      assert.equal(linkedReferral.status, 'eligible', 'same signup network/device must immediately hold the referral for security review before any completed job');
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_ip'), 'same-device signup must be detected at registration');
+      assert.ok(linkedReferral.riskFlags.includes('same_registration_device_signature'), 'same browser signature on the same network must be recorded');
+      assert.ok(linkedReferral.riskDetectedAt, 'registration-time suspicion must have a timestamp');
+      assert.equal(linkedReferral.completedCount, 0, 'risk review must not require any completed jobs');
       assert.equal(registration.body.status, 'قيد المراجعة');
       assert.equal(registration.body.token, undefined, 'registration must not bypass admin approval');
 
