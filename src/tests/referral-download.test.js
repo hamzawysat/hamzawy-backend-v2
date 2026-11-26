@@ -46,15 +46,15 @@ assert.ok(technicianPage.includes('fanni-app-only-actions.js'), 'technician dash
 assert.ok(technicianActions.includes("fetch('/api/referrals/prepare-fanni'"), 'technician invite must be converted into a server-side single-use claim');
 assert.ok(technicianActions.includes('action=register&claim='), 'technician app deep link must carry the claim token');
 assert.ok(technicianActions.includes("DOWNLOAD_URL+'?claim='"), 'APK fallback must preserve the claim token');
-assert.ok(source.includes('/1.0.17/HSsat.apk'), 'download page must serve the exact current HSsat APK release');
-assert.ok(source.includes('/tag/1.0.17'), 'download page release label must match the APK version');
-assert.ok(built.includes('/1.0.17/HSsat.apk'), 'built production download page must serve the exact current HSsat APK');
+assert.ok(source.includes('/1.0.16/HSsat.apk'), 'download page must serve the exact current HSsat APK release');
+assert.ok(source.includes('/tag/1.0.16'), 'download page release label must match the APK version');
+assert.ok(built.includes('/1.0.16/HSsat.apk'), 'built production download page must serve the exact current HSsat APK');
 assert.match(built, /HAMZAWY_FANNI_CLAIM:/, 'built production page must hand off technician claim tokens');
 
 
 const appDownloadActions = fs.readFileSync(path.join(root, 'frontend/js/app-download-actions.js'), 'utf8');
 const builtAppDownloadActions = fs.readFileSync(path.join(root, 'frontend-dist/js/app-download-actions.js'), 'utf8');
-assert.match(appDownloadActions, /LATEST_VERSION = '1\.0\.17'/, 'shared browser app action must use the latest Android release');
+assert.match(appDownloadActions, /LATEST_VERSION = '1\.0\.16'/, 'shared browser app action must use the latest Android release');
 assert.match(appDownloadActions, /getInstalledRelatedApps/, 'shared browser app action must detect installed Android apps');
 assert.match(appDownloadActions, /تحديث التطبيق/);
 assert.match(appDownloadActions, /فتح التطبيق/);
@@ -77,7 +77,7 @@ assert.ok(source.includes('تحديث التطبيق'), 'download page must labe
 assert.ok(source.includes('فتح التطبيق'), 'download page must open an installed current app');
 assert.ok(source.includes('manifest.webmanifest'), 'download page must declare the related app manifest');
 assert.ok(built.includes('getInstalledRelatedApps'), 'built production page must include app detection');
-assert.ok(built.includes('/1.0.17/HSsat.apk'), 'built production page must use the exact HSsat release asset');
+assert.ok(built.includes('/1.0.16/HSsat.apk'), 'built production page must use the exact HSsat release asset');
 const appManifest = JSON.parse(fs.readFileSync(path.join(root, 'frontend/manifest.webmanifest'), 'utf8'));
 assert.ok(appManifest.related_applications.some((app) => app.platform === 'play' && app.id === 'com.sonaa.app'), 'web manifest must identify the Android package');
 const assetLinks = JSON.parse(fs.readFileSync(path.join(root, 'frontend/.well-known/assetlinks.json'), 'utf8'));
