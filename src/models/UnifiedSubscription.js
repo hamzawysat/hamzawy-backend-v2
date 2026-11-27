@@ -26,6 +26,7 @@ const schema = new mongoose.Schema({
   includedServices: [{ type: String, trim: true, maxlength: 160 }],
   excludedSupplies: [{ type: String, trim: true, maxlength: 160 }],
   notes: { type: String, trim: true, maxlength: 1500, default: '' },
+  renewalRequest: { paymentMethod: { type: String, enum: ['wallet','transfer'] }, paymentStatus: { type: String, enum: ['pending','paid','rejected'], default: 'pending' }, requestedAt: { type: Date, default: null }, amount: { type: Number, min: 0, default: 0 } },
   history: [{ action: String, note: String, by: String, at: { type: Date, default: Date.now } }]
 }, { timestamps: true, discriminatorKey: 'subscriptionModel' });
 schema.index({ client: 1, status: 1, endsAt: 1 });
