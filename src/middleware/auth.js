@@ -6,7 +6,7 @@ const { normalizePhone } = require('../utils/phone');
 
 const ADMIN_ROLES = ['مشرف', 'مشرف أول', 'مدير', 'قراءة فقط'];
 
-const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','settings','content','support','regions','offers','notifications','clientsData','commerce','store','referrals'];
+const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','settings','content','support','regions','offers','notifications','clientsData','commerce','store','referrals','subscriptions'];
 const ROLE_WRITE_SECTIONS = {
   'قراءة فقط': [],
   'مشرف': ['orders','complaints','support','offers'],
@@ -48,7 +48,8 @@ const PERMISSION_SECTIONS = {
   clientsData: [/^\/client-accounts(\/|$)/],
   store: [/^\/store(\/|$)/],
   commerce: [/^\/commerce(\/|$)/],
-  referrals: [/^\/admin\/(summary|list|settings|[^/]+)(\/|$)/]
+  referrals: [/^\/admin\/(summary|list|settings|[^/]+)(\/|$)/],
+  subscriptions: [/^\/(?:admin\/)?(?:plans|list|create|visits|[^/]+)(?:\/|$)/]
 };
 
 function isRootAdmin(user) {
