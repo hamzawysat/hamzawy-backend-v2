@@ -27,7 +27,7 @@ const schema = new mongoose.Schema({
   excludedSupplies: [{ type: String, trim: true, maxlength: 160 }],
   notes: { type: String, trim: true, maxlength: 1500, default: '' },
   history: [{ action: String, note: String, by: String, at: { type: Date, default: Date.now } }]
-}, { timestamps: true });
+}, { timestamps: true, discriminatorKey: 'subscriptionModel' });
 schema.index({ client: 1, status: 1, endsAt: 1 });
 schema.index({ type: 1, status: 1, endsAt: 1 });
 module.exports = mongoose.models.UnifiedSubscription || mongoose.model('UnifiedSubscription', schema);
