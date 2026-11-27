@@ -3,7 +3,7 @@
 const express = require('express');
 
 function createAdminClientProfilesRouter({
-  auth, Client, Order, Complaint, WalletTransaction, ClientSubscription,
+  auth, Client, Order, Complaint, WalletTransaction, findSubscriptions,
   ClientTopupRequest, StoreOrder, SupportCase, AdminAuditLog, validId, sendBadId
 }) {
   const router = express.Router();
@@ -20,8 +20,7 @@ function createAdminClientProfilesRouter({
           .sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
         WalletTransaction.find({ client: client._id })
           .sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
-        ClientSubscription.find({ client: client._id })
-          .sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
+        findSubscriptions({ client: client._id }, { sort: { createdAt: -1, _id: -1 }, limit: 100 }),
         ClientTopupRequest.find({ client: client._id })
           .sort({ createdAt: -1, _id: -1 }).limit(100).lean(),
         StoreOrder.find({ buyerRole: 'client', buyerId: client._id })
