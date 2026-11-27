@@ -58,6 +58,13 @@ const safeClient = (s) => {
   }
   return v;
 };
+async function attachVisitSubscriptions(visits, fields) {
+  return Promise.all(visits.map(async visit => {
+    const subscription = await findSubscriptionById(visit.subscription, { lean: true });
+    const summary = subscription ? Object.fromEntries(fields.filter(field => subscription[field] !== undefined).map(field => [field, subscription[field]])) : null;
+    return { ...visit, subscription: summary };
+  }));
+}
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
 function publicServiceName(type) { return type === 'maintenance' ? 'صيانة سنوية' : type === 'air_network' ? 'اشتراك محلي' : 'اشتراك ترفيهي'; }
 function publicDescription(value) { return String(value || '').replace(/iptv/gi, 'اشتراك ترفيهي').replace(/شبكات?\s*هوائية?/gi, 'اشتراك محلي').replace(/هوائي|هواء/gi, 'محلي'); }
@@ -288,14 +295,17 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 router.get('/admin/visits', auth('admin'), async (req, res, next) => {
-  try { return res.json({ visits: await SubscriptionVisit.find({}).populate('subscription','code type').populate('technician','name phone').sort({ scheduledAt: 1 }).limit(500).lean() }); }
-  catch (e) { return next(e); }
+  try {
+    const rows = await SubscriptionVisit.find({}).populate('technician','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
+    return res.json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
+  } catch (e) { return next(e); }
 });
 
 // Technicians can access only visits assigned to their authenticated account; no IPTV credentials or prices are returned.
 router.get('/technician/visits', auth('fanni'), async (req, res, next) => {
   try {
-    const visits = await SubscriptionVisit.find({ technician: req.user._id, status: { $in: ['scheduled','in_progress','awaiting_client_confirmation'] } }).populate('subscription','code address').populate('client','name phone').sort({ scheduledAt: 1 }).lean();
+    const rows = await SubscriptionVisit.find({ technician: req.user._id, status: { $in: ['scheduled','in_progress','awaiting_client_confirmation'] } }).populate('client','name phone').sort({ scheduledAt: 1 }).lean();
+    const visits = await attachVisitSubscriptions(rows, ['code','address']);
     return res.set('Cache-Control','no-store').json({ visits });
   } catch (e) { return next(e); }
 });
