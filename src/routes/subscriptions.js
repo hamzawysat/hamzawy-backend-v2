@@ -53,6 +53,7 @@ const safeClient = (s) => {
 };
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
 function publicServiceName(type) { return type === 'maintenance' ? 'صيانة سنوية' : type === 'air_network' ? 'اشتراك محلي' : 'اشتراك ترفيهي'; }
+function publicDescription(value) { return String(value || '').replace(/iptv/gi, 'اشتراك ترفيهي').replace(/شبكات?\\s*هوائية?/gi, 'اشتراك محلي').replace(/هوائي/gi, 'محلي'); }
 function publicClientSubscription(s) {
   const v = s.toObject ? s.toObject() : { ...s };
   if (v.type === 'iptv') {
@@ -68,7 +69,7 @@ router.get('/plans', async (req, res, next) => {
     const filter = { active: true };
     if (TYPES.includes(String(req.query.type || ''))) filter.type = String(req.query.type);
     const plans = await SubscriptionPlan.find(filter).select('-settings').sort({ type: 1, price: 1 }).lean();
-    const publicPlans = plans.map(p => ({ ...p, name: publicServiceName(p.type) }));
+    const publicPlans = plans.map(p => ({ ...p, name: publicServiceName(p.type), description: publicDescription(p.description) }));
     return res.set('Cache-Control','no-store').json({ plans: publicPlans });
   } catch (e) { return next(e); }
 });
@@ -76,11 +77,14 @@ router.get('/plans', async (req, res, next) => {
 // Customer sees only their own subscriptions and their IPTV credentials.
 router.get('/client/mine', clientAuth, async (req, res, next) => {
   try {
-    const subscriptions = await UnifiedSubscription.find({ client: req.clientId }).select('+iptvPasswordEncrypted').sort({ createdAt: -1 }).lean();
+    const subscriptions = await UnifiedSubscription.find({ client: req.clientId }).select('+iptvUsernameEncrypted +iptvPasswordEncrypted').sort({ createdAt: -1 }).lean();
     const visits = await SubscriptionVisit.find({ client: req.clientId }).sort({ scheduledAt: 1 }).lean();
     const enriched = subscriptions.map(s => {
-      if (s.type === 'iptv') { try { s.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { s.iptvPassword = ''; } }
-      delete s.iptvPasswordEncrypted;
+      if (s.type === 'iptv') {
+        try { s.iptvUsername = decrypt(s.iptvUsernameEncrypted); } catch (_) { s.iptvUsername = ''; }
+        try { s.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { s.iptvPassword = ''; }
+      }
+      delete s.iptvUsernameEncrypted; delete s.iptvPasswordEncrypted;
       return s;
     });
     return res.set('Cache-Control','no-store').json({ subscriptions: enriched, visits });
@@ -153,8 +157,8 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
     if (['active','paused','expired','cancelled'].includes(String(req.query.status || ''))) filter.status = String(req.query.status);
     if (req.query.expiring === '7') { filter.status = 'active'; filter.endsAt = { $gte: new Date(), $lte: new Date(Date.now() + 7*86400000) }; }
     if (req.query.q) { const q = String(req.query.q).trim().slice(0,100); filter.$or = [{ code: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i') },{ clientName: new RegExp(q,'i') },{ clientPhone: new RegExp(q,'i') }]; }
-    const subscriptions = await UnifiedSubscription.find(filter).select('+iptvPasswordEncrypted').sort({ endsAt: 1 }).limit(500).lean();
-    const rows = subscriptions.map(s => { const v = safeClient(s); if (v.type === 'iptv') { try { v.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; } } return v; });
+    const subscriptions = await UnifiedSubscription.find(filter).select('+iptvUsernameEncrypted +iptvPasswordEncrypted').sort({ endsAt: 1 }).limit(500).lean();
+    const rows = subscriptions.map(s => { const v = safeClient(s); if (v.type === 'iptv') { try { v.iptvUsername = decrypt(s.iptvUsernameEncrypted); } catch (_) { v.iptvUsername = ''; } try { v.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; } } return v; });
     return res.json({ subscriptions: rows });
   } catch (e) { return next(e); }
 });
@@ -177,13 +181,14 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
       visitsIncluded: value.visitsIncluded ?? plan?.visitCount ?? 0,
       includedServices: plan?.includedServices || [], excludedSupplies: plan?.excludedSupplies || [],
       allowedDevices: value.allowedDevices ?? plan?.allowedDevices ?? 1,
+      iptvUsernameEncrypted: value.iptvUsername ? encrypt(value.iptvUsername) : '',
       iptvPasswordEncrypted: value.iptvPassword ? encrypt(value.iptvPassword) : '',
       history: [{ action: 'created', note: 'إنشاء الاشتراك', by: String(req.user?.name || 'الإدارة') }]
     });
-    if (value.type === 'iptv') subscription.iptvPassword = undefined;
+    if (value.type === 'iptv') { subscription.iptvUsername = undefined; subscription.iptvPassword = undefined; }
     await createNotification({ recipientRole: 'client', recipientId: client._id, type: 'subscription_activated', title: 'تم تفعيل اشتراكك', message: 'تم تفعيل اشتراك ' + subscription.code + ' حتى ' + subscription.endsAt.toLocaleDateString('ar-EG'), link: '/client' });
     const created = safeClient(subscription.toObject());
-    if (value.type === 'iptv') created.iptvPassword = value.iptvPassword;
+    if (value.type === 'iptv') { created.iptvUsername = value.iptvUsername; created.iptvPassword = value.iptvPassword; }
     return res.status(201).json({ message: 'تم إنشاء الاشتراك وتفعيله.', subscription: created });
   } catch (e) { return next(e); }
 });
