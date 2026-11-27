@@ -38,6 +38,7 @@ const pageVisitsRouter = require('./routes/pageVisits');
 const { auth } = require('./middleware/auth');
 const errorHandler = require('./middleware/error');
 const { retryPendingNotificationDeliveries } = require('./utils/notifications');
+const { runSubscriptionReminders } = require('./services/subscriptionReminders');
 
 const app = express();
 
@@ -528,5 +529,12 @@ if (require.main === module) {
     void runNotificationRetries();
     const notificationRetryTimer = setInterval(() => { void runNotificationRetries(); }, 30000);
     if (typeof notificationRetryTimer.unref === 'function') notificationRetryTimer.unref();
+    const runSubscriptionReminderJob = async () => {
+      try { await connectDB(); await runSubscriptionReminders(); }
+      catch (error) { console.error('Subscription reminder worker failed:', error.message); }
+    };
+    void runSubscriptionReminderJob();
+    const subscriptionReminderTimer = setInterval(() => { void runSubscriptionReminderJob(); }, 6 * 60 * 60 * 1000);
+    if (typeof subscriptionReminderTimer.unref === 'function') subscriptionReminderTimer.unref();
   });
 }
