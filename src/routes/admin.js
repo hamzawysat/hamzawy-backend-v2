@@ -84,9 +84,7 @@ const createAdminClientsRouter = require('./admin/clients');
 const createAdminWalletRouter = require('./admin/wallet');
 const createAdminClientWalletRouter = require('./admin/clientWallet');
 const ClientTopupRequest = require('../models/ClientTopupRequest');
-const CommerceItem = require('../models/CommerceItem');
 const { findSubscriptions } = require('../models/subscriptionRepository');
-const createAdminCommerceRouter = require('./admin/commerce');
 const createAdminFanniManagementRouter = require('./admin/fanniManagement');
 const createAdminStoreRouter = require('./admin/store');
 const createAdminFanniCardLedgerRouter = require('./admin/fanniCardLedger');
@@ -361,7 +359,6 @@ router.use(createAdminClientWalletRouter({
   adminName, writeAdminAudit, createNotification, validId, sendBadId, MAX_LIST_LIMIT
 }));
 
-router.use(createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, CommerceItem, ClientSubscription, WalletTransaction, adminName, writeAdminAudit, createNotification, validId, sendBadId, MAX_LIST_LIMIT }));
 
 router.use(createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTransaction, StoreProduct, StoreOrder, AdminConfig, notifyAdmins, createNotification, writeAdminAudit }));
 
