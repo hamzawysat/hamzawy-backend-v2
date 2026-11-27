@@ -56,6 +56,81 @@ async function run() {
     );
     resetMaintenanceCache();
 
+    await test('subscription types use separate MongoDB collections and legacy migration is lossless and repeatable', async () => {
+      const LegacySubscription = require('../models/UnifiedSubscription');
+      const Maintenance = require('../models/MaintenanceSubscription');
+      const Local = require('../models/LocalSubscription');
+      const Entertainment = require('../models/EntertainmentSubscription');
+      const repository = require('../models/subscriptionRepository');
+      const { migrateAll } = require('../../scripts/migrate-subscription-models');
+      assert.notEqual(Maintenance.collection.collectionName, Local.collection.collectionName);
+      assert.notEqual(Maintenance.collection.collectionName, Entertainment.collection.collectionName);
+      assert.notEqual(Local.collection.collectionName, Entertainment.collection.collectionName);
+
+      const client = new mongoose.Types.ObjectId();
+      const now = new Date();
+      const common = {
+        client, clientName: 'عميل ترحيل اختباري', clientPhone: '01000000000',
+        amount: 120, durationDays: 30, startsAt: now, endsAt: new Date(now.getTime() + 30 * 86400000),
+        status: 'active'
+      };
+      const legacy = await LegacySubscription.create([
+        { ...common, type: 'maintenance', code: 'MIG-M-' + Date.now(), dishSize: '100', receiverType: 'HD', visitsIncluded: 2 },
+        { ...common, type: 'air_network', code: 'MIG-L-' + Date.now(), networkName: 'LocalNet', activationCode: 'LOCAL-123', deviceType: 'router' },
+        { ...common, type: 'iptv', code: 'MIG-E-' + Date.now(), deviceType: 'TV', portalUrl: 'https://example.test', iptvUsernameEncrypted: 'encrypted-user', iptvPasswordEncrypted: 'encrypted-pass', allowedDevices: 3 }
+      ]);
+      const migrationResult = await migrateAll();
+      assert.equal(migrationResult.skipped, false);
+      for (const source of legacy) {
+        const Target = repository.modelForType(source.type);
+        const moved = await Target.collection.findOne({ _id: source._id });
+        assert.ok(moved, source.type + ' record must exist in its dedicated collection');
+        assert.equal(moved.code, source.code);
+        assert.equal(String(moved.client), String(client));
+        assert.equal(moved.amount, source.amount);
+        assert.equal(moved.status, source.status);
+        assert.ok(moved.__legacyMigrationHash, 'target record must carry a verified source fingerprint');
+      }
+      const maintenance = await Maintenance.collection.findOne({ _id: legacy[0]._id });
+      const local = await Local.collection.findOne({ _id: legacy[1]._id });
+      const entertainment = await Entertainment.collection.findOne({ _id: legacy[2]._id });
+      assert.equal(maintenance.maintenanceDetails.dishSize, '100');
+      assert.equal(local.localDetails.activationCode, 'LOCAL-123');
+      assert.equal(entertainment.entertainmentDetails.usernameEncrypted, 'encrypted-user');
+      assert.equal(entertainment.iptvPasswordEncrypted, 'encrypted-pass');
+      const repeatedMigration = await migrateAll();
+      assert.equal(repeatedMigration.skipped, true, 'completed migration must be skipped safely on restart');
+      assert.equal(await Maintenance.countDocuments({ _id: legacy[0]._id }), 1, 'rerunning migration must not duplicate records');
+      assert.equal(await LegacySubscription.countDocuments({ _id: { $in: legacy.map(item => item._id) } }), 3, 'legacy records must remain intact after migration');
+      const all = await repository.findSubscriptions({ client }, { sort: { createdAt: 1 } });
+      assert.equal(all.length, 3, 'repository must read across all dedicated collections');
+      assert.ok(await repository.findSubscriptionById(legacy[1]._id));
+    });
+
+    await test('subscription credential encryption uses HKDF v2 and preserves legacy ciphertext reads', async () => {
+      const crypto = require('node:crypto');
+      const { encrypt, decrypt } = require('../utils/subscriptionCrypto');
+      const originalSecret = process.env.JWT_SECRET;
+      try {
+        process.env.JWT_SECRET = 'subscription-crypto-fake-secret-for-tests-only';
+        const plaintext = 'fake-user-name|fake-password';
+        const encrypted = encrypt(plaintext);
+        assert.equal(encrypted.split('.')[0], 'v2');
+        assert.equal(decrypt(encrypted), plaintext);
+        process.env.JWT_SECRET = 'different-fake-secret-for-tests-only';
+        assert.throws(() => decrypt(encrypted));
+        process.env.JWT_SECRET = 'subscription-crypto-fake-secret-for-tests-only';
+        const legacyKey = crypto.createHash('sha256').update('hamzawy-sat:subscription-credentials:v1:' + process.env.JWT_SECRET, 'utf8').digest();
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv('aes-256-gcm', legacyKey, iv);
+        const legacyBody = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+        const legacy = [iv.toString('base64'), cipher.getAuthTag().toString('base64'), legacyBody.toString('base64')].join('.');
+        assert.equal(decrypt(legacy), plaintext);
+      } finally {
+        process.env.JWT_SECRET = originalSecret;
+      }
+    });
+
     await test('global phone identity blocks duplicate and cross-role concurrent account reservations', async () => {
       const PhoneIdentity = require('../models/PhoneIdentity');
       await PhoneIdentity.init();
@@ -2728,7 +2803,7 @@ async function run() {
       await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 0 } });
       const insufficientPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), idempotencyKey: insufficientKey });
+        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: insufficientKey });
       assert.equal(insufficientPurchase.status, 409);
       assert.match(insufficientPurchase.body.message, /رصيد محفظتك غير كافٍ/);
       assert.equal(await ClientSubscription.countDocuments({ client: clientId, requestKey: insufficientKey }), 0, 'insufficient balance must not create a pending subscription');
@@ -2736,7 +2811,7 @@ async function run() {
       await Client.updateOne({ _id: clientId }, { $set: { walletBalance: balanceBeforeRequest } });
       const purchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), idempotencyKey: purchaseKey });
+        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: purchaseKey });
       assert.equal(purchase.status, 201, JSON.stringify(purchase.body));
       assert.equal(purchase.body.balance, balanceBeforeRequest, 'requesting a subscription must not debit the wallet');
       assert.equal(purchase.body.subscription.status, 'pending');
@@ -2745,9 +2820,26 @@ async function run() {
       const subscriptionId = String(purchase.body.subscription._id);
       assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: purchaseKey }), 0);
 
+      const transferKey = 'test-client-subscription-transfer-0001';
+      const transferPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ itemId: String(plan._id), paymentMethod: 'transfer', idempotencyKey: transferKey });
+      assert.equal(transferPurchase.status, 201, JSON.stringify(transferPurchase.body));
+      assert.equal(transferPurchase.body.subscription.paymentMethod, 'تحويل أموال');
+      assert.equal(transferPurchase.body.subscription.paymentStatus, 'pending');
+      const transferSubscriptionId = String(transferPurchase.body.subscription._id);
+      const transferApproval = await request(app).patch('/api/admin/commerce/subscriptions/' + transferSubscriptionId + '/status')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'active', reason: 'تأكيد استلام التحويل في الاختبار' });
+      assert.equal(transferApproval.status, 200, JSON.stringify(transferApproval.body));
+      assert.equal(transferApproval.body.subscription.paymentStatus, 'paid');
+      assert.equal(transferApproval.body.subscription.paymentMethod, 'تحويل أموال');
+      assert.equal(transferApproval.body.subscription.transactionNumber || '', '');
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), balanceBeforeRequest, 'transfer approval must never debit the wallet');
+
       const duplicatePurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), idempotencyKey: purchaseKey });
+        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: purchaseKey });
       assert.equal(duplicatePurchase.status, 200);
       assert.equal(duplicatePurchase.body.duplicate, true);
       assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), balanceBeforeRequest);
@@ -2770,7 +2862,7 @@ async function run() {
       const renewalKey = 'test-client-subscription-renew-0001';
       const renewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ idempotencyKey: renewalKey });
+        .send({ paymentMethod: 'wallet', idempotencyKey: renewalKey });
       assert.equal(renewal.status, 200, JSON.stringify(renewal.body));
       assert.equal(renewal.body.balance, afterApproval - 50);
       const renewed = await ClientSubscription.findById(subscriptionId).lean();
@@ -2782,7 +2874,7 @@ async function run() {
       assert.equal(renewed.history.at(-1).transactionNumber, renewalLedger.transactionNumber);
       const duplicateRenewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ idempotencyKey: renewalKey });
+        .send({ paymentMethod: 'wallet', idempotencyKey: renewalKey });
       assert.equal(duplicateRenewal.status, 200);
       assert.equal(duplicateRenewal.body.duplicate, true);
       assert.equal((await ClientSubscription.findById(subscriptionId).lean()).history.length, 2);

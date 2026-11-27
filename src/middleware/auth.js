@@ -6,11 +6,11 @@ const { normalizePhone } = require('../utils/phone');
 
 const ADMIN_ROLES = ['مشرف', 'مشرف أول', 'مدير', 'قراءة فقط'];
 
-const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','settings','content','support','regions','offers','notifications','clientsData','commerce','store','referrals'];
+const ADMIN_PERMISSION_KEYS = ['dashboard','fannis','orders','publishOrders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','settings','content','support','regions','offers','notifications','clientsData','commerce','store','referrals','subscriptions'];
 const ROLE_WRITE_SECTIONS = {
   'قراءة فقط': [],
   'مشرف': ['orders','complaints','support','offers'],
-  'مشرف أول': ['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce'],
+  'مشرف أول': ['fannis','orders','complaints','services','clients','topups','wallet','support','regions','offers','notifications','clientsData','commerce','subscriptions'],
   'مدير': ADMIN_PERMISSION_KEYS
 };
 function defaultAdminPermissions(role) {
@@ -19,7 +19,7 @@ function defaultAdminPermissions(role) {
     ? new Set(ADMIN_PERMISSION_KEYS)
     : new Set(role === 'مدير' || role === 'مشرف أول'
       ? ADMIN_PERMISSION_KEYS
-      : ['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store']);
+      : ['dashboard','fannis','orders','voiceReview','passwordRecovery','complaints','services','clients','topups','wallet','pricing','content','support','regions','offers','notifications','clientsData','store','subscriptions']);
   return Object.fromEntries(ADMIN_PERMISSION_KEYS.map(key => [key, {
     read: reads.has(key) || writes.has(key),
     write: writes.has(key)
@@ -48,7 +48,8 @@ const PERMISSION_SECTIONS = {
   clientsData: [/^\/client-accounts(\/|$)/],
   store: [/^\/store(\/|$)/],
   commerce: [/^\/commerce(\/|$)/],
-  referrals: [/^\/admin\/(summary|list|settings|[^/]+)(\/|$)/]
+  referrals: [/^\/admin\/(summary|list|settings|[^/]+)(\/|$)/],
+  subscriptions: [/^\/(?:admin\/)?(?:plans|list|create|visits|[^/]+)(?:\/|$)/]
 };
 
 function isRootAdmin(user) {
