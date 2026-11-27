@@ -98,7 +98,7 @@ function render(){
             <section class="section-nav-group">
               <div class="section-nav-title"><h3 class="section-nav-heading"><span class="section-nav-icon">${section.icon}</span><span>${escHtml(section.label)}</span></h3>${section.description?`<p class="section-nav-description">${escHtml(section.description)}</p>`:''}</div>
               <div class="section-nav-items">
-                ${section.tabs.map(item=>`
+                ${section.tabs.filter(item=>canReadTab(item.id)).map(item=>`
                   <div>
                     <button type="button" onclick="setTab('${item.id}')" class="section-nav-btn ${state.tab===item.id?'active':''}">
                       <span class="section-nav-label">${escHtml(item.label)}</span>${renderSectionCount(item)}
