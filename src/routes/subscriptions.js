@@ -267,8 +267,9 @@ router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
       const subscription = await findSubscriptionById(req.params.id, { session });
       if (!subscription) { result = { kind: 'missing' }; return; }
       const wasPending = subscription.status === 'pending';
+      const needsInitialActivation = value.status === 'active' && subscription.paymentStatus === 'pending' && Boolean(subscription.paymentRequestedAt);
       let transactionNumber = '';
-      if (wasPending && value.status === 'active' && subscription.paymentStatus === 'pending') {
+      if (needsInitialActivation) {
         if (subscription.paymentMethod === 'wallet' && Number(subscription.amount || 0) > 0) {
           const paymentKey = 'unified-subscription-initial:' + String(subscription._id);
           const prior = await WalletTransaction.findOne({ client: subscription.client, idempotencyKey: paymentKey }).session(session).lean();
@@ -309,11 +310,11 @@ router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
       });
       if (transactionNumber) subscription.history.push({ action: 'payment_received', note: 'رقم العملية: ' + transactionNumber, by: String(req.user?.name || 'الإدارة') });
       await subscription.save({ session });
-      result = { kind: 'updated', subscription, wasPending, transactionNumber };
+      result = { kind: 'updated', subscription, wasPending, needsInitialActivation, transactionNumber };
     });
     if (result?.kind === 'missing') return res.status(404).json({ message: 'الاشتراك غير موجود.' });
     if (result?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد محفظة العميل غير كافٍ. لم يتم تفعيل الاشتراك أو خصم أي مبلغ.' });
-    if (result?.wasPending && value.status === 'active') {
+    if (result?.needsInitialActivation) {
       await createNotification({
         recipientRole: 'client', recipientId: result.subscription.client,
         type: 'subscription_activated', title: 'تم تفعيل اشتراكك',
@@ -322,7 +323,7 @@ router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
       });
     }
     return res.json({
-      message: result?.wasPending && value.status === 'active' ? 'تم تأكيد السداد وتفعيل الاشتراك.' : 'تم تحديث حالة الاشتراك.',
+      message: result?.needsInitialActivation ? 'تم تأكيد السداد وتفعيل الاشتراك.' : 'تم تحديث حالة الاشتراك.',
       subscription: safeClient(result.subscription.toObject()),
       transactionNumber: result.transactionNumber || ''
     });
@@ -390,6 +391,7 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
     const subscription = await findSubscriptionById(value.subscriptionId);
     const technician = await Fanni.findOne({ _id: value.technicianId, role: 'fanni', status: 'معتمد', archivedAt: null });
     if (!subscription || !technician) return res.status(404).json({ message: 'الاشتراك أو الفني غير موجود أو غير معتمد.' });
+    if (subscription.type !== 'maintenance' || subscription.status !== 'active') return res.status(409).json({ message: 'يمكن إسناد الزيارات لاشتراك صيانة سنوية ساري فقط.' });
     const visit = await SubscriptionVisit.create({ subscription: subscription._id, client: subscription.client, technician: technician._id, scheduledAt: value.scheduledAt, createdBy: String(req.user?.name || 'الإدارة') });
     await createNotification({ recipientRole: 'fanni', recipientId: technician._id, type: 'subscription_visit_assigned', title: 'زيارة صيانة جديدة', message: 'تم إسناد زيارة لك للاشتراك ' + subscription.code, link: '/fanni' });
     await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_visit_scheduled', title: 'تم تحديد موعد زيارة', message: 'موعد الزيارة ' + new Date(value.scheduledAt).toLocaleString('ar-EG'), link: '/client' });
