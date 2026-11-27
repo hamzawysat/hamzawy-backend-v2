@@ -41,8 +41,6 @@ const visitSchema = Joi.object({
 const safeClient = (s) => {
   const v = { ...s };
   delete v.iptvPasswordEncrypted;
-  delete v.iptvUsername;
-  delete v.activationCode;
   return v;
 };
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
@@ -123,8 +121,9 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
     if (['active','paused','expired','cancelled'].includes(String(req.query.status || ''))) filter.status = String(req.query.status);
     if (req.query.expiring === '7') { filter.status = 'active'; filter.endsAt = { $gte: new Date(), $lte: new Date(Date.now() + 7*86400000) }; }
     if (req.query.q) { const q = String(req.query.q).trim().slice(0,100); filter.$or = [{ code: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i') },{ clientName: new RegExp(q,'i') },{ clientPhone: new RegExp(q,'i') }]; }
-    const subscriptions = await UnifiedSubscription.find(filter).sort({ endsAt: 1 }).limit(500).lean();
-    return res.json({ subscriptions: subscriptions.map(safeClient) });
+    const subscriptions = await UnifiedSubscription.find(filter).select('+iptvPasswordEncrypted').sort({ endsAt: 1 }).limit(500).lean();
+    const rows = subscriptions.map(s => { const v = safeClient(s); if (v.type === 'iptv') { try { v.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; } } return v; });
+    return res.json({ subscriptions: rows });
   } catch (e) { return next(e); }
 });
 router.post('/admin/create', auth('admin'), async (req, res, next) => {
@@ -151,7 +150,9 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     });
     if (value.type === 'iptv') subscription.iptvPassword = undefined;
     await createNotification({ recipientRole: 'client', recipientId: client._id, type: 'subscription_activated', title: 'تم تفعيل اشتراكك', message: 'تم تفعيل اشتراك ' + subscription.code + ' حتى ' + subscription.endsAt.toLocaleDateString('ar-EG'), link: '/client' });
-    return res.status(201).json({ message: 'تم إنشاء الاشتراك وتفعيله.', subscription: safeClient(subscription.toObject()) });
+    const created = safeClient(subscription.toObject());
+    if (value.type === 'iptv') created.iptvPassword = value.iptvPassword;
+    return res.status(201).json({ message: 'تم إنشاء الاشتراك وتفعيله.', subscription: created });
   } catch (e) { return next(e); }
 });
 router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
