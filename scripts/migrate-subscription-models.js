@@ -76,7 +76,7 @@ async function migrateType(type) {
 }
 
 async function migrateAll() {
-  const markerCollection = mongoose.connection.collection('schema_migrations');
+  const markerCollection = mongoose.connection.collection('subscription_migrations');
   const migrationId = 'unified-subscriptions-to-independent-collections-v1';
   const marker = await markerCollection.findOne({ _id: migrationId });
   if (marker?.status === 'completed') return { skipped: true, results: marker.results || [] };
