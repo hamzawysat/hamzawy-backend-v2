@@ -67,9 +67,13 @@ function unifiedClientTypeLabel(type){return ({maintenance:'صيانة سنوي�
 async function requestUnifiedClientPlan(planId){
   if(state.unifiedCommerceSubmitting)return;
   const plan=(state.unifiedSubscriptionPlans||[]).find(x=>String(x._id)===String(planId));if(!plan)return;
-  if(!window.confirm('إرسال طلب '+unifiedClientTypeLabel(plan.type)+'؟ سيتم التواصل معك لتأكيد التفعيل والسداد.'))return;
+  const choice=window.prompt('اختار طريقة الدفع لطلب الاشتراك:\n1 - محفظة التطبيق (الخصم بعد موافقة الإدارة)\n2 - تحويل أموال (مراجعة التحويل قبل التفعيل)\n\nاكتب 1 أو 2:','');
+  if(choice===null)return;
+  const paymentMethod=String(choice).trim()==='1'?'wallet':String(choice).trim()==='2'?'transfer':'';
+  if(!paymentMethod)return showToast('اختار 1 للمحفظة أو 2 للتحويل.');
+  if(!window.confirm('تأكيد طلب '+unifiedClientTypeLabel(plan.type)+' بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟'))return;
   state.unifiedCommerceSubmitting=String(planId);render();
-  try{const result=await API.requestUnifiedSubscription({planId:String(planId)});showToast(result.message||'تم إرسال الطلب للإدارة.','success');await loadClientCommerce();}
+  try{const result=await API.requestUnifiedSubscription({planId:String(planId),paymentMethod});showToast(result.message||'تم إرسال الطلب للإدارة.','success');await loadClientCommerce();}
   catch(error){showToast(error.message||'تعذر إرسال الطلب.');}
   finally{state.unifiedCommerceSubmitting='';render();}
 }
