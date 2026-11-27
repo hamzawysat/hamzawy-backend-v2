@@ -110,6 +110,17 @@ router.post('/client/request-renewal', clientAuth, async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 
+router.post('/client/request-visit', clientAuth, async (req, res, next) => {
+  try {
+    const { error, value } = Joi.object({ subscriptionId: Joi.string().hex().length(24).required(), preferredAt: Joi.date().iso().optional(), note: Joi.string().trim().max(500).allow('').default('') }).unknown(false).validate(req.body || {});
+    if (error) return res.status(400).json({ message: 'بيانات طلب الزيارة غير صحيحة.' });
+    const subscription = await UnifiedSubscription.findOne({ _id:value.subscriptionId, client:req.clientId, type:'maintenance', status:'active', endsAt:{ $gt:new Date() } }).lean();
+    if (!subscription) return res.status(404).json({ message:'لا يوجد اشتراك صيانة ساري على حسابك.' });
+    await notifyAdmins({ type:'admin_subscription_visit_request', title:'طلب زيارة صيانة', message:'طلب العميل ' + String(req.client.name||'') + ' زيارة للاشتراك ' + subscription.code + (value.note ? ' — '+value.note : ''), link:'/admin?tab=commerceSubscriptions', dedupeKey:'subscription-visit-request:'+String(subscription._id)+':'+Date.now() });
+    return res.status(202).json({ message:'تم إرسال طلب الزيارة للإدارة، وسيتم تأكيد الموعد معك.' });
+  } catch(e) { return next(e); }
+});
+
 // Admin-only management API. Existing commerce subscriptions remain untouched.
 router.get('/admin/plans', auth('admin'), async (req, res, next) => {
   try { return res.json({ plans: await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean() }); }
