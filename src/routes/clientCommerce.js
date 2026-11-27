@@ -2,7 +2,7 @@
 
 const express = require('express');
 
-function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, ClientSubscription, WalletTransaction, mongoose, createNotification, notifyAdmins }) {
+function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, ClientSubscription, WalletTransaction, mongoose, createNotification, notifyAdmins, subscriptionsEnabled = true }) {
   const router = express.Router();
 
 
@@ -77,6 +77,9 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       }
     }
   });
+
+  // Keep order payment available while the legacy subscription endpoints are retired.
+  if (!subscriptionsEnabled) return router;
 
   router.get('/commerce/catalog', clientAuth, async (req, res, next) => {
     try {
