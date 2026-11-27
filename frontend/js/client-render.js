@@ -152,7 +152,7 @@ function render(){
         </div>
         <div class="client-home-actions">
           <button type="button" onclick="state.accountOrdersTab='current';setTab('orders')" class="client-home-action"><span>📋</span><strong>سجل الطلبات</strong><i>‹</i></button>
-          <button type="button" onclick="state.accountOrdersTab='previous';setTab('orders')" class="client-home-action"><span>📊</span><strong>التقارير</strong><i>‹</i></button>
+          <button type="button" onclick="setTab('subscriptions')" class="client-home-action"><span>📡</span><strong>اشتراكاتي</strong><i>‹</i></button>
           <a href="password.html?role=client&mode=account" class="client-home-action"><span>⚙️</span><strong>الإعدادات</strong><i>‹</i></a>
           <a href="/support" class="client-home-action"><span>🎧</span><strong>طلب دعم فني</strong><i>‹</i></a>
         </div>
