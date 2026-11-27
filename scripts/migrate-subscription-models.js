@@ -1,14 +1,18 @@
 'use strict';
 require('dotenv').config();
 const mongoose = require('mongoose');
+const crypto = require('node:crypto');
 const LegacySubscription = require('../src/models/UnifiedSubscription');
 const { modelForType } = require('../src/models/subscriptionRepository');
 
 const TYPES = ['maintenance', 'air_network', 'iptv'];
 const BATCH_SIZE = 250;
 
+function sourceHash(source) { return crypto.createHash('sha256').update(JSON.stringify(source)).digest('hex'); }
+
 function mapLegacyDocument(source) {
   const doc = { ...source };
+  doc.__legacyMigrationHash = sourceHash(source);
   delete doc.subscriptionModel;
   if (source.type === 'maintenance') {
     doc.maintenanceDetails = {
@@ -60,19 +64,27 @@ async function migrateType(type) {
       copied += batch.length;
     }
   }
-  const sourceIds = sourceCollection.find({ type }, { projection: { _id: 1 } }).batchSize(BATCH_SIZE);
+  const sourceDocs = sourceCollection.find({ type }).batchSize(BATCH_SIZE);
   let missing = 0;
-  while (await sourceIds.hasNext()) {
+  let mismatched = 0;
+  while (await sourceDocs.hasNext()) {
     const docs = [];
-    for (let i = 0; i < BATCH_SIZE && await sourceIds.hasNext(); i++) docs.push(await sourceIds.next());
+    for (let i = 0; i < BATCH_SIZE && await sourceDocs.hasNext(); i++) docs.push(await sourceDocs.next());
     const ids = docs.map(doc => doc._id);
-    const present = await targetCollection.countDocuments({ _id: { $in: ids } });
-    missing += ids.length - present;
+    const targetDocs = await targetCollection.find({ _id: { $in: ids } }, { projection: { _id: 1, __legacyMigrationHash: 1 } }).toArray();
+    const byId = new Map(targetDocs.map(doc => [String(doc._id), doc]));
+    for (const source of docs) {
+      const target = byId.get(String(source._id));
+      if (!target) missing++;
+      else if (target.__legacyMigrationHash !== sourceHash(source)) mismatched++;
+    }
   }
-  if (missing !== 0) throw new Error(type + ': migration verification failed; ' + missing + ' source records are missing from the target.');
+  if (missing !== 0 || mismatched !== 0) {
+    throw new Error(type + ': migration verification failed; missing=' + missing + ', mismatched=' + mismatched + '. Legacy source remains untouched.');
+  }
   const targetCount = await targetCollection.countDocuments({ type });
   if (targetCount < sourceCount) throw new Error(type + ': target count is lower than source count.');
-  return { type, sourceCount, targetCount, processed: copied, missing };
+  return { type, sourceCount, targetCount, processed: copied, missing, mismatched };
 }
 
 async function migrateAll() {
