@@ -108,6 +108,20 @@ function confirmUnifiedClientVisit(visitId){
    state.unifiedCommerceSubmitting='';render();
  });
 }
+function renderUnifiedClientStorePlans(){
+ const plans=(state.unifiedSubscriptionPlans||[]).filter(plan=>plan&&plan.active!==false);
+ const types=[
+  {id:'maintenance',label:'اشتراك الصيانة',icon:'🛠️',description:'صيانة دورية وزيارات فنية حسب الباقة'},
+  {id:'iptv',label:'الاشتراك الترفيهي',icon:'📺',description:'خدمات الترفيه وبيانات التشغيل'},
+  {id:'air_network',label:'الاشتراك المحلي',icon:'📡',description:'خدمات الشبكة المحلية والتفعيل'}
+ ];
+ const groups=types.map(type=>{
+  const rows=plans.filter(plan=>plan.type===type.id);
+  const cards=rows.map(plan=>'<article class="rounded-xl border border-slate-200 bg-white p-3"><div class="flex items-center justify-between gap-2"><b class="text-[12px]">'+escHtml(plan.name||type.label)+'</b><strong class="text-[12px]">'+Number(plan.price||0).toLocaleString('ar-EG')+' جنيه</strong></div><p class="mt-1 text-[11px] text-slate-500">'+escHtml(plan.description||type.description)+'</p><p class="mt-1 text-[10px] text-slate-500">المدة: '+Number(plan.durationDays||0).toLocaleString('ar-EG')+' يوم'+(type.id==='maintenance'?' · الزيارات: '+Number(plan.visitCount||0).toLocaleString('ar-EG'):'')+'</p>'+(Array.isArray(plan.includedServices)&&plan.includedServices.length?'<p class="mt-2 text-[10px] text-slate-600">يشمل: '+plan.includedServices.map(escHtml).join(' · ')+'</p>':'')+'<button type="button" onclick="requestUnifiedClientPlan(&quot;'+escAttr(plan._id)+'&quot;)" '+(state.unifiedCommerceSubmitting?'disabled':'')+' class="mt-3 w-full rounded-xl bg-slate-900 p-2.5 text-[11px] font-bold text-white">'+(state.unifiedCommerceSubmitting===String(plan._id)?'جاري إرسال الطلب...':'طلب الاشتراك')+'</button></article>').join('');
+  return '<section class="rounded-xl border border-slate-200 bg-slate-50 p-3"><div class="flex items-center gap-2"><span class="text-xl">'+type.icon+'</span><div><h4 class="font-extrabold text-[12px]">'+type.label+'</h4><p class="text-[10px] text-slate-500">'+type.description+'</p></div></div><div class="mt-3 space-y-2">'+(cards||'<p class="rounded-lg bg-white p-3 text-center text-[10px] text-slate-500">لا توجد باقات متاحة حاليًا.</p>')+'</div></section>';
+ }).join('');
+ return '<section class="panel p-4 space-y-3"><div><h3 class="font-black text-[15px]">اشتراكات ساتڤيو</h3><p class="mt-1 text-[11px] text-slate-500">اختر الصيانة أو الترفيهي أو المحلي، ثم أرسل طلب الاشتراك للإدارة واختر طريقة الدفع.</p></div>'+groups+'</section>';
+}
 function renderUnifiedClientSubscriptions(){
  const plans=state.unifiedSubscriptionPlans||[],subs=state.unifiedSubscriptions||[],visits=state.unifiedSubscriptionVisits||[];
  const types=[
