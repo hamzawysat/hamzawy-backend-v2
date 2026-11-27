@@ -26,10 +26,14 @@ async function purchaseClientSubscription(itemId){
   if(!item)return showToast('الباقة غير متاحة حاليًا.');
   const price=Number(item.price||0);
   if(!Number.isFinite(price)||price<0)return showToast('سعر الباقة غير صحيح.');
-  if(!window.confirm('إرسال طلب الاشتراك في '+item.name+' بقيمة '+price+' جنيه؟ لن يتم خصم أي مبلغ الآن. سيتم إشعار الإدارة، والخصم يتم فقط بعد الموافقة والتفعيل.'))return;
+  const paymentChoice=window.prompt('اختار طريقة الدفع قبل تأكيد الطلب:\n1 - محفظة التطبيق (الخصم بعد موافقة الإدارة)\n2 - تحويل أموال (مراجعة التحويل بواسطة الإدارة)\n\nاكتب 1 أو 2:','');
+  if(paymentChoice===null)return;
+  const paymentMethod=String(paymentChoice).trim()==='1'?'wallet':String(paymentChoice).trim()==='2'?'transfer':'';
+  if(!paymentMethod)return showToast('اختار 1 للمحفظة أو 2 للتحويل.');
+  if(!window.confirm('تأكيد طلب '+item.name+' بقيمة '+price+' جنيه بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟'))return;
   state.commerceSubmitting=String(itemId);state.commerceError='';render();
   try{
-    const result=await API.purchaseClientSubscription({itemId:String(itemId),idempotencyKey:clientCommerceKey()});
+    const result=await API.purchaseClientSubscription({itemId:String(itemId),paymentMethod,idempotencyKey:clientCommerceKey()});
     state.walletBalance=Number(result.balance??state.walletBalance);
     state.commerceSuccess=result.message||'تم إرسال طلب الاشتراك للمراجعة.';
     await Promise.all([loadClientCommerce(),loadClientWallet()]);
