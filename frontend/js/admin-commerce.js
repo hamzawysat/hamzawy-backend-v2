@@ -198,7 +198,8 @@ async function assignUnifiedSubscriptionVisit(id){
 }
 function applyUnifiedSubscriptionFilters(){state.unifiedSubscriptionFilters={search:String(document.getElementById('unified-subscription-search')?.value||'').trim(),status:String(document.getElementById('unified-subscription-status')?.value||''),type:String(document.getElementById('unified-subscription-type')?.value||'')};render();}
 function renderUnifiedSubscriptionPanel(){
- const allRows=state.unifiedSubscriptions||[];
+ const allRows=state.unifiedSubscriptions||[],visits=state.unifiedSubscriptionVisits||[];
+ const visitCards=visits.map(visit=>'<article class="premium-card p-3"><div class="flex items-center justify-between gap-2"><b class="text-[11px]">'+escHtml(visit.subscription?.code||'زيارة صيانة')+'</b><span class="text-[10px]">'+escHtml(visit.status==='completed'?'مكتملة':visit.status==='awaiting_client_confirmation'?'بانتظار تأكيد العميل':visit.status==='in_progress'?'جاري التنفيذ':visit.status||'مجدولة')+'</span></div><p class="mt-1 text-[10px]">'+escHtml(visit.client?.name||'')+' · '+escHtml(visit.technician?.name||'الفني')+'</p><p class="mt-1 text-[10px] text-slate-500">'+escHtml(new Date(visit.scheduledAt).toLocaleString('ar-EG'))+'</p></article>').join('');
  const filters=state.unifiedSubscriptionFilters||{},needle=String(filters.search||'').toLowerCase();
  const rows=allRows.filter(sub=>(!filters.status||sub.status===filters.status)&&(!filters.type||sub.type===filters.type)&&(!needle||[sub.code,sub.clientName,sub.clientPhone].some(value=>String(value||'').toLowerCase().includes(needle))));
  const activeCount=allRows.filter(sub=>sub.status==='active').length,pendingCount=allRows.filter(sub=>sub.status==='pending').length,expiringCount=allRows.filter(sub=>sub.status==='active'&&new Date(sub.endsAt)>=new Date()&&new Date(sub.endsAt)<=new Date(Date.now()+7*86400000)).length;
