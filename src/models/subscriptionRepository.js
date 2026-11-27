@@ -3,9 +3,14 @@ const MaintenanceSubscription = require('./MaintenanceSubscription');
 const LocalSubscription = require('./LocalSubscription');
 const EntertainmentSubscription = require('./EntertainmentSubscription');
 
-const models = [MaintenanceSubscription, LocalSubscription, EntertainmentSubscription];
+const MODEL_BY_TYPE = {
+  maintenance: MaintenanceSubscription,
+  air_network: LocalSubscription,
+  iptv: EntertainmentSubscription
+};
+const models = Object.values(MODEL_BY_TYPE);
 function modelForType(type) {
-  const model = models.find(candidate => candidate.schema.path('type').enumValues.includes(type));
+  const model = MODEL_BY_TYPE[type];
   if (!model) throw new Error('Unsupported subscription type: ' + String(type));
   return model;
 }
