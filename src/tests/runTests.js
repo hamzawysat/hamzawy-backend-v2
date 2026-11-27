@@ -2791,118 +2791,22 @@ async function run() {
       assert.equal(duplicateCompletionAfterConfirmation.status, 409, 'completed orders must not be completed twice');
       assert.equal((await Fanni.findById(fanni._id).lean()).walletBalance, 1580);
 
-      const CommerceItem = require('../models/CommerceItem');
-      const ClientSubscription = require('../models/ClientSubscription');
-      const plan = await CommerceItem.create({
-        kind: 'subscription', name: 'باقة اختبار العميل', price: 50,
-        durationDays: 30, active: true, features: ['تجربة الدفع']
-      });
-      const purchaseKey = 'test-client-subscription-purchase-0001';
-      const balanceBeforeRequest = Number((await Client.findById(clientId).lean()).walletBalance);
-      const insufficientKey = 'test-client-subscription-insufficient-0001';
-      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 0 } });
-      const insufficientPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: insufficientKey });
-      assert.equal(insufficientPurchase.status, 409);
-      assert.match(insufficientPurchase.body.message, /رصيد محفظتك غير كافٍ/);
-      assert.equal(await ClientSubscription.countDocuments({ client: clientId, requestKey: insufficientKey }), 0, 'insufficient balance must not create a pending subscription');
-      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), 0, 'insufficient balance check must not alter wallet');
-      await Client.updateOne({ _id: clientId }, { $set: { walletBalance: balanceBeforeRequest } });
-      const purchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: purchaseKey });
-      assert.equal(purchase.status, 201, JSON.stringify(purchase.body));
-      assert.equal(purchase.body.balance, balanceBeforeRequest, 'requesting a subscription must not debit the wallet');
-      assert.equal(purchase.body.subscription.status, 'pending');
-      assert.equal(purchase.body.subscription.paymentStatus, 'pending');
-      assert.equal(purchase.body.subscription.durationDays, 30);
-      const subscriptionId = String(purchase.body.subscription._id);
-      assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: purchaseKey }), 0);
-
-      const transferKey = 'test-client-subscription-transfer-0001';
-      const transferPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), paymentMethod: 'transfer', idempotencyKey: transferKey });
-      assert.equal(transferPurchase.status, 201, JSON.stringify(transferPurchase.body));
-      assert.equal(transferPurchase.body.subscription.paymentMethod, 'تحويل أموال');
-      assert.equal(transferPurchase.body.subscription.paymentStatus, 'pending');
-      const transferSubscriptionId = String(transferPurchase.body.subscription._id);
-      const transferApproval = await request(app).patch('/api/admin/commerce/subscriptions/' + transferSubscriptionId + '/status')
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'active', reason: 'تأكيد استلام التحويل في الاختبار' });
-      assert.equal(transferApproval.status, 200, JSON.stringify(transferApproval.body));
-      assert.equal(transferApproval.body.subscription.paymentStatus, 'paid');
-      assert.equal(transferApproval.body.subscription.paymentMethod, 'تحويل أموال');
-      assert.equal(transferApproval.body.subscription.transactionNumber || '', '');
-      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), balanceBeforeRequest, 'transfer approval must never debit the wallet');
-
-      const duplicatePurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: purchaseKey });
-      assert.equal(duplicatePurchase.status, 200);
-      assert.equal(duplicatePurchase.body.duplicate, true);
-      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), balanceBeforeRequest);
-
-      const approval = await request(app).patch('/api/admin/commerce/subscriptions/' + subscriptionId + '/status')
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ status: 'active', reason: 'موافقة اختبار' });
-      assert.equal(approval.status, 200, JSON.stringify(approval.body));
-      assert.equal(approval.body.subscription.status, 'active');
-      assert.equal(approval.body.subscription.paymentStatus, 'paid');
-      const afterApproval = Number((await Client.findById(clientId).lean()).walletBalance);
-      assert.equal(afterApproval, balanceBeforeRequest - 50, 'approval must debit exactly once');
-      const approvalLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: 'client-subscription-approval:' + subscriptionId }).lean();
-      assert.ok(approvalLedger);
-      assert.equal(approvalLedger.amount, -50);
-      assert.match(approvalLedger.transactionNumber, /^HZW-[0-9A-F]{24}$/);
-      assert.equal(approval.body.subscription.transactionNumber, approvalLedger.transactionNumber);
-      assert.equal(approval.body.subscription.history.at(-1).transactionNumber, approvalLedger.transactionNumber);
-
-      const renewalKey = 'test-client-subscription-renew-0001';
-      const renewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ paymentMethod: 'wallet', idempotencyKey: renewalKey });
-      assert.equal(renewal.status, 200, JSON.stringify(renewal.body));
-      assert.equal(renewal.body.balance, afterApproval - 50);
-      const renewed = await ClientSubscription.findById(subscriptionId).lean();
-      assert.equal(renewed.history.length, 2);
-      const renewalLedger = await WalletTransaction.findOne({ client: clientId, idempotencyKey: renewalKey }).lean();
-      assert.ok(renewalLedger);
-      assert.equal(renewal.body.transactionNumber, renewalLedger.transactionNumber);
-      assert.equal(renewed.transactionNumber, renewalLedger.transactionNumber);
-      assert.equal(renewed.history.at(-1).transactionNumber, renewalLedger.transactionNumber);
-      const duplicateRenewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
-        .set('Authorization', 'Bearer ' + clientToken)
-        .send({ paymentMethod: 'wallet', idempotencyKey: renewalKey });
-      assert.equal(duplicateRenewal.status, 200);
-      assert.equal(duplicateRenewal.body.duplicate, true);
-      assert.equal((await ClientSubscription.findById(subscriptionId).lean()).history.length, 2);
-      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), afterApproval - 50);
-
-      const adminRenewal = await request(app).post('/api/admin/commerce/subscriptions/' + subscriptionId + '/renew')
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ paymentStatus: 'paid', note: 'تجديد إداري للاختبار' });
-      assert.equal(adminRenewal.status, 200, JSON.stringify(adminRenewal.body));
-      assert.match(adminRenewal.body.transactionNumber, /^HZW-[0-9A-F]{24}$/);
-      const adminRenewed = await ClientSubscription.findById(subscriptionId).lean();
-      assert.equal(adminRenewed.history.length, 3);
-      assert.equal(adminRenewed.history.at(-1).transactionNumber, adminRenewal.body.transactionNumber);
-      assert.equal(adminRenewed.transactionNumber, adminRenewal.body.transactionNumber);
-      const adminRenewalLedger = await WalletTransaction.findOne({ client: clientId, transactionNumber: adminRenewal.body.transactionNumber }).lean();
-      assert.ok(adminRenewalLedger, 'admin renewal reference must resolve to a real wallet ledger transaction');
-      assert.equal(adminRenewalLedger.type, 'client_subscription_payment');
-      assert.equal(adminRenewalLedger.amount, -50);
-      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), afterApproval - 100);
-
-      const pendingAdminBalance = Number((await Client.findById(clientId).lean()).walletBalance);
-      const pendingAdminSubscription = await request(app).post('/api/admin/commerce/subscriptions')
-        .set('Authorization', 'Bearer ' + adminToken)
-        .send({ clientPhone: '01012345678', itemId: String(plan._id), status: 'pending', paymentStatus: 'paid' });
-      assert.equal(pendingAdminSubscription.status, 201, JSON.stringify(pendingAdminSubscription.body));
-      assert.equal(pendingAdminSubscription.body.subscription.paymentStatus, 'pending', 'admin-created pending subscription must never be marked paid before a real debit');
-      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), pendingAdminBalance, 'creating a pending admin subscription must not debit the wallet');
-      assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: { $regex: '^admin-client-subscription:' } }), 0, 'pending admin subscription must not create a wallet transaction');
+      // Legacy commerce subscription APIs are intentionally retired; order payment above remains active.
+      const legacyClientCatalog = await request(app).get('/api/client/commerce/catalog')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(legacyClientCatalog.status, 404);
+      const legacyClientSubscriptions = await request(app).get('/api/client/commerce/subscriptions')
+        .set('Authorization', 'Bearer ' + clientToken);
+      assert.equal(legacyClientSubscriptions.status, 404);
+      const legacyClientPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
+        .set('Authorization', 'Bearer ' + clientToken).send({});
+      assert.equal(legacyClientPurchase.status, 404);
+      const legacyAdminCatalog = await request(app).get('/api/admin/commerce/catalog')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(legacyAdminCatalog.status, 404);
+      const legacyAdminSubscriptions = await request(app).get('/api/admin/commerce/subscriptions')
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(legacyAdminSubscriptions.status, 404);
 
         // Verify the unified satellite subscription purchase and admin approval lifecycle.
       {
