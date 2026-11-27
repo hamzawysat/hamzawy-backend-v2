@@ -2811,7 +2811,7 @@ async function run() {
       const renewalKey = 'test-client-subscription-renew-0001';
       const renewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ idempotencyKey: renewalKey });
+        .send({ paymentMethod: 'wallet', idempotencyKey: renewalKey });
       assert.equal(renewal.status, 200, JSON.stringify(renewal.body));
       assert.equal(renewal.body.balance, afterApproval - 50);
       const renewed = await ClientSubscription.findById(subscriptionId).lean();
@@ -2823,7 +2823,7 @@ async function run() {
       assert.equal(renewed.history.at(-1).transactionNumber, renewalLedger.transactionNumber);
       const duplicateRenewal = await request(app).post('/api/client/commerce/subscriptions/' + subscriptionId + '/renew')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ idempotencyKey: renewalKey });
+        .send({ paymentMethod: 'wallet', idempotencyKey: renewalKey });
       assert.equal(duplicateRenewal.status, 200);
       assert.equal(duplicateRenewal.body.duplicate, true);
       assert.equal((await ClientSubscription.findById(subscriptionId).lean()).history.length, 2);
