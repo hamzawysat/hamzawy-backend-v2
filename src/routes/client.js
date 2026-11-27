@@ -17,6 +17,7 @@ const Order = require('../models/Order');
 const Rating = require('../models/Rating');
 const WalletTransaction = require('../models/WalletTransaction');
 const ClientTopupRequest = require('../models/ClientTopupRequest');
+const createClientCommerceRouter = require('./clientCommerce');
 const { clientAuth } = require('../middleware/clientAuth');
 const { normalizePhone } = require('../utils/phone');
 
@@ -24,6 +25,9 @@ const { notifyAdmins, createNotification } = require('../utils/notifications');
 const { referralFingerprint } = require('../utils/referralFingerprint');
 
 const router = express.Router();
+
+// Retain the client order-payment endpoint; legacy subscription routes stay disabled.
+router.use(createClientCommerceRouter({ clientAuth, Client, Order, WalletTransaction, mongoose, createNotification, notifyAdmins, subscriptionsEnabled: false }));
 
 
 const registerSchema = Joi.object({
