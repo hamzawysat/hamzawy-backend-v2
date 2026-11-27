@@ -5,6 +5,7 @@ const { createNotification, notifyAdmins } = require('../utils/notifications');
 const DAY = 86400000;
 function dayKey(date) { return new Date(date).toISOString().slice(0,10); }
 async function runSubscriptionReminders(now = new Date()) {
+  await UnifiedSubscription.updateMany({ status: 'active', endsAt: { $lte: now } }, { $set: { status: 'expired' } });
   const start = new Date(now); start.setHours(0,0,0,0);
   const end = new Date(start.getTime() + 8*DAY);
   const subscriptions = await UnifiedSubscription.find({ status: 'active', endsAt: { $gte: start, $lt: end } }).select('code client clientName type endsAt').lean();
