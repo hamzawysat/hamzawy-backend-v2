@@ -19,7 +19,7 @@ const schema = new mongoose.Schema({
   networkName: { type: String, trim: true, maxlength: 120, default: '' },
   activationCode: { type: String, trim: true, maxlength: 120, default: '' },
   portalUrl: { type: String, trim: true, maxlength: 500, default: '' },
-  iptvUsername: { type: String, trim: true, maxlength: 150, default: '' },
+  iptvUsernameEncrypted: { type: String, select: false, default: '' },
   iptvPasswordEncrypted: { type: String, select: false, default: '' },
   allowedDevices: { type: Number, min: 1, max: 20, default: 1 },
   visitsIncluded: { type: Number, min: 0, max: 100, default: 0 },
