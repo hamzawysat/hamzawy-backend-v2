@@ -102,11 +102,15 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       const itemId = String(req.body?.itemId || '').trim();
       const subscriptionId = String(req.params?.id || '').trim();
       const idempotencyKey = String(req.body?.idempotencyKey || '').trim();
+      const requestedPaymentMethod = mode === 'purchase' ? String(req.body?.paymentMethod || '') : 'wallet';
+      if (mode === 'purchase' && !['wallet', 'transfer'].includes(requestedPaymentMethod)) return res.status(400).json({ message: 'اختار طريقة الدفع: المحفظة أو التحويل.' });
+      const paymentMethodLabel = requestedPaymentMethod === 'transfer' ? 'تحويل أموال' : 'محفظة العميل';
       if (!/^[a-f0-9]{24}$/i.test(itemId) && mode === 'purchase') return res.status(400).json({ message: 'الباقة غير صالحة.' });
       if (mode === 'renew' && !mongoose.isValidObjectId(subscriptionId)) return res.status(400).json({ message: 'الاشتراك غير صالح.' });
       if (!/^[a-zA-Z0-9:_-]{16,150}$/.test(idempotencyKey)) return res.status(400).json({ message: 'معرّف عملية الدفع غير صالح. حدّث الصفحة وحاول مرة أخرى.' });
       if (req.client.status !== 'نشط') return res.status(403).json({ message: 'حساب العميل غير نشط.' });
-      if (req.client.walletFrozen) return res.status(403).json({ message: 'المحفظة مجمدة حاليًا. تواصل مع خدمة العملاء.' });
+      if (mode === 'renew' && req.client.walletFrozen) return res.status(403).json({ message: 'المحفظة مجمدة حاليًا. تواصل مع خدمة العملاء.' });
+      if (mode === 'purchase' && requestedPaymentMethod === 'wallet' && req.client.walletFrozen) return res.status(403).json({ message: 'المحفظة مجمدة حاليًا. اختار التحويل أو تواصل مع خدمة العملاء.' });
 
       const pendingRequest = mode === 'purchase' ? await ClientSubscription.findOne({ client: req.clientId, requestKey: idempotencyKey }).lean() : null;
       if (pendingRequest) return res.status(200).json({ message: 'طلب الاشتراك مسجل بالفعل وبانتظار مراجعة الإدارة.', balance: Number(req.client.walletBalance || 0), subscription: pendingRequest, duplicate: true });
@@ -121,7 +125,9 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
 
       session = await mongoose.startSession();
       session.startTransaction();
-      const client = await Client.findOne({ _id: req.clientId, status: 'نشط', walletFrozen: { $ne: true } }).session(session);
+      const clientFilter = { _id: req.clientId, status: 'نشط' };
+      if (mode === 'renew' || requestedPaymentMethod === 'wallet') clientFilter.walletFrozen = { $ne: true };
+      const client = await Client.findOne(clientFilter).session(session);
       if (!client) { await session.abortTransaction(); return res.status(403).json({ message: 'حسابك أو محفظتك غير متاحين للدفع حاليًا.' }); }
 
       let subscription;
@@ -149,7 +155,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       }
 
       // Require sufficient available balance when the request is submitted, but do not debit until admin approval.
-      if (mode === 'purchase') {
+      if (mode === 'purchase' && requestedPaymentMethod === 'wallet') {
         const availableBalance = Number(client.walletBalance || 0);
         if (availableBalance < amount) {
           await session.abortTransaction();
@@ -166,14 +172,16 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         subscription = new ClientSubscription({
           client: client._id, item: item._id, itemName: item.name, amount,
           durationDays: Number(item.durationDays || 30), status: 'pending', paymentStatus: 'pending',
-          paymentMethod: 'محفظة العميل', requestKey: idempotencyKey,
+          paymentMethod: paymentMethodLabel, requestKey: idempotencyKey,
           startsAt: null, endsAt: null, createdBy: 'العميل', updatedBy: 'العميل', history: []
         });
         await subscription.save({ session });
         await session.commitTransaction();
-        notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName, request: true };
+        notification = { clientId: client._id, subscriptionId: subscription._id, itemName: subscription.itemName, paymentMethod: paymentMethodLabel, request: true };
         return res.status(201).json({
-          message: 'تم إرسال طلب الاشتراك للإدارة بنجاح. لن يتم خصم أي رصيد إلا بعد الموافقة والتفعيل.',
+          message: requestedPaymentMethod === 'transfer'
+            ? 'تم تسجيل طلب الاشتراك بطريقة التحويل. أرسل إثبات التحويل للإدارة لمراجعته، ولن يتم خصم أي مبلغ من المحفظة.'
+            : 'تم إرسال طلب الاشتراك بطريقة المحفظة. لن يتم الخصم إلا بعد موافقة الإدارة والتفعيل.',
           balance: Number(client.walletBalance || 0), subscription
         });
       }
@@ -233,7 +241,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
           if (notification.request) {
             await notifyAdmins({
               type: 'admin_subscription_request', title: 'طلب اشتراك جديد',
-              message: 'طلب العميل اشتراك ' + notification.itemName + '. راجع الطلب وفعّله بعد التأكد من الرصيد.',
+              message: 'طلب العميل اشتراك ' + notification.itemName + ' بطريقة الدفع: ' + notification.paymentMethod + '. راجع الطلب وأكد الدفع قبل التفعيل.',
               link: '/admin.html?tab=commerceSubscriptions',
               dedupeKey: 'admin-subscription-request:' + String(notification.subscriptionId)
             });
