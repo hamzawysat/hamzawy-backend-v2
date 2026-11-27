@@ -239,17 +239,68 @@ router.get('/technician/visits', auth('fanni'), async (req, res, next) => {
 });
 router.patch('/technician/visits/:id', auth('fanni'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الزيارة غير صالح.' });
-  const { error, value } = Joi.object({ status: Joi.string().valid('in_progress','completed').required(), workDescription: Joi.string().trim().max(2000).allow('').default(''), beforePhotos: Joi.array().items(Joi.string().uri().max(500)).max(8).default([]), afterPhotos: Joi.array().items(Joi.string().uri().max(500)).max(8).default([]) }).unknown(false).validate(req.body || {});
+  const { error, value } = Joi.object({ status: Joi.string().valid('in_progress','completed').required(), workDescription: Joi.string().trim().max(2000).allow('').default('') }).unknown(false).validate(req.body || {});
   if (error) return res.status(400).json({ message: 'بيانات تنفيذ الزيارة غير صحيحة.' });
   try {
     const visit = await SubscriptionVisit.findOne({ _id: req.params.id, technician: req.user._id });
     if (!visit) return res.status(404).json({ message: 'الزيارة غير موجودة ضمن الزيارات المسندة إليك.' });
     visit.status = value.status; visit.workDescription = value.workDescription;
-    if (value.beforePhotos.length) visit.beforePhotos = value.beforePhotos;
-    if (value.afterPhotos.length) visit.afterPhotos = value.afterPhotos;
     if (value.status === 'completed') visit.completedAt = new Date();
     await visit.save();
     return res.json({ message: 'تم تحديث الزيارة.', visit });
   } catch (e) { return next(e); }
 });
+
+router.post('/technician/visits/:id/photos', auth('fanni'), async (req, res, next) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الزيارة غير صالح.' });
+    const side = String(req.query.side || '');
+    if (!['before', 'after'].includes(side)) return res.status(400).json({ message: 'حدد صورة قبل التنفيذ أو بعده.' });
+    const buffer = Buffer.isBuffer(req.body) ? req.body : null;
+    const contentType = String(req.headers['content-type'] || '').split(';')[0].toLowerCase();
+    const signatures = {
+      'image/jpeg': value => value.length >= 3 && value[0] === 0xff && value[1] === 0xd8 && value[2] === 0xff,
+      'image/png': value => value.length >= 8 && value.subarray(0, 8).equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10])),
+      'image/webp': value => value.length >= 12 && value.toString('ascii', 0, 4) === 'RIFF' && value.toString('ascii', 8, 12) === 'WEBP'
+    };
+    if (!buffer || !buffer.length || buffer.length > 15 * 1024 * 1024 || !signatures[contentType] || !signatures[contentType](buffer)) {
+      return res.status(400).json({ message: 'ارفع صورة JPG أو PNG أو WebP سليمة، وبحجم لا يتجاوز 15 ميجابايت.' });
+    }
+    const visit = await SubscriptionVisit.findOne({ _id: req.params.id, technician: req.user._id, status: { $in: ['scheduled', 'in_progress'] } });
+    if (!visit) return res.status(404).json({ message: 'الزيارة غير موجودة ضمن الزيارات المسندة إليك.' });
+    if (!mongoose.connection.db) return res.status(503).json({ message: 'قاعدة البيانات غير متاحة حاليًا.' });
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const extension = contentType === 'image/jpeg' ? '.jpg' : contentType === 'image/png' ? '.png' : '.webp';
+    const upload = bucket.openUploadStream('subscription-visit-' + side + '-' + crypto.randomBytes(8).toString('hex') + extension, {
+      contentType,
+      metadata: { purpose: 'subscription-visit-photo', side, visitId: String(visit._id), technicianId: String(req.user._id), uploadedAt: new Date() }
+    });
+    upload.end(buffer);
+    await new Promise((resolve, reject) => { upload.once('finish', resolve); upload.once('error', reject); });
+    const field = side === 'before' ? 'beforePhotos' : 'afterPhotos';
+    await SubscriptionVisit.updateOne({ _id: visit._id, technician: req.user._id }, { $addToSet: { [field]: String(upload.id) } });
+    return res.status(201).json({ fileId: String(upload.id), side, message: 'تم رفع الصورة وحفظها في الزيارة.' });
+  } catch (error) { return next(error); }
+});
+
+async function streamVisitPhoto(req, res, next, role) {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id) || !mongoose.isValidObjectId(req.params.fileId)) return res.status(404).end();
+    const visitFilter = { _id: req.params.id };
+    if (role === 'fanni') visitFilter.technician = req.user._id;
+    if (role === 'client') visitFilter.client = req.clientId;
+    const visit = await SubscriptionVisit.findOne(visitFilter).lean();
+    const fileId = String(req.params.fileId);
+    if (!visit || ![...(visit.beforePhotos || []), ...(visit.afterPhotos || [])].includes(fileId) || !mongoose.connection.db) return res.status(404).end();
+    const bucket = new mongoose.mongo.GridFSBucket(mongoose.connection.db, { bucketName: 'media' });
+    const files = await bucket.find({ _id: new mongoose.Types.ObjectId(fileId), 'metadata.purpose': 'subscription-visit-photo', 'metadata.visitId': String(visit._id) }).limit(1).toArray();
+    if (!files.length) return res.status(404).end();
+    res.set({ 'Content-Type': files[0].contentType || 'application/octet-stream', 'Content-Length': String(files[0].length), 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+    return bucket.openDownloadStream(new mongoose.Types.ObjectId(fileId)).on('error', next).pipe(res);
+  } catch (error) { return next(error); }
+}
+router.get('/technician/visits/:id/photos/:fileId', auth('fanni'), (req, res, next) => streamVisitPhoto(req, res, next, 'fanni'));
+router.get('/client/visits/:id/photos/:fileId', clientAuth, (req, res, next) => streamVisitPhoto(req, res, next, 'client'));
+router.get('/admin/visits/:id/photos/:fileId', auth('admin'), (req, res, next) => streamVisitPhoto(req, res, next, 'admin'));
+
 module.exports = router;
