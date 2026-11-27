@@ -106,14 +106,48 @@ router.get('/client/mine', clientAuth, async (req, res, next) => {
 // Customer requests a subscription; activation/payment remains an explicit admin decision.
 router.post('/client/request', clientAuth, async (req, res, next) => {
   try {
-    const { error, value } = Joi.object({ planId: Joi.string().hex().length(24).required(), paymentMethod: Joi.string().valid('wallet','transfer').required(), notes: Joi.string().trim().max(1000).allow('').default('') }).unknown(false).validate(req.body || {});
-    if (error) return res.status(400).json({ message: 'بيانات طلب الاشتراك غير صحيحة.' });
+    const { error, value } = Joi.object({
+      planId: Joi.string().hex().length(24).required(),
+      paymentMethod: Joi.string().valid('wallet','transfer').required(),
+      notes: Joi.string().trim().max(1000).allow('').default('')
+    }).unknown(false).validate(req.body || {});
+    if (error) return res.status(400).json({ message: 'حدد الباقة وطريقة الدفع قبل إرسال طلب الاشتراك.' });
     const plan = await SubscriptionPlan.findOne({ _id: value.planId, active: true }).lean();
     if (!plan) return res.status(404).json({ message: 'الباقة غير متاحة حاليًا.' });
-    const existing = await findSubscriptionOne({ client: req.clientId, plan: plan._id, status: { $in: ['active','paused'] }, endsAt: { $gte: new Date() } }, { lean: true });
-    if (existing) return res.status(409).json({ message: 'لديك اشتراك قائم في هذه الباقة بالفعل.' });
-    await notifyAdmins({ type: 'admin_subscription_request', title: 'طلب اشتراك جديد', message: 'طلب العميل ' + String(req.client.name || '') + ' الاشتراك في ' + plan.name + ' — طريقة الدفع: ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال') + (value.notes ? ' — ملاحظات: ' + value.notes : ''), link: '/admin?tab=commerceSubscriptions', dedupeKey: 'subscription-request:' + String(req.clientId) + ':' + String(plan._id) + ':' + Date.now() });
-    return res.status(202).json({ message: 'تم إرسال طلب الاشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل الأموال') + ' للإدارة. سيتم مراجعة الطلب وتأكيد السداد قبل التفعيل، ولم يتم خصم أي مبلغ الآن.' });
+    const existing = await findSubscriptionOne({
+      client: req.clientId, plan: plan._id,
+      status: { $in: ['pending','active','paused'] },
+      endsAt: { $gte: new Date() }
+    }, { lean: true });
+    if (existing) return res.status(409).json({ message: existing.status === 'pending' ? 'لديك طلب اشتراك قيد مراجعة الإدارة بالفعل.' : 'لديك اشتراك قائم في هذه الباقة بالفعل.' });
+    if (value.paymentMethod === 'wallet') {
+      const client = await Client.findOne({ _id: req.clientId, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true } }).select('walletBalance walletFrozen').lean();
+      if (!client) return res.status(403).json({ message: 'محفظتك غير متاحة حاليًا. اختار التحويل أو تواصل مع الإدارة.' });
+      if (Number(client.walletBalance || 0) < Number(plan.price || 0)) return res.status(409).json({ message: 'رصيد المحفظة غير كافٍ لقيمة الباقة. اختار التحويل أو اشحن المحفظة.' });
+    }
+    const startsAt = new Date();
+    const Model = modelForType(plan.type);
+    const subscription = await Model.create({
+      code: makeCode(), type: plan.type, plan: plan._id, client: req.clientId,
+      clientName: String(req.client.name || ''), clientPhone: String(req.client.phone || ''),
+      amount: Number(plan.price || 0), durationDays: Number(plan.durationDays || 30),
+      startsAt, endsAt: new Date(startsAt.getTime() + Number(plan.durationDays || 30) * 86400000),
+      status: 'pending', paymentMethod: value.paymentMethod, paymentStatus: 'pending',
+      paymentRequestedAt: new Date(), visitsIncluded: Number(plan.visitCount || 0),
+      includedServices: plan.includedServices || [], excludedSupplies: plan.excludedSupplies || [],
+      allowedDevices: Number(plan.allowedDevices || 1), notes: value.notes,
+      history: [{ action: 'requested', note: 'طلب العميل الاشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال'), by: 'العميل' }]
+    });
+    await notifyAdmins({
+      type: 'admin_subscription_request', title: 'طلب اشتراك جديد',
+      message: 'طلب العميل ' + String(req.client.name || '') + ' الاشتراك في ' + plan.name + ' — طريقة الدفع: ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال') + (value.notes ? ' — ملاحظات: ' + value.notes : ''),
+      link: '/admin?tab=commerceSubscriptions',
+      dedupeKey: 'subscription-request:' + String(subscription._id)
+    });
+    return res.status(202).json({
+      message: 'تم تسجيل طلب الاشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل الأموال') + '. سيظهر الطلب لدى الإدارة، ولن يتم الخصم أو التفعيل قبل المراجعة.',
+      subscription: safeClient(subscription.toObject())
+    });
   } catch (e) { return next(e); }
 });
 
@@ -178,7 +212,7 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
   try {
     const filter = {};
     if (TYPES.includes(String(req.query.type || ''))) filter.type = String(req.query.type);
-    if (['active','paused','expired','cancelled'].includes(String(req.query.status || ''))) filter.status = String(req.query.status);
+    if (['pending','active','paused','expired','cancelled'].includes(String(req.query.status || ''))) filter.status = String(req.query.status);
     if (req.query.expiring === '7') { filter.status = 'active'; filter.endsAt = { $gte: new Date(), $lte: new Date(Date.now() + 7*86400000) }; }
     if (req.query.q) { const q = String(req.query.q).trim().slice(0,100); filter.$or = [{ code: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i') },{ clientName: new RegExp(q,'i') },{ clientPhone: new RegExp(q,'i') }]; }
     const subscriptions = await findSubscriptions(filter, { select: '+iptvUsernameEncrypted +iptvPasswordEncrypted', sort: { endsAt: 1 }, limit: 500 });
@@ -225,13 +259,75 @@ router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
   const { error, value } = Joi.object({ status: Joi.string().valid('active','paused','cancelled').required(), note: Joi.string().trim().max(500).allow('').default('') }).unknown(false).validate(req.body || {});
   if (error) return res.status(400).json({ message: 'الحالة غير صحيحة.' });
+  let session;
   try {
-    const s = await findSubscriptionById(req.params.id);
-    if (!s) return res.status(404).json({ message: 'الاشتراك غير موجود.' });
-    s.status = value.status; s.history.push({ action: value.status, note: value.note, by: String(req.user?.name || 'الإدارة') });
-    await s.save();
-    return res.json({ message: 'تم تحديث حالة الاشتراك.', subscription: safeClient(s.toObject()) });
+    session = await mongoose.startSession();
+    let result;
+    await session.withTransaction(async () => {
+      const subscription = await findSubscriptionById(req.params.id, { session });
+      if (!subscription) { result = { kind: 'missing' }; return; }
+      const wasPending = subscription.status === 'pending';
+      let transactionNumber = '';
+      if (wasPending && value.status === 'active' && subscription.paymentStatus === 'pending') {
+        if (subscription.paymentMethod === 'wallet' && Number(subscription.amount || 0) > 0) {
+          const paymentKey = 'unified-subscription-initial:' + String(subscription._id);
+          const prior = await WalletTransaction.findOne({ client: subscription.client, idempotencyKey: paymentKey }).session(session).lean();
+          if (!prior) {
+            const client = await Client.findOne({
+              _id: subscription.client, archivedAt: null, status: 'نشط',
+              walletFrozen: { $ne: true }, walletBalance: { $gte: Number(subscription.amount || 0) }
+            }).session(session);
+            if (!client) { result = { kind: 'insufficient' }; return; }
+            const before = Number(client.walletBalance || 0);
+            const updated = await Client.findOneAndUpdate({
+              _id: client._id, archivedAt: null, status: 'نشط',
+              walletFrozen: { $ne: true }, walletBalance: { $gte: Number(subscription.amount || 0) }
+            }, { $inc: { walletBalance: -Number(subscription.amount || 0) } }, {
+              new: true, session, runValidators: true
+            });
+            if (!updated) { result = { kind: 'insufficient' }; return; }
+            const transaction = new WalletTransaction({
+              client: client._id, type: 'client_subscription_payment',
+              amount: -Number(subscription.amount || 0), balanceBefore: before,
+              balanceAfter: Number(updated.walletBalance),
+              description: 'تفعيل ' + publicServiceName(subscription.type) + ' ' + subscription.code + ' من محفظة العميل',
+              idempotencyKey: paymentKey
+            });
+            await transaction.save({ session });
+            transactionNumber = transaction.transactionNumber || '';
+          } else transactionNumber = prior.transactionNumber || '';
+        }
+        subscription.paymentStatus = 'paid';
+        subscription.startsAt = new Date();
+        subscription.endsAt = new Date(subscription.startsAt.getTime() + Number(subscription.durationDays) * 86400000);
+      }
+      subscription.status = value.status;
+      subscription.history.push({
+        action: value.status,
+        note: value.note || (wasPending && value.status === 'active' ? 'مراجعة طلب الاشتراك وتأكيد السداد' : 'تحديث الحالة من الإدارة'),
+        by: String(req.user?.name || 'الإدارة')
+      });
+      if (transactionNumber) subscription.history.push({ action: 'payment_received', note: 'رقم العملية: ' + transactionNumber, by: String(req.user?.name || 'الإدارة') });
+      await subscription.save({ session });
+      result = { kind: 'updated', subscription, wasPending, transactionNumber };
+    });
+    if (result?.kind === 'missing') return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+    if (result?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد محفظة العميل غير كافٍ. لم يتم تفعيل الاشتراك أو خصم أي مبلغ.' });
+    if (result?.wasPending && value.status === 'active') {
+      await createNotification({
+        recipientRole: 'client', recipientId: result.subscription.client,
+        type: 'subscription_activated', title: 'تم تفعيل اشتراكك',
+        message: 'تم تفعيل الاشتراك ' + result.subscription.code + ' حتى ' + result.subscription.endsAt.toLocaleDateString('ar-EG'),
+        link: '/client'
+      });
+    }
+    return res.json({
+      message: result?.wasPending && value.status === 'active' ? 'تم تأكيد السداد وتفعيل الاشتراك.' : 'تم تحديث حالة الاشتراك.',
+      subscription: safeClient(result.subscription.toObject()),
+      transactionNumber: result.transactionNumber || ''
+    });
   } catch (e) { return next(e); }
+  finally { if (session) await session.endSession(); }
 });
 router.post('/admin/:id/renew', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
