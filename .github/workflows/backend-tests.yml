@@ -39,6 +39,12 @@ jobs:
       - run: npm ci
       - name: Build deployed frontend assets before integration tests
         run: npm run build
+      - name: Upload generated frontend-dist for the reviewed branch
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist-build
+          path: frontend-dist/
+          retention-days: 1
       - name: Run integration and security tests
         run: npm test
       - name: Check for high and critical dependency vulnerabilities
