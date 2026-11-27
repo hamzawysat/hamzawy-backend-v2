@@ -39,6 +39,7 @@ const { auth } = require('./middleware/auth');
 const errorHandler = require('./middleware/error');
 const { retryPendingNotificationDeliveries } = require('./utils/notifications');
 const { runSubscriptionReminders } = require('./services/subscriptionReminders');
+const { migrateAll: migrateSubscriptionCollections } = require('../scripts/migrate-subscription-models');
 
 const app = express();
 
@@ -264,6 +265,17 @@ async function checkDatabase(req, res) {
 app.get('/health', checkDatabase);
 app.get('/api/health', checkDatabase);
 
+let subscriptionCollectionsMigrationPromise = null;
+async function ensureSubscriptionCollectionsMigrated() {
+  if (!subscriptionCollectionsMigrationPromise) {
+    subscriptionCollectionsMigrationPromise = migrateSubscriptionCollections().catch(error => {
+      subscriptionCollectionsMigrationPromise = null;
+      throw error;
+    });
+  }
+  return subscriptionCollectionsMigrationPromise;
+}
+
 // تأمين المسارات التي تعتمد على قاعدة البيانات.
 async function ensureDatabase(req, res, next) {
   try {
@@ -280,6 +292,10 @@ if (req.path === '/health') {
     if (mongoose.connection.readyState !== 1) {
       throw new Error('MongoDB is not connected');
     }
+
+    // Copy legacy subscription records before any API route reads the new collections.
+    // The migration is idempotent and leaves the original collection untouched.
+    await ensureSubscriptionCollectionsMigrated();
 
     // Maintenance mode blocks customer/technician APIs while keeping admin access
     // and public configuration/service lists available to display the notice.
