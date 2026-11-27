@@ -25,8 +25,8 @@ async function findSubscriptions(filter = {}, options = {}) {
     const entries = Object.entries(sort);
     merged.sort((a, b) => {
       for (const [field, direction] of entries) {
-        const av = a[field] == null ? 0 : new Date(a[field]).getTime?.() ?? a[field];
-        const bv = b[field] == null ? 0 : new Date(b[field]).getTime?.() ?? b[field];
+        const av = a[field] instanceof Date ? a[field].getTime() : (typeof a[field] === 'string' ? Date.parse(a[field]) : (a[field] ?? 0));
+        const bv = b[field] instanceof Date ? b[field].getTime() : (typeof b[field] === 'string' ? Date.parse(b[field]) : (b[field] ?? 0));
         if (av < bv) return -1 * direction;
         if (av > bv) return 1 * direction;
       }
