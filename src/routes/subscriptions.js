@@ -91,6 +91,17 @@ router.post('/client/request', clientAuth, async (req, res, next) => {
   } catch (e) { return next(e); }
 });
 
+router.post('/client/request-renewal', clientAuth, async (req, res, next) => {
+  try {
+    const { error, value } = Joi.object({ subscriptionId: Joi.string().hex().length(24).required() }).unknown(false).validate(req.body || {});
+    if (error) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
+    const subscription = await UnifiedSubscription.findOne({ _id: value.subscriptionId, client: req.clientId, status: { $in: ['active','expired','paused'] } }).lean();
+    if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود بحسابك أو لا يقبل التجديد.' });
+    await notifyAdmins({ type:'admin_subscription_renewal_request', title:'طلب تجديد اشتراك', message:'طلب العميل ' + String(req.client.name || '') + ' تجديد الاشتراك ' + subscription.code, link:'/admin?tab=commerceSubscriptions', dedupeKey:'subscription-renewal-request:' + String(subscription._id) + ':' + Date.now() });
+    return res.status(202).json({ message:'تم إرسال طلب التجديد للإدارة. سيتم التواصل معك لتأكيد السعر والسداد.' });
+  } catch (e) { return next(e); }
+});
+
 // Admin-only management API. Existing commerce subscriptions remain untouched.
 router.get('/admin/plans', auth('admin'), async (req, res, next) => {
   try { return res.json({ plans: await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean() }); }
