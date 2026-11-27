@@ -2728,7 +2728,7 @@ async function run() {
       await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 0 } });
       const insufficientPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), idempotencyKey: insufficientKey });
+        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: insufficientKey });
       assert.equal(insufficientPurchase.status, 409);
       assert.match(insufficientPurchase.body.message, /رصيد محفظتك غير كافٍ/);
       assert.equal(await ClientSubscription.countDocuments({ client: clientId, requestKey: insufficientKey }), 0, 'insufficient balance must not create a pending subscription');
@@ -2736,7 +2736,7 @@ async function run() {
       await Client.updateOne({ _id: clientId }, { $set: { walletBalance: balanceBeforeRequest } });
       const purchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), idempotencyKey: purchaseKey });
+        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: purchaseKey });
       assert.equal(purchase.status, 201, JSON.stringify(purchase.body));
       assert.equal(purchase.body.balance, balanceBeforeRequest, 'requesting a subscription must not debit the wallet');
       assert.equal(purchase.body.subscription.status, 'pending');
@@ -2744,6 +2744,23 @@ async function run() {
       assert.equal(purchase.body.subscription.durationDays, 30);
       const subscriptionId = String(purchase.body.subscription._id);
       assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: purchaseKey }), 0);
+
+      const transferKey = 'test-client-subscription-transfer-0001';
+      const transferPurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
+        .set('Authorization', 'Bearer ' + clientToken)
+        .send({ itemId: String(plan._id), paymentMethod: 'transfer', idempotencyKey: transferKey });
+      assert.equal(transferPurchase.status, 201, JSON.stringify(transferPurchase.body));
+      assert.equal(transferPurchase.body.subscription.paymentMethod, 'تحويل أموال');
+      assert.equal(transferPurchase.body.subscription.paymentStatus, 'pending');
+      const transferSubscriptionId = String(transferPurchase.body.subscription._id);
+      const transferApproval = await request(app).patch('/api/admin/commerce/subscriptions/' + transferSubscriptionId + '/status')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ status: 'active', reason: 'تأكيد استلام التحويل في الاختبار' });
+      assert.equal(transferApproval.status, 200, JSON.stringify(transferApproval.body));
+      assert.equal(transferApproval.body.subscription.paymentStatus, 'paid');
+      assert.equal(transferApproval.body.subscription.paymentMethod, 'تحويل أموال');
+      assert.equal(transferApproval.body.subscription.transactionNumber || '', '');
+      assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), balanceBeforeRequest, 'transfer approval must never debit the wallet');
 
       const duplicatePurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
