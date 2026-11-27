@@ -2764,7 +2764,7 @@ async function run() {
 
       const duplicatePurchase = await request(app).post('/api/client/commerce/subscriptions/purchase')
         .set('Authorization', 'Bearer ' + clientToken)
-        .send({ itemId: String(plan._id), idempotencyKey: purchaseKey });
+        .send({ itemId: String(plan._id), paymentMethod: 'wallet', idempotencyKey: purchaseKey });
       assert.equal(duplicatePurchase.status, 200);
       assert.equal(duplicatePurchase.body.duplicate, true);
       assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), balanceBeforeRequest);
