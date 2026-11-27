@@ -103,12 +103,23 @@ router.post('/client/request', clientAuth, async (req, res, next) => {
 
 router.post('/client/request-renewal', clientAuth, async (req, res, next) => {
   try {
-    const { error, value } = Joi.object({ subscriptionId: Joi.string().hex().length(24).required() }).unknown(false).validate(req.body || {});
-    if (error) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
-    const subscription = await UnifiedSubscription.findOne({ _id: value.subscriptionId, client: req.clientId, status: { $in: ['active','expired','paused'] } }).lean();
+    const { error, value } = Joi.object({ subscriptionId: Joi.string().hex().length(24).required(), paymentMethod: Joi.string().valid('wallet','transfer').required() }).unknown(false).validate(req.body || {});
+    if (error) return res.status(400).json({ message: 'حدد الاشتراك وطريقة الدفع قبل إرسال طلب التجديد.' });
+    const subscription = await UnifiedSubscription.findOne({ _id: value.subscriptionId, client: req.clientId, status: { $in: ['active','expired','paused'] } });
     if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود بحسابك أو لا يقبل التجديد.' });
-    await notifyAdmins({ type:'admin_subscription_renewal_request', title:'طلب تجديد اشتراك', message:'طلب العميل ' + String(req.client.name || '') + ' تجديد الاشتراك ' + subscription.code, link:'/admin?tab=commerceSubscriptions', dedupeKey:'subscription-renewal-request:' + String(subscription._id) + ':' + Date.now() });
-    return res.status(202).json({ message:'تم إرسال طلب التجديد للإدارة. سيتم التواصل معك لتأكيد السعر والسداد.' });
+    const amount = Number(subscription.amount || 0);
+    if (!Number.isFinite(amount) || amount < 0) return res.status(409).json({ message: 'قيمة التجديد غير صحيحة. تواصل مع الإدارة.' });
+    if (value.paymentMethod === 'wallet') {
+      const client = await Client.findOne({ _id: req.clientId, status: 'نشط', walletFrozen: { $ne: true } }).select('walletBalance walletFrozen');
+      if (!client) return res.status(403).json({ message: 'المحفظة غير متاحة حاليًا. اختار التحويل أو تواصل مع الإدارة.' });
+      if (Number(client.walletBalance || 0) < amount) return res.status(409).json({ message: 'رصيد المحفظة غير كافٍ. اختار التحويل أو اشحن المحفظة.' });
+    }
+    subscription.renewalRequest = { paymentMethod: value.paymentMethod, paymentStatus: 'pending', requestedAt: new Date(), amount };
+    subscription.history.push({ action: 'renewal_requested', note: 'طلب تجديد بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة العميل' : 'تحويل أموال'), by: 'العميل' });
+    await subscription.save();
+    const paymentLabel = value.paymentMethod === 'wallet' ? 'محفظة العميل' : 'تحويل أموال';
+    await notifyAdmins({ type:'admin_subscription_renewal_request', title:'طلب تجديد اشتراك', message:'طلب العميل ' + String(req.client.name || '') + ' تجديد الاشتراك ' + subscription.code + ' — طريقة الدفع: ' + paymentLabel + ' — القيمة الحالية: ' + amount + ' جنيه', link:'/admin?tab=commerceSubscriptions', dedupeKey:'subscription-renewal-request:' + String(subscription._id) + ':' + String(subscription.renewalRequest.requestedAt.getTime()) });
+    return res.status(202).json({ message:'تم إرسال طلب التجديد بطريقة ' + paymentLabel + '. سيتم مراجعة الطلب وتأكيد السداد من الإدارة. لم يتم خصم أي مبلغ الآن.' });
   } catch (e) { return next(e); }
 });
 
