@@ -48,20 +48,13 @@ const visitSchema = Joi.object({
 }).unknown(false);
 const safeClient = (s) => {
   const v = { ...s };
+  delete v.iptvUsernameEncrypted;
   delete v.iptvPasswordEncrypted;
   return v;
 };
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
 function publicServiceName(type) { return type === 'maintenance' ? 'صيانة سنوية' : type === 'air_network' ? 'اشتراك محلي' : 'اشتراك ترفيهي'; }
 function publicDescription(value) { return String(value || '').replace(/iptv/gi, 'اشتراك ترفيهي').replace(/شبكات?\\s*هوائية?/gi, 'اشتراك محلي').replace(/هوائي/gi, 'محلي'); }
-function publicClientSubscription(s) {
-  const v = s.toObject ? s.toObject() : { ...s };
-  if (v.type === 'iptv') {
-    try { v.iptvPassword = decrypt(v.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; }
-  }
-  delete v.iptvPasswordEncrypted;
-  return v;
-}
 
 // Public plan catalog; prices and durations are always controlled by administration.
 router.get('/plans', async (req, res, next) => {
