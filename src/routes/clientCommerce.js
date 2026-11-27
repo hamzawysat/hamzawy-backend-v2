@@ -102,14 +102,14 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       const itemId = String(req.body?.itemId || '').trim();
       const subscriptionId = String(req.params?.id || '').trim();
       const idempotencyKey = String(req.body?.idempotencyKey || '').trim();
-      const requestedPaymentMethod = mode === 'purchase' ? String(req.body?.paymentMethod || '') : 'wallet';
-      if (mode === 'purchase' && !['wallet', 'transfer'].includes(requestedPaymentMethod)) return res.status(400).json({ message: 'اختار طريقة الدفع: المحفظة أو التحويل.' });
+      const requestedPaymentMethod = String(req.body?.paymentMethod || '');
+      if (!['wallet', 'transfer'].includes(requestedPaymentMethod)) return res.status(400).json({ message: 'اختار طريقة الدفع: المحفظة أو التحويل.' });
       const paymentMethodLabel = requestedPaymentMethod === 'transfer' ? 'تحويل أموال' : 'محفظة العميل';
       if (!/^[a-f0-9]{24}$/i.test(itemId) && mode === 'purchase') return res.status(400).json({ message: 'الباقة غير صالحة.' });
       if (mode === 'renew' && !mongoose.isValidObjectId(subscriptionId)) return res.status(400).json({ message: 'الاشتراك غير صالح.' });
       if (!/^[a-zA-Z0-9:_-]{16,150}$/.test(idempotencyKey)) return res.status(400).json({ message: 'معرّف عملية الدفع غير صالح. حدّث الصفحة وحاول مرة أخرى.' });
       if (req.client.status !== 'نشط') return res.status(403).json({ message: 'حساب العميل غير نشط.' });
-      if (mode === 'renew' && req.client.walletFrozen) return res.status(403).json({ message: 'المحفظة مجمدة حاليًا. تواصل مع خدمة العملاء.' });
+      if (requestedPaymentMethod === 'wallet' && req.client.walletFrozen) return res.status(403).json({ message: 'المحفظة مجمدة حاليًا. تواصل مع خدمة العملاء.' });
       if (mode === 'purchase' && requestedPaymentMethod === 'wallet' && req.client.walletFrozen) return res.status(403).json({ message: 'المحفظة مجمدة حاليًا. اختار التحويل أو تواصل مع خدمة العملاء.' });
 
       const pendingRequest = mode === 'purchase' ? await ClientSubscription.findOne({ client: req.clientId, requestKey: idempotencyKey }).lean() : null;
@@ -126,7 +126,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       session = await mongoose.startSession();
       session.startTransaction();
       const clientFilter = { _id: req.clientId, status: 'نشط' };
-      if (mode === 'renew' || requestedPaymentMethod === 'wallet') clientFilter.walletFrozen = { $ne: true };
+      if (requestedPaymentMethod === 'wallet') clientFilter.walletFrozen = { $ne: true };
       const client = await Client.findOne(clientFilter).session(session);
       if (!client) { await session.abortTransaction(); return res.status(403).json({ message: 'حسابك أو محفظتك غير متاحين للدفع حاليًا.' }); }
 
@@ -186,8 +186,20 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
         });
       }
 
+      if (mode === 'renew' && requestedPaymentMethod === 'transfer') {
+        if (subscription.renewalRequest?.requestKey === idempotencyKey) {
+          await session.abortTransaction();
+          return res.status(200).json({ message: 'طلب التجديد مسجل بالفعل وبانتظار مراجعة الإدارة.', balance: Number(client.walletBalance || 0), duplicate: true });
+        }
+        subscription.renewalRequest = { paymentMethod: 'تحويل أموال', paymentStatus: 'pending', requestKey: idempotencyKey, amount, requestedAt: new Date() };
+        await subscription.save({ session });
+        await session.commitTransaction();
+        await notifyAdmins({ type: 'admin_subscription_renewal_request', title: 'طلب تجديد اشتراك بتحويل أموال', message: 'طلب العميل تجديد ' + subscription.itemName + ' بمبلغ ' + amount + ' جنيه عن طريق تحويل أموال. راجع إثبات السداد قبل التفعيل.', link: '/admin?tab=commerceSubscriptions', dedupeKey: 'subscription-renewal-transfer:' + String(subscription._id) + ':' + idempotencyKey });
+        return res.status(202).json({ message: 'تم إرسال طلب التجديد بتحويل الأموال. لن يتم خصم أي مبلغ من المحفظة، وسيتم التجديد بعد مراجعة الإدارة.', balance: Number(client.walletBalance || 0), subscription });
+      }
+
       const before = Number(client.walletBalance || 0);
-      if (before < amount) { await session.abortTransaction(); return res.status(409).json({ message: 'رصيد محفظتك غير كافٍ. اشحن المحفظة أولًا.', required: amount, balance: before }); }
+      if (before < amount) { await session.abortTransaction(); return res.status(409).json({ message: 'رصيد محفظتك غير كافٍ. اختار التحويل أو اشحن المحفظة.', required: amount, balance: before }); }
       const updatedClient = await Client.findOneAndUpdate(
         { _id: client._id, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } },
         { $inc: { walletBalance: -amount } },
