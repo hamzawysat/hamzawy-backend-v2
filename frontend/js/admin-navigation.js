@@ -2,34 +2,84 @@
 
 const ADMIN_TAB_HISTORY=[];
 const ADMIN_LAST_VIEW_KEY='sonaaAdminLastView';
+const ADMIN_HISTORY_STATE_KEY='sonaaAdminView';
+function currentAdminView(){
+ return {tab:String(state.tab||'dashboard'),pageMode:state.pageMode==='section'?'section':'home'};
+}
 function saveAdminLastView(tab,pageMode='section'){
  try{if(window.sessionStorage)window.sessionStorage.setItem(ADMIN_LAST_VIEW_KEY,JSON.stringify({tab,pageMode}));}catch(_){}
 }
+function writeAdminHistoryState(push=false){
+ if(!window.history)return;
+ const next={...(window.history.state||{}),[ADMIN_HISTORY_STATE_KEY]:currentAdminView()};
+ try{
+  if(push&&window.history.pushState)window.history.pushState(next,'',window.location.pathname+window.location.search+window.location.hash);
+  else if(window.history.replaceState)window.history.replaceState(next,'',window.location.href);
+ }catch(_){}
+}
+function rememberAdminView(){
+ const view=currentAdminView();
+ const previous=ADMIN_TAB_HISTORY[ADMIN_TAB_HISTORY.length-1];
+ if(!previous||previous.tab!==view.tab||previous.pageMode!==view.pageMode){
+  ADMIN_TAB_HISTORY.push(view);
+  if(ADMIN_TAB_HISTORY.length>50)ADMIN_TAB_HISTORY.shift();
+ }
+ writeAdminHistoryState(true);
+}
+function restoreAdminView(view){
+ if(!view||typeof view!=='object')return false;
+ const tab=String(view.tab||'dashboard');
+ const pageMode=view.pageMode==='section'?'section':'home';
+ if(!canReadTab(tab))return false;
+ const last=ADMIN_TAB_HISTORY[ADMIN_TAB_HISTORY.length-1];
+ if(last&&last.tab===tab&&last.pageMode===pageMode)ADMIN_TAB_HISTORY.pop();
+ state.tab=tab;
+ state.pageMode=pageMode;
+ state.dropdowns={};
+ state.pendingActions={};
+ saveAdminLastView(tab,pageMode);
+ render();
+ if(pageMode==='section')void refreshCurrentTab();
+ return true;
+}
+// Preserve the current URL and any unrelated history metadata; never create a
+// synthetic root entry that can trap Back or send the user to the public home.
+if(window.history&&window.history.replaceState){
+ const existing=window.history.state||{};
+ if(!existing[ADMIN_HISTORY_STATE_KEY])writeAdminHistoryState(false);
+}
 function setTab(t,scrollTarget='content',fromBack=false){
  if(!canReadTab(t)){showToast('هذا القسم غير متاح ضمن صلاحيات حسابك','error');return;}
- if(state.tab!==t){
-  if(!fromBack&&state.tab){ADMIN_TAB_HISTORY.push(state.tab);if(ADMIN_TAB_HISTORY.length>40)ADMIN_TAB_HISTORY.shift();if(window.history&&window.history.pushState)window.history.pushState({sonaaAdminTab:t},'',window.location.pathname+window.location.search);}
+ if(state.tab!==t||state.pageMode!=='section'){
+  if(!fromBack)rememberAdminView();
   state.filter='الكل';
  }
  state.tab=t;state.pageMode='section';saveAdminLastView(t,'section');state.dropdowns={};state.pendingActions={};render();
  if(t==='referrals')loadReferralManagement();else if(t==='profileEdits')loadFanniProfileEdits();else if(t==='fanniCardLedger')loadFanniCardLedger();else if(t==='orders')loadOrders();else if(t==='roles')loadAdminUsers();else if(t==='complaints')loadComplaints();else if(t==='services')loadServices();else if(t==='regions')loadRegions();else if(t==='pricing')loadPricing();else if(t==='settings')loadSettings();else if(t==='security')loadAuditLogs();else if(t==='pageVisits')loadPageVisits();else if(t==='notifications')loadNotificationHistory();else if(t==='support')loadSupportViolations();else if(t==='content')loadContent();else if(t==='topups'){applyTopupFilter();if(canReadTab('clientWallet'))loadClientTopups();}else if(t==='clients')loadClients();else if(t==='archive')loadArchive();else if(t==='clientWallet')loadClientTopups();else if(t==='commercePlans')loadCommerceCatalog();else if(t==='commerceSubscriptions')loadClientSubscriptions();else if(t==='store')loadStoreProducts();else if(t==='storeOrders')loadStoreOrders();else if(t==='wallets')render();else applyFilter();
+ writeAdminHistoryState(false);
 }
 function goAdminHome(){
+ if(state.pageMode!=='home')rememberAdminView();
  state.pageMode='home';
- ADMIN_TAB_HISTORY.length=0;
  saveAdminLastView(state.tab||'dashboard','home');
  render();
+ writeAdminHistoryState(false);
  return true;
 }
-function goBack(fromPopState=false){
- if(!fromPopState&&ADMIN_TAB_HISTORY.length){window.history.back();return true;}
- if(fromPopState&&ADMIN_TAB_HISTORY.length){
-  const previous=ADMIN_TAB_HISTORY.pop();
-  if(previous==='__home__'){state.pageMode='home';saveAdminLastView(state.tab||'dashboard','home');render();}
-  else setTab(previous,'back',true);
-  return true;
+function goBack(fromPopState=false,targetState=null){
+ if(fromPopState){
+  const target=targetState&&targetState[ADMIN_HISTORY_STATE_KEY];
+  if(target&&restoreAdminView(target))return true;
+  // Compatibility with history entries created by earlier dashboard versions.
+  if(ADMIN_TAB_HISTORY.length){
+   const previous=ADMIN_TAB_HISTORY.pop();
+   return restoreAdminView(previous);
+  }
+  return false;
  }
- return goAdminHome();
+ if(ADMIN_TAB_HISTORY.length){window.history.back();return true;}
+ if(state.pageMode==='section')return goAdminHome();
+ return false;
 }
 function onSearch(v){state.search=v; if(state.tab==='orders')applyOrderFilter(); else if(state.tab==='complaints')applyComplaintFilter(); else if(state.tab==='services')applyServicesFilter(); else if(state.tab==='topups'){if(state.topupOwnerTab==='clients'&&canReadTab('clientWallet'))applyClientTopupFilter();else applyTopupFilter();} else if(state.tab==='clients')applyClientFilter();else if(state.tab==='clientWallet')applyClientTopupFilter();else applyFilter();}
 function onFilter(v){state.filter=v;applyFilter()} function onFanniAvailabilityFilter(v){state.fanniAvailabilityFilter=v||'all';applyFilter()} function onFilterTopup(v){state.filterTopup=v;applyTopupFilter()} function onFilterOrder(v){state.filterOrder=v;applyOrderFilter()} function onFilterComplaint(v){state.filterComplaint=v;applyComplaintFilter()}

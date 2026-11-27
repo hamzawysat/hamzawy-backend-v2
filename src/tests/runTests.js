@@ -494,7 +494,11 @@ async function run() {
       assert.ok(adminShell.includes('goBack()'), 'admin header should expose an in-panel back action');
       assert.ok(adminShell.includes('القائمة الرئيسية'), 'main-menu action should be accessible beside the notification bell');
       assert.ok(adminShell.includes('رجوع داخل لوحة الإدارة'), 'back action should be labeled as internal admin navigation');
-      assert.ok(adminNavigation.includes("previous==='__home__'"), 'Back from the first section should return to the main menu');
+      assert.ok(adminNavigation.includes("ADMIN_HISTORY_STATE_KEY='sonaaAdminView'"), 'admin browser history should store a complete view snapshot');
+      assert.ok(adminNavigation.includes('rememberAdminView();'), 'entering an admin section should preserve the previous view in browser history');
+      assert.ok(adminNavigation.includes('restoreAdminView(target)'), 'browser Back should restore the exact prior admin view');
+      assert.ok(adminNavigation.includes("if(state.pageMode!=='home')rememberAdminView();"), 'opening the admin main menu should also be reversible with browser Back');
+      assert.doesNotMatch(adminNavigation, /ADMIN_TAB_HISTORY\.length=0/, 'opening the main menu must not erase the browser Back stack');
     });
     await test('client and technician browser Back follows tab history without trapping the browser at dashboard home', async () => {
       const vm = require('node:vm');
