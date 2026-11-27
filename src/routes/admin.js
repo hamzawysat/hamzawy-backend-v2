@@ -85,7 +85,7 @@ const createAdminWalletRouter = require('./admin/wallet');
 const createAdminClientWalletRouter = require('./admin/clientWallet');
 const ClientTopupRequest = require('../models/ClientTopupRequest');
 const CommerceItem = require('../models/CommerceItem');
-const ClientSubscription = require('../models/ClientSubscription');
+const { findSubscriptions } = require('../models/subscriptionRepository');
 const createAdminCommerceRouter = require('./admin/commerce');
 const createAdminFanniManagementRouter = require('./admin/fanniManagement');
 const createAdminStoreRouter = require('./admin/store');
@@ -431,7 +431,7 @@ async function writeAdminAudit(req, action, category, target, details) {
 
 router.use(createAdminClientsRouter({ auth, Joi, Client, normalizePhone, adminName, writeAdminAudit }));
 router.use(createAdminClientProfilesRouter({
-  auth, Client, Order, Complaint, WalletTransaction, ClientSubscription,
+  auth, Client, Order, Complaint, WalletTransaction, findSubscriptions,
   ClientTopupRequest, StoreOrder, SupportCase, AdminAuditLog, validId, sendBadId
 }));
 
