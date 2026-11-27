@@ -68,7 +68,7 @@ function channelFor(type) {
   if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint', 'admin_support_followup'].includes(type)) return 'support';
   if ([
     'wallet_charge', 'topup_request', 'admin_new_topup', 'admin_client_topup',
-    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed',
+    'admin_service_payment_held', 'admin_subscription_request', 'admin_subscription_renewed', 'admin_subscription_expiry', 'admin_subscription_renewal_request', 'admin_subscription_visit_request',
     'wallet_credit', 'fanni_wallet_settlement', 'technician_settlement', 'topup_approved', 'topup_rejected',
     'wallet_debit', 'commission_deducted', 'client_wallet_topup_approved', 'client_wallet_topup_rejected',
     'client_wallet_credit', 'client_wallet_debit', 'client_wallet_settlement', 'client_service_refunded'
@@ -90,7 +90,7 @@ function adminChannelFor(type) {
   if (value === 'admin_fanni_profile_edit') return 'admin_technician_profile_v4';
   if (['client_register', 'new_client', 'admin_new_client'].includes(value)) return 'admin_client_registration_v4';
   if (['admin_client_login', 'admin_client_logout'].includes(value)) return 'admin_client_activity_v4';
-  if (['admin_subscription_request', 'admin_subscription_renewed'].includes(value)) return 'admin_subscriptions_v4';
+  if (['admin_subscription_request', 'admin_subscription_renewed', 'admin_subscription_expiry', 'admin_subscription_renewal_request', 'admin_subscription_visit_request'].includes(value)) return 'admin_subscriptions_v4';
   if (['password_reset', 'admin_password_recovery', 'admin_password_recovery_message'].includes(value)) return 'admin_password_recovery_v4';
   if (['support', 'new_complaint', 'admin_support_request', 'admin_new_complaint', 'admin_support_followup'].includes(value)) return 'admin_support_complaints_v4';
   if (['wallet_charge', 'topup_request', 'admin_new_topup', 'admin_client_topup'].includes(value)) return 'admin_wallet_topups_v4';
@@ -103,6 +103,9 @@ function destinationFor(type) {
     admin_store_order: 'storeOrders',
     admin_subscription_request: 'commerceSubscriptions',
     admin_subscription_renewed: 'commerceSubscriptions',
+    admin_subscription_expiry: 'commerceSubscriptions',
+    admin_subscription_renewal_request: 'commerceSubscriptions',
+    admin_subscription_visit_request: 'commerceSubscriptions',
     admin_password_recovery: 'recovery',
     admin_password_recovery_message: 'recovery',
     admin_support_request: 'support',
