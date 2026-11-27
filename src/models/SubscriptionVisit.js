@@ -1,7 +1,7 @@
 'use strict';
 const mongoose = require('mongoose');
 const schema = new mongoose.Schema({
-  subscription: { type: mongoose.Schema.Types.ObjectId, ref: 'UnifiedSubscription', required: true, index: true },
+  subscription: { type: mongoose.Schema.Types.ObjectId, required: true, index: true },
   client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null, index: true },
   scheduledAt: { type: Date, required: true, index: true },
