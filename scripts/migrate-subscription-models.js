@@ -49,7 +49,14 @@ async function migrateType(type) {
       batch.push({ updateOne: { filter: { _id: doc._id }, update: { $setOnInsert: doc }, upsert: true } });
     }
     if (batch.length) {
-      await targetCollection.bulkWrite(batch, { ordered: false });
+      try {
+        await targetCollection.bulkWrite(batch, { ordered: false });
+      } catch (error) {
+        const writeErrors = error.writeErrors || error.result?.getWriteErrors?.() || [];
+        if (!writeErrors.length || writeErrors.some(item => Number(item.code) !== 11000)) throw error;
+        // Concurrent app instances may insert the same _id. The verification
+        // below decides whether every source record now exists in the target.
+      }
       copied += batch.length;
     }
   }
@@ -68,17 +75,32 @@ async function migrateType(type) {
   return { type, sourceCount, targetCount, processed: copied, missing };
 }
 
+async function migrateAll() {
+  const markerCollection = mongoose.connection.collection('schema_migrations');
+  const migrationId = 'unified-subscriptions-to-independent-collections-v1';
+  const marker = await markerCollection.findOne({ _id: migrationId });
+  if (marker?.status === 'completed') return { skipped: true, results: marker.results || [] };
+  const results = [];
+  for (const type of TYPES) results.push(await migrateType(type));
+  await markerCollection.updateOne(
+    { _id: migrationId },
+    { $set: { status: 'completed', completedAt: new Date(), results } },
+    { upsert: true }
+  );
+  return { skipped: false, results };
+}
+
 async function main() {
   const uri = process.env.MONGO_URI;
   if (!uri) throw new Error('MONGO_URI is required. The migration does not read or print credentials.');
   await mongoose.connect(uri);
-  const results = [];
-  for (const type of TYPES) results.push(await migrateType(type));
-  console.log('Subscription migration verified. Legacy collection was retained unchanged.');
-  for (const result of results) console.log(JSON.stringify(result));
+  const result = await migrateAll();
+  console.log(result.skipped ? 'Subscription migration was already verified.' : 'Subscription migration verified.');
+  console.log('Legacy collection was retained unchanged.');
+  for (const item of result.results) console.log(JSON.stringify(item));
 }
 
-module.exports = { mapLegacyDocument, migrateType };
+module.exports = { mapLegacyDocument, migrateType, migrateAll };
 
 if (require.main === module) {
   main().then(() => mongoose.disconnect()).catch(async error => {
