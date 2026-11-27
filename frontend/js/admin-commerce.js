@@ -111,26 +111,31 @@ function renderCommerce(){return state.tab==='commercePlans'?renderCommercePlans
 
 
 /* Unified satellite subscriptions: maintenance, air-network and IPTV. */
-const _loadLegacyClientSubscriptions = loadClientSubscriptions;
-loadClientSubscriptions = async function(){
-  await _loadLegacyClientSubscriptions();
-  try {
-    const [plans, rows, visits] = await Promise.all([
+async function loadClientSubscriptions(){
+  if(!getToken())return;
+  state.commerceLoading=true;
+  state.unifiedSubscriptionError='';
+  render();
+  try{
+    const [plans,rows,visits]=await Promise.all([
       tryApi(['/api/subscriptions/admin/plans'],{method:'GET'}),
       tryApi(['/api/subscriptions/admin/list'],{method:'GET'}),
       tryApi(['/api/subscriptions/admin/visits'],{method:'GET'})
     ]);
-    state.unifiedSubscriptionPlans = extractList(plans,['plans']);
-    state.unifiedSubscriptions = extractList(rows,['subscriptions']);
-    state.unifiedSubscriptionVisits = extractList(visits,['visits']);
-  } catch(error) {
-    state.unifiedSubscriptionPlans = state.unifiedSubscriptionPlans || [];
-    state.unifiedSubscriptions = state.unifiedSubscriptions || [];
-    state.unifiedSubscriptionVisits = state.unifiedSubscriptionVisits || [];
-    showToast(error.message || 'تعذر تحميل الاشتراكات الموحدة','error');
+    state.unifiedSubscriptionPlans=extractList(plans,['plans']);
+    state.unifiedSubscriptions=extractList(rows,['subscriptions']);
+    state.unifiedSubscriptionVisits=extractList(visits,['visits']);
+  }catch(error){
+    state.unifiedSubscriptionPlans=[];
+    state.unifiedSubscriptions=[];
+    state.unifiedSubscriptionVisits=[];
+    state.unifiedSubscriptionError=error.message||'تعذر تحميل طلبات واشتراكات العملاء.';
+    showToast(state.unifiedSubscriptionError,'error');
+  }finally{
+    state.commerceLoading=false;
+    if(state.tab==='commerceSubscriptions')render();
   }
-  if(state.tab==='commerceSubscriptions') render();
-};
+}
 function unifiedTypeLabel(type){return ({maintenance:'صيانة سنوية',air_network:'اشتراك محلي',iptv:'اشتراك ترفيهي'})[type]||'اشتراك';}
 function openUnifiedSubscriptionWhatsApp(id){
  const s=(state.unifiedSubscriptions||[]).find(x=>String(x._id)===String(id));if(!s)return;
@@ -223,7 +228,6 @@ function renderUnifiedSubscriptionPanel(){
   return '<article class="premium-card p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[12px]">'+escHtml(unifiedTypeLabel(sub.type))+' · '+escHtml(sub.code)+'</b><span class="text-[10px]">'+escHtml(statusLabels[sub.status]||sub.status||'')+'</span></div><p class="text-[11px]">'+escHtml(sub.clientName||'')+' · '+escHtml(sub.clientPhone||'')+'</p><p class="text-[10px] text-slate-500">ينتهي '+new Date(sub.endsAt).toLocaleDateString('ar-EG')+' · '+Number(sub.amount||0).toLocaleString('ar-EG')+' جنيه · متبقي '+Math.max(0,daysLeft)+' يوم</p>'+payment+credentials+(sub.notes?'<p class="text-[10px]">'+escHtml(sub.notes)+'</p>':'')+whatsapp+'<div class="flex flex-wrap gap-2">'+renew+visit+pause+activate+'</div></article>';
  }).join('');
  const visitCards=visits.map(visit=>'<article class="premium-card p-3"><div class="flex items-center justify-between gap-2"><b class="text-[11px]">'+escHtml(visit.subscription?.code||'زيارة صيانة')+'</b><span class="text-[10px]">'+escHtml(visit.status==='completed'?'مكتملة':visit.status==='awaiting_client_confirmation'?'بانتظار تأكيد العميل':visit.status==='in_progress'?'جاري التنفيذ':visit.status||'مجدولة')+'</span></div><p class="mt-1 text-[10px]">'+escHtml(visit.client?.name||'')+' · '+escHtml(visit.technician?.name||'الفني')+'</p><p class="mt-1 text-[10px] text-slate-500">'+escHtml(new Date(visit.scheduledAt).toLocaleString('ar-EG'))+'</p></article>').join('');
- return '<div class="premium-panel p-4 mt-4 space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><div><h2 class="font-black text-sm">الاشتراكات الموحدة</h2><p class="text-[10px] text-slate-500">متابعة الصيانة السنوية والترفيهي والمحلي وزيارات الفنيين</p></div><button type="button" class="pill-btn primary-btn" onclick="createUnifiedSubscription()">إضافة اشتراك</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-2"><div class="premium-card p-3"><b>'+allRows.length+'</b><p class="text-[10px]">إجمالي الاشتراكات</p></div><div class="premium-card p-3"><b>'+activeCount+'</b><p class="text-[10px]">نشطة</p></div><div class="premium-card p-3"><b>'+pendingCount+'</b><p class="text-[10px]">قيد المراجعة</p></div><div class="premium-card p-3"><b>'+expiringCount+'</b><p class="text-[10px]">تنتهي خلال 7 أيام</p></div></div><div class="grid grid-cols-1 md:grid-cols-4 gap-2"><input id="unified-subscription-search" class="form-input" value="'+escAttr(filters.search||'')+'" placeholder="بحث بالكود أو اسم العميل أو الهاتف"><select id="unified-subscription-status" class="form-input"><option value="">كل الحالات</option><option value="active" '+(filters.status==='active'?'selected':'')+'>نشط</option><option value="pending" '+(filters.status==='pending'?'selected':'')+'>قيد المراجعة</option><option value="paused" '+(filters.status==='paused'?'selected':'')+'>موقوف</option><option value="expired" '+(filters.status==='expired'?'selected':'')+'>منتهي</option><option value="cancelled" '+(filters.status==='cancelled'?'selected':'')+'>ملغي</option></select><select id="unified-subscription-type" class="form-input"><option value="">كل الأنواع</option><option value="maintenance" '+(filters.type==='maintenance'?'selected':'')+'>صيانة سنوية</option><option value="air_network" '+(filters.type==='air_network'?'selected':'')+'>اشتراك محلي</option><option value="iptv" '+(filters.type==='iptv'?'selected':'')+'>اشتراك ترفيهي</option></select><button type="button" class="pill-btn soft-btn" onclick="applyUnifiedSubscriptionFilters()">تطبيق البحث والفلاتر</button></div><h3 class="font-bold text-sm">السجلات ('+rows.length+' من '+allRows.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(cards||'<p class="premium-card p-4 text-center text-[11px] text-slate-500">لا توجد اشتراكات في هذا الاختيار.</p>')+'</div><div class="border-t pt-3 space-y-2"><h3 class="text-[12px] font-black">زيارات الصيانة ('+visits.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(visitCards||'<p class="premium-card p-3 text-[10px] text-slate-500">لا توجد زيارات مسندة.</p>')+'</div></div></div>';
+ return '<div class="premium-panel p-4 mt-4 space-y-3"><div class="flex flex-wrap items-center justify-between gap-2"><div><h2 class="font-black text-sm">اشتراكات العملاء وطلبات الدفع</h2><p class="text-[10px] text-slate-500">متابعة الصيانة السنوية والترفيهي والمحلي وزيارات الفنيين</p></div><button type="button" class="pill-btn primary-btn" onclick="createUnifiedSubscription()">إضافة اشتراك</button></div><div class="grid grid-cols-2 md:grid-cols-4 gap-2"><div class="premium-card p-3"><b>'+allRows.length+'</b><p class="text-[10px]">إجمالي الاشتراكات</p></div><div class="premium-card p-3"><b>'+activeCount+'</b><p class="text-[10px]">نشطة</p></div><div class="premium-card p-3"><b>'+pendingCount+'</b><p class="text-[10px]">قيد المراجعة</p></div><div class="premium-card p-3"><b>'+expiringCount+'</b><p class="text-[10px]">تنتهي خلال 7 أيام</p></div></div><div class="grid grid-cols-1 md:grid-cols-4 gap-2"><input id="unified-subscription-search" class="form-input" value="'+escAttr(filters.search||'')+'" placeholder="بحث بالكود أو اسم العميل أو الهاتف"><select id="unified-subscription-status" class="form-input"><option value="">كل الحالات</option><option value="active" '+(filters.status==='active'?'selected':'')+'>نشط</option><option value="pending" '+(filters.status==='pending'?'selected':'')+'>قيد المراجعة</option><option value="paused" '+(filters.status==='paused'?'selected':'')+'>موقوف</option><option value="expired" '+(filters.status==='expired'?'selected':'')+'>منتهي</option><option value="cancelled" '+(filters.status==='cancelled'?'selected':'')+'>ملغي</option></select><select id="unified-subscription-type" class="form-input"><option value="">كل الأنواع</option><option value="maintenance" '+(filters.type==='maintenance'?'selected':'')+'>صيانة سنوية</option><option value="air_network" '+(filters.type==='air_network'?'selected':'')+'>اشتراك محلي</option><option value="iptv" '+(filters.type==='iptv'?'selected':'')+'>اشتراك ترفيهي</option></select><button type="button" class="pill-btn soft-btn" onclick="applyUnifiedSubscriptionFilters()">تطبيق البحث والفلاتر</button></div><h3 class="font-bold text-sm">السجلات ('+rows.length+' من '+allRows.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(cards||'<p class="premium-card p-4 text-center text-[11px] text-slate-500">لا توجد اشتراكات في هذا الاختيار.</p>')+'</div><div class="border-t pt-3 space-y-2"><h3 class="text-[12px] font-black">زيارات الصيانة ('+visits.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(visitCards||'<p class="premium-card p-3 text-[10px] text-slate-500">لا توجد زيارات مسندة.</p>')+'</div></div></div>';
 }
-const _renderCommerceSubscriptions = renderCommerceSubscriptions;
-renderCommerceSubscriptions = function(){const html=_renderCommerceSubscriptions();return html.replace(/<\/section>$/,renderUnifiedSubscriptionPanel()+'</section>');};
+function renderCommerce(){return state.tab==='commercePlans'?renderCommercePlans():renderUnifiedSubscriptionPanel();}

@@ -1616,7 +1616,7 @@ async function run() {
       adminToken = jwt.sign({ id: String(admin._id), role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
       await test('admin imports store products from CSV in one validated batch and skips duplicates', async () => {
-        const StoreProduct = require('../models/StoreProduct');
+      const StoreProduct = require('../models/StoreProduct');
         const rows = [
           { rowNumber: 2, product: { name: 'CSV import unique product A', category: 'CSV import category', price: 125 } },
           { rowNumber: 3, product: { name: 'CSV import unique product B', category: 'CSV import category', price: 0 } },
@@ -2903,6 +2903,84 @@ async function run() {
       assert.equal(pendingAdminSubscription.body.subscription.paymentStatus, 'pending', 'admin-created pending subscription must never be marked paid before a real debit');
       assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), pendingAdminBalance, 'creating a pending admin subscription must not debit the wallet');
       assert.equal(await WalletTransaction.countDocuments({ client: clientId, idempotencyKey: { $regex: '^admin-client-subscription:' } }), 0, 'pending admin subscription must not create a wallet transaction');
+
+        // Verify the unified satellite subscription purchase and admin approval lifecycle.
+      {
+        const SubscriptionPlan = require('../models/SubscriptionPlan');
+        const { modelForType } = require('../models/subscriptionRepository');
+        const originalClientBalance = Number((await Client.findById(clientId).lean()).walletBalance || 0);
+        const maintenancePlan = await SubscriptionPlan.create({
+          type: 'maintenance', name: 'اختبار باقة الصيانة', price: 25,
+          durationDays: 365, visitCount: 2, active: true
+        });
+        const entertainmentPlan = await SubscriptionPlan.create({
+          type: 'iptv', name: 'اختبار الباقة الترفيهية', price: 30,
+          durationDays: 30, allowedDevices: 2, active: true
+        });
+        let walletSubscriptionId = '';
+        let transferSubscriptionId = '';
+        try {
+          await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 5000 } });
+          const publicPlans = await request(app).get('/api/subscriptions/plans');
+          assert.equal(publicPlans.status, 200, JSON.stringify(publicPlans.body));
+          assert.ok(publicPlans.body.plans.some(item => String(item._id) === String(maintenancePlan._id)));
+          assert.ok(publicPlans.body.plans.some(item => String(item._id) === String(entertainmentPlan._id)));
+
+          const walletRequest = await request(app).post('/api/subscriptions/client/request')
+            .set('Authorization', 'Bearer ' + clientToken)
+            .send({ planId: String(maintenancePlan._id), paymentMethod: 'wallet' });
+          assert.equal(walletRequest.status, 202, JSON.stringify(walletRequest.body));
+          assert.equal(walletRequest.body.subscription.status, 'pending');
+          assert.equal(walletRequest.body.subscription.paymentStatus, 'pending');
+          walletSubscriptionId = String(walletRequest.body.subscription._id);
+          assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), 5000,
+            'unified wallet request must not debit before admin approval');
+
+          const transferRequest = await request(app).post('/api/subscriptions/client/request')
+            .set('Authorization', 'Bearer ' + clientToken)
+            .send({ planId: String(entertainmentPlan._id), paymentMethod: 'transfer' });
+          assert.equal(transferRequest.status, 202, JSON.stringify(transferRequest.body));
+          assert.equal(transferRequest.body.subscription.paymentMethod, 'transfer');
+          transferSubscriptionId = String(transferRequest.body.subscription._id);
+
+          const adminList = await request(app).get('/api/subscriptions/admin/list')
+            .set('Authorization', 'Bearer ' + adminToken);
+          assert.equal(adminList.status, 200, JSON.stringify(adminList.body));
+          assert.ok(adminList.body.subscriptions.some(item => String(item._id) === walletSubscriptionId),
+            'admin list must contain the customer wallet request');
+          assert.ok(adminList.body.subscriptions.some(item => String(item._id) === transferSubscriptionId),
+            'admin list must contain the customer transfer request');
+
+          const walletApproval = await request(app).patch('/api/subscriptions/admin/' + walletSubscriptionId + '/status')
+            .set('Authorization', 'Bearer ' + adminToken)
+            .send({ status: 'active', note: 'اعتماد طلب المحفظة للاختبار' });
+          assert.equal(walletApproval.status, 200, JSON.stringify(walletApproval.body));
+          assert.equal(walletApproval.body.subscription.status, 'active');
+          assert.equal(walletApproval.body.subscription.paymentStatus, 'paid');
+          assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), 4975,
+            'wallet approval must debit the exact plan price once');
+
+          const transferApproval = await request(app).patch('/api/subscriptions/admin/' + transferSubscriptionId + '/status')
+            .set('Authorization', 'Bearer ' + adminToken)
+            .send({ status: 'active', note: 'تأكيد التحويل للاختبار' });
+          assert.equal(transferApproval.status, 200, JSON.stringify(transferApproval.body));
+          assert.equal(transferApproval.body.subscription.paymentStatus, 'paid');
+          assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), 4975,
+            'transfer approval must never debit the wallet');
+
+          const clientMine = await request(app).get('/api/subscriptions/client/mine')
+            .set('Authorization', 'Bearer ' + clientToken);
+          assert.equal(clientMine.status, 200, JSON.stringify(clientMine.body));
+          assert.ok(clientMine.body.subscriptions.some(item => String(item._id) === walletSubscriptionId && item.status === 'active'));
+          assert.ok(clientMine.body.subscriptions.some(item => String(item._id) === transferSubscriptionId && item.status === 'active'));
+        } finally {
+          if (walletSubscriptionId) await modelForType('maintenance').deleteOne({ _id: walletSubscriptionId });
+          if (transferSubscriptionId) await modelForType('iptv').deleteOne({ _id: transferSubscriptionId });
+          await SubscriptionPlan.deleteMany({ _id: { $in: [maintenancePlan._id, entertainmentPlan._id] } });
+          await WalletTransaction.deleteMany({ client: clientId, idempotencyKey: 'unified-subscription-initial:' + walletSubscriptionId });
+          await Client.updateOne({ _id: clientId }, { $set: { walletBalance: originalClientBalance } });
+        }
+      }
 
       const StoreProduct = require('../models/StoreProduct');
       const StoreOrder = require('../models/StoreOrder');
