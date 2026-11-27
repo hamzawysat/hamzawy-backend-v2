@@ -144,6 +144,10 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       } else {
         subscription = await ClientSubscription.findOne({ _id: subscriptionId, client: req.clientId, status: { $in: ['active', 'expired'] } }).session(session);
         if (!subscription) { await session.abortTransaction(); return res.status(404).json({ message: 'الاشتراك غير موجود أو لا يمكن تجديده.' }); }
+        if (subscription.renewalRequest?.paymentStatus === 'pending' && subscription.renewalRequest.requestKey !== idempotencyKey) {
+          await session.abortTransaction();
+          return res.status(409).json({ message: 'يوجد طلب تجديد آخر قيد مراجعة الإدارة بالفعل.' });
+        }
         item = subscription.item ? await CommerceItem.findById(subscription.item).session(session) : null;
         amount = Number(subscription.amount || item?.price || 0);
         const durationDays = Number(subscription.durationDays || item?.durationDays || 30);
