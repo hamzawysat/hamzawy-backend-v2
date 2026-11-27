@@ -34,6 +34,14 @@ const createSchema = Joi.object({
   allowedDevices: Joi.number().integer().min(1).max(20).optional(), visitsIncluded: Joi.number().integer().min(0).max(100).optional(),
   notes: Joi.string().trim().max(1500).allow('').default('')
 }).unknown(false);
+const planPatchSchema = Joi.object({
+  type: Joi.string().valid(...TYPES), name: Joi.string().trim().min(2).max(100),
+  description: Joi.string().trim().max(1000).allow(''), price: Joi.number().strict().min(0).max(100000000),
+  durationDays: Joi.number().integer().min(1).max(3650), visitCount: Joi.number().integer().min(0).max(100),
+  includedServices: Joi.array().items(Joi.string().trim().max(160)).max(30),
+  excludedSupplies: Joi.array().items(Joi.string().trim().max(160)).max(30),
+  allowedDevices: Joi.number().integer().min(1).max(20), settings: Joi.object().unknown(true), active: Joi.boolean()
+}).min(1).unknown(false);
 const visitSchema = Joi.object({
   subscriptionId: Joi.string().hex().length(24).required(), technicianId: Joi.string().hex().length(24).required(),
   scheduledAt: Joi.date().iso().required()
@@ -58,7 +66,7 @@ router.get('/plans', async (req, res, next) => {
   try {
     const filter = { active: true };
     if (TYPES.includes(String(req.query.type || ''))) filter.type = String(req.query.type);
-    const plans = await SubscriptionPlan.find(filter).sort({ type: 1, price: 1 }).lean();
+    const plans = await SubscriptionPlan.find(filter).select('-settings').sort({ type: 1, price: 1 }).lean();
     return res.set('Cache-Control','no-store').json({ plans });
   } catch (e) { return next(e); }
 });
@@ -66,7 +74,7 @@ router.get('/plans', async (req, res, next) => {
 // Customer sees only their own subscriptions and their IPTV credentials.
 router.get('/client/mine', clientAuth, async (req, res, next) => {
   try {
-    const subscriptions = await UnifiedSubscription.find({ client: req.clientId }).sort({ createdAt: -1 }).lean();
+    const subscriptions = await UnifiedSubscription.find({ client: req.clientId }).select('+iptvPasswordEncrypted').sort({ createdAt: -1 }).lean();
     const visits = await SubscriptionVisit.find({ client: req.clientId }).sort({ scheduledAt: 1 }).lean();
     const enriched = subscriptions.map(s => {
       if (s.type === 'iptv') { try { s.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { s.iptvPassword = ''; } }
@@ -118,7 +126,7 @@ router.post('/admin/plans', auth('admin'), async (req, res, next) => {
 router.patch('/admin/plans/:id', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الخطة غير صالح.' });
   try {
-    const { error, value } = planSchema.fork(['type','name','price','durationDays'], s => s.optional()).min(1).validate(req.body || {});
+    const { error, value } = planPatchSchema.validate(req.body || {});
     if (error) return res.status(400).json({ message: 'بيانات التعديل غير صحيحة.' });
     const plan = await SubscriptionPlan.findByIdAndUpdate(req.params.id, { $set: value }, { new: true, runValidators: true });
     if (!plan) return res.status(404).json({ message: 'الخطة غير موجودة.' });
