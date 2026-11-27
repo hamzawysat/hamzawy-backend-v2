@@ -159,8 +159,8 @@ async function createUnifiedSubscription(){
   const body={clientPhone:normalizePhoneInput(clientPhone),type:plan.type,planId:plan._id};
   body.address=prompt('عنوان العميل:','')||'';
   if(plan.type==='maintenance'){body.dishSize=prompt('مقاس الطبق:','')||'';body.receiverType=prompt('نوع الرسيفر:','')||'';}
-  if(plan.type==='air_network'){body.networkName=prompt('اسم الشبكة:','')||'';body.deviceType=prompt('نوع الجهاز:','')||'';body.activationCode=prompt('رقم الكارت / كود التفعيل:','')||'';}
-  if(plan.type==='iptv'){body.deviceType=prompt('نوع الجهاز:','')||'';body.iptvUsername=prompt('اسم مستخدم IPTV:','')||'';body.iptvPassword=prompt('كلمة مرور IPTV (ستُخزن مشفرة):','')||'';body.portalUrl=prompt('رابط البوابة:','')||'';body.allowedDevices=Number(prompt('عدد الأجهزة:','1'))||1;}
+  if(plan.type==='air_network'){body.networkName=prompt('اسم الباقة:','')||'';body.deviceType=prompt('نوع الخدمة:','')||'';body.activationCode=prompt('بيانات الدخول:','')||'';}
+  if(plan.type==='iptv'){body.deviceType=prompt('نوع الخدمة:','')||'';body.iptvUsername=prompt('بيانات الدخول - اسم المستخدم:','')||'';body.iptvPassword=prompt('بيانات الدخول - كلمة المرور:','')||'';body.portalUrl=prompt('رابط الخدمة:','')||'';body.allowedDevices=Number(prompt('عدد الأجهزة:','1'))||1;}
   if(!confirm('تأكيد إنشاء وتفعيل الاشتراك للعميل '+body.clientPhone+'؟'))return;
   try{const result=await tryApi(['/api/subscriptions/admin/create'],{method:'POST',body:JSON.stringify(body)});showToast(result.message||'تم إنشاء الاشتراك','success');await loadClientSubscriptions();}
   catch(error){showToast(error.message||'تعذر إنشاء الاشتراك','error');}
