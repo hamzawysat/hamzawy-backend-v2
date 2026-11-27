@@ -263,7 +263,7 @@ router.patch('/technician/visits/:id', auth('fanni'), async (req, res, next) => 
   try {
     const visit = await SubscriptionVisit.findOne({ _id: req.params.id, technician: req.user._id, status: { $in: ['scheduled','in_progress','awaiting_client_confirmation'] } });
     if (!visit) return res.status(404).json({ message: 'الزيارة غير موجودة ضمن الزيارات المسندة إليك.' });
-    if (visit.status === 'awaiting_client_confirmation' && value.status === 'completed') return res.status(409).json({ message: 'تم إرسال طلب إنهاء الخدمة بالفعل، وفي انتظار تأكيد العميل.' });
+    if (visit.status === 'awaiting_client_confirmation') return res.status(409).json({ message: 'تم إرسال طلب إنهاء الخدمة بالفعل، وفي انتظار تأكيد العميل.' });
     visit.workDescription = value.workDescription;
     if (value.status === 'in_progress') visit.status = 'in_progress';
     if (value.status === 'completed') {
