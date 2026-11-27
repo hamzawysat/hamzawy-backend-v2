@@ -4,6 +4,7 @@ const Joi = require('joi');
 const mongoose = require('mongoose');
 const crypto = require('crypto');
 const Client = require('../models/Client');
+const WalletTransaction = require('../models/WalletTransaction');
 const Fanni = require('../models/Fanni');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const UnifiedSubscription = require('../models/UnifiedSubscription');
@@ -220,16 +221,55 @@ router.post('/admin/:id/renew', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
   const { error, value } = Joi.object({ amount: Joi.number().strict().min(0).max(100000000).required(), durationDays: Joi.number().integer().min(1).max(3650).required() }).unknown(false).validate(req.body || {});
   if (error) return res.status(400).json({ message: 'حدد سعر ومدة التجديد.' });
+  let session;
   try {
-    const s = await UnifiedSubscription.findById(req.params.id);
-    if (!s) return res.status(404).json({ message: 'الاشتراك غير موجود.' });
-    const start = s.endsAt > new Date() ? s.endsAt : new Date();
-    s.amount = value.amount; s.durationDays = value.durationDays; s.startsAt = start; s.endsAt = new Date(start.getTime()+value.durationDays*86400000); s.status = 'active';
-    s.history.push({ action: 'renewed', note: 'تجديد لمدة '+value.durationDays+' يوم', by: String(req.user?.name || 'الإدارة') });
-    await s.save();
-    await createNotification({ recipientRole: 'client', recipientId: s.client, type: 'subscription_renewed', title: 'تم تجديد اشتراكك', message: 'تم تجديد الاشتراك ' + s.code, link: '/client' });
-    return res.json({ message: 'تم تجديد الاشتراك.', subscription: safeClient(s.toObject()) });
+    session = await mongoose.startSession();
+    let result;
+    await session.withTransaction(async () => {
+      const s = await UnifiedSubscription.findById(req.params.id).session(session);
+      if (!s) { result = { kind: 'missing' }; return; }
+      let transactionNumber = '';
+      const request = s.renewalRequest;
+      if (request?.paymentStatus === 'pending' && request.paymentMethod === 'wallet' && Number(value.amount) > 0) {
+        const paymentKey = 'special-subscription-renewal:' + String(s._id) + ':' + String(request.requestedAt?.getTime?.() || 0);
+        const prior = await WalletTransaction.findOne({ client: s.client, idempotencyKey: paymentKey }).session(session).lean();
+        if (!prior) {
+          const client = await Client.findOne({ _id: s.client, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: Number(value.amount) } }).session(session);
+          if (!client) { result = { kind: 'insufficient' }; return; }
+          const before = Number(client.walletBalance || 0);
+          const updated = await Client.findOneAndUpdate(
+            { _id: client._id, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: Number(value.amount) } },
+            { $inc: { walletBalance: -Number(value.amount) } }, { new: true, session, runValidators: true }
+          );
+          if (!updated) { result = { kind: 'insufficient' }; return; }
+          const transaction = new WalletTransaction({
+            client: client._id, type: 'client_subscription_payment', amount: -Number(value.amount),
+            balanceBefore: before, balanceAfter: Number(updated.walletBalance),
+            description: 'تجديد ' + publicServiceName(s.type) + ' ' + s.code + ' من محفظة العميل',
+            idempotencyKey: paymentKey
+          });
+          await transaction.save({ session });
+          transactionNumber = transaction.transactionNumber || '';
+        } else transactionNumber = prior.transactionNumber || '';
+        request.paymentStatus = 'paid';
+      } else if (request?.paymentStatus === 'pending' && request.paymentMethod === 'transfer') {
+        request.paymentStatus = 'paid';
+      }
+      const start = s.endsAt > new Date() ? s.endsAt : new Date();
+      s.amount = value.amount; s.durationDays = value.durationDays; s.startsAt = start; s.endsAt = new Date(start.getTime()+value.durationDays*86400000); s.status = 'active';
+      if (request?.paymentMethod === 'wallet') s.history.push({ action: 'renewed', note: 'تجديد من محفظة العميل لمدة '+value.durationDays+' يوم', by: String(req.user?.name || 'الإدارة') });
+      else if (request?.paymentMethod === 'transfer') s.history.push({ action: 'renewed', note: 'تجديد بعد مراجعة التحويل لمدة '+value.durationDays+' يوم', by: String(req.user?.name || 'الإدارة') });
+      else s.history.push({ action: 'renewed', note: 'تجديد لمدة '+value.durationDays+' يوم', by: String(req.user?.name || 'الإدارة') });
+      if (transactionNumber) s.history.push({ action: 'payment_received', note: 'رقم العملية: '+transactionNumber, by: String(req.user?.name || 'الإدارة') });
+      await s.save({ session });
+      result = { kind: 'renewed', subscription: s };
+    });
+    if (result?.kind === 'missing') return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+    if (result?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد محفظة العميل غير كافٍ. لم يتم التجديد أو الخصم.' });
+    await createNotification({ recipientRole: 'client', recipientId: result.subscription.client, type: 'subscription_renewed', title: 'تم تجديد اشتراكك', message: 'تم تجديد الاشتراك ' + result.subscription.code, link: '/client' });
+    return res.json({ message: 'تم تجديد الاشتراك وتأكيد طريقة السداد.', subscription: safeClient(result.subscription.toObject()) });
   } catch (e) { return next(e); }
+  finally { if (session) await session.endSession(); }
 });
 router.post('/admin/visits', auth('admin'), async (req, res, next) => {
   const { error, value } = visitSchema.validate(req.body || {});
