@@ -1,12 +1,26 @@
 'use strict';
-function chooseClientSubscriptionPayment(title,description){return new Promise(resolve=>{const overlay=document.createElement('div');overlay.className='fixed inset-0 z-[500] flex items-center justify-center bg-slate-950/55 p-3';overlay.innerHTML='<section role="dialog" aria-modal="true" class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl" dir="rtl"><h3 class="text-base font-black">'+escHtml(title||'اختيار طريقة الدفع')+'</h3><p class="mt-1 text-xs leading-6 text-slate-600">'+escHtml(description||'حدد طريقة الدفع المناسبة.')+'</p><div class="mt-4 grid grid-cols-1 gap-2"><button type="button" data-payment="wallet" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 p-3 text-right"><span class="text-lg">◉</span><span><b class="block text-sm">محفظة التطبيق</b><small class="text-xs text-slate-500">الخصم بعد موافقة الإدارة</small></span></button><button type="button" data-payment="transfer" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 p-3 text-right"><span class="text-lg">◉</span><span><b class="block text-sm">تحويل أموال</b><small class="text-xs text-slate-500">مراجعة التحويل قبل التفعيل</small></span></button></div><button type="button" data-cancel class="mt-4 w-full rounded-xl border border-slate-200 p-2.5 text-sm font-bold">رجوع</button></section>';const close=value=>{overlay.remove();resolve(value);};overlay.addEventListener('click',e=>{if(e.target===overlay)close(null);});overlay.querySelector('[data-cancel]').addEventListener('click',()=>close(null));overlay.querySelectorAll('[data-payment]').forEach(b=>b.addEventListener('click',()=>close(b.dataset.payment)));document.body.appendChild(overlay);});}
-
-function clientCommerceKey(){
-  return (window.crypto&&typeof window.crypto.randomUUID==='function')
-    ? window.crypto.randomUUID()
-    : 'commerce-'+Date.now()+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+function chooseClientSubscriptionPayment(title,description){
+ return new Promise(resolve=>{
+  const overlay=document.createElement('div');
+  overlay.className='fixed inset-0 z-[500] flex items-center justify-center bg-slate-950/55 p-3';
+  overlay.innerHTML='<section role="dialog" aria-modal="true" class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl" dir="rtl"><h3 class="text-base font-black">'+escHtml(title||'اختيار طريقة الدفع')+'</h3><p class="mt-1 text-xs leading-6 text-slate-600">'+escHtml(description||'حدد طريقة الدفع المناسبة.')+'</p><div class="mt-4 grid grid-cols-1 gap-2"><button type="button" data-payment="wallet" aria-checked="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 p-3 text-right"><span data-mark class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-slate-400"></span><span><b class="block text-sm">محفظة التطبيق</b><small class="text-xs text-slate-500">الخصم بعد موافقة الإدارة</small></span></button><button type="button" data-payment="transfer" aria-checked="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 p-3 text-right"><span data-mark class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-slate-400"></span><span><b class="block text-sm">تحويل أموال</b><small class="text-xs text-slate-500">مراجعة التحويل قبل التفعيل</small></span></button></div><div class="mt-4 flex gap-2"><button type="button" data-cancel class="flex-1 rounded-xl border border-slate-200 p-2.5 text-sm font-bold">رجوع</button><button type="button" data-confirm disabled class="flex-1 rounded-xl bg-slate-900 p-2.5 text-sm font-bold text-white opacity-40">تأكيد الاختيار</button></div></section>';
+  let selected='';
+  const close=value=>{overlay.remove();resolve(value);};
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close(null);});
+  overlay.querySelector('[data-cancel]').addEventListener('click',()=>close(null));
+  overlay.querySelectorAll('[data-payment]').forEach(button=>button.addEventListener('click',()=>{
+   selected=button.dataset.payment;
+   overlay.querySelectorAll('[data-payment]').forEach(option=>{
+    const active=option===button;option.setAttribute('aria-checked',String(active));
+    option.classList.toggle('border-blue-600',active);option.classList.toggle('bg-blue-50',active);
+    const mark=option.querySelector('[data-mark]');mark.textContent=active?'✓':'';mark.classList.toggle('border-blue-600',active);mark.classList.toggle('text-blue-700',active);
+   });
+   const confirm=overlay.querySelector('[data-confirm]');confirm.disabled=false;confirm.classList.remove('opacity-40');
+  }));
+  overlay.querySelector('[data-confirm]').addEventListener('click',()=>{if(selected)close(selected);});
+  document.body.appendChild(overlay);
+ });
 }
-
 async function loadClientCommerce(){
   if(!state.accountToken||!state.account||state.commerceLoading)return;
   state.commerceLoading=true;state.commerceError='';render();
