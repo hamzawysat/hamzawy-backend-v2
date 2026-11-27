@@ -52,6 +52,7 @@ const safeClient = (s) => {
   return v;
 };
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
+function publicServiceName(type) { return type === 'maintenance' ? 'صيانة سنوية' : type === 'air_network' ? 'اشتراك محلي' : 'اشتراك ترفيهي'; }
 function publicClientSubscription(s) {
   const v = s.toObject ? s.toObject() : { ...s };
   if (v.type === 'iptv') {
@@ -67,7 +68,8 @@ router.get('/plans', async (req, res, next) => {
     const filter = { active: true };
     if (TYPES.includes(String(req.query.type || ''))) filter.type = String(req.query.type);
     const plans = await SubscriptionPlan.find(filter).select('-settings').sort({ type: 1, price: 1 }).lean();
-    return res.set('Cache-Control','no-store').json({ plans });
+    const publicPlans = plans.map(p => ({ ...p, name: publicServiceName(p.type) }));
+    return res.set('Cache-Control','no-store').json({ plans: publicPlans });
   } catch (e) { return next(e); }
 });
 
@@ -233,7 +235,7 @@ router.get('/admin/visits', auth('admin'), async (req, res, next) => {
 // Technicians can access only visits assigned to their authenticated account; no IPTV credentials or prices are returned.
 router.get('/technician/visits', auth('fanni'), async (req, res, next) => {
   try {
-    const visits = await SubscriptionVisit.find({ technician: req.user._id, status: { $in: ['scheduled','in_progress'] } }).populate('subscription','code type address dishSize receiverType deviceType networkName').populate('client','name phone').sort({ scheduledAt: 1 }).lean();
+    const visits = await SubscriptionVisit.find({ technician: req.user._id, status: { $in: ['scheduled','in_progress'] } }).populate('subscription','code address dishSize receiverType').populate('client','name phone').sort({ scheduledAt: 1 }).lean();
     return res.set('Cache-Control','no-store').json({ visits });
   } catch (e) { return next(e); }
 });
