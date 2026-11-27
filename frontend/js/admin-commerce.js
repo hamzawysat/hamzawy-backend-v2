@@ -27,116 +27,11 @@ function unifiedPlanFields(p={}){const type=p.type||'maintenance';return [
  {name:'excludedSupplies',label:'المستلزمات غير المشمولة — علّم على الاختيارات',type:'checkboxes',value:p.excludedSupplies||[],options:Array.from(new Set([...UNIFIED_SUPPLY_OPTIONS,...(p.excludedSupplies||[])]))},
  {name:'active',label:'الخطة متاحة للعملاء',type:'checkbox',value:p.active!==false}
 ];}
-async function loadCommerceCatalog(){if(!getToken())return;state.commerceLoading=true;render();try{const [legacyResult,unifiedResult]=await Promise.allSettled([tryApi(['/api/admin/commerce/catalog'],{method:'GET'}),tryApi(['/api/subscriptions/admin/plans'],{method:'GET'})]);if(legacyResult.status==='fulfilled')state.commerceItems=extractList(legacyResult.value,['items']);else{state.commerceItems=[];showToast(legacyResult.reason?.message||'تعذر تحميل باقات المتجر','error');}if(unifiedResult.status==='fulfilled')state.unifiedSubscriptionPlans=extractList(unifiedResult.value,['plans']);else{state.unifiedSubscriptionPlans=[];showToast(unifiedResult.reason?.message||'تعذر تحميل خطط الاشتراكات الموحدة','error');}}finally{state.commerceLoading=false;if(state.tab==='commercePlans')render();}}
-
-async function openCommercePlanEditor(id){const item=(state.commerceItems||[]).find(x=>String(x._id)===String(id));const name=prompt('اسم الباقة:',item?.name||'');if(name===null)return;const priceRaw=prompt('السعر بالجنيه:',String(item?.price??''));if(priceRaw===null)return;const price=Number(priceRaw);if(!Number.isFinite(price)||price<0)return showToast('السعر غير صحيح','error');const daysRaw=prompt('مدة الاشتراك بالأيام:',String(item?.durationDays??30));if(daysRaw===null)return;const durationDays=Number(daysRaw);if(!Number.isInteger(durationDays)||durationDays<1||durationDays>3650)return showToast('المدة يجب أن تكون من يوم إلى 3650 يومًا','error');const description=prompt('وصف الباقة:',item?.description||'')??'';const payload={name:name.trim(),price,durationDays,description,active:item?.active!==false,features:Array.isArray(item?.features)?item.features:[]};if(!payload.name)return showToast('اسم الباقة مطلوب','error');const method=item?'PATCH':'POST',url=item?'/api/admin/commerce/catalog/'+encodeURIComponent(id):'/api/admin/commerce/catalog';try{await tryApi([url],{method,body:JSON.stringify(payload)});showToast(item?'تم تحديث الباقة':'تم إنشاء الباقة','success');await loadCommerceCatalog();}catch(error){showToast(error.message||'تعذر حفظ الباقة','error');}}
-async function toggleCommercePlan(id){const item=(state.commerceItems||[]).find(x=>String(x._id)===String(id));if(!item)return;try{await tryApi(['/api/admin/commerce/catalog/'+encodeURIComponent(id)],{method:'PATCH',body:JSON.stringify({active:!item.active})});await loadCommerceCatalog();}catch(error){showToast(error.message||'تعذر تحديث الباقة','error');}}
-async function createClientSubscription(){const clientPhone=prompt('رقم هاتف العميل المسجل:','');if(clientPhone===null)return;const itemId=prompt('اكتب معرّف الباقة من القائمة:','');if(itemId===null)return;const status=confirm('تفعيل الاشتراك فورًا؟ اضغط إلغاء لإنشاء طلب بانتظار المراجعة.')?'active':'pending';const paymentStatus=status==='active'?'paid':'pending';try{await tryApi(['/api/admin/commerce/subscriptions'],{method:'POST',body:JSON.stringify({clientPhone:normalizePhoneInput(clientPhone),itemId,status,paymentStatus})});showToast('تم إنشاء الاشتراك','success');await loadClientSubscriptions();}catch(error){showToast(error.message||'تعذر إنشاء الاشتراك','error');}}
-async function createAdminClientSubscription(clientPhone){
-  const phone=normalizePhoneInput(clientPhone||'');
-  if(!/^01[0-9]{9}$/.test(phone))return showToast('رقم هاتف العميل غير صحيح','error');
-  try{
-    if(!Array.isArray(state.commerceItems)||!state.commerceItems.length)await loadCommerceCatalog();
-    const items=(state.commerceItems||[]).filter(item=>item.active!==false&&Number(item.price)>0);
-    if(!items.length)return showToast('لا توجد باقات اشتراك مفعلة بسعر أكبر من صفر','error');
-    const choices=items.map((item,index)=>(index+1)+') '+item.name+' — '+Number(item.price).toLocaleString('ar-EG')+' جنيه — '+Number(item.durationDays)+' يوم').join('\\n');
-    const selected=prompt('اختار رقم الباقة للعميل '+phone+':\\n\\n'+choices,'1');
-    if(selected===null)return;
-    const index=Number(selected)-1,item=items[index];
-    if(!Number.isInteger(index)||!item)return showToast('اختيار الباقة غير صحيح','error');
-    if(!confirm('تأكيد تفعيل باقة '+item.name+' بسعر '+Number(item.price).toLocaleString('ar-EG')+' جنيه؟ سيتم خصم المبلغ من محفظة العميل فورًا.'))return;
-    const daysRaw=prompt('مدة الاشتراك بالأيام (من 1 إلى 3650):',String(item.durationDays||30));
-    if(daysRaw===null)return;
-    const durationDays=Number(daysRaw);
-    if(!Number.isInteger(durationDays)||durationDays<1||durationDays>3650)return showToast('المدة يجب أن تكون من يوم إلى 3650 يومًا','error');
-    const amountRaw=prompt('المبلغ المطلوب خصمه من محفظة العميل بالجنيه (اكتب 0 للتفعيل بدون خصم):',String(item.price||0));
-    if(amountRaw===null)return;
-    const amount=Number(amountRaw);
-    if(!Number.isFinite(amount)||amount<0||amount>100000000)return showToast('مبلغ الخصم غير صحيح','error');
-    if(!confirm('تأكيد تفعيل '+item.name+' لمدة '+durationDays+' يومًا مع خصم '+amount.toLocaleString('ar-EG')+' جنيه؟'+(amount===0?' لن يتم خصم أي مبلغ.':' سيتم الخصم من محفظة العميل.')))return;
-    const result=await tryApi(['/api/admin/commerce/subscriptions'],{method:'POST',body:JSON.stringify({clientPhone:phone,itemId:item._id,status:'active',durationDays,amount})});
-    showToast(result.message||'تم تفعيل الاشتراك حسب المدة والمبلغ المحددين','success');
-    if(typeof loadClients==='function')await loadClients();
-    if(state.tab==='commerceSubscriptions')await loadClientSubscriptions();
-  }catch(error){showToast(error.message||'تعذر تفعيل اشتراك العميل','error');}
-}
-async function editClientSubscriptionDetails(id){
-  const sub=(state.clientSubscriptions||[]).find(item=>String(item._id)===String(id));
-  if(!sub)return showToast('الاشتراك غير موجود','error');
-  const details=prompt('اكتب تفاصيل الاشتراك (مثال: رقم السيريال أو بيانات الجهاز):',sub.subscriptionDetails||'');
-  if(details===null)return;
-  try{
-    const result=await tryApi(['/api/admin/commerce/subscriptions/'+encodeURIComponent(id)+'/details'],{method:'PATCH',body:JSON.stringify({details})});
-    showToast(result.message||'تم حفظ تفاصيل الاشتراك','success');
-    await loadClientSubscriptions();
-  }catch(error){showToast(error.message||'تعذر حفظ تفاصيل الاشتراك','error');}
-}
-async function renewClientSubscription(id){if(!confirm('تأكيد تجديد الاشتراك؟'))return;try{await tryApi(['/api/admin/commerce/subscriptions/'+encodeURIComponent(id)+'/renew'],{method:'POST',body:JSON.stringify({})});showToast('تم تجديد الاشتراك','success');await loadClientSubscriptions();}catch(error){showToast(error.message||'تعذر تجديد الاشتراك','error');}}
-async function changeClientSubscriptionStatus(id,status){try{await tryApi(['/api/admin/commerce/subscriptions/'+encodeURIComponent(id)+'/status'],{method:'PATCH',body:JSON.stringify({status,reason:'تحديث من لوحة الإدارة'})});showToast('تم تحديث حالة الاشتراك','success');await loadClientSubscriptions();}catch(error){showToast(error.message||'تعذر تحديث الاشتراك','error');}}
-function renderCommercePlans(){const rows=state.commerceItems||[];return `<section class="mt-4 space-y-3"><div class="premium-panel p-4 flex items-center justify-between gap-2"><div><h2 class="font-black text-sm">باقات الاشتراك</h2><p class="text-[11px] text-slate-500 mt-1">كتالوج مرن قابل لإضافة المنتجات لاحقًا</p></div><button class="pill-btn primary-btn" onclick="openCommercePlanEditor()">إضافة باقة</button></div>${state.commerceLoading?'<p class="text-center p-5">جاري التحميل...</p>':''}${rows.length?rows.map(item=>`<article class="premium-card p-4 flex items-center justify-between gap-3"><div class="min-w-0"><h3 class="font-black text-sm">${escHtml(item.name)}</h3><p class="text-xs text-slate-500 mt-1">${Number(item.price).toLocaleString('ar-EG')} جنيه · ${Number(item.durationDays)} يوم</p><p class="text-[11px] text-slate-500 mt-1">${escHtml(item.description||'')}</p><p class="text-[10px] text-slate-500 mt-1" dir="ltr">${escHtml(item._id)}</p><span class="text-[10px] font-bold ${item.active?'text-emerald-700':'text-red-600'}">${item.active?'مفعلة':'متوقفة'}</span></div><div class="flex flex-col gap-2 shrink-0"><button class="pill-btn soft-btn" onclick="openCommercePlanEditor('${item._id}')">تعديل</button><button class="pill-btn soft-btn" onclick="toggleCommercePlan('${item._id}')">${item.active?'إيقاف':'تفعيل'}</button></div></article>`).join(''):'<p class="premium-panel p-6 text-center text-sm text-slate-500">لا توجد باقات حتى الآن.</p>'}</section>`;}
-function renderUnifiedSubscriptionPlans(){
- const plans=state.unifiedSubscriptionPlans||[];
- const types=[{id:'maintenance',label:'الصيانة السنوية'},{id:'iptv',label:'الاشتراك الترفيهي'},{id:'air_network',label:'الاشتراك المحلي'}];
- const groups=types.map(type=>{
-  const rows=plans.filter(plan=>plan.type===type.id);
-  const cards=rows.map(plan=>'<article class="premium-card p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[12px]">'+escHtml(plan.name||unifiedTypeLabel(plan.type))+'</b><span class="text-[10px] '+(plan.active?'text-emerald-700':'text-red-600')+'">'+(plan.active?'مفعلة':'متوقفة')+'</span></div><p class="text-[11px] text-slate-600">'+Number(plan.price||0).toLocaleString('ar-EG')+' جنيه · '+Number(plan.durationDays||0)+' يوم · '+Number(plan.visitCount||0)+' زيارة</p><p class="text-[10px] text-slate-500">'+escHtml(plan.description||'')+'</p><button type="button" class="pill-btn soft-btn" onclick="editUnifiedSubscriptionPlan(\''+escHtml(plan._id)+'\')">تعديل الخطة</button></article>').join('');
-  return '<div class="space-y-2"><h3 class="text-[12px] font-black">'+type.label+' ('+rows.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(cards||'<p class="premium-card p-3 text-[10px] text-slate-500">لا توجد خطط لهذا النوع.</p>')+'</div></div>';
- }).join('');
- return '<div class="premium-panel p-4 mt-4 space-y-3"><div class="flex items-center justify-between gap-2"><div><h2 class="font-black text-sm">خطط الاشتراكات الموحدة</h2><p class="text-[10px] text-slate-500">الصيانة السنوية والترفيهي والمحلي</p></div><button type="button" class="pill-btn primary-btn" onclick="createUnifiedSubscriptionPlan()">إضافة خطة</button></div>'+(state.commerceLoading?'<p class="text-center text-[11px] text-slate-500">جاري تحميل الخطط...</p>':'')+groups+'</div>';
-}
-const _renderCommercePlans = renderCommercePlans;
-renderCommercePlans = function(){const html=_renderCommercePlans();return html.replace(/<\/section>$/,renderUnifiedSubscriptionPlans()+'</section>');};
-
-function setClientSubscriptionStatusTab(tab){if(!['active','expired','pending'].includes(tab))return;state.clientSubscriptionStatusTab=tab;render();}
-function renderCommerceSubscriptions(){
-  const rows=state.clientSubscriptions||[];
-  const now=Date.now();
-  const groupOf=sub=>{
-    const status=String(sub.status||'').toLowerCase();
-    if(status==='pending')return 'pending';
-    if(status==='active'){
-      if(!sub.endsAt)return 'active';
-      const end=Date.parse(sub.endsAt);
-      return Number.isFinite(end)&&end>now?'active':'expired';
-    }
-    // Keep paused/cancelled/expired and unknown legacy records visible in the non-active tab.
-    return 'expired';
-  };
-  const tabs=[
-    {id:'active',label:'الاشتراكات السارية'},
-    {id:'expired',label:'الاشتراكات المنتهية'},
-    {id:'pending',label:'طلبات الاشتراك الجديدة'}
-  ];
-  const selected=tabs.some(tab=>tab.id===state.clientSubscriptionStatusTab)?state.clientSubscriptionStatusTab:'active';
-  state.clientSubscriptionStatusTab=selected;
-  const filtered=rows.filter(sub=>groupOf(sub)===selected);
-  const tabButtons=tabs.map(tab=>{
-    const count=rows.filter(sub=>groupOf(sub)===tab.id).length;
-    return '<button type="button" onclick="setClientSubscriptionStatusTab(\''+tab.id+'\')" class="rounded-xl px-3 py-2 text-[11px] font-black border '+(selected===tab.id?'bg-blue-700 text-white border-blue-700':'bg-white text-slate-700 border-slate-200')+'">'+tab.label+' <span class="mr-1">'+count+'</span></button>';
-  }).join('');
-  const cards=filtered.map(sub=>{
-    const client=sub.client||{};
-    const end=sub.endsAt?new Date(sub.endsAt).toLocaleDateString('ar-EG'):'—';
-    const labels={active:'نشط',pending:'بانتظار التفعيل',paused:'موقوف مؤقتًا',cancelled:'ملغي',expired:'منتهي'};
-    const status=labels[sub.status]||sub.status||'غير محدد';
-    return '<article class="premium-card p-4 space-y-2"><div class="flex items-start justify-between gap-2"><div><h3 class="font-black text-sm">'+escHtml(client.name||'عميل')+'</h3><p class="text-xs text-slate-500" dir="ltr">'+escHtml(client.phone||'')+'</p></div><span class="text-xs font-black">'+escHtml(status)+'</span></div>'+
-      '<p class="text-sm font-bold">'+escHtml(sub.itemName||'اشتراك')+' · '+Number(sub.amount||0).toLocaleString('ar-EG')+' جنيه</p>'+
-      '<p class="text-xs text-slate-500">ينتهي: '+end+' · الدفع: '+escHtml(sub.paymentStatus||'')+'</p>'+
-      (sub.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+escHtml(sub.transactionNumber)+'</p>':'')+
-      (Array.isArray(sub.history)&&sub.history.length?'<div class="space-y-1">'+sub.history.filter(item=>item.transactionNumber).map(item=>'<p class="text-[10px] text-slate-600" dir="ltr">تجديد · رقم العملية: '+escHtml(item.transactionNumber)+'</p>').join('')+'</div>':'')+
-      (sub.subscriptionDetails?'<div class="rounded-xl border border-blue-100 bg-blue-50 p-3 text-[11px] leading-6 whitespace-pre-wrap break-words"><b class="block mb-1">تفاصيل الاشتراك</b>'+escHtml(sub.subscriptionDetails)+'</div>':'')+
-      '<div class="flex flex-wrap gap-2"><button class="pill-btn soft-btn" onclick="editClientSubscriptionDetails(\''+escHtml(sub._id)+'\')">'+(sub.subscriptionDetails?'تعديل التفاصيل':'إضافة تفاصيل الاشتراك')+'</button>'+
-      '<button class="pill-btn soft-btn" onclick="renewClientSubscription(\''+escHtml(sub._id)+'\')">تجديد</button>'+
-      (sub.status==='active'?'<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'paused\')">إيقاف مؤقت</button>':'<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'active\')">تفعيل</button>')+
-      '<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'cancelled\')">إلغاء</button></div></article>';
-  }).join('');
-  return '<section class="mt-4 space-y-3"><div class="premium-panel p-4 flex items-center justify-between gap-2"><div><h2 class="font-black text-sm">اشتراكات العملاء</h2><p class="text-[11px] text-slate-500 mt-1">متابعة الاشتراكات السارية والمنتهية وطلبات التفعيل الجديدة</p></div><button class="pill-btn primary-btn" onclick="createClientSubscription()">إضافة اشتراك</button></div>'+
-    '<div class="flex flex-wrap gap-2">'+tabButtons+'</div>'+
-    (state.commerceLoading?'<p class="text-center p-5">جاري التحميل...</p>':'')+
-    (filtered.length?cards:'<p class="premium-panel p-6 text-center text-sm text-slate-500">لا توجد سجلات في هذا التبويب.</p>')+'</section>';
-}
-function renderCommerce(){return state.tab==='commercePlans'?renderCommercePlans():renderCommerceSubscriptions();}
-
+// All subscription administration is handled by the unified subscriptions API.
+async function loadCommerceCatalog(){return loadClientSubscriptions();}
+function renderCommercePlans(){return renderUnifiedSubscriptionPlans();}
+function renderCommerceSubscriptions(){return renderUnifiedSubscriptionPanel();}
+async function createAdminClientSubscription(clientPhone){return createUnifiedSubscription(clientPhone);}
 
 /* Unified satellite subscriptions: maintenance, air-network and IPTV. */
 async function loadClientSubscriptions(){
@@ -173,10 +68,10 @@ async function editUnifiedSubscriptionPlan(id){
  try{await tryApi(['/api/subscriptions/admin/plans/'+encodeURIComponent(id)],{method:'PATCH',body:JSON.stringify(v)});showToast('تم تحديث الخطة','success');await loadClientSubscriptions();}
  catch(e){showToast(e.message||'تعذر تعديل الخطة','error');}
 }
-async function createUnifiedSubscription(){
+async function createUnifiedSubscription(clientPhone=''){
  const plans=(state.unifiedSubscriptionPlans||[]).filter(p=>p.active!==false);if(!plans.length)return showToast('لا توجد خطط مفعلة. أنشئ خطة أو فعّل خطة موجودة أولًا.','error');
  const v=await openUnifiedSubscriptionForm({title:'إضافة اشتراك لعميل',submitLabel:'إنشاء وتفعيل الاشتراك',fields:[
-  {name:'clientPhone',label:'رقم هاتف العميل المسجل',type:'text',required:true},
+  {name:'clientPhone',label:'رقم هاتف العميل المسجل',type:'text',value:clientPhone,required:true},
   {name:'planId',label:'الخطة',type:'select',required:true,options:plans.map(p=>({value:String(p._id),label:unifiedTypeLabel(p.type)+' — '+p.name+' · '+Number(p.price||0).toLocaleString('ar-EG')+' جنيه'}))},
   {name:'address',label:'عنوان العميل',type:'text'},
   {name:'dishSize',label:'مقاس الطبق',type:'select',options:['','60 سم','70 سم','80 سم','90 سم','100 سم','120 سم']},

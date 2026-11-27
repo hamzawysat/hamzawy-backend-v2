@@ -33,42 +33,6 @@ async function loadClientCommerce(){
   finally{state.commerceLoading=false;render();}
 }
 
-async function purchaseClientSubscription(itemId){
-  if(state.commerceSubmitting)return;
-  const item=(state.commerceItems||[]).find(x=>String(x._id)===String(itemId));
-  if(!item)return showToast('الباقة غير متاحة حاليًا.');
-  const price=Number(item.price||0);
-  if(!Number.isFinite(price)||price<0)return showToast('سعر الباقة غير صحيح.');
-  const paymentMethod=await chooseClientSubscriptionPayment('اختيار طريقة الدفع','قيمة الاشتراك '+price.toLocaleString('ar-EG')+' جنيه. حدد طريقة الدفع قبل إرسال الطلب.');if(!paymentMethod)return;
-  if(!window.confirm('تأكيد طلب '+item.name+' بقيمة '+price+' جنيه بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟'))return;
-  state.commerceSubmitting=String(itemId);state.commerceError='';render();
-  try{
-    const result=await API.purchaseClientSubscription({itemId:String(itemId),paymentMethod,idempotencyKey:clientCommerceKey()});
-    state.walletBalance=Number(result.balance??state.walletBalance);
-    state.commerceSuccess=result.message||'تم إرسال طلب الاشتراك للمراجعة.';
-    await Promise.all([loadClientCommerce(),loadClientWallet()]);
-    showToast(result.message||'تم إرسال طلب الاشتراك للمراجعة.','success');
-  }catch(error){state.commerceError=error.message||'تعذر شراء الاشتراك.';showToast(state.commerceError);}
-  finally{state.commerceSubmitting='';render();}
-}
-
-async function renewClientSubscription(subscriptionId){
-  if(state.commerceSubmitting)return;
-  const sub=(state.commerceSubscriptions||[]).find(x=>String(x._id)===String(subscriptionId));
-  if(!sub)return showToast('الاشتراك غير موجود.');
-  const amount=Number(sub.amount||0);
-  if(Number(state.walletBalance||0)<amount){showToast('رصيد محفظتك غير كافٍ. اشحن المحفظة أولًا.');setTab('wallet');return;}
-  if(!window.confirm('تأكيد تجديد '+sub.itemName+' بمبلغ '+amount+' جنيه من محفظتك؟'))return;
-  state.commerceSubmitting=String(subscriptionId);state.commerceError='';render();
-  try{
-    const result=await API.renewClientSubscription(subscriptionId,{idempotencyKey:clientCommerceKey()});
-    state.walletBalance=Number(result.balance??state.walletBalance);
-    await Promise.all([loadClientCommerce(),loadClientWallet()]);
-    showToast(result.message||'تم تجديد الاشتراك.','success');
-  }catch(error){state.commerceError=error.message||'تعذر تجديد الاشتراك.';showToast(state.commerceError);}
-  finally{state.commerceSubmitting='';render();}
-}
-
 // Customer subscriptions use a single panel with two switchable inner views.
 function setClientCommerceView(view){
   state.commerceView=view==='available'?'available':'current';
