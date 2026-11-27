@@ -157,7 +157,7 @@ router.post('/client/request-renewal', clientAuth, async (req, res, next) => {
     if (error) return res.status(400).json({ message: 'حدد الاشتراك وطريقة الدفع قبل إرسال طلب التجديد.' });
     const subscription = await findSubscriptionOne({ _id: value.subscriptionId, client: req.clientId, status: { $in: ['active','expired','paused'] } });
     if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود بحسابك أو لا يقبل التجديد.' });
-    if (subscription.renewalRequest?.paymentStatus === 'pending') return res.status(409).json({ message: 'لديك طلب تجديد قيد المراجعة بالفعل.' });
+    if (subscription.renewalRequest?.requestedAt && subscription.renewalRequest.paymentStatus === 'pending') return res.status(409).json({ message: 'لديك طلب تجديد قيد المراجعة بالفعل.' });
     const amount = Number(subscription.amount || 0);
     if (!Number.isFinite(amount) || amount < 0) return res.status(409).json({ message: 'قيمة التجديد غير صحيحة. تواصل مع الإدارة.' });
     if (value.paymentMethod === 'wallet') {
