@@ -56,6 +56,30 @@ async function run() {
     );
     resetMaintenanceCache();
 
+    await test('subscription credential encryption uses HKDF v2 and preserves legacy ciphertext reads', async () => {
+      const crypto = require('node:crypto');
+      const { encrypt, decrypt } = require('../utils/subscriptionCrypto');
+      const originalSecret = process.env.JWT_SECRET;
+      try {
+        process.env.JWT_SECRET = 'subscription-crypto-fake-secret-for-tests-only';
+        const plaintext = 'fake-user-name|fake-password';
+        const encrypted = encrypt(plaintext);
+        assert.match(encrypted, /^v2\\./);
+        assert.equal(decrypt(encrypted), plaintext);
+        process.env.JWT_SECRET = 'different-fake-secret-for-tests-only';
+        assert.throws(() => decrypt(encrypted));
+        process.env.JWT_SECRET = 'subscription-crypto-fake-secret-for-tests-only';
+        const legacyKey = crypto.createHash('sha256').update('hamzawy-sat:subscription-credentials:v1:' + process.env.JWT_SECRET, 'utf8').digest();
+        const iv = crypto.randomBytes(12);
+        const cipher = crypto.createCipheriv('aes-256-gcm', legacyKey, iv);
+        const legacyBody = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+        const legacy = [iv.toString('base64'), cipher.getAuthTag().toString('base64'), legacyBody.toString('base64')].join('.');
+        assert.equal(decrypt(legacy), plaintext);
+      } finally {
+        process.env.JWT_SECRET = originalSecret;
+      }
+    });
+
     await test('global phone identity blocks duplicate and cross-role concurrent account reservations', async () => {
       const PhoneIdentity = require('../models/PhoneIdentity');
       await PhoneIdentity.init();
