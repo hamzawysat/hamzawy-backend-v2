@@ -179,7 +179,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         const amount = req.body.amount === undefined ? Number(item?.price ?? subscription.amount ?? 0) : Number(req.body.amount);
         if (!Number.isFinite(amount) || amount < 0) throw new Error('INVALID_SUBSCRIPTION_RENEWAL_AMOUNT');
         let transactionNumber = '';
-        if (req.body.paymentStatus === 'paid' && amount > 0) {
+        if (req.body.paymentStatus === 'paid' && amount > 0 && subscription.renewalRequest?.paymentMethod !== 'تحويل أموال') {
           const client = await Client.findOne({ _id: subscription.client, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true }, walletBalance: { $gte: amount } }).session(session);
           if (!client) { result = { kind: 'insufficient' }; return; }
           const before = Number(client.walletBalance || 0);
@@ -203,6 +203,10 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         subscription.endsAt = endsAt;
         subscription.status = 'active';
         subscription.paymentStatus = req.body.paymentStatus;
+        if (subscription.renewalRequest?.paymentMethod === 'تحويل أموال' && req.body.paymentStatus === 'paid') {
+          subscription.paymentMethod = 'تحويل أموال';
+          subscription.renewalRequest.paymentStatus = 'paid';
+        }
         subscription.amount = amount;
         subscription.updatedBy = adminName(req);
         if (transactionNumber) subscription.transactionNumber = transactionNumber;
