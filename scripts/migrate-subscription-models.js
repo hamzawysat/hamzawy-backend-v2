@@ -78,8 +78,12 @@ async function main() {
   for (const result of results) console.log(JSON.stringify(result));
 }
 
-main().then(() => mongoose.disconnect()).catch(async error => {
-  console.error('Subscription migration stopped safely:', error.message);
-  try { await mongoose.disconnect(); } catch (_) {}
-  process.exitCode = 1;
-});
+module.exports = { mapLegacyDocument, migrateType };
+
+if (require.main === module) {
+  main().then(() => mongoose.disconnect()).catch(async error => {
+    console.error('Subscription migration stopped safely:', error.message);
+    try { await mongoose.disconnect(); } catch (_) {}
+    process.exitCode = 1;
+  });
+}
