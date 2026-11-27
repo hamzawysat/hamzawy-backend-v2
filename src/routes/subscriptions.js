@@ -51,6 +51,11 @@ const safeClient = (s) => {
   const v = { ...s };
   delete v.iptvUsernameEncrypted;
   delete v.iptvPasswordEncrypted;
+  if (v.entertainmentDetails) {
+    v.entertainmentDetails = { ...v.entertainmentDetails };
+    delete v.entertainmentDetails.usernameEncrypted;
+    delete v.entertainmentDetails.passwordEncrypted;
+  }
   return v;
 };
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
