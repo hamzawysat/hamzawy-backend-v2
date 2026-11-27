@@ -51,6 +51,7 @@ const safeClient = (s) => {
   const v = { ...s };
   delete v.iptvUsernameEncrypted;
   delete v.iptvPasswordEncrypted;
+  delete v.__legacyMigrationHash;
   if (v.entertainmentDetails) {
     v.entertainmentDetails = { ...v.entertainmentDetails };
     delete v.entertainmentDetails.usernameEncrypted;
