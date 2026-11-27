@@ -54,7 +54,7 @@ const safeClient = (s) => {
 };
 function makeCode() { return 'HS-' + crypto.randomBytes(5).toString('hex').toUpperCase(); }
 function publicServiceName(type) { return type === 'maintenance' ? 'صيانة سنوية' : type === 'air_network' ? 'اشتراك محلي' : 'اشتراك ترفيهي'; }
-function publicDescription(value) { return String(value || '').replace(/iptv/gi, 'اشتراك ترفيهي').replace(/شبكات?\\s*هوائية?/gi, 'اشتراك محلي').replace(/هوائي/gi, 'محلي'); }
+function publicDescription(value) { return String(value || '').replace(/iptv/gi, 'اشتراك ترفيهي').replace(/شبكات?\s*هوائية?/gi, 'اشتراك محلي').replace(/هوائي|هواء/gi, 'محلي'); }
 
 // Public plan catalog; prices and durations are always controlled by administration.
 router.get('/plans', async (req, res, next) => {
