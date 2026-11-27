@@ -62,7 +62,7 @@ async function run() {
       const Local = require('../models/LocalSubscription');
       const Entertainment = require('../models/EntertainmentSubscription');
       const repository = require('../models/subscriptionRepository');
-      const { migrateType } = require('../../scripts/migrate-subscription-models');
+      const { migrateAll } = require('../../scripts/migrate-subscription-models');
       assert.notEqual(Maintenance.collection.collectionName, Local.collection.collectionName);
       assert.notEqual(Maintenance.collection.collectionName, Entertainment.collection.collectionName);
       assert.notEqual(Local.collection.collectionName, Entertainment.collection.collectionName);
@@ -79,7 +79,8 @@ async function run() {
         { ...common, type: 'air_network', code: 'MIG-L-' + Date.now(), networkName: 'LocalNet', activationCode: 'LOCAL-123', deviceType: 'router' },
         { ...common, type: 'iptv', code: 'MIG-E-' + Date.now(), deviceType: 'TV', portalUrl: 'https://example.test', iptvUsernameEncrypted: 'encrypted-user', iptvPasswordEncrypted: 'encrypted-pass', allowedDevices: 3 }
       ]);
-      for (const type of ['maintenance', 'air_network', 'iptv']) await migrateType(type);
+      const migrationResult = await migrateAll();
+      assert.equal(migrationResult.skipped, false);
       for (const source of legacy) {
         const Target = repository.modelForType(source.type);
         const moved = await Target.collection.findOne({ _id: source._id });
@@ -96,7 +97,8 @@ async function run() {
       assert.equal(local.localDetails.activationCode, 'LOCAL-123');
       assert.equal(entertainment.entertainmentDetails.usernameEncrypted, 'encrypted-user');
       assert.equal(entertainment.iptvPasswordEncrypted, 'encrypted-pass');
-      await migrateType('maintenance');
+      const repeatedMigration = await migrateAll();
+      assert.equal(repeatedMigration.skipped, true, 'completed migration must be skipped safely on restart');
       assert.equal(await Maintenance.countDocuments({ _id: legacy[0]._id }), 1, 'rerunning migration must not duplicate records');
       assert.equal(await LegacySubscription.countDocuments({ _id: { $in: legacy.map(item => item._id) } }), 3, 'legacy records must remain intact after migration');
       const all = await repository.findSubscriptions({ client }, { sort: { createdAt: 1 } });
