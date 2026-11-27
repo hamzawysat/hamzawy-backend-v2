@@ -1,11 +1,26 @@
 'use strict';
-
-function clientCommerceKey(){
-  return (window.crypto&&typeof window.crypto.randomUUID==='function')
-    ? window.crypto.randomUUID()
-    : 'commerce-'+Date.now()+'-'+Math.random().toString(36).slice(2)+'-'+Math.random().toString(36).slice(2);
+function chooseClientSubscriptionPayment(title,description){
+ return new Promise(resolve=>{
+  const overlay=document.createElement('div');
+  overlay.className='fixed inset-0 z-[500] flex items-center justify-center bg-slate-950/55 p-3';
+  overlay.innerHTML='<section role="dialog" aria-modal="true" class="w-full max-w-md rounded-2xl bg-white p-4 shadow-2xl" dir="rtl"><h3 class="text-base font-black">'+escHtml(title||'اختيار طريقة الدفع')+'</h3><p class="mt-1 text-xs leading-6 text-slate-600">'+escHtml(description||'حدد طريقة الدفع المناسبة.')+'</p><div class="mt-4 grid grid-cols-1 gap-2"><button type="button" data-payment="wallet" aria-checked="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 p-3 text-right"><span data-mark class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-slate-400"></span><span><b class="block text-sm">محفظة التطبيق</b><small class="text-xs text-slate-500">الخصم بعد موافقة الإدارة</small></span></button><button type="button" data-payment="transfer" aria-checked="false" class="flex items-center gap-3 rounded-xl border-2 border-slate-200 p-3 text-right"><span data-mark class="flex h-5 w-5 items-center justify-center rounded-full border-2 border-slate-400"></span><span><b class="block text-sm">تحويل أموال</b><small class="text-xs text-slate-500">مراجعة التحويل قبل التفعيل</small></span></button></div><div class="mt-4 flex gap-2"><button type="button" data-cancel class="flex-1 rounded-xl border border-slate-200 p-2.5 text-sm font-bold">رجوع</button><button type="button" data-confirm disabled class="flex-1 rounded-xl bg-slate-900 p-2.5 text-sm font-bold text-white opacity-40">تأكيد الاختيار</button></div></section>';
+  let selected='';
+  const close=value=>{overlay.remove();resolve(value);};
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close(null);});
+  overlay.querySelector('[data-cancel]').addEventListener('click',()=>close(null));
+  overlay.querySelectorAll('[data-payment]').forEach(button=>button.addEventListener('click',()=>{
+   selected=button.dataset.payment;
+   overlay.querySelectorAll('[data-payment]').forEach(option=>{
+    const active=option===button;option.setAttribute('aria-checked',String(active));
+    option.classList.toggle('border-blue-600',active);option.classList.toggle('bg-blue-50',active);
+    const mark=option.querySelector('[data-mark]');mark.textContent=active?'✓':'';mark.classList.toggle('border-blue-600',active);mark.classList.toggle('text-blue-700',active);
+   });
+   const confirm=overlay.querySelector('[data-confirm]');confirm.disabled=false;confirm.classList.remove('opacity-40');
+  }));
+  overlay.querySelector('[data-confirm]').addEventListener('click',()=>{if(selected)close(selected);});
+  document.body.appendChild(overlay);
+ });
 }
-
 async function loadClientCommerce(){
   if(!state.accountToken||!state.account||state.commerceLoading)return;
   state.commerceLoading=true;state.commerceError='';render();
@@ -24,10 +39,7 @@ async function purchaseClientSubscription(itemId){
   if(!item)return showToast('الباقة غير متاحة حاليًا.');
   const price=Number(item.price||0);
   if(!Number.isFinite(price)||price<0)return showToast('سعر الباقة غير صحيح.');
-  const paymentChoice=window.prompt('اختار طريقة الدفع قبل تأكيد الطلب:\n1 - محفظة التطبيق (الخصم بعد موافقة الإدارة)\n2 - تحويل أموال (مراجعة التحويل بواسطة الإدارة)\n\nاكتب 1 أو 2:','');
-  if(paymentChoice===null)return;
-  const paymentMethod=String(paymentChoice).trim()==='1'?'wallet':String(paymentChoice).trim()==='2'?'transfer':'';
-  if(!paymentMethod)return showToast('اختار 1 للمحفظة أو 2 للتحويل.');
+  const paymentMethod=await chooseClientSubscriptionPayment('اختيار طريقة الدفع','قيمة الاشتراك '+price.toLocaleString('ar-EG')+' جنيه. حدد طريقة الدفع قبل إرسال الطلب.');if(!paymentMethod)return;
   if(!window.confirm('تأكيد طلب '+item.name+' بقيمة '+price+' جنيه بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟'))return;
   state.commerceSubmitting=String(itemId);state.commerceError='';render();
   try{
@@ -67,10 +79,7 @@ function unifiedClientTypeLabel(type){return ({maintenance:'صيانة سنوي�
 async function requestUnifiedClientPlan(planId){
   if(state.unifiedCommerceSubmitting)return;
   const plan=(state.unifiedSubscriptionPlans||[]).find(x=>String(x._id)===String(planId));if(!plan)return;
-  const choice=window.prompt('اختار طريقة الدفع لطلب الاشتراك:\n1 - محفظة التطبيق (الخصم بعد موافقة الإدارة)\n2 - تحويل أموال (مراجعة التحويل قبل التفعيل)\n\nاكتب 1 أو 2:','');
-  if(choice===null)return;
-  const paymentMethod=String(choice).trim()==='1'?'wallet':String(choice).trim()==='2'?'transfer':'';
-  if(!paymentMethod)return showToast('اختار 1 للمحفظة أو 2 للتحويل.');
+  const paymentMethod=await chooseClientSubscriptionPayment('طريقة دفع الاشتراك','حدد طريقة الدفع التي تفضلها. لن يتم الخصم من المحفظة إلا بعد موافقة الإدارة.');if(!paymentMethod)return;
   if(!window.confirm('تأكيد طلب '+unifiedClientTypeLabel(plan.type)+' بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟'))return;
   state.unifiedCommerceSubmitting=String(planId);render();
   try{const result=await API.requestUnifiedSubscription({planId:String(planId),paymentMethod});showToast(result.message||'تم إرسال الطلب للإدارة.','success');await loadClientCommerce();}
@@ -79,10 +88,7 @@ async function requestUnifiedClientPlan(planId){
 }
 async function requestUnifiedClientRenewal(subscriptionId){
   if(state.unifiedCommerceSubmitting)return;
-  const choice=window.prompt('اختار طريقة الدفع للتجديد:\n1 - محفظة التطبيق\n2 - تحويل أموال\n\nاكتب 1 أو 2:','');
-  if(choice===null)return;
-  const paymentMethod=String(choice).trim()==='1'?'wallet':String(choice).trim()==='2'?'transfer':'';
-  if(!paymentMethod)return showToast('اختار 1 للمحفظة أو 2 للتحويل.');
+  const paymentMethod=await chooseClientSubscriptionPayment('طريقة دفع التجديد','حدد طريقة الدفع لطلب تجديد الاشتراك. لن يتم الخصم الآن.');if(!paymentMethod)return;
   if(!window.confirm('تأكيد إرسال طلب التجديد بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟ لن يتم الخصم الآن.'))return;
   state.unifiedCommerceSubmitting=String(subscriptionId);render();
   try{const result=await API.requestUnifiedSubscriptionRenewal({subscriptionId:String(subscriptionId),paymentMethod});showToast(result.message||'تم إرسال طلب التجديد.','success');await loadClientCommerce();}
