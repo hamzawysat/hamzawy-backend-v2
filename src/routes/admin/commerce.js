@@ -171,6 +171,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       await session.withTransaction(async () => {
         const subscription = await ClientSubscription.findById(req.params.id).session(session);
         if (!subscription) { result = { kind: 'missing' }; return; }
+        if (subscription.renewalRequest?.paymentMethod === 'تحويل أموال' && subscription.renewalRequest.paymentStatus === 'paid') { result = { kind: 'already_settled' }; return; }
         const item = subscription.item ? await CommerceItem.findById(subscription.item).lean() : null;
         const duration = Number(item?.durationDays || subscription.durationDays || 30);
         const now = new Date();
@@ -218,6 +219,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         result = { kind: 'renewed', subscription, transactionNumber };
       });
       if (result?.kind === 'missing') return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+      if (result?.kind === 'already_settled') return res.status(409).json({ message: 'تم اعتماد طلب التحويل لهذا التجديد بالفعل.' });
       if (result?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد العميل غير كافٍ لتجديد الاشتراك أو المحفظة غير متاحة. لم يتم التجديد أو الخصم.' });
       await writeAdminAudit(req, 'تجديد اشتراك عميل', 'client-subscriptions', String(result.subscription._id), 'endsAt=' + result.subscription.endsAt.toISOString() + '; amount=' + Number(result.subscription.amount));
       await createNotification({ recipientRole: 'client', recipientId: result.subscription.client, type: 'subscription_renewed', title: 'تم تجديد اشتراكك', message: 'تم تجديد اشتراك ' + result.subscription.itemName + '.', link: '/client.html?tab=subscriptions', dedupeKey: 'subscription-renewed:' + String(result.subscription._id) + ':' + result.subscription.endsAt.getTime() });
