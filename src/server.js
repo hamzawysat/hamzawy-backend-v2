@@ -26,6 +26,7 @@ const orderRouter = require('./routes/order');
 const fanniRouter = require('./routes/fanni');
 const adminRouter = require('./routes/admin');
 const storeRouter = require('./routes/store');
+const subscriptionsRouter = require('./routes/subscriptions');
 const publicRouter = require('./routes/public');
 const clientRouter = require('./routes/client');
 const referralsRouter = require('./routes/referrals');
@@ -437,6 +438,7 @@ app.use('/api/technicians', fanniRouter);
 app.use('/api/fanni/orders', orderRouter);
 
 app.use('/api/store', storeRouter);
+app.use('/api/subscriptions', subscriptionsRouter);
 
 app.use('/api/admin', adminRouter);
 app.use('/api/admins', adminRouter);
