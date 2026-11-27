@@ -89,6 +89,7 @@ async function run() {
         assert.equal(String(moved.client), String(client));
         assert.equal(moved.amount, source.amount);
         assert.equal(moved.status, source.status);
+        assert.ok(moved.__legacyMigrationHash, 'target record must carry a verified source fingerprint');
       }
       const maintenance = await Maintenance.collection.findOne({ _id: legacy[0]._id });
       const local = await Local.collection.findOne({ _id: legacy[1]._id });
