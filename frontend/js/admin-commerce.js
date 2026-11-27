@@ -118,10 +118,18 @@ loadClientSubscriptions = async function(){
   }
   if(state.tab==='commerceSubscriptions') render();
 };
-function unifiedTypeLabel(type){return ({maintenance:'صيانة سنوية',air_network:'شبكات هواء',iptv:'IPTV'})[type]||type;}
+function unifiedTypeLabel(type){return ({maintenance:'صيانة سنوية',air_network:'اشتراك محلي',iptv:'اشتراك ترفيهي'})[type]||'اشتراك';}
+function openUnifiedSubscriptionWhatsApp(id){
+ const s=(state.unifiedSubscriptions||[]).find(x=>String(x._id)===String(id));if(!s)return;
+ const raw=String(s.clientPhone||'').replace(/[^0-9]/g,'');const phone=raw.startsWith('0')?'20'+raw.slice(1):raw.startsWith('20')?raw:raw;
+ if(!phone||phone.length<10)return showToast('رقم هاتف العميل غير صالح','error');
+ const end=new Date(s.endsAt).toLocaleDateString('ar-EG');
+ const message='مرحبًا '+String(s.clientName||'')+'، نذكّرك بقرب انتهاء '+unifiedTypeLabel(s.type)+' بتاريخ '+end+'. للتجديد أو الاستفسار يرجى التواصل مع الإدارة.';
+ window.open('https://wa.me/'+phone+'?text='+encodeURIComponent(message),'_blank','noopener');
+}
 async function createUnifiedSubscriptionPlan(){
-  const typeRaw=prompt('نوع الخطة: maintenance أو air_network أو iptv','maintenance');if(typeRaw===null)return;
-  const type=typeRaw.trim();if(!['maintenance','air_network','iptv'].includes(type))return showToast('نوع الخطة غير صحيح','error');
+  const choice=prompt('نوع الخدمة:\n1- صيانة سنوية\n2- اشتراك محلي\n3- اشتراك ترفيهي','1');if(choice===null)return;
+  const type=({'1':'maintenance','2':'air_network','3':'iptv'})[choice.trim()];if(!type)return showToast('نوع الخدمة غير صحيح','error');
   const name=prompt('اسم الخطة:','');if(name===null||!name.trim())return;
   const price=Number(prompt('السعر بالجنيه (تحدده الإدارة):','0'));if(!Number.isFinite(price)||price<0)return showToast('السعر غير صحيح','error');
   const durationDays=Number(prompt('المدة بالأيام:','365'));if(!Number.isInteger(durationDays)||durationDays<1||durationDays>3650)return showToast('المدة غير صحيحة','error');
@@ -179,7 +187,7 @@ function renderUnifiedSubscriptionPanel(){
  const plans=state.unifiedSubscriptionPlans||[],rows=state.unifiedSubscriptions||[];
  const planCards=plans.map(p=>'<article class="premium-card p-3"><b>'+escHtml(unifiedTypeLabel(p.type)+' · '+p.name)+'</b><p class="text-xs text-slate-500">'+Number(p.price).toLocaleString('ar-EG')+' جنيه · '+p.durationDays+' يوم · '+Number(p.visitCount||0)+' زيارة</p><p class="text-xs">'+(p.active?'مفعلة':'متوقفة')+'</p><button class="pill-btn soft-btn mt-2" onclick="editUnifiedSubscriptionPlan(\''+p._id+'\')">تعديل الخطة</button></article>').join('');
  const cards=rows.map(s=>'<article class="premium-card p-3 space-y-2"><div class="flex justify-between gap-2"><b>'+escHtml(unifiedTypeLabel(s.type))+' · '+escHtml(s.code)+'</b><span class="text-xs">'+escHtml(s.status)+'</span></div><p class="text-xs">'+escHtml(s.clientName||'')+' · '+escHtml(s.clientPhone||'')+'</p><p class="text-xs">ينتهي '+new Date(s.endsAt).toLocaleDateString('ar-EG')+' · '+Number(s.amount).toLocaleString('ar-EG')+' جنيه</p>'+(s.type==='iptv'?'<p class="text-xs break-all">IPTV: '+escHtml(s.iptvUsername||'')+' / '+escHtml(s.iptvPassword||'')+'</p>':'')+'<div class="flex flex-wrap gap-2"><button class="pill-btn soft-btn" onclick="renewUnifiedSubscription(\''+s._id+'\')">تجديد</button><button class="pill-btn soft-btn" onclick="assignUnifiedSubscriptionVisit(\''+s._id+'\')">إسناد زيارة</button><button class="pill-btn soft-btn" onclick="setUnifiedSubscriptionStatus(\''+s._id+'\',\'paused\')">تعليق</button><button class="pill-btn soft-btn" onclick="setUnifiedSubscriptionStatus(\''+s._id+'\',\'active\')">تفعيل</button></div></article>').join('');
- return '<section class="premium-panel p-4 mt-4 space-y-3"><div class="flex flex-wrap justify-between gap-2"><div><h2 class="font-black">الاشتراكات الموحدة · صيانة / شبكات / IPTV</h2><p class="text-xs text-slate-500">خطط وأسعار ومدد مستقلة، وسجل اشتراكات وزيارات</p></div><div class="flex gap-2"><button class="pill-btn soft-btn" onclick="createUnifiedSubscriptionPlan()">إضافة خطة</button><button class="pill-btn primary-btn" onclick="createUnifiedSubscription()">إضافة اشتراك</button></div></div><h3 class="font-bold text-sm">الخطط ('+plans.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+planCards+'</div><h3 class="font-bold text-sm pt-2">الاشتراكات ('+rows.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(cards||'<p class="text-xs text-slate-500">لا توجد اشتراكات بعد.</p>')+'</div></section>';
+ return '<section class="premium-panel p-4 mt-4 space-y-3"><div class="flex flex-wrap justify-between gap-2"><div><h2 class="font-black">الاشتراكات الموحدة · صيانة / اشتراك محلي / اشتراك ترفيهي</h2><p class="text-xs text-slate-500">خطط وأسعار ومدد مستقلة، وسجل اشتراكات وزيارات</p></div><div class="flex gap-2"><button class="pill-btn soft-btn" onclick="createUnifiedSubscriptionPlan()">إضافة خطة</button><button class="pill-btn primary-btn" onclick="createUnifiedSubscription()">إضافة اشتراك</button></div></div><h3 class="font-bold text-sm">الخطط ('+plans.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+planCards+'</div><h3 class="font-bold text-sm pt-2">الاشتراكات ('+rows.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(cards||'<p class="text-xs text-slate-500">لا توجد اشتراكات بعد.</p>')+'</div></section>';
 }
 const _renderCommerceSubscriptions = renderCommerceSubscriptions;
 renderCommerceSubscriptions = function(){return _renderCommerceSubscriptions() + renderUnifiedSubscriptionPanel();};
