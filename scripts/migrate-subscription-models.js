@@ -7,7 +7,7 @@ require('../src/models/LocalSubscription');
 require('../src/models/EntertainmentSubscription');
 
 async function migrate() {
-  if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is required to run this migration.');
+  if (!process.env.MONGO_URI) throw new Error('MONGO_URI is required to run this migration.');
   await mongoose.connect(process.env.MONGODB_URI);
   const collection = UnifiedSubscription.collection;
   const mappings = [
