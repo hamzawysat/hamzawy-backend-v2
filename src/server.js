@@ -546,8 +546,11 @@ if (require.main === module) {
     const notificationRetryTimer = setInterval(() => { void runNotificationRetries(); }, 30000);
     if (typeof notificationRetryTimer.unref === 'function') notificationRetryTimer.unref();
     const runSubscriptionReminderJob = async () => {
-      try { await connectDB(); await runSubscriptionReminders(); }
-      catch (error) { console.error('Subscription reminder worker failed:', error.message); }
+      try {
+        await connectDB();
+        await ensureSubscriptionCollectionsMigrated();
+        await runSubscriptionReminders();
+      } catch (error) { console.error('Subscription reminder worker failed:', error.message); }
     };
     void runSubscriptionReminderJob();
     const subscriptionReminderTimer = setInterval(() => { void runSubscriptionReminderJob(); }, 6 * 60 * 60 * 1000);
