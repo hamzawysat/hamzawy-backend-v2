@@ -31,6 +31,8 @@ function restoreAdminView(view){
  const tab=String(view.tab||'dashboard');
  const pageMode=view.pageMode==='section'?'section':'home';
  if(!canReadTab(tab))return false;
+ const last=ADMIN_TAB_HISTORY[ADMIN_TAB_HISTORY.length-1];
+ if(last&&last.tab===tab&&last.pageMode===pageMode)ADMIN_TAB_HISTORY.pop();
  state.tab=tab;
  state.pageMode=pageMode;
  state.dropdowns={};
