@@ -1,11 +1,12 @@
 'use strict';
 const crypto = require('crypto');
+
+// Reuse the server's existing JWT secret; no extra deployment secret is required.
+// A separate context label prevents this key from being reused for JWT signing.
 function key() {
-  const raw = String(process.env.SUBSCRIPTION_ENCRYPTION_KEY || '').trim();
-  if (!raw) throw new Error('SUBSCRIPTION_ENCRYPTION_KEY_MISSING');
-  const value = Buffer.from(raw, 'base64');
-  if (value.length !== 32) throw new Error('SUBSCRIPTION_ENCRYPTION_KEY_INVALID');
-  return value;
+  const secret = String(process.env.JWT_SECRET || '').trim();
+  if (secret.length < 32) throw new Error('JWT_SECRET_MISSING_OR_TOO_SHORT');
+  return crypto.createHash('sha256').update('hamzawy-sat:subscription-credentials:v1:' + secret, 'utf8').digest();
 }
 function encrypt(value) {
   if (!value) return '';
