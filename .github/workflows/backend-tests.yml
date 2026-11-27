@@ -28,6 +28,8 @@ permissions:
 
 jobs:
   backend-tests:
+    permissions:
+      contents: write
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -39,6 +41,16 @@ jobs:
       - run: npm ci
       - name: Build deployed frontend assets before integration tests
         run: npm run build
+      - name: Commit generated frontend-dist for this one-time subscription update
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/unified-subscriptions-only-20261127'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add frontend-dist
+          if ! git diff --cached --quiet; then
+            git commit -m "Build frontend-dist for unified subscriptions"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
       - name: Upload generated frontend-dist for the reviewed branch
         uses: actions/upload-artifact@v4
         with:
