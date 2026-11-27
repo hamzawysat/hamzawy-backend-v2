@@ -7,6 +7,9 @@ const Client = require('../models/Client');
 const Fanni = require('../models/Fanni');
 const SubscriptionPlan = require('../models/SubscriptionPlan');
 const UnifiedSubscription = require('../models/UnifiedSubscription');
+const MaintenanceSubscription = require('../models/MaintenanceSubscription');
+const LocalSubscription = require('../models/LocalSubscription');
+const EntertainmentSubscription = require('../models/EntertainmentSubscription');
 const SubscriptionVisit = require('../models/SubscriptionVisit');
 const { auth } = require('../middleware/auth');
 const { clientAuth } = require('../middleware/clientAuth');
@@ -168,7 +171,8 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650) return res.status(400).json({ message: 'يجب تحديد سعر ومدة صحيحين من إعدادات الإدارة.' });
     if (value.type === 'iptv' && (!value.iptvUsername || !value.iptvPassword)) return res.status(400).json({ message: 'بيانات دخول IPTV مطلوبة.' });
     const startsAt = value.startsAt ? new Date(value.startsAt) : new Date();
-    const subscription = await UnifiedSubscription.create({
+    const SubscriptionModel = value.type === 'maintenance' ? MaintenanceSubscription : value.type === 'air_network' ? LocalSubscription : EntertainmentSubscription;
+    const subscriptionData = {
       ...value, code: makeCode(), plan: plan?._id || null, client: client._id, clientName: client.name, clientPhone: client.phone,
       amount, durationDays, startsAt, endsAt: new Date(startsAt.getTime() + durationDays*86400000),
       visitsIncluded: value.visitsIncluded ?? plan?.visitCount ?? 0,
@@ -176,8 +180,12 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
       allowedDevices: value.allowedDevices ?? plan?.allowedDevices ?? 1,
       iptvUsernameEncrypted: value.iptvUsername ? encrypt(value.iptvUsername) : '',
       iptvPasswordEncrypted: value.iptvPassword ? encrypt(value.iptvPassword) : '',
+      maintenanceDetails: value.type === 'maintenance' ? { dishSize: value.dishSize || '', receiverType: value.receiverType || '', visitsIncluded: value.visitsIncluded ?? plan?.visitCount ?? 0 } : undefined,
+      localDetails: value.type === 'air_network' ? { networkName: value.networkName || '', activationCode: value.activationCode || '', deviceType: value.deviceType || '' } : undefined,
+      entertainmentDetails: value.type === 'iptv' ? { deviceType: value.deviceType || '', portalUrl: value.portalUrl || '', usernameEncrypted: value.iptvUsername ? encrypt(value.iptvUsername) : '', passwordEncrypted: value.iptvPassword ? encrypt(value.iptvPassword) : '', allowedDevices: value.allowedDevices ?? plan?.allowedDevices ?? 1 } : undefined,
       history: [{ action: 'created', note: 'إنشاء الاشتراك', by: String(req.user?.name || 'الإدارة') }]
-    });
+    };
+    const subscription = await SubscriptionModel.create(subscriptionData);
     if (value.type === 'iptv') { subscription.iptvUsername = undefined; subscription.iptvPassword = undefined; }
     await createNotification({ recipientRole: 'client', recipientId: client._id, type: 'subscription_activated', title: 'تم تفعيل اشتراكك', message: 'تم تفعيل اشتراك ' + subscription.code + ' حتى ' + subscription.endsAt.toLocaleDateString('ar-EG'), link: '/client' });
     const created = safeClient(subscription.toObject());
