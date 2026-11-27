@@ -233,7 +233,7 @@ router.get('/admin/visits', auth('admin'), async (req, res, next) => {
 // Technicians can access only visits assigned to their authenticated account; no IPTV credentials or prices are returned.
 router.get('/technician/visits', auth('fanni'), async (req, res, next) => {
   try {
-    const visits = await SubscriptionVisit.find({ technician: req.user._id, status: { $in: ['scheduled','in_progress'] } }).populate('subscription','code address dishSize receiverType').populate('client','name phone').sort({ scheduledAt: 1 }).lean();
+    const visits = await SubscriptionVisit.find({ technician: req.user._id, status: { $in: ['scheduled','in_progress'] } }).populate('subscription','code address').populate('client','name phone').sort({ scheduledAt: 1 }).lean();
     return res.set('Cache-Control','no-store').json({ visits });
   } catch (e) { return next(e); }
 });
