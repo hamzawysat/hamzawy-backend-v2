@@ -64,7 +64,7 @@ async function run() {
         process.env.JWT_SECRET = 'subscription-crypto-fake-secret-for-tests-only';
         const plaintext = 'fake-user-name|fake-password';
         const encrypted = encrypt(plaintext);
-        assert.match(encrypted, /^v2\\./);
+        assert.equal(encrypted.split('.')[0], 'v2');
         assert.equal(decrypt(encrypted), plaintext);
         process.env.JWT_SECRET = 'different-fake-secret-for-tests-only';
         assert.throws(() => decrypt(encrypted));
