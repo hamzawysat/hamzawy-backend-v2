@@ -106,14 +106,14 @@ router.get('/client/mine', clientAuth, async (req, res, next) => {
 // Customer requests a subscription; activation/payment remains an explicit admin decision.
 router.post('/client/request', clientAuth, async (req, res, next) => {
   try {
-    const { error, value } = Joi.object({ planId: Joi.string().hex().length(24).required(), notes: Joi.string().trim().max(1000).allow('').default('') }).unknown(false).validate(req.body || {});
+    const { error, value } = Joi.object({ planId: Joi.string().hex().length(24).required(), paymentMethod: Joi.string().valid('wallet','transfer').required(), notes: Joi.string().trim().max(1000).allow('').default('') }).unknown(false).validate(req.body || {});
     if (error) return res.status(400).json({ message: 'بيانات طلب الاشتراك غير صحيحة.' });
     const plan = await SubscriptionPlan.findOne({ _id: value.planId, active: true }).lean();
     if (!plan) return res.status(404).json({ message: 'الباقة غير متاحة حاليًا.' });
     const existing = await findSubscriptionOne({ client: req.clientId, plan: plan._id, status: { $in: ['active','paused'] }, endsAt: { $gte: new Date() } }, { lean: true });
     if (existing) return res.status(409).json({ message: 'لديك اشتراك قائم في هذه الباقة بالفعل.' });
-    await notifyAdmins({ type: 'admin_subscription_request', title: 'طلب اشتراك جديد', message: 'طلب العميل ' + String(req.client.name || '') + ' الاشتراك في ' + plan.name, link: '/admin?tab=commerceSubscriptions', dedupeKey: 'subscription-request:' + String(req.clientId) + ':' + String(plan._id) + ':' + Date.now() });
-    return res.status(202).json({ message: 'تم إرسال طلب الاشتراك للإدارة. سيتم التواصل معك لتأكيد التفعيل والسداد.' });
+    await notifyAdmins({ type: 'admin_subscription_request', title: 'طلب اشتراك جديد', message: 'طلب العميل ' + String(req.client.name || '') + ' الاشتراك في ' + plan.name + ' — طريقة الدفع: ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال') + (value.notes ? ' — ملاحظات: ' + value.notes : ''), link: '/admin?tab=commerceSubscriptions', dedupeKey: 'subscription-request:' + String(req.clientId) + ':' + String(plan._id) + ':' + Date.now() });
+    return res.status(202).json({ message: 'تم إرسال طلب الاشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل الأموال') + ' للإدارة. سيتم مراجعة الطلب وتأكيد السداد قبل التفعيل، ولم يتم خصم أي مبلغ الآن.' });
   } catch (e) { return next(e); }
 });
 
