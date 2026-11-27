@@ -121,7 +121,7 @@ loadClientSubscriptions = async function(){
 function unifiedTypeLabel(type){return ({maintenance:'صيانة سنوية',air_network:'اشتراك محلي',iptv:'اشتراك ترفيهي'})[type]||'اشتراك';}
 function openUnifiedSubscriptionWhatsApp(id){
  const s=(state.unifiedSubscriptions||[]).find(x=>String(x._id)===String(id));if(!s)return;
- const raw=String(s.clientPhone||'').replace(/[^0-9]/g,'');const phone=raw.startsWith('0')?'20'+raw.slice(1):raw.startsWith('20')?raw:raw;
+ const raw=String(s.clientPhone||'').replace(/[^0-9]/g,'');const phone=raw.startsWith('0')?'20'+raw.slice(1):raw.startsWith('20')?raw:raw.length===10&&raw.startsWith('1')?'20'+raw:raw;
  if(!phone||phone.length<10)return showToast('رقم هاتف العميل غير صالح','error');
  const end=new Date(s.endsAt).toLocaleDateString('ar-EG');
  const message='مرحبًا '+String(s.clientName||'')+'، نذكّرك بقرب انتهاء '+unifiedTypeLabel(s.type)+' بتاريخ '+end+'. للتجديد أو الاستفسار يرجى التواصل مع الإدارة.';
