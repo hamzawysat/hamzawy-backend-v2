@@ -302,7 +302,7 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
 });
 router.get('/admin/visits', auth('admin'), async (req, res, next) => {
   try {
-    const rows = await SubscriptionVisit.find({}).populate('technician','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
+    const rows = await SubscriptionVisit.find({}).populate('technician','name phone').populate('client','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
     return res.json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
   } catch (e) { return next(e); }
 });
