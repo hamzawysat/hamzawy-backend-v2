@@ -92,6 +92,11 @@ router.get('/client/mine', clientAuth, async (req, res, next) => {
         try { s.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { s.iptvPassword = ''; }
       }
       delete s.iptvUsernameEncrypted; delete s.iptvPasswordEncrypted;
+      if (s.entertainmentDetails) {
+        delete s.entertainmentDetails.usernameEncrypted;
+        delete s.entertainmentDetails.passwordEncrypted;
+      }
+      delete s.__legacyMigrationHash;
       return s;
     });
     return res.set('Cache-Control','no-store').json({ subscriptions: enriched, visits });
