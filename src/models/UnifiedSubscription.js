@@ -12,7 +12,7 @@ const schema = new mongoose.Schema({
   durationDays: { type: Number, min: 1, max: 3650, required: true },
   startsAt: { type: Date, required: true, index: true },
   endsAt: { type: Date, required: true, index: true },
-  status: { type: String, enum: ['active','paused','expired','cancelled'], default: 'active', index: true },
+  status: { type: String, enum: ['pending','active','paused','expired','cancelled'], default: 'active', index: true },
   dishSize: { type: String, trim: true, maxlength: 60, default: '' },
   receiverType: { type: String, trim: true, maxlength: 100, default: '' },
   deviceType: { type: String, trim: true, maxlength: 100, default: '' },
