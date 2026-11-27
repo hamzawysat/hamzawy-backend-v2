@@ -234,7 +234,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
 
       // Charge client-originated requests only after explicit admin approval.
       let approvalTransactionNumber = subscription.transactionNumber || '';
-      if (req.body.status === 'active' && subscription.status === 'pending' && subscription.createdBy === 'العميل' && subscription.paymentStatus !== 'paid') {
+      if (req.body.status === 'active' && subscription.status === 'pending' && subscription.createdBy === 'العميل' && subscription.paymentStatus !== 'paid' && subscription.paymentMethod !== 'تحويل أموال') {
         const paymentKey = 'client-subscription-approval:' + String(subscription._id);
         const priorPayment = await WalletTransaction.findOne({ client: subscription.client, idempotencyKey: paymentKey }).session(session).lean();
         if (!priorPayment) {
@@ -265,6 +265,17 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
         subscription.history.push({ amount: Number(subscription.amount || 0), startsAt, endsAt: subscription.endsAt, renewedBy: adminName(req), note: 'خصم وتفعيل بعد موافقة الإدارة', paymentKey, transactionNumber: approvalTransactionNumber });
       }
 
+      if (req.body.status === 'active' && subscription.status === 'pending' && subscription.createdBy === 'العميل' && subscription.paymentStatus !== 'paid' && subscription.paymentMethod === 'تحويل أموال') {
+        const startsAt = new Date();
+        subscription.startsAt = startsAt;
+        subscription.endsAt = new Date(startsAt.getTime() + Number(subscription.durationDays || 30) * 86400000);
+        subscription.paymentStatus = 'paid';
+        subscription.history.push({
+          amount: Number(subscription.amount || 0), startsAt, endsAt: subscription.endsAt,
+          renewedBy: adminName(req), note: 'تأكيد استلام التحويل وموافقة الإدارة'
+        });
+      }
+
       subscription.status = req.body.status; subscription.updatedBy = adminName(req);
       if (req.body.status === 'active' && !subscription.startsAt) subscription.startsAt = new Date();
       if (req.body.status === 'active' && !subscription.endsAt) {
@@ -276,7 +287,7 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       await session.commitTransaction();
       await writeAdminAudit(req, 'تغيير حالة اشتراك عميل', 'client-subscriptions', String(subscription._id), 'status=' + subscription.status + '; reason=' + req.body.reason);
       if (subscription.status === 'active' && subscription.paymentStatus === 'paid') {
-        await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_activated', title: 'تم تفعيل اشتراكك', message: 'وافقت الإدارة وتم تفعيل اشتراك ' + subscription.itemName + ' وخصم قيمته من محفظتك.', link: '/client.html?tab=subscriptions', dedupeKey: 'client-subscription-approved:' + String(subscription._id) });
+        await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_activated', title: 'تم تفعيل اشتراكك', message: subscription.paymentMethod === 'تحويل أموال' ? 'تم تأكيد استلام التحويل وتفعيل اشتراك ' + subscription.itemName + '.' : 'وافقت الإدارة وتم تفعيل اشتراك ' + subscription.itemName + ' بعد الخصم من محفظتك.', link: '/client.html?tab=subscriptions', dedupeKey: 'client-subscription-approved:' + String(subscription._id) });
       }
       return res.json({ message: 'تم تحديث حالة الاشتراك.', subscription, transactionNumber: subscription.transactionNumber || '' });
     } catch (error) {
