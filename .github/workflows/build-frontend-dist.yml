@@ -40,3 +40,5 @@ jobs:
             git commit -m "Build frontend distribution for admin navigation fix"
             git push origin HEAD:fix/global-browser-back-navigation-20261127
           fi
+
+# One-off branch build; generated assets are committed to the pull request.
