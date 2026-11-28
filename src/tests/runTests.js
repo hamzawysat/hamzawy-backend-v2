@@ -644,6 +644,7 @@ async function run() {
       assert.ok(adminStore.includes('function renderStoreCategoryManager(products)'), 'admin should render a dedicated category manager');
       assert.ok(adminStore.includes('saveStoreCategoryFromButton(this)'), 'admin should save category name and image edits');
       assert.ok(adminStore.includes('deleteStoreCategoryFromButton(this)'), 'admin should provide category deletion');
+      assert.ok(adminStore.includes('ستظل الطلبات وسجلاتها محفوظة'), 'product deletion confirmation must warn that historical orders remain');
       assert.ok(adminStore.includes('/api/admin/store/media?purpose=category'), 'admin should upload a custom category image');
       assert.ok(browserStore.includes('function setStoreCategory(role,category)'), 'browser store should support entering and leaving a category');
       assert.ok(browserStore.includes('data-store-category'), 'category cards should have an actionable selection');
@@ -1666,6 +1667,26 @@ async function run() {
           .send({ name: 'منتج اختبار صورة MongoDB', category: 'أجهزة الاستقبال', price: 1, imageUrl: uploaded.body.imageUrl, imageFileId: uploaded.body.imageFileId });
         assert.equal(product.status, 201, JSON.stringify(product.body));
         assert.equal(product.body.product.category, 'أجهزة الاستقبال', 'admin product creation must persist its selected store category');
+
+      const StoreOrder = require('../models/StoreOrder');
+      const linkedProduct = await request(app).post('/api/admin/store/products')
+        .set('Authorization', 'Bearer ' + adminToken)
+        .send({ name: 'منتج مرتبط بطلب ملغي', category: 'اختبار الحذف', price: 25, type: 'subscription' });
+      assert.equal(linkedProduct.status, 201, JSON.stringify(linkedProduct.body));
+      const historicalOrder = await StoreOrder.create({
+        product: linkedProduct.body.product._id,
+        items: [{ product: linkedProduct.body.product._id, productName: linkedProduct.body.product.name, productType: 'subscription', unitPrice: 25, quantity: 1, total: 25 }],
+        productName: linkedProduct.body.product.name, productType: 'subscription',
+        unitPrice: 25, quantity: 1, total: 25, buyerRole: 'client', buyerId: clientId,
+        buyerName: 'عميل اختبار الحذف', buyerPhone: '01000000000', status: 'ملغي'
+      });
+      const deletedLinkedProduct = await request(app).delete('/api/admin/store/products/' + linkedProduct.body.product._id)
+        .set('Authorization', 'Bearer ' + adminToken);
+      assert.equal(deletedLinkedProduct.status, 200, JSON.stringify(deletedLinkedProduct.body));
+      assert.equal(await StoreProduct.exists({ _id: linkedProduct.body.product._id }), null, 'linked product should be deleted after the admin confirms');
+      const preservedHistoricalOrder = await StoreOrder.findById(historicalOrder._id).lean();
+      assert.ok(preservedHistoricalOrder, 'deleting a product must not delete its historical order');
+      assert.equal(preservedHistoricalOrder.productName, 'منتج مرتبط بطلب ملغي', 'historical order snapshot must remain intact');
         const publicCatalog = await request(app).get('/api/store/products');
         assert.equal(publicCatalog.status, 200, JSON.stringify(publicCatalog.body));
         const publicProduct = publicCatalog.body.products.find(item => String(item._id) === String(product.body.product._id));
