@@ -6,6 +6,7 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-commerce.js'), 'utf8');
+const adminCommerceSource = source;
 const shell = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-shell.js'), 'utf8');
 const navigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
 const sourceAdminPage = fs.readFileSync(path.join(__dirname, '../../frontend/admin.html'), 'utf8');
@@ -72,6 +73,12 @@ assert.match(context.renderCommerce(), /باقة اختبار/, 'the plans tab m
 assert.ok(source.includes("const details=!['pending','cancelled'].includes(sub.status)?") && source.includes('completeUnifiedSubscriptionDetails'), 'details completion must remain available after approval for all subscription types');
 assert.ok(source.includes("type:'select',required:true,options:technicians.map"), 'technician assignment must use a technician picker rather than asking for an ID');
 assert.ok(source.includes("type:'datetime-local'"), 'visit scheduling must use a date/time picker rather than an ISO text prompt');
+assert.match(subscriptionsRoutes, /status: 'requested'/, 'customer visit requests must be persisted as pending admin work');
+assert.match(subscriptionsRoutes, /visitId: Joi.string\(\)\.hex\(\)\.length\(24\)/, 'admin assignment must support assigning an existing customer request');
+assert.match(adminCommerceSource, /طلب جديد — لم يتم الإسناد/, 'admin subscriptions must visibly distinguish unassigned visit requests');
+assert.match(adminCommerceSource, /assignUnifiedSubscriptionVisit\\\('/, 'admin must expose an action to assign a requested visit');
+assert.match(clientCommerce, /مطلوب تأكيد استلام زيارة الصيانة/, 'browser client home must show pending maintenance confirmation');
+assert.match(clientCommerce, /confirmClientHomeMaintenanceVisit/, 'browser client home must allow immediate confirmation');
 assert.match(clientCommerce, /اشتراكاتي/);
 assert.match(clientCommerce, /الاشتراكات المتاحة/);
 assert.match(clientCommerce, /toggleUnifiedPlanDetails/);
