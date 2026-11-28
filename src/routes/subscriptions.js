@@ -191,7 +191,7 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
 router.post('/admin/create', auth('admin'), async (req, res, next) => {
   try {
     const { error, value } = createSchema.validate(req.body || {});
-    if (error) return res.status(400).json({ message: 'راجع بيانات الاشتراك.' });
+    if (error) return res.status(400).json({ message: 'راجع بيانات الاشتراك: ' + error.details.map(item => item.path.join('.') || item.type).join('، ') + '.' });
     const client = await Client.findOne({ phone: value.clientPhone, archivedAt: null });
     if (!client) return res.status(404).json({ message: 'رقم العميل غير مسجل.' });
     const plan = value.planId ? await SubscriptionPlan.findOne({ _id: value.planId, type: value.type }).lean() : null;
@@ -200,6 +200,9 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     const durationDays = Number(value.durationDays ?? plan?.durationDays);
     if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650) return res.status(400).json({ message: 'يجب تحديد سعر ومدة صحيحين من إعدادات الإدارة.' });
     if (value.type === 'iptv' && (!value.iptvUsername || !value.iptvPassword)) return res.status(400).json({ message: 'بيانات دخول IPTV مطلوبة.' });
+    if (value.type === 'maintenance' && (!value.dishSize || !value.receiverType)) return res.status(400).json({ message: 'مقاس الطبق ونوع الرسيفر مطلوبان لاشتراك الصيانة.' });
+    if (value.type === 'air_network' && (!value.networkName || !value.deviceType || !value.activationCode)) return res.status(400).json({ message: 'اسم الباقة ونوع الجهاز وبيانات التفعيل مطلوبة للاشتراك المحلي.' });
+    if (value.type === 'iptv' && !value.deviceType) return res.status(400).json({ message: 'نوع الجهاز مطلوب للاشتراك الترفيهي.' });
     const startsAt = value.startsAt ? new Date(value.startsAt) : new Date();
     const SubscriptionModel = modelForType(value.type);
     const subscriptionData = {
