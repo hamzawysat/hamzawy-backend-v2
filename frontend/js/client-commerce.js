@@ -67,6 +67,22 @@ async function requestUnifiedClientVisit(subscriptionId){
   catch(error){showToast(error.message||'تعذر إرسال طلب الزيارة.');}
   finally{state.unifiedCommerceSubmitting='';render();}
 }
+async function refreshClientVisitConfirmations(){
+ if(!state.accountToken||!state.account||state.pendingSubscriptionVisitsLoading)return;
+ const last=Number(state.pendingSubscriptionVisitsCheckedAt||0);if(Date.now()-last<30000)return;
+ state.pendingSubscriptionVisitsLoading=true;
+ try{const result=await API.getUnifiedClientSubscriptions();state.pendingSubscriptionVisits=(Array.isArray(result.visits)?result.visits:[]).filter(visit=>visit.status==='awaiting_client_confirmation'&&!visit.clientConfirmedAt);state.pendingSubscriptionVisitsCheckedAt=Date.now();}
+ catch(error){console.warn('تعذر تحديث زيارات الصيانة المطلوب تأكيدها:',error?.message||error);}
+ finally{state.pendingSubscriptionVisitsLoading=false;}
+}
+async function confirmClientHomeMaintenanceVisit(id){
+ if(!id||state.unifiedCommerceSubmitting)return;
+ if(!window.confirm('هل استلمت خدمة زيارة الصيانة السنوية وتؤكد إنهاءها؟'))return;
+ state.unifiedCommerceSubmitting=String(id);render();
+ try{const result=await API.confirmUnifiedMaintenanceVisit(id);showToast(result.message||'تم تأكيد استلام الخدمة.','success');state.pendingSubscriptionVisitsCheckedAt=0;await refreshClientVisitConfirmations();}
+ catch(error){showToast(error.message||'تعذر تأكيد استلام الخدمة.','error');}
+ finally{state.unifiedCommerceSubmitting='';render();}
+}
 function confirmUnifiedClientVisit(visitId){
  if(state.unifiedCommerceSubmitting)return;
  if(!window.confirm('تأكيد استلام زيارة الصيانة وإغلاقها؟'))return;
