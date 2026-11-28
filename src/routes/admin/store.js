@@ -332,6 +332,8 @@ function createAdminStoreRouter({ auth, Joi, mongoose, Client, Fanni, WalletTran
       if (!/^[a-f0-9]{24}$/i.test(String(req.params.id))) return res.status(400).json({ message: 'معرّف المنتج غير صالح.' });
       const product = await StoreProduct.findById(req.params.id);
       if (!product) return res.status(404).json({ message: 'المنتج غير موجود.' });
+      const linkedOrders = await StoreOrder.countDocuments({ product: product._id });
+      if (linkedOrders > 0) return res.status(409).json({ message: 'لا يمكن حذف هذا المنتج نهائيًا لارتباطه بطلبات سابقة. يمكنك إخفاؤه بدلًا من حذفه للحفاظ على سجل الطلبات.' });
       await StoreProduct.deleteOne({ _id: product._id });
       // Remove the product's private GridFS image only when no other product references it.
       // External image URLs are owned by their remote host and cannot be deleted here.

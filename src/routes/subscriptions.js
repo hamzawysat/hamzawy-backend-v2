@@ -14,22 +14,6 @@ const { clientAuth } = require('../middleware/clientAuth');
 const { createNotification, notifyAdmins } = require('../utils/notifications');
 const { encrypt, decrypt } = require('../utils/subscriptionCrypto');
 const router = express.Router();
-// Admin subscription reads must never become 304 responses. Express evaluates
-// conditional request headers before sending JSON, even when Cache-Control is
-// no-store; older browser validators can therefore turn a fresh API read into
-// an empty 304 that the admin API helper correctly treats as a failure.
-router.use('/admin', (req, res, next) => {
-  if (req.method === 'GET') {
-    delete req.headers['if-none-match'];
-    delete req.headers['if-modified-since'];
-    res.set({
-      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
-      'Pragma': 'no-cache',
-      'Expires': '0'
-    });
-  }
-  next();
-});
 const TYPES = ['maintenance','air_network','iptv'];
 const planSchema = Joi.object({
   type: Joi.string().valid(...TYPES).required(), name: Joi.string().trim().min(2).max(100).required(),
@@ -122,48 +106,16 @@ router.get('/client/mine', clientAuth, async (req, res, next) => {
 // Customer requests a subscription; activation/payment remains an explicit admin decision.
 router.post('/client/request', clientAuth, async (req, res, next) => {
   try {
-    const { error, value } = Joi.object({
-      planId: Joi.string().hex().length(24).required(),
-      paymentMethod: Joi.string().valid('wallet','transfer').required(),
-      notes: Joi.string().trim().max(1000).allow('').default('')
-    }).unknown(false).validate(req.body || {});
-    if (error) return res.status(400).json({ message: 'حدد الباقة وطريقة الدفع قبل إرسال طلب الاشتراك.' });
+    const { error, value } = Joi.object({ planId: Joi.string().hex().length(24).required(), paymentMethod: Joi.string().valid('wallet','transfer').required(), notes: Joi.string().trim().max(1000).allow('').default('') }).unknown(false).validate(req.body || {});
+    if (error) return res.status(400).json({ message: 'بيانات طلب الاشتراك غير صحيحة. حدد الباقة وطريقة الدفع.' });
     const plan = await SubscriptionPlan.findOne({ _id: value.planId, active: true }).lean();
     if (!plan) return res.status(404).json({ message: 'الباقة غير متاحة حاليًا.' });
-    const existing = await findSubscriptionOne({
-      client: req.clientId, plan: plan._id,
-      status: { $in: ['pending','active','paused'] },
-      endsAt: { $gte: new Date() }
-    }, { lean: true });
-    if (existing) return res.status(409).json({ message: existing.status === 'pending' ? 'لديك طلب اشتراك قيد مراجعة الإدارة بالفعل.' : 'لديك اشتراك قائم في هذه الباقة بالفعل.' });
-    if (value.paymentMethod === 'wallet') {
-      const client = await Client.findOne({ _id: req.clientId, archivedAt: null, status: 'نشط', walletFrozen: { $ne: true } }).select('walletBalance walletFrozen').lean();
-      if (!client) return res.status(403).json({ message: 'محفظتك غير متاحة حاليًا. اختار التحويل أو تواصل مع الإدارة.' });
-      if (Number(client.walletBalance || 0) < Number(plan.price || 0)) return res.status(409).json({ message: 'رصيد المحفظة غير كافٍ لقيمة الباقة. اختار التحويل أو اشحن المحفظة.' });
-    }
-    const startsAt = new Date();
-    const Model = modelForType(plan.type);
-    const subscription = await Model.create({
-      code: makeCode(), type: plan.type, plan: plan._id, client: req.clientId,
-      clientName: String(req.client.name || ''), clientPhone: String(req.client.phone || ''),
-      amount: Number(plan.price || 0), durationDays: Number(plan.durationDays || 30),
-      startsAt, endsAt: new Date(startsAt.getTime() + Number(plan.durationDays || 30) * 86400000),
-      status: 'pending', paymentMethod: value.paymentMethod, paymentStatus: 'pending',
-      paymentRequestedAt: new Date(), visitsIncluded: Number(plan.visitCount || 0),
-      includedServices: plan.includedServices || [], excludedSupplies: plan.excludedSupplies || [],
-      allowedDevices: Number(plan.allowedDevices || 1), notes: value.notes,
-      history: [{ action: 'requested', note: 'طلب العميل الاشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال'), by: 'العميل' }]
-    });
-    await notifyAdmins({
-      type: 'admin_subscription_request', title: 'طلب اشتراك جديد',
-      message: 'طلب العميل ' + String(req.client.name || '') + ' الاشتراك في ' + plan.name + ' — طريقة الدفع: ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال') + (value.notes ? ' — ملاحظات: ' + value.notes : ''),
-      link: '/admin?tab=commerceSubscriptions',
-      dedupeKey: 'subscription-request:' + String(subscription._id)
-    });
-    return res.status(202).json({
-      message: 'تم تسجيل طلب الاشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل الأموال') + '. سيظهر الطلب لدى الإدارة، ولن يتم الخصم أو التفعيل قبل المراجعة.',
-      subscription: safeClient(subscription.toObject())
-    });
+    const existing = await findSubscriptionOne({ client: req.clientId, plan: plan._id, status: { $in: ['pending','active','paused'] }, $or: [{ endsAt: null }, { endsAt: { $gte: new Date() } }] }, { lean: true });
+    if (existing) return res.status(409).json({ message: existing.status === 'pending' ? 'لديك طلب اشتراك قيد المراجعة بالفعل.' : 'لديك اشتراك قائم في هذه الباقة بالفعل.' });
+    const SubscriptionModel = modelForType(plan.type);
+    const subscription = await SubscriptionModel.create({ code: makeCode(), type: plan.type, plan: plan._id, client: req.clientId, clientName: req.client.name, clientPhone: req.client.phone, amount: plan.price, durationDays: plan.durationDays, startsAt: null, endsAt: null, status: 'pending', paymentMethod: value.paymentMethod, paymentStatus: 'pending', notes: value.notes, visitsIncluded: plan.visitCount || 0, includedServices: plan.includedServices || [], excludedSupplies: plan.excludedSupplies || [], allowedDevices: plan.allowedDevices || 1, history: [{ action: 'requested', note: 'طلب اشتراك بطريقة ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال'), by: 'العميل' }] });
+    await notifyAdmins({ type: 'admin_subscription_request', title: 'طلب اشتراك جديد', message: 'طلب العميل ' + String(req.client.name || '') + ' الاشتراك في ' + plan.name + ' — ' + (value.paymentMethod === 'wallet' ? 'محفظة التطبيق' : 'تحويل أموال'), link: '/admin?tab=commerceSubscriptions', dedupeKey: 'subscription-request:' + String(subscription._id) });
+    return res.status(202).json({ message: 'تم حفظ طلب الاشتراك وإرساله للإدارة. لن يتم التفعيل أو الخصم قبل مراجعة الإدارة واستكمال بيانات الخدمة.', subscription: safeClient(subscription.toObject()) });
   } catch (e) { return next(e); }
 });
 
@@ -173,7 +125,7 @@ router.post('/client/request-renewal', clientAuth, async (req, res, next) => {
     if (error) return res.status(400).json({ message: 'حدد الاشتراك وطريقة الدفع قبل إرسال طلب التجديد.' });
     const subscription = await findSubscriptionOne({ _id: value.subscriptionId, client: req.clientId, status: { $in: ['active','expired','paused'] } });
     if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود بحسابك أو لا يقبل التجديد.' });
-    if (subscription.renewalRequest?.requestedAt && subscription.renewalRequest.paymentStatus === 'pending') return res.status(409).json({ message: 'لديك طلب تجديد قيد المراجعة بالفعل.' });
+    if (subscription.renewalRequest?.paymentStatus === 'pending') return res.status(409).json({ message: 'لديك طلب تجديد قيد المراجعة بالفعل.' });
     const amount = Number(subscription.amount || 0);
     if (!Number.isFinite(amount) || amount < 0) return res.status(409).json({ message: 'قيمة التجديد غير صحيحة. تواصل مع الإدارة.' });
     if (value.paymentMethod === 'wallet') {
@@ -203,7 +155,7 @@ router.post('/client/request-visit', clientAuth, async (req, res, next) => {
 
 // Admin-only management API. Existing commerce subscriptions remain untouched.
 router.get('/admin/plans', auth('admin'), async (req, res, next) => {
-  try { return res.set('Cache-Control','no-store').json({ plans: await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean() }); }
+  try { return res.json({ plans: await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean() }); }
   catch (e) { return next(e); }
 });
 router.post('/admin/plans', auth('admin'), async (req, res, next) => {
@@ -233,13 +185,13 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
     if (req.query.q) { const q = String(req.query.q).trim().slice(0,100); filter.$or = [{ code: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i') },{ clientName: new RegExp(q,'i') },{ clientPhone: new RegExp(q,'i') }]; }
     const subscriptions = await findSubscriptions(filter, { select: '+iptvUsernameEncrypted +iptvPasswordEncrypted', sort: { endsAt: 1 }, limit: 500 });
     const rows = subscriptions.map(s => { const v = safeClient(s); if (v.type === 'iptv') { try { v.iptvUsername = decrypt(s.iptvUsernameEncrypted); } catch (_) { v.iptvUsername = ''; } try { v.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; } } return v; });
-    return res.set('Cache-Control','no-store').json({ subscriptions: rows });
+    return res.json({ subscriptions: rows });
   } catch (e) { return next(e); }
 });
 router.post('/admin/create', auth('admin'), async (req, res, next) => {
   try {
     const { error, value } = createSchema.validate(req.body || {});
-    if (error) return res.status(400).json({ message: 'راجع بيانات الاشتراك.' });
+    if (error) return res.status(400).json({ message: 'راجع بيانات الاشتراك: ' + error.details.map(item => item.path.join('.') || item.type).join('، ') + '.' });
     const client = await Client.findOne({ phone: value.clientPhone, archivedAt: null });
     if (!client) return res.status(404).json({ message: 'رقم العميل غير مسجل.' });
     const plan = value.planId ? await SubscriptionPlan.findOne({ _id: value.planId, type: value.type }).lean() : null;
@@ -248,6 +200,9 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     const durationDays = Number(value.durationDays ?? plan?.durationDays);
     if (!Number.isFinite(amount) || amount < 0 || !Number.isInteger(durationDays) || durationDays < 1 || durationDays > 3650) return res.status(400).json({ message: 'يجب تحديد سعر ومدة صحيحين من إعدادات الإدارة.' });
     if (value.type === 'iptv' && (!value.iptvUsername || !value.iptvPassword)) return res.status(400).json({ message: 'بيانات دخول IPTV مطلوبة.' });
+    if (value.type === 'maintenance' && (!value.dishSize || !value.receiverType)) return res.status(400).json({ message: 'مقاس الطبق ونوع الرسيفر مطلوبان لاشتراك الصيانة.' });
+    if (value.type === 'air_network' && (!value.networkName || !value.deviceType || !value.activationCode)) return res.status(400).json({ message: 'اسم الباقة ونوع الجهاز وبيانات التفعيل مطلوبة للاشتراك المحلي.' });
+    if (value.type === 'iptv' && !value.deviceType) return res.status(400).json({ message: 'نوع الجهاز مطلوب للاشتراك الترفيهي.' });
     const startsAt = value.startsAt ? new Date(value.startsAt) : new Date();
     const SubscriptionModel = modelForType(value.type);
     const subscriptionData = {
@@ -273,78 +228,37 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
 });
 router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
-  const { error, value } = Joi.object({ status: Joi.string().valid('active','paused','cancelled').required(), note: Joi.string().trim().max(500).allow('').default('') }).unknown(false).validate(req.body || {});
-  if (error) return res.status(400).json({ message: 'الحالة غير صحيحة.' });
+  const { error, value } = Joi.object({ status: Joi.string().valid('active','paused','cancelled').required(), note: Joi.string().trim().max(500).allow('').default(''), address: Joi.string().trim().max(500).allow('').optional(), dishSize: Joi.string().trim().max(60).allow('').optional(), receiverType: Joi.string().trim().max(100).allow('').optional(), deviceType: Joi.string().trim().max(100).allow('').optional(), networkName: Joi.string().trim().max(120).allow('').optional(), activationCode: Joi.string().trim().max(120).allow('').optional(), portalUrl: Joi.string().trim().uri({ scheme: ['http','https'] }).max(500).allow('').optional(), iptvUsername: Joi.string().trim().max(150).allow('').optional(), iptvPassword: Joi.string().max(300).allow('').optional(), allowedDevices: Joi.number().integer().min(1).max(20).optional() }).unknown(false).validate(req.body || {});
+  if (error) return res.status(400).json({ message: 'بيانات تحديث الاشتراك غير صحيحة. راجع الحقول المطلوبة والرابط.' });
   let session;
   try {
-    session = await mongoose.startSession();
-    let result;
-    await session.withTransaction(async () => {
-      const subscription = await findSubscriptionById(req.params.id, { session });
-      if (!subscription) { result = { kind: 'missing' }; return; }
-      const wasPending = subscription.status === 'pending';
-      const needsInitialActivation = value.status === 'active' && subscription.paymentStatus === 'pending' && Boolean(subscription.paymentRequestedAt);
-      let transactionNumber = '';
-      if (needsInitialActivation) {
-        if (subscription.paymentMethod === 'wallet' && Number(subscription.amount || 0) > 0) {
-          const paymentKey = 'unified-subscription-initial:' + String(subscription._id);
-          const prior = await WalletTransaction.findOne({ client: subscription.client, idempotencyKey: paymentKey }).session(session).lean();
-          if (!prior) {
-            const client = await Client.findOne({
-              _id: subscription.client, archivedAt: null, status: 'نشط',
-              walletFrozen: { $ne: true }, walletBalance: { $gte: Number(subscription.amount || 0) }
-            }).session(session);
-            if (!client) { result = { kind: 'insufficient' }; return; }
-            const before = Number(client.walletBalance || 0);
-            const updated = await Client.findOneAndUpdate({
-              _id: client._id, archivedAt: null, status: 'نشط',
-              walletFrozen: { $ne: true }, walletBalance: { $gte: Number(subscription.amount || 0) }
-            }, { $inc: { walletBalance: -Number(subscription.amount || 0) } }, {
-              new: true, session, runValidators: true
-            });
-            if (!updated) { result = { kind: 'insufficient' }; return; }
-            const transaction = new WalletTransaction({
-              client: client._id, type: 'client_subscription_payment',
-              amount: -Number(subscription.amount || 0), balanceBefore: before,
-              balanceAfter: Number(updated.walletBalance),
-              description: 'تفعيل ' + publicServiceName(subscription.type) + ' ' + subscription.code + ' من محفظة العميل',
-              idempotencyKey: paymentKey
-            });
-            await transaction.save({ session });
-            transactionNumber = transaction.transactionNumber || '';
-          } else transactionNumber = prior.transactionNumber || '';
-        }
-        subscription.paymentStatus = 'paid';
-        subscription.startsAt = new Date();
-        subscription.endsAt = new Date(subscription.startsAt.getTime() + Number(subscription.durationDays) * 86400000);
-      }
-      subscription.status = value.status;
-      subscription.history.push({
-        action: value.status,
-        note: value.note || (wasPending && value.status === 'active' ? 'مراجعة طلب الاشتراك وتأكيد السداد' : 'تحديث الحالة من الإدارة'),
-        by: String(req.user?.name || 'الإدارة')
+    const s = await findSubscriptionById(req.params.id);
+    if (!s) return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+    const activatingRequest = s.status === 'pending' && value.status === 'active';
+    if (activatingRequest) {
+      const required = s.type === 'maintenance' ? [['مقاس الطبق',value.dishSize],['نوع الرسيفر',value.receiverType]] : s.type === 'air_network' ? [['اسم الباقة',value.networkName],['نوع الجهاز',value.deviceType],['بيانات التفعيل',value.activationCode]] : [['نوع الجهاز',value.deviceType],['اسم المستخدم',value.iptvUsername],['كلمة المرور',value.iptvPassword]];
+      const missing = required.filter(([,v])=>!String(v||'').trim()).map(([label])=>label);
+      if(missing.length)return res.status(400).json({message:'استكمل البيانات الفنية المطلوبة: '+missing.join('، ')});
+      session = await mongoose.startSession();
+      await session.withTransaction(async()=>{
+        const current=await findSubscriptionById(req.params.id,{session});
+        if(!current||current.status!=='pending')throw new Error('SUBSCRIPTION_REQUEST_NOT_PENDING');
+        if(value.address!==undefined)current.address=value.address;
+        current.dishSize=value.dishSize||'';current.receiverType=value.receiverType||'';current.deviceType=value.deviceType||'';current.networkName=value.networkName||'';current.activationCode=value.activationCode||'';current.portalUrl=value.portalUrl||'';current.allowedDevices=value.allowedDevices||current.allowedDevices||1;
+        if(current.type==='maintenance')current.maintenanceDetails={dishSize:current.dishSize,receiverType:current.receiverType,visitsIncluded:current.visitsIncluded||0};
+        if(current.type==='air_network')current.localDetails={networkName:current.networkName,activationCode:current.activationCode,deviceType:current.deviceType};
+        if(current.type==='iptv'){current.iptvUsernameEncrypted=encrypt(value.iptvUsername);current.iptvPasswordEncrypted=encrypt(value.iptvPassword);current.entertainmentDetails={deviceType:current.deviceType,portalUrl:current.portalUrl,usernameEncrypted:current.iptvUsernameEncrypted,passwordEncrypted:current.iptvPasswordEncrypted,allowedDevices:current.allowedDevices};}
+        const charge=Number(current.amount||0);
+        if(current.paymentMethod==='wallet'){if(charge>0){const key='special-subscription-request:'+String(current._id);const prior=await WalletTransaction.findOne({client:current.client,idempotencyKey:key}).session(session).lean();if(!prior){const client=await Client.findOne({_id:current.client,archivedAt:null,status:'نشط',walletFrozen:{$ne:true},walletBalance:{$gte:charge}}).session(session);if(!client)throw new Error('SUBSCRIPTION_WALLET_INSUFFICIENT');const before=Number(client.walletBalance||0);const updated=await Client.findOneAndUpdate({_id:client._id,archivedAt:null,status:'نشط',walletFrozen:{$ne:true},walletBalance:{$gte:charge}},{$inc:{walletBalance:-charge}},{new:true,session,runValidators:true});if(!updated)throw new Error('SUBSCRIPTION_WALLET_INSUFFICIENT');const tx=new WalletTransaction({client:client._id,type:'client_subscription_payment',amount:-charge,balanceBefore:before,balanceAfter:Number(updated.walletBalance),description:'تفعيل '+publicServiceName(current.type)+' '+current.code+' من محفظة العميل',idempotencyKey:key});await tx.save({session});current.history.push({action:'payment_received',note:'خصم من المحفظة — رقم العملية: '+String(tx.transactionNumber||''),by:String(req.user?.name||'الإدارة')});} } else current.history.push({action:'payment_received',note:'اشتراك مجاني — لا يوجد مبلغ مستحق',by:String(req.user?.name||'الإدارة')});current.paymentStatus='paid';}
+        else if(current.paymentMethod==='transfer'){current.paymentStatus='paid';current.history.push({action:'payment_received',note:'تمت مراجعة التحويل وتأكيد السداد من الإدارة',by:String(req.user?.name||'الإدارة')});}
+        else throw new Error('SUBSCRIPTION_PAYMENT_METHOD_MISSING');
+        current.startsAt=new Date();current.endsAt=new Date(current.startsAt.getTime()+Number(current.durationDays)*86400000);current.status='active';current.history.push({action:'active',note:value.note||'استكمال البيانات الفنية وتفعيل الاشتراك',by:String(req.user?.name||'الإدارة')});await current.save({session});
       });
-      if (transactionNumber) subscription.history.push({ action: 'payment_received', note: 'رقم العملية: ' + transactionNumber, by: String(req.user?.name || 'الإدارة') });
-      await subscription.save({ session });
-      result = { kind: 'updated', subscription, wasPending, needsInitialActivation, transactionNumber };
-    });
-    if (result?.kind === 'missing') return res.status(404).json({ message: 'الاشتراك غير موجود.' });
-    if (result?.kind === 'insufficient') return res.status(409).json({ message: 'رصيد محفظة العميل غير كافٍ. لم يتم تفعيل الاشتراك أو خصم أي مبلغ.' });
-    if (result?.needsInitialActivation) {
-      await createNotification({
-        recipientRole: 'client', recipientId: result.subscription.client,
-        type: 'subscription_activated', title: 'تم تفعيل اشتراكك',
-        message: 'تم تفعيل الاشتراك ' + result.subscription.code + ' حتى ' + result.subscription.endsAt.toLocaleDateString('ar-EG'),
-        link: '/client'
-      });
-    }
-    return res.json({
-      message: result?.needsInitialActivation ? 'تم تأكيد السداد وتفعيل الاشتراك.' : 'تم تحديث حالة الاشتراك.',
-      subscription: safeClient(result.subscription.toObject()),
-      transactionNumber: result.transactionNumber || ''
-    });
-  } catch (e) { return next(e); }
-  finally { if (session) await session.endSession(); }
+    } else { s.status=value.status;s.history.push({action:value.status,note:value.note,by:String(req.user?.name||'الإدارة')});await s.save(); }
+    const updated=await findSubscriptionById(req.params.id,{select:'+iptvUsernameEncrypted +iptvPasswordEncrypted'});
+    if(activatingRequest)await createNotification({recipientRole:'client',recipientId:updated.client,type:'subscription_activated',title:'تم تفعيل اشتراكك',message:'تم تفعيل اشتراك '+updated.code+' حتى '+updated.endsAt.toLocaleDateString('ar-EG'),link:'/client'});
+    return res.json({message:activatingRequest?'تم استكمال البيانات وتأكيد السداد وتفعيل الاشتراك.':'تم تحديث حالة الاشتراك.',subscription:safeClient(updated.toObject())});
+  } catch(e){if(e.message==='SUBSCRIPTION_WALLET_INSUFFICIENT')return res.status(409).json({message:'رصيد محفظة العميل غير كافٍ. لم يتم التفعيل أو الخصم.'});if(e.message==='SUBSCRIPTION_REQUEST_NOT_PENDING')return res.status(409).json({message:'تمت معالجة طلب الاشتراك بالفعل. حدّث القائمة.'});if(e.message==='SUBSCRIPTION_PAYMENT_METHOD_MISSING')return res.status(409).json({message:'طريقة الدفع غير محددة على الطلب.'});return next(e);} finally {if(session)await session.endSession();}
 });
 router.post('/admin/:id/renew', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
@@ -407,7 +321,6 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
     const subscription = await findSubscriptionById(value.subscriptionId);
     const technician = await Fanni.findOne({ _id: value.technicianId, role: 'fanni', status: 'معتمد', archivedAt: null });
     if (!subscription || !technician) return res.status(404).json({ message: 'الاشتراك أو الفني غير موجود أو غير معتمد.' });
-    if (subscription.type !== 'maintenance' || subscription.status !== 'active') return res.status(409).json({ message: 'يمكن إسناد الزيارات لاشتراك صيانة سنوية ساري فقط.' });
     const visit = await SubscriptionVisit.create({ subscription: subscription._id, client: subscription.client, technician: technician._id, scheduledAt: value.scheduledAt, createdBy: String(req.user?.name || 'الإدارة') });
     await createNotification({ recipientRole: 'fanni', recipientId: technician._id, type: 'subscription_visit_assigned', title: 'زيارة صيانة جديدة', message: 'تم إسناد زيارة لك للاشتراك ' + subscription.code, link: '/fanni' });
     await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_visit_scheduled', title: 'تم تحديد موعد زيارة', message: 'موعد الزيارة ' + new Date(value.scheduledAt).toLocaleString('ar-EG'), link: '/client' });
@@ -416,8 +329,8 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
 });
 router.get('/admin/visits', auth('admin'), async (req, res, next) => {
   try {
-    const rows = await SubscriptionVisit.find({}).populate('technician','name phone').populate('client','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
-    return res.set('Cache-Control','no-store').json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
+    const rows = await SubscriptionVisit.find({}).populate('technician','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
+    return res.json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
   } catch (e) { return next(e); }
 });
 

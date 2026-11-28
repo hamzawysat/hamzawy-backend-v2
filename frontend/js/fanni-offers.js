@@ -4,10 +4,7 @@ async function loadMyOffers(){
  if(!getToken())return false;
 
  try{
-  const [offersResult,visitsResult]=await Promise.allSettled([API.myOffers(),API.subscriptionVisits()]);
-  if(offersResult.status!=='fulfilled')throw offersResult.reason;
-  const data=offersResult.value;
-  state.subscriptionVisits=visitsResult.status==='fulfilled'?extractList(visitsResult.value,['visits']):[];
+  const data=await API.myOffers();
   const allOffers=extractList(data,['offers','items','requests']);
    const isCompletedOffer=o=>['تم الانتهاء','مكتمل','مكتملة','completed','finished'].includes(String(o?.orderStatus||o?.status||'').trim().toLowerCase());
    state.completedOffers=allOffers.filter(isCompletedOffer);

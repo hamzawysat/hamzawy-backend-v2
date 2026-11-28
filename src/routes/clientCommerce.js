@@ -2,7 +2,7 @@
 
 const express = require('express');
 
-function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, ClientSubscription, WalletTransaction, mongoose, createNotification, notifyAdmins, subscriptionsEnabled = true }) {
+function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, ClientSubscription, WalletTransaction, mongoose, createNotification, notifyAdmins }) {
   const router = express.Router();
 
 
@@ -78,9 +78,6 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
     }
   });
 
-  // Keep order payment available while the legacy subscription endpoints are retired.
-  if (!subscriptionsEnabled) return router;
-
   router.get('/commerce/catalog', clientAuth, async (req, res, next) => {
     try {
       const items = await CommerceItem.find({ kind: 'subscription', active: true })
@@ -147,7 +144,7 @@ function createClientCommerceRouter({ clientAuth, Client, Order, CommerceItem, C
       } else {
         subscription = await ClientSubscription.findOne({ _id: subscriptionId, client: req.clientId, status: { $in: ['active', 'expired'] } }).session(session);
         if (!subscription) { await session.abortTransaction(); return res.status(404).json({ message: 'الاشتراك غير موجود أو لا يمكن تجديده.' }); }
-        if (subscription.renewalRequest?.requestedAt && subscription.renewalRequest.paymentStatus === 'pending' && subscription.renewalRequest.requestKey !== idempotencyKey) {
+        if (subscription.renewalRequest?.paymentStatus === 'pending' && subscription.renewalRequest.requestKey !== idempotencyKey) {
           await session.abortTransaction();
           return res.status(409).json({ message: 'يوجد طلب تجديد آخر قيد مراجعة الإدارة بالفعل.' });
         }

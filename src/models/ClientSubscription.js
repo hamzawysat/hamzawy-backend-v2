@@ -23,7 +23,7 @@ const clientSubscriptionSchema = new mongoose.Schema({
   paymentMethod: { type: String, trim: true, maxlength: 40, default: '' },
   transactionNumber: { type: String, trim: true, uppercase: true, maxlength: 40, default: '' },
   requestKey: { type: String, trim: true, maxlength: 150, default: undefined },
-  renewalRequest: { paymentMethod: { type: String, enum: ['محفظة العميل','تحويل أموال'] }, paymentStatus: { type: String, enum: ['pending','paid','rejected'], default: 'pending' }, requestKey: { type: String, trim: true, maxlength: 150, default: '' }, amount: { type: Number, min: 0, default: 0 }, requestedAt: { type: Date, default: null } },
+  renewalRequest: { type: { paymentMethod: { type: String, enum: ['محفظة العميل','تحويل أموال'] }, paymentStatus: { type: String, enum: ['pending','paid','rejected'] }, requestKey: { type: String, trim: true, maxlength: 150, default: '' }, amount: { type: Number, min: 0, default: 0 }, requestedAt: { type: Date, default: null } }, default: null },
   notes: { type: String, trim: true, maxlength: 1000, default: '' },
   subscriptionDetails: { type: String, trim: true, maxlength: 2000, default: '' },
   history: { type: [renewalSchema], default: [] },
