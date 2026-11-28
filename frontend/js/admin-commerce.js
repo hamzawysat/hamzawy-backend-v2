@@ -10,7 +10,7 @@ function openUnifiedSubscriptionForm({title,fields,submitLabel='حفظ البي�
    if(f.type==='checkboxes'){const chosen=Array.isArray(v)?v:[];return '<fieldset class="rounded-xl border border-slate-200 p-3"><legend class="px-1 text-xs font-bold">'+escHtml(f.label)+'</legend><div class="grid grid-cols-1 sm:grid-cols-2 gap-2">'+f.options.map(o=>{const value=typeof o==='string'?o:o.value,text=typeof o==='string'?o:o.label;return '<label class="flex items-center gap-2 rounded-lg bg-slate-50 p-2 text-xs"><input type="checkbox" name="'+commerceEscAttr(f.name)+'" value="'+commerceEscAttr(value)+'" '+(chosen.includes(value)?'checked':'')+' class="h-4 w-4 accent-blue-600"><span>'+escHtml(text)+'</span></label>';}).join('')+'</div></fieldset>';}
    if(f.type==='select')return '<div>'+label+'<select name="'+commerceEscAttr(f.name)+'" '+(f.required?'required':'')+' class="form-input w-full">'+f.options.map(o=>{const value=typeof o==='string'?o:o.value,text=typeof o==='string'?o:o.label;return '<option value="'+commerceEscAttr(value)+'" '+(String(v)===String(value)?'selected':'')+'>'+escHtml(text)+'</option>';}).join('')+'</select></div>';
    if(f.type==='checkbox')return '<label class="flex items-center gap-2 rounded-lg border border-slate-200 p-3 text-xs font-bold"><input type="checkbox" name="'+commerceEscAttr(f.name)+'" '+(v?'checked':'')+' class="h-4 w-4 accent-blue-600">'+escHtml(f.label)+'</label>';
-   const type=f.type==='number'?'number':f.type==='url'?'url':'text';return '<div>'+label+'<input name="'+commerceEscAttr(f.name)+'" type="'+type+'" value="'+commerceEscAttr(v)+'" '+(f.required?'required':'')+' '+(f.min!==undefined?'min="'+f.min+'"':'')+' '+(f.max!==undefined?'max="'+f.max+'"':'')+' '+(f.step!==undefined?'step="'+f.step+'"':'')+' class="form-input w-full"></div>';
+   const type=f.type==='number'?'number':f.type==='url'?'url':f.type==='datetime-local'?'datetime-local':f.type==='date'?'date':'text';return '<div>'+label+'<input name="'+commerceEscAttr(f.name)+'" type="'+type+'" value="'+commerceEscAttr(v)+'" '+(f.required?'required':'')+' '+(f.min!==undefined?'min="'+f.min+'"':'')+' '+(f.max!==undefined?'max="'+f.max+'"':'')+' '+(f.step!==undefined?'step="'+f.step+'"':'')+' class="form-input w-full"></div>';
   }).join('');
   overlay.innerHTML='<section role="dialog" aria-modal="true" class="w-full max-w-2xl max-h-[88vh] overflow-y-auto rounded-2xl bg-white p-4 shadow-2xl" dir="rtl"><div class="sticky top-0 z-10 -mx-4 -mt-4 mb-3 flex items-center justify-between border-b bg-white p-4"><h3 class="text-base font-black">'+escHtml(title)+'</h3><button type="button" data-cancel class="rounded-lg px-3 py-1 text-lg">×</button></div><form class="space-y-3"><div class="grid grid-cols-1 sm:grid-cols-2 gap-3">'+html+'</div><div class="flex gap-2 border-t pt-3"><button type="button" data-cancel class="flex-1 rounded-xl border p-2.5 text-sm font-bold">إلغاء</button><button type="submit" class="flex-1 rounded-xl bg-slate-900 p-2.5 text-sm font-bold text-white">'+escHtml(submitLabel)+'</button></div></form></section>';
   const close=v=>{overlay.remove();resolve(v);};overlay.addEventListener('click',e=>{if(e.target===overlay)close(null);});overlay.querySelectorAll('[data-cancel]').forEach(b=>b.addEventListener('click',()=>close(null)));
@@ -155,7 +155,7 @@ async function completeUnifiedSubscriptionDetails(id){
  if(sub.type==='maintenance')fields.push(
   {name:'dishSize',label:'مقاس الطبق',type:'select',value:sub.dishSize||'',options:['','60 سم','70 سم','80 سم','90 سم','100 سم','120 سم','آخر']},
   {name:'receiverType',label:'نوع الرسيفر',type:'select',value:sub.receiverType||'',options:['','HD','4K','Android','رسيفر عادي','آخر']},
-  {name:'visitsIncluded',label:'عدد زيارات الصيانة المشمولة',type:'number',value:Number(sub.visitsIncluded??0),min:0,max:100}
+  {name:'visitsIncluded',label:'عدد زيارات الصيانة المشمولة',type:'select',value:String(sub.visitsIncluded??0),options:Array.from({length:21},(_,i)=>({value:String(i),label:i+' زيارة'}))}
  );
  if(sub.type==='air_network')fields.push(
   {name:'networkName',label:'اسم الشبكة / الباقة المحلية',type:'text',value:sub.networkName||''},
@@ -198,9 +198,18 @@ async function renewUnifiedSubscription(id){
  catch(e){showToast(e.message||'تعذر التجديد','error');}
 }
 async function assignUnifiedSubscriptionVisit(id){
-  const technicians=prompt('معرّف الفني المعتمد:','');if(technicians===null)return;
-  const scheduledAt=prompt('موعد الزيارة بصيغة ISO مثل 2026-12-01T10:00:00:','');if(scheduledAt===null)return;
-  try{await tryApi(['/api/subscriptions/admin/visits'],{method:'POST',body:JSON.stringify({subscriptionId:id,technicianId:technicians.trim(),scheduledAt})});showToast('تم إسناد الزيارة','success');await loadClientSubscriptions();}
+  if(!Array.isArray(state.fannis)||!state.fannis.length){try{await loadAll();}catch(_){}}
+  const technicians=(state.fannis||[]).filter(item=>!item.isDisabled&&(item.isApproved===true||item.status==='معتمد'||item.status==='approved'));
+  if(!technicians.length)return showToast('لا يوجد فنيون معتمدون ومتاحون للإسناد حاليًا.','error');
+  const now=new Date(Date.now()+60*60*1000),localDateTime=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);
+  const values=await openUnifiedSubscriptionForm({title:'إسناد زيارة صيانة',submitLabel:'تأكيد إسناد الزيارة',fields:[
+    {name:'technicianId',label:'اختيار الفني المسؤول',type:'select',required:true,options:technicians.map(item=>({value:String(item._id),label:String(item.name||'فني')+' — '+String(item.phone||'')}))},
+    {name:'scheduledAt',label:'موعد الزيارة',type:'datetime-local',value:localDateTime,required:true}
+  ]});
+  if(!values)return;
+  const scheduledAt=new Date(values.scheduledAt);
+  if(!Number.isFinite(scheduledAt.getTime())||scheduledAt.getTime()<Date.now())return showToast('اختار موعدًا صحيحًا في المستقبل.','error');
+  try{await tryApi(['/api/subscriptions/admin/visits'],{method:'POST',body:JSON.stringify({subscriptionId:id,technicianId:values.technicianId,scheduledAt:scheduledAt.toISOString()})});showToast('تم إسناد الزيارة للفني بنجاح.','success');await loadClientSubscriptions();}
   catch(error){showToast(error.message||'تعذر إسناد الزيارة','error');}
 }
 function applyUnifiedSubscriptionFilters(){state.unifiedSubscriptionFilters={search:String(document.getElementById('unified-subscription-search')?.value||'').trim(),status:String(document.getElementById('unified-subscription-status')?.value||''),type:String(document.getElementById('unified-subscription-type')?.value||'')};render();}
@@ -227,7 +236,7 @@ function renderUnifiedSubscriptionPanel(){
   const visit=sub.type==='maintenance'&&sub.status==='active'?'<button type="button" class="pill-btn soft-btn" onclick="assignUnifiedSubscriptionVisit(\''+escHtml(sub._id)+'\')">إسناد زيارة</button>':'';
   const pause=sub.status==='active'?'<button type="button" class="pill-btn soft-btn" onclick="setUnifiedSubscriptionStatus(\''+escHtml(sub._id)+'\',\'paused\')">تعليق</button>':'';
   const activate=['pending','paused'].includes(sub.status)?'<button type="button" class="pill-btn soft-btn" onclick="setUnifiedSubscriptionStatus(\''+escHtml(sub._id)+'\',\'active\')">'+(sub.status==='pending'?'تأكيد السداد والتفعيل':'تفعيل')+'</button>':'';
-  const detailsAction=sub.status==='active'?'<button type="button" class="pill-btn soft-btn" onclick="completeUnifiedSubscriptionDetails(\''+escHtml(sub._id)+'\')">استكمال البيانات</button>':'';
+  const detailsAction=(sub.status==='active'||sub.paymentStatus==='paid')?'<button type="button" class="pill-btn soft-btn" onclick="completeUnifiedSubscriptionDetails(\''+escHtml(sub._id)+'\')">استكمال البيانات</button>':'';
   const deleteAction='<button type="button" class="pill-btn soft-btn text-red-700" onclick="deleteUnifiedSubscription(\''+escHtml(sub._id)+'\')">حذف نهائي</button>';
   return '<article class="premium-card p-3 space-y-2"><div class="flex items-center justify-between gap-2"><b class="text-[12px]">'+escHtml(unifiedTypeLabel(sub.type))+' · '+escHtml(sub.code)+'</b><span class="text-[10px]">'+escHtml(statusLabels[sub.status]||sub.status||'')+'</span></div><p class="text-[11px]">'+escHtml(sub.clientName||'')+' · '+escHtml(sub.clientPhone||'')+'</p><p class="text-[10px] text-slate-500">ينتهي '+new Date(sub.endsAt).toLocaleDateString('ar-EG')+' · '+Number(sub.amount||0).toLocaleString('ar-EG')+' جنيه · متبقي '+Math.max(0,daysLeft)+' يوم</p>'+(sub.address?'<p class="text-[10px] text-slate-600">العنوان: '+escHtml(sub.address)+'</p>':'')+payment+credentials+(Array.isArray(sub.includedServices)&&sub.includedServices.length?'<p class="text-[10px]">الخدمات المشمولة: '+sub.includedServices.map(escHtml).join(' · ')+'</p>':'')+(Array.isArray(sub.excludedSupplies)&&sub.excludedSupplies.length?'<p class="text-[10px]">المستلزمات غير المشمولة: '+sub.excludedSupplies.map(escHtml).join(' · ')+'</p>':'')+(sub.notes?'<p class="text-[10px]">'+escHtml(sub.notes)+'</p>':'')+whatsapp+'<div class="flex flex-wrap gap-2">'+renew+visit+pause+activate+detailsAction+deleteAction+'</div></article>';
  }).join('');
