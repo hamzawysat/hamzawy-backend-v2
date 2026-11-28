@@ -2948,9 +2948,12 @@ async function run() {
             .set('Authorization', 'Bearer ' + adminToken)
             .send({ deviceType: 'تلفزيون ذكي', portalUrl: 'https://iptv.example.test', iptvUsername: 'test-user', iptvPassword: 'test-pass', allowedDevices: 4 });
           assert.equal(entertainmentDetails.status, 200, JSON.stringify(entertainmentDetails.body));
-          const storedEntertainment = await modelForType('iptv').findById(transferSubscriptionId).lean();
+          const storedEntertainment = await modelForType('iptv').findById(transferSubscriptionId).select('+iptvUsernameEncrypted +iptvPasswordEncrypted').lean();
           assert.notEqual(storedEntertainment.iptvUsernameEncrypted, 'test-user');
           assert.notEqual(storedEntertainment.iptvPasswordEncrypted, 'test-pass');
+          const { decrypt: decryptSubscriptionSecret } = require('../utils/subscriptionCrypto');
+          assert.equal(decryptSubscriptionSecret(storedEntertainment.iptvUsernameEncrypted), 'test-user');
+          assert.equal(decryptSubscriptionSecret(storedEntertainment.iptvPasswordEncrypted), 'test-pass');
           assert.equal(storedEntertainment.entertainmentDetails.deviceType, 'تلفزيون ذكي');
           assert.equal(storedEntertainment.allowedDevices, 4);
 
