@@ -1,0 +1,32 @@
+name: Temporary subscription frontend build
+on:
+  push:
+    branches:
+      - feat/client-subscription-permanent-delete-20261128
+    paths:
+      - 'frontend/**'
+      - 'frontend-dist/**'
+      - 'scripts/build-frontend.js'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/temp-subscription-frontend-build.yml'
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+      - name: Upload generated frontend-dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: subscription-frontend-dist
+          path: frontend-dist/
+          if-no-files-found: error
+          retention-days: 1
