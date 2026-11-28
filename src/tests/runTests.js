@@ -1615,6 +1615,44 @@ async function run() {
       });
       adminToken = jwt.sign({ id: String(admin._id), role: 'admin' }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+      await test('unified subscription requests persist as pending and activate only after technical completion and payment review', async () => {
+        const registration = await request(app).post('/api/client/register').send({
+          name: 'عميل اشتراك موحد اختباري', phone: '01099990001',
+          password: 'TestPass123', confirmPassword: 'TestPass123'
+        });
+        assert.equal(registration.status, 201, JSON.stringify(registration.body));
+        const plan = await request(app).post('/api/subscriptions/admin/plans')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ type: 'maintenance', name: 'باقة صيانة اختبارية', price: 0, durationDays: 30, visitCount: 2, includedServices: ['فحص'], excludedSupplies: [], allowedDevices: 1, active: true });
+        assert.equal(plan.status, 201, JSON.stringify(plan.body));
+        const sendRequest = () => request(app).post('/api/subscriptions/client/request')
+          .set('Authorization', 'Bearer ' + registration.body.token)
+          .send({ planId: String(plan.body.plan._id), paymentMethod: 'transfer' });
+        const created = await sendRequest();
+        assert.equal(created.status, 202, JSON.stringify(created.body));
+        assert.equal(created.body.subscription.status, 'pending');
+        assert.equal(created.body.subscription.startsAt, null);
+        assert.equal(created.body.subscription.endsAt, null);
+        const duplicate = await sendRequest();
+        assert.equal(duplicate.status, 409);
+        const listed = await request(app).get('/api/subscriptions/admin/list?status=pending')
+          .set('Authorization', 'Bearer ' + adminToken);
+        assert.equal(listed.status, 200);
+        assert.ok(listed.body.subscriptions.some(item => String(item._id) === String(created.body.subscription._id)));
+        const id = created.body.subscription._id;
+        const incomplete = await request(app).patch('/api/subscriptions/admin/' + id + '/status')
+          .set('Authorization', 'Bearer ' + adminToken).send({ status: 'active' });
+        assert.equal(incomplete.status, 400);
+        const activated = await request(app).patch('/api/subscriptions/admin/' + id + '/status')
+          .set('Authorization', 'Bearer ' + adminToken)
+          .send({ status: 'active', dishSize: '100', receiverType: 'HD' });
+        assert.equal(activated.status, 200, JSON.stringify(activated.body));
+        assert.equal(activated.body.subscription.status, 'active');
+        assert.equal(activated.body.subscription.paymentStatus, 'paid');
+        assert.ok(activated.body.subscription.startsAt);
+        assert.ok(activated.body.subscription.endsAt);
+      });
+
       await test('admin imports store products from CSV in one validated batch and skips duplicates', async () => {
         const StoreProduct = require('../models/StoreProduct');
         const rows = [
