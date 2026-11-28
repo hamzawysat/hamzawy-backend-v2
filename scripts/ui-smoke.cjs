@@ -519,10 +519,10 @@ function apiResponse(pathname) {
                 await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), null, { timeout: 10000 });
                 await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
                 await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
-                const customerTabIds = ['home', 'new', 'orders', 'wallet', 'subscriptions', 'store', 'complaint'];
+                const customerTabIds = ['home', 'store', 'subscriptions', 'wallet', 'orders'];
                 const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
-                if (await customerTabButtons.count() !== customerTabIds.length) {
-                  failures.push('client/desktop: expected seven customer top navigation buttons');
+                if (await customerTabButtons.count() !== customerTabIds.length + 1) {
+                  failures.push('client/desktop: expected six customer navigation buttons including subscriptions and profile');
                 }
                 if (await page.locator('.client-section-tabs').count() !== 1 || await page.locator('nav.fixed.bottom-0').count() !== 0 ||
                     await page.locator('.dashboard-top-shell').evaluate(shell => getComputedStyle(shell).position !== 'sticky')) {
@@ -535,6 +535,13 @@ function apiResponse(pathname) {
                   await customerTabButtons.nth(tabIndex).click();
                   await page.waitForFunction(expected => state.tab === expected, customerTabIds[tabIndex], { timeout: 5000 });
                 }
+
+                await customerTabButtons.filter({ hasText: 'الرئيسية' }).click();
+                await page.locator('.client-home-dashboard').waitFor({ state: 'visible', timeout: 5000 });
+                await page.locator('.client-home-action').filter({ hasText: 'الاشتراكات' }).click();
+                await page.waitForFunction(() => state.tab === 'subscriptions' && state.commerceView === 'available', null, { timeout: 5000 });
+                await customerTabButtons.filter({ hasText: 'اشتراكاتي' }).click();
+                await page.waitForFunction(() => state.tab === 'subscriptions' && state.commerceView === 'current', null, { timeout: 5000 });
 
                 // Exercise the shared visual editor against the isolated MongoDB-backed API.
                 const adminLogin = await page.request.post(BASE + '/api/admin/login', {
