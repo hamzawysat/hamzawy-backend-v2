@@ -338,7 +338,7 @@ function loadStoreCartState(){
 }
 let state={
   storeCartByRole:loadStoreCartState(),storeProducts:[],myStoreOrders:[],
-  unifiedSubscriptionPlans:[],unifiedSubscriptions:[],unifiedSubscriptionVisits:[],commerceLoading:false,commerceError:'',walletBalance:0,walletFrozen:false,walletTransactions:[],walletTopupRequests:[],walletTransferNumbers:[],walletLoading:false,walletSubmitting:false,walletFromPhone:'',walletAmount:'',walletMethod:'vodafone_cash',walletReference:'',walletIdempotencyKey:'',walletError:'',walletSuccess:'',
+  unifiedSubscriptionPlans:[],unifiedSubscriptions:[],unifiedSubscriptionVisits:[],commerceView:'current',unifiedPlanDetailsOpen:{},unifiedPaymentMethods:{},commerceLoading:false,commerceError:'',walletBalance:0,walletFrozen:false,walletTransactions:[],walletTopupRequests:[],walletTransferNumbers:[],walletLoading:false,walletSubmitting:false,walletFromPhone:'',walletAmount:'',walletMethod:'vodafone_cash',walletReference:'',walletIdempotencyKey:'',walletError:'',walletSuccess:'',
   account:null,accountInitializing:false,accountToken:(()=>{try{return localStorage.getItem('sonaa_client_account_token')||'';}catch{return '';}})(),accountAuthMode:forceClientRegistration?'register':'login',accountLoading:false,accountError:'',myOrders:[],accountOrdersLoading:false,accountOrdersTab:'current',notifications:[],notificationsUnread:0,notificationsOpen:false,
   tab:'home',clientNewRequestChoice:'',service:'',clientName:'',area:'',areaSearch:'',address:'',phone:'',budget:'',desc:'',voiceBlob:null,voiceUrl:'',voiceRecordingData:'',voiceRecorder:null,voiceChunks:[],voiceRecording:false,loading:false,sn:null,
   trackInput:'',tracked:null,trackError:'',trackLoading:false,acceptingOffer:'',
