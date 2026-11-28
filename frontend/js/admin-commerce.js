@@ -51,6 +51,11 @@ async function fetchUnifiedSubscriptionResource(path,label){
   tryApi([path],{method:'GET'}).then(data=>finish({ok:true,data})).catch(error=>finish({ok:false,error}));
  });
 }
+function safeCommerceRender(context='subscriptions'){
+ if(typeof safeAdminRender==='function')return safeAdminRender(context);
+ try{render();return true;}
+ catch(error){console.error('[admin-ui] subscription render failed:',context,error);return false;}
+}
 async function loadClientSubscriptions(){
  const tab=state.tab;
  const plansOnly=tab==='commercePlans';
@@ -61,7 +66,7 @@ async function loadClientSubscriptions(){
  state.unifiedSubscriptionError='';
  if(plansOnly)state.unifiedPlansLoaded=false;
  else {state.unifiedSubscriptionsLoaded=false;state.unifiedVisitsLoaded=false;}
- safeAdminRender('subscriptions-loading');
+ safeCommerceRender('subscriptions-loading');
  try{
   const jobs=plansOnly
    ? [['plans','/api/subscriptions/admin/plans','الباقات']]
@@ -88,7 +93,7 @@ async function loadClientSubscriptions(){
  }finally{
   if(state.unifiedSubscriptionLoadId===requestId){
    state.commerceLoading=false;
-   if(['commercePlans','commerceSubscriptions'].includes(state.tab))safeAdminRender('subscriptions-loaded');
+   if(['commercePlans','commerceSubscriptions'].includes(state.tab))safeCommerceRender('subscriptions-loaded');
   }
  }
 }
