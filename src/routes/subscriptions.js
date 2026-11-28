@@ -519,14 +519,14 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
   const { error, value } = visitSchema.validate(req.body || {});
   if (error) return res.status(400).json({ message: 'بيانات الزيارة غير صحيحة.' });
   try {
-    const visit = value.visitId ? await SubscriptionVisit.findOne({ _id: value.visitId, status: 'requested' }) : null;
+    let visit = value.visitId ? await SubscriptionVisit.findOne({ _id: value.visitId, status: 'requested' }) : null;
     const subscription = visit ? await findSubscriptionById(visit.subscription) : await findSubscriptionById(value.subscriptionId);
     const technician = await Fanni.findOne({ _id: value.technicianId, role: 'fanni', status: 'معتمد', archivedAt: null });
     if (!subscription || !technician) return res.status(404).json({ message: 'الاشتراك أو الفني غير موجود أو غير معتمد.' });
     if (subscription.type !== 'maintenance' || subscription.status !== 'active') return res.status(409).json({ message: 'يمكن إسناد الزيارات لاشتراك صيانة سنوية ساري فقط.' });
     if (value.visitId && !visit) return res.status(404).json({ message: 'طلب الزيارة غير موجود أو تم إسناده بالفعل.' });
     if (visit) { visit.technician = technician._id; visit.scheduledAt = value.scheduledAt; visit.status = 'scheduled'; visit.createdBy = String(req.user?.name || 'الإدارة'); await visit.save(); }
-    else { const visit = await SubscriptionVisit.create({ subscription: subscription._id, client: subscription.client, technician: technician._id, scheduledAt: value.scheduledAt, createdBy: String(req.user?.name || 'الإدارة') }); }
+    else { visit = await SubscriptionVisit.create({ subscription: subscription._id, client: subscription.client, technician: technician._id, scheduledAt: value.scheduledAt, createdBy: String(req.user?.name || 'الإدارة') }); }
     await createNotification({ recipientRole: 'fanni', recipientId: technician._id, type: 'subscription_visit_assigned', title: 'زيارة صيانة جديدة', message: 'تم إسناد زيارة لك للاشتراك ' + subscription.code, link: '/fanni' });
     await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_visit_scheduled', title: 'تم تحديد موعد زيارة', message: 'موعد الزيارة ' + new Date(value.scheduledAt).toLocaleString('ar-EG'), link: '/client' });
     return res.status(201).json({ message: 'تم إسناد الزيارة للفني.', visit });
