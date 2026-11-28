@@ -271,6 +271,25 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     return res.status(201).json({ message: 'تم إنشاء الاشتراك وتفعيله.', subscription: created });
   } catch (e) { return next(e); }
 });
+router.delete('/admin/:id', auth('admin'), async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
+  let session;
+  try {
+    session = await mongoose.startSession();
+    let deleted = null;
+    await session.withTransaction(async () => {
+      const current = await findSubscriptionById(req.params.id, { session });
+      if (!current) return;
+      const Model = modelForType(current.type);
+      await SubscriptionVisit.deleteMany({ subscription: current._id }).session(session);
+      deleted = await Model.findByIdAndDelete(current._id).session(session);
+    });
+    if (!deleted) return res.status(404).json({ message: 'الاشتراك غير موجود أو تم حذفه بالفعل.' });
+    return res.json({ message: 'تم حذف الاشتراك نهائيًا وزياراته المرتبطة. لم يتم إجراء أي استرداد مالي.', deletedId: String(deleted._id) });
+  } catch (e) { return next(e); }
+  finally { if (session) await session.endSession(); }
+});
+
 router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
   const { error, value } = Joi.object({ status: Joi.string().valid('active','paused','cancelled').required(), note: Joi.string().trim().max(500).allow('').default('') }).unknown(false).validate(req.body || {});
