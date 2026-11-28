@@ -2850,6 +2850,24 @@ async function run() {
           const adminList = await request(app).get('/api/subscriptions/admin/list')
             .set('Authorization', 'Bearer ' + adminToken);
           assert.equal(adminList.status, 200, JSON.stringify(adminList.body));
+
+          // A cached ETag must not turn any admin subscription read into HTTP 304.
+          const assertAdminSubscriptionReadIgnoresValidators = async (url, label) => {
+            const first = await request(app).get(url)
+              .set('Authorization', 'Bearer ' + adminToken);
+            assert.equal(first.status, 200, label + ' initial read: ' + JSON.stringify(first.body));
+            assert.ok(first.headers.etag, label + ' should expose an ETag so the conditional request is exercised');
+            const conditional = await request(app).get(url)
+              .set('Authorization', 'Bearer ' + adminToken)
+              .set('If-None-Match', first.headers.etag);
+            assert.equal(conditional.status, 200,
+              label + ' must ignore stale If-None-Match validators instead of returning 304');
+            assert.match(conditional.headers['cache-control'] || '', /no-store/,
+              label + ' must remain non-cacheable');
+          };
+          await assertAdminSubscriptionReadIgnoresValidators('/api/subscriptions/admin/plans', 'admin plans');
+          await assertAdminSubscriptionReadIgnoresValidators('/api/subscriptions/admin/list', 'admin customer subscriptions');
+          await assertAdminSubscriptionReadIgnoresValidators('/api/subscriptions/admin/visits', 'admin maintenance visits');
           assert.ok(adminList.body.subscriptions.some(item => String(item._id) === walletSubscriptionId),
             'admin list must contain the customer wallet request');
           assert.ok(adminList.body.subscriptions.some(item => String(item._id) === transferSubscriptionId),
