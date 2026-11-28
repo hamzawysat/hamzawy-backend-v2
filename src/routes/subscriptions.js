@@ -14,6 +14,22 @@ const { clientAuth } = require('../middleware/clientAuth');
 const { createNotification, notifyAdmins } = require('../utils/notifications');
 const { encrypt, decrypt } = require('../utils/subscriptionCrypto');
 const router = express.Router();
+// Admin subscription reads must never become 304 responses. Express evaluates
+// conditional request headers before sending JSON, even when Cache-Control is
+// no-store; older browser validators can therefore turn a fresh API read into
+// an empty 304 that the admin API helper correctly treats as a failure.
+router.use('/admin', (req, res, next) => {
+  if (req.method === 'GET') {
+    delete req.headers['if-none-match'];
+    delete req.headers['if-modified-since'];
+    res.set({
+      'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+  }
+  next();
+});
 const TYPES = ['maintenance','air_network','iptv'];
 const planSchema = Joi.object({
   type: Joi.string().valid(...TYPES).required(), name: Joi.string().trim().min(2).max(100).required(),
