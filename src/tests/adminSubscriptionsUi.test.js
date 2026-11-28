@@ -75,6 +75,7 @@ assert.ok(source.includes("const details=!['pending','cancelled'].includes(sub.s
 assert.ok(source.includes("type:'select',required:true,options:technicians.map"), 'technician assignment must use a technician picker rather than asking for an ID');
 assert.ok(source.includes("type:'datetime-local'"), 'visit scheduling must use a date/time picker rather than an ISO text prompt');
 assert.match(subscriptionsRoutes, /status: 'requested'/, 'customer visit requests must be persisted as pending admin work');
+assert.match(fs.readFileSync(path.join(__dirname, '../utils/adminNotificationPreferences.js'), 'utf8'), /admin_subscription_visit_request/, 'visit request notifications must use subscription notification preferences');
 assert.match(subscriptionsRoutes, /visitId: Joi.string\(\)\.hex\(\)\.length\(24\)/, 'admin assignment must support assigning an existing customer request');
 assert.match(adminCommerceSource, /طلب جديد — لم يتم الإسناد/, 'admin subscriptions must visibly distinguish unassigned visit requests');
 assert.ok(adminCommerceSource.includes('assignUnifiedSubscriptionVisit('), 'admin must expose an action to assign a requested visit');
