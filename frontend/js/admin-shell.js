@@ -156,6 +156,7 @@ function renderCurrentTab(){
     case 'wallets': return renderWallets();
     case 'clientWallet': return renderClientWallet();
     case 'commercePlans': case 'commerceSubscriptions': return renderCommerce();
+    case 'commerceSubscriptionVisits': return renderUnifiedSubscriptionVisits();
     case 'topups': return renderTopups();
     case 'complaints': return renderComplaints();
     case 'services': return renderServices();

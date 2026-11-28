@@ -10,6 +10,7 @@ function verifyAdminDashboardSource() {
   const shell = read('frontend/js/admin-shell.js');
   const store = read('frontend/js/admin-store.js');
   const core = read('frontend/js/admin-core.js');
+  const commerce = read('frontend/js/admin-commerce.js');
   const stats = read('frontend/js/admin/clients-render.js');
   const header = read('frontend/css/admin-header.css');
   const html = read('frontend/admin.html');
@@ -61,6 +62,16 @@ function verifyAdminDashboardSource() {
       !fanniRender.includes('renderFanniPublicContent') ||
       !fanniDashboard.includes("apiGet('/api/content?role=fanni')")) {
     throw new Error('Client/technician announcement and FAQ audience targeting regression');
+  }
+  if (!core.includes("{id:'commerceSubscriptionVisits',label:'زيارات الصيانة'}") ||
+      !core.includes("'commerceSubscriptionVisits'") ||
+      !shell.includes("case 'commerceSubscriptionVisits': return renderUnifiedSubscriptionVisits();") ||
+      !commerce.includes("function renderUnifiedSubscriptionVisits()") ||
+      !commerce.includes("setUnifiedSubscriptionVisitSearch(this.value)") ||
+      !commerce.includes("visit.technician?.name") ||
+      !commerce.includes("grouped.set(key,[])") ||
+      commerce.includes("زيارات الصيانة ('+visits.length+')")) {
+    throw new Error('Subscription maintenance visits must have a separate customer-grouped page with client/technician search');
   }
   if (sectionPositions.some(position => position < 0) ||
       sectionPositions.some((position, index) => index > 0 && position <= sectionPositions[index - 1])) {
