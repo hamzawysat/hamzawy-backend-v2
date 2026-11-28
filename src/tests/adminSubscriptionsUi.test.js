@@ -26,6 +26,8 @@ const context = {
   console,
   Date,
   Promise,
+  setTimeout,
+  clearTimeout,
   Number,
   String,
   Array,
