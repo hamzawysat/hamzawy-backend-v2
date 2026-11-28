@@ -1,5 +1,13 @@
 'use strict';
 
+function safeAdminRender(context='render'){
+ try{render();return true;}
+ catch(error){
+  console.error('[admin-ui] render failed:',context,error);
+  try{showToast('تعذر تحديث عرض القسم. تم تسجيل الخطأ ويمكن متابعة تحميل البيانات.','error');}catch(_){}
+  return false;
+ }
+}
 const ADMIN_TAB_HISTORY=[];
 const ADMIN_LAST_VIEW_KEY='sonaaAdminLastView';
 const ADMIN_HISTORY_STATE_KEY='sonaaAdminView';
@@ -54,7 +62,7 @@ function setTab(t,scrollTarget='content',fromBack=false){
   if(!fromBack)rememberAdminView();
   state.filter='الكل';
  }
- state.tab=t;state.pageMode='section';saveAdminLastView(t,'section');state.dropdowns={};state.pendingActions={};render();
+ state.tab=t;state.pageMode='section';saveAdminLastView(t,'section');state.dropdowns={};state.pendingActions={};safeAdminRender('setTab:'+t);
  if(t==='referrals')loadReferralManagement();else if(t==='profileEdits')loadFanniProfileEdits();else if(t==='fanniCardLedger')loadFanniCardLedger();else if(t==='orders')loadOrders();else if(t==='roles')loadAdminUsers();else if(t==='complaints')loadComplaints();else if(t==='services')loadServices();else if(t==='regions')loadRegions();else if(t==='pricing')loadPricing();else if(t==='settings')loadSettings();else if(t==='security')loadAuditLogs();else if(t==='pageVisits')loadPageVisits();else if(t==='notifications')loadNotificationHistory();else if(t==='support')loadSupportViolations();else if(t==='content')loadContent();else if(t==='topups'){applyTopupFilter();if(canReadTab('clientWallet'))loadClientTopups();}else if(t==='clients')loadClients();else if(t==='archive')loadArchive();else if(t==='clientWallet')loadClientTopups();else if(t==='commercePlans')loadCommerceCatalog();else if(t==='commerceSubscriptions')loadClientSubscriptions();else if(t==='store')loadStoreProducts();else if(t==='storeOrders')loadStoreOrders();else if(t==='wallets')render();else applyFilter();
  writeAdminHistoryState(false);
 }
@@ -134,3 +142,20 @@ if(!window.__sonaaAdminRefreshLoop){
 }
 function handleGlobalRefresh(){const button=document.getElementById('global-refresh');if(button?.disabled)return;if(button){button.disabled=true;button.classList.add('is-refreshing');}window.location.reload();}
 document.getElementById('global-refresh')?.addEventListener('click', handleGlobalRefresh);
+
+// Use delegated native listeners for the main section navigation. This avoids
+// relying on inline onclick attributes and keeps navigation working after rerenders.
+if(!window.__adminSectionNavigationBound){
+ window.__adminSectionNavigationBound=true;
+ document.addEventListener('click',event=>{
+  const target=event.target&&event.target.closest?event.target.closest('[data-admin-tab]'):null;
+  if(!target)return;
+  const tab=String(target.getAttribute('data-admin-tab')||'').trim();
+  if(!tab)return;
+  event.preventDefault();
+  try{setTab(tab);}catch(error){
+   console.error('[admin-ui] section navigation failed:',tab,error);
+   try{showToast('تعذر فتح القسم. راجع سجل أخطاء لوحة الإدارة.','error');}catch(_){}
+  }
+ },true);
+}

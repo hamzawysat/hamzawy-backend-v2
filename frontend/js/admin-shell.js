@@ -100,7 +100,7 @@ function render(){
               <div class="section-nav-items">
                 ${section.tabs.filter(item=>canReadTab(item.id)).map(item=>`
                   <div>
-                    <button type="button" onclick="setTab('${item.id}')" class="section-nav-btn ${state.tab===item.id?'active':''}">
+                    <button type="button" data-admin-tab="${item.id}" class="section-nav-btn ${state.tab===item.id?'active':''}">
                       <span class="section-nav-label">${escHtml(item.label)}</span>${renderSectionCount(item)}
                     </button>
                     
