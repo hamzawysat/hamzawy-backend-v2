@@ -2842,8 +2842,13 @@ async function run() {
           type: 'iptv', name: 'اختبار الباقة الترفيهية', price: 30,
           durationDays: 30, allowedDevices: 2, active: true
         });
+        const localPlan = await SubscriptionPlan.create({
+          type: 'air_network', name: 'اختبار الباقة المحلية', price: 15,
+          durationDays: 30, allowedDevices: 3, active: true
+        });
         let walletSubscriptionId = '';
         let transferSubscriptionId = '';
+        let localSubscriptionId = '';
         try {
           await Client.updateOne({ _id: clientId }, { $set: { walletBalance: 5000 } });
           const publicPlans = await request(app).get('/api/subscriptions/plans');
@@ -2867,6 +2872,12 @@ async function run() {
           assert.equal(transferRequest.status, 202, JSON.stringify(transferRequest.body));
           assert.equal(transferRequest.body.subscription.paymentMethod, 'transfer');
           transferSubscriptionId = String(transferRequest.body.subscription._id);
+
+          const localRequest = await request(app).post('/api/subscriptions/client/request')
+            .set('Authorization', 'Bearer ' + clientToken)
+            .send({ planId: String(localPlan._id), paymentMethod: 'transfer' });
+          assert.equal(localRequest.status, 202, JSON.stringify(localRequest.body));
+          localSubscriptionId = String(localRequest.body.subscription._id);
 
           const adminList = await request(app).get('/api/subscriptions/admin/list')
             .set('Authorization', 'Bearer ' + adminToken);
@@ -2911,15 +2922,52 @@ async function run() {
           assert.equal(Number((await Client.findById(clientId).lean()).walletBalance), 4975,
             'transfer approval must never debit the wallet');
 
+          const localApproval = await request(app).patch('/api/subscriptions/admin/' + localSubscriptionId + '/status')
+            .set('Authorization', 'Bearer ' + adminToken)
+            .send({ status: 'active', note: 'تأكيد الاشتراك المحلي للاختبار' });
+          assert.equal(localApproval.status, 200, JSON.stringify(localApproval.body));
+
+          const maintenanceDetails = await request(app).patch('/api/subscriptions/admin/' + walletSubscriptionId + '/details')
+            .set('Authorization', 'Bearer ' + adminToken)
+            .send({ address: 'عنوان اختبار الصيانة', dishSize: '100 سم', receiverType: '4K', visitsIncluded: 3 });
+          assert.equal(maintenanceDetails.status, 200, JSON.stringify(maintenanceDetails.body));
+          const storedMaintenance = await modelForType('maintenance').findById(walletSubscriptionId).lean();
+          assert.equal(storedMaintenance.dishSize, '100 سم');
+          assert.equal(storedMaintenance.maintenanceDetails.receiverType, '4K');
+          assert.equal(storedMaintenance.visitsIncluded, 3);
+
+          const localDetails = await request(app).patch('/api/subscriptions/admin/' + localSubscriptionId + '/details')
+            .set('Authorization', 'Bearer ' + adminToken)
+            .send({ networkName: 'شبكة الاختبار', activationCode: 'LOCAL-123', deviceType: 'راوتر' });
+          assert.equal(localDetails.status, 200, JSON.stringify(localDetails.body));
+          const storedLocal = await modelForType('air_network').findById(localSubscriptionId).lean();
+          assert.equal(storedLocal.networkName, 'شبكة الاختبار');
+          assert.equal(storedLocal.localDetails.activationCode, 'LOCAL-123');
+
+          const entertainmentDetails = await request(app).patch('/api/subscriptions/admin/' + transferSubscriptionId + '/details')
+            .set('Authorization', 'Bearer ' + adminToken)
+            .send({ deviceType: 'تلفزيون ذكي', portalUrl: 'https://iptv.example.test', iptvUsername: 'test-user', iptvPassword: 'test-pass', allowedDevices: 4 });
+          assert.equal(entertainmentDetails.status, 200, JSON.stringify(entertainmentDetails.body));
+          const storedEntertainment = await modelForType('iptv').findById(transferSubscriptionId).lean();
+          assert.notEqual(storedEntertainment.iptvUsernameEncrypted, 'test-user');
+          assert.notEqual(storedEntertainment.iptvPasswordEncrypted, 'test-pass');
+          assert.equal(storedEntertainment.entertainmentDetails.deviceType, 'تلفزيون ذكي');
+          assert.equal(storedEntertainment.allowedDevices, 4);
+
           const clientMine = await request(app).get('/api/subscriptions/client/mine')
             .set('Authorization', 'Bearer ' + clientToken);
           assert.equal(clientMine.status, 200, JSON.stringify(clientMine.body));
           assert.ok(clientMine.body.subscriptions.some(item => String(item._id) === walletSubscriptionId && item.status === 'active'));
           assert.ok(clientMine.body.subscriptions.some(item => String(item._id) === transferSubscriptionId && item.status === 'active'));
+          const clientEntertainment = clientMine.body.subscriptions.find(item => String(item._id) === transferSubscriptionId);
+          assert.equal(clientEntertainment.iptvUsername, 'test-user');
+          assert.equal(clientEntertainment.iptvPassword, 'test-pass');
+          assert.ok(clientMine.body.subscriptions.some(item => String(item._id) === localSubscriptionId && item.status === 'active'));
         } finally {
           if (walletSubscriptionId) await modelForType('maintenance').deleteOne({ _id: walletSubscriptionId });
           if (transferSubscriptionId) await modelForType('iptv').deleteOne({ _id: transferSubscriptionId });
-          await SubscriptionPlan.deleteMany({ _id: { $in: [maintenancePlan._id, entertainmentPlan._id] } });
+          if (localSubscriptionId) await modelForType('air_network').deleteOne({ _id: localSubscriptionId });
+          await SubscriptionPlan.deleteMany({ _id: { $in: [maintenancePlan._id, entertainmentPlan._id, localPlan._id] } });
           await WalletTransaction.deleteMany({ client: clientId, idempotencyKey: 'unified-subscription-initial:' + walletSubscriptionId });
           await Client.updateOne({ _id: clientId }, { $set: { walletBalance: originalClientBalance } });
         }
