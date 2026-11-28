@@ -87,8 +87,8 @@ assert.match(context.renderCommerce(), /HS-TEST/, 'opening a customer must revea
 assert.ok(source.includes('editUnifiedSubscriptionDates'), 'activated subscriptions must expose manual start/end date editing');
 assert.ok(source.includes('/dates'), 'manual date edits must use the admin API');
 assert.ok(!source.includes('رابط الخدمة يجب أن يبدأ بـ http أو https'), 'IPTV URL input must not require an HTTP scheme');
-assert.match(subscriptionsRoutes, /portalUrl: Joi\\.string\\(\\)\\.trim\\(\\)\\.max\\(500\\)/, 'IPTV URL validation must accept scheme-less values');
-assert.match(subscriptionsRoutes, /router\\.patch\\('\\/admin\\/:id\\/dates'/, 'manual date editing must have a protected admin route');
+assert.ok(subscriptionsRoutes.includes('portalUrl: Joi.string().trim().max(500)'), 'IPTV URL validation must accept scheme-less values');
+assert.ok(subscriptionsRoutes.includes("router.patch('/admin/:id/dates'"), 'manual date editing must have a protected admin route');
 assert.match(context.renderCommerce(), /إعادة المحاولة/, 'the subscriptions panel must expose retry after an API error');
 state.unifiedSubscriptions = [];
 
