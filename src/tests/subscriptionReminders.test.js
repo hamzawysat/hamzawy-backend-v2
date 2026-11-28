@@ -66,6 +66,7 @@ async function main() {
         code: 'TEST-' + type + '-' + days,
         client: 'client-' + type,
         clientName: 'عميل اختبار',
+        status: days === 0 ? 'expired' : 'active',
         endsAt: dateAtCalendarOffset(days, days === 0 ? 0 : 18)
       });
     }
@@ -82,7 +83,7 @@ async function main() {
     const rows = adminNotifications.filter(item => item.dedupeKey.includes(type + '-'));
     assert.equal(rows.length, 4, type + ' must have all four admin reminder milestones');
     assert.deepEqual(
-      rows.map(item => Number(item.dedupeKey.split(':').at(-1))).sort((a, b) => b - a),
+      rows.map(item => Number(item.dedupeKey.split(':').pop())).sort((a, b) => b - a),
       [7, 2, 1, 0],
       type + ' admin reminder days must remain unchanged'
     );
@@ -99,8 +100,8 @@ async function main() {
 
   const firstExpiryIndex = events.findIndex(item => item.kind === 'expire');
   const lastReminderIndex = Math.max(
-    events.findLastIndex(item => item.kind === 'client-notification'),
-    events.findLastIndex(item => item.kind === 'admin-notification')
+    events.map(item => item.kind).lastIndexOf('client-notification'),
+    events.map(item => item.kind).lastIndexOf('admin-notification')
   );
   assert.ok(firstExpiryIndex > lastReminderIndex,
     'due reminders must be queued before active subscriptions are marked expired');
