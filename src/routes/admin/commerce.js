@@ -302,6 +302,16 @@ function createAdminCommerceRouter({ auth, validate, Joi, mongoose, Client, Comm
       next(error);
     } finally { if (session) await session.endSession(); }
   });
+  router.delete('/commerce/subscriptions/:id', auth('admin'), async (req, res, next) => {
+    if (!validId(req.params.id)) return sendBadId(res);
+    try {
+      const subscription = await ClientSubscription.findByIdAndDelete(req.params.id);
+      if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود أو تم حذفه بالفعل.' });
+      await writeAdminAudit(req, 'حذف نهائي لاشتراك عميل', 'client-subscriptions', String(subscription._id),
+        'client=' + String(subscription.client) + '; item=' + String(subscription.itemName || '') + '; status=' + String(subscription.status || ''));
+      return res.json({ message: 'تم حذف الاشتراك نهائيًا. لم يتم إجراء أي استرداد مالي.', deletedId: String(subscription._id) });
+    } catch (error) { next(error); }
+  });
   return router;
 }
 module.exports = createAdminCommerceRouter;

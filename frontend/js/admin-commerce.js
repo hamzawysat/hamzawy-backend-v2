@@ -45,6 +45,17 @@ async function editClientSubscriptionDetails(id){
 }
 async function renewClientSubscription(id){if(!confirm('تأكيد تجديد الاشتراك؟'))return;try{await tryApi(['/api/admin/commerce/subscriptions/'+encodeURIComponent(id)+'/renew'],{method:'POST',body:JSON.stringify({})});showToast('تم تجديد الاشتراك','success');await loadClientSubscriptions();}catch(error){showToast(error.message||'تعذر تجديد الاشتراك','error');}}
 async function changeClientSubscriptionStatus(id,status){try{await tryApi(['/api/admin/commerce/subscriptions/'+encodeURIComponent(id)+'/status'],{method:'PATCH',body:JSON.stringify({status,reason:'تحديث من لوحة الإدارة'})});showToast('تم تحديث حالة الاشتراك','success');await loadClientSubscriptions();}catch(error){showToast(error.message||'تعذر تحديث الاشتراك','error');}}
+async function deleteClientSubscription(id){
+  const sub=(state.clientSubscriptions||[]).find(item=>String(item._id)===String(id));
+  if(!sub)return showToast('الاشتراك غير موجود','error');
+  const client=sub.client||{};
+  if(!confirm('تحذير: حذف اشتراك '+(client.name||'العميل')+' — '+(sub.itemName||'اشتراك')+' نهائيًا؟ لا يمكن التراجع عن الحذف ولن يتم رد أي مبلغ تلقائيًا.'))return;
+  try{
+    const result=await tryApi(['/api/admin/commerce/subscriptions/'+encodeURIComponent(id)],{method:'DELETE'});
+    showToast(result.message||'تم حذف الاشتراك نهائيًا','success');
+    await loadClientSubscriptions();
+  }catch(error){showToast(error.message||'تعذر حذف الاشتراك','error');}
+}
 function renderCommercePlans(){const rows=state.commerceItems||[];return `<section class="mt-4 space-y-3"><div class="premium-panel p-4 flex items-center justify-between gap-2"><div><h2 class="font-black text-sm">باقات الاشتراك</h2><p class="text-[11px] text-slate-500 mt-1">كتالوج مرن قابل لإضافة المنتجات لاحقًا</p></div><button class="pill-btn primary-btn" onclick="openCommercePlanEditor()">إضافة باقة</button></div>${state.commerceLoading?'<p class="text-center p-5">جاري التحميل...</p>':''}${rows.length?rows.map(item=>`<article class="premium-card p-4 flex items-center justify-between gap-3"><div class="min-w-0"><h3 class="font-black text-sm">${escHtml(item.name)}</h3><p class="text-xs text-slate-500 mt-1">${Number(item.price).toLocaleString('ar-EG')} جنيه · ${Number(item.durationDays)} يوم</p><p class="text-[11px] text-slate-500 mt-1">${escHtml(item.description||'')}</p><p class="text-[10px] text-slate-500 mt-1" dir="ltr">${escHtml(item._id)}</p><span class="text-[10px] font-bold ${item.active?'text-emerald-700':'text-red-600'}">${item.active?'مفعلة':'متوقفة'}</span></div><div class="flex flex-col gap-2 shrink-0"><button class="pill-btn soft-btn" onclick="openCommercePlanEditor('${item._id}')">تعديل</button><button class="pill-btn soft-btn" onclick="toggleCommercePlan('${item._id}')">${item.active?'إيقاف':'تفعيل'}</button></div></article>`).join(''):'<p class="premium-panel p-6 text-center text-sm text-slate-500">لا توجد باقات حتى الآن.</p>'}</section>`;}
 function setClientSubscriptionStatusTab(tab){if(!['active','expired','pending'].includes(tab))return;state.clientSubscriptionStatusTab=tab;render();}
 function renderCommerceSubscriptions(){
@@ -87,7 +98,8 @@ function renderCommerceSubscriptions(){
       '<div class="flex flex-wrap gap-2"><button class="pill-btn soft-btn" onclick="editClientSubscriptionDetails(\''+escHtml(sub._id)+'\')">'+(sub.subscriptionDetails?'تعديل التفاصيل':'إضافة تفاصيل الاشتراك')+'</button>'+
       '<button class="pill-btn soft-btn" onclick="renewClientSubscription(\''+escHtml(sub._id)+'\')">تجديد</button>'+
       (sub.status==='active'?'<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'paused\')">إيقاف مؤقت</button>':'<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'active\')">تفعيل</button>')+
-      '<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'cancelled\')">إلغاء</button></div></article>';
+      '<button class="pill-btn soft-btn" onclick="changeClientSubscriptionStatus(\''+escHtml(sub._id)+'\',\'cancelled\')">إلغاء</button>'+
+      '<button class="pill-btn soft-btn text-red-700" onclick="deleteClientSubscription(\''+escHtml(sub._id)+'\')">حذف نهائي</button></div></article>';
   }).join('');
   return '<section class="mt-4 space-y-3"><div class="premium-panel p-4 flex items-center justify-between gap-2"><div><h2 class="font-black text-sm">اشتراكات العملاء</h2><p class="text-[11px] text-slate-500 mt-1">متابعة الاشتراكات السارية والمنتهية وطلبات التفعيل الجديدة</p></div><button class="pill-btn primary-btn" onclick="createClientSubscription()">إضافة اشتراك</button></div>'+
     '<div class="flex flex-wrap gap-2">'+tabButtons+'</div>'+
@@ -180,6 +192,16 @@ async function setUnifiedSubscriptionStatus(id,status){
   try{const result=await tryApi(['/api/subscriptions/admin/'+encodeURIComponent(id)+'/status'],{method:'PATCH',body:JSON.stringify(body)});showToast(result.message||'تم تحديث الحالة','success');await loadClientSubscriptions();}
   catch(error){showToast(error.message||'تعذر تحديث الحالة','error');}
 }
+async function deleteUnifiedSubscription(id){
+  const row=(state.unifiedSubscriptions||[]).find(item=>String(item._id)===String(id));
+  if(!row)return showToast('الاشتراك غير موجود','error');
+  if(!confirm('تحذير: سيتم حذف اشتراك '+(row.code||'')+' للعميل '+(row.clientName||row.clientPhone||'')+' نهائيًا، مع حذف زياراته المرتبطة. لن يتم رد أي مبالغ تلقائيًا ولا يمكن التراجع. هل تريد المتابعة؟'))return;
+  try{
+    const result=await tryApi(['/api/subscriptions/admin/'+encodeURIComponent(id)],{method:'DELETE'});
+    showToast(result.message||'تم حذف الاشتراك نهائيًا','success');
+    await loadClientSubscriptions();
+  }catch(error){showToast(error.message||'تعذر حذف الاشتراك','error');}
+}
 async function renewUnifiedSubscription(id){
   const row=(state.unifiedSubscriptions||[]).find(x=>String(x._id)===String(id));if(!row)return;
   const amount=Number(prompt('سعر التجديد بالجنيه:',String(row.amount)));if(!Number.isFinite(amount)||amount<0)return;
@@ -207,7 +229,8 @@ function renderUnifiedSubscriptionPanel(){
   const paymentLabel=s.paymentMethod==='wallet'?'محفظة التطبيق':s.paymentMethod==='transfer'?'تحويل أموال':'غير محددة';
   const dateLine=s.status==='pending'?'طلب جديد — بانتظار استكمال البيانات الفنية · طريقة الدفع: '+paymentLabel:'ينتهي '+(s.endsAt?new Date(s.endsAt).toLocaleDateString('ar-EG'):'—')+' · '+Number(s.amount).toLocaleString('ar-EG')+' جنيه';
   const actions=s.status==='pending'?'<button class="pill-btn primary-btn" onclick="setUnifiedSubscriptionStatus(\''+s._id+'\',\'active\')">استكمال البيانات والتفعيل</button>':'<button class="pill-btn soft-btn" onclick="renewUnifiedSubscription(\''+s._id+'\')">تجديد</button><button class="pill-btn soft-btn" onclick="assignUnifiedSubscriptionVisit(\''+s._id+'\')">إسناد زيارة</button><button class="pill-btn soft-btn" onclick="setUnifiedSubscriptionStatus(\''+s._id+'\',\'paused\')">تعليق</button><button class="pill-btn soft-btn" onclick="setUnifiedSubscriptionStatus(\''+s._id+'\',\'active\')">تفعيل</button>';
-  return '<article class="premium-card p-3 space-y-2"><div class="flex justify-between gap-2"><b>'+escHtml(unifiedTypeLabel(s.type))+' · '+escHtml(s.code)+'</b><span class="text-xs">'+escHtml(s.status)+'</span></div><p class="text-xs">'+escHtml(s.clientName||'')+' · '+escHtml(s.clientPhone||'')+'</p><p class="text-xs">'+dateLine+'</p>'+credentials+whatsapp+'<div class="flex flex-wrap gap-2">'+actions+'</div></article>';
+  const deleteAction='<button class="pill-btn soft-btn text-red-700" onclick="deleteUnifiedSubscription(\''+s._id+'\')">حذف نهائي</button>';
+  return '<article class="premium-card p-3 space-y-2"><div class="flex justify-between gap-2"><b>'+escHtml(unifiedTypeLabel(s.type))+' · '+escHtml(s.code)+'</b><span class="text-xs">'+escHtml(s.status)+'</span></div><p class="text-xs">'+escHtml(s.clientName||'')+' · '+escHtml(s.clientPhone||'')+'</p><p class="text-xs">'+dateLine+'</p>'+credentials+whatsapp+'<div class="flex flex-wrap gap-2">'+actions+deleteAction+'</div></article>';
  }).join('');
  return '<section class="premium-panel p-4 mt-4 space-y-3"><div class="flex flex-wrap justify-between gap-2"><div><h2 class="font-black">الاشتراكات الموحدة · صيانة / اشتراك محلي / اشتراك ترفيهي</h2><p class="text-xs text-slate-500">خطط وأسعار ومدد مستقلة، وسجل اشتراكات وزيارات</p></div><div class="flex gap-2"><button class="pill-btn soft-btn" onclick="createUnifiedSubscriptionPlan()">إضافة خطة</button><button class="pill-btn primary-btn" onclick="createUnifiedSubscription()">إضافة اشتراك</button></div></div><h3 class="font-bold text-sm">الخطط ('+plans.length+')</h3><div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+planCards+'</div>'+'<div class="grid grid-cols-2 md:grid-cols-4 gap-2"><div class="premium-card p-3"><b>'+allRows.length+'</b><p class="text-xs">إجمالي الاشتراكات</p></div><div class="premium-card p-3"><b>'+activeCount+'</b><p class="text-xs">نشطة</p></div><div class="premium-card p-3"><b>'+pendingCount+'</b><p class="text-xs">قيد المراجعة</p></div><div class="premium-card p-3"><b>'+expiringCount+'</b><p class="text-xs">تنتهي خلال 7 أيام</p></div></div><div class="grid grid-cols-1 md:grid-cols-4 gap-2"><input id="unified-subscription-search" class="form-input" value="'+escAttr(filters.search||'')+'" placeholder="بحث بالكود أو اسم العميل أو الهاتف"><select id="unified-subscription-status" class="form-input"><option value="">كل الحالات</option><option value="active" '+(filters.status==='active'?'selected':'')+'>نشط</option><option value="pending" '+(filters.status==='pending'?'selected':'')+'>قيد المراجعة</option><option value="paused" '+(filters.status==='paused'?'selected':'')+'>موقوف</option><option value="expired" '+(filters.status==='expired'?'selected':'')+'>منتهي</option><option value="cancelled" '+(filters.status==='cancelled'?'selected':'')+'>ملغي</option></select><select id="unified-subscription-type" class="form-input"><option value="">كل الأنواع</option><option value="maintenance" '+(filters.type==='maintenance'?'selected':'')+'>صيانة سنوية</option><option value="air_network" '+(filters.type==='air_network'?'selected':'')+'>اشتراك محلي</option><option value="iptv" '+(filters.type==='iptv'?'selected':'')+'>اشتراك ترفيهي</option></select><button class="pill-btn soft-btn" onclick="applyUnifiedSubscriptionFilters()">تطبيق البحث والفلاتر</button></div><h3 class="font-bold text-sm pt-2">الاشتراكات ('+rows.length+' من '+allRows.length+')</h3>'+'<div class="grid grid-cols-1 md:grid-cols-2 gap-2">'+(cards||'<p class="text-xs text-slate-500">لا توجد اشتراكات بعد.</p>')+'</div></section>';
 }

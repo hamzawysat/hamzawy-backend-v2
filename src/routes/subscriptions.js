@@ -226,6 +226,25 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     return res.status(201).json({ message: 'تم إنشاء الاشتراك وتفعيله.', subscription: created });
   } catch (e) { return next(e); }
 });
+router.delete('/admin/:id', auth('admin'), async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
+  let session;
+  try {
+    session = await mongoose.startSession();
+    let deleted = null;
+    await session.withTransaction(async () => {
+      const current = await findSubscriptionById(req.params.id, { session });
+      if (!current) return;
+      const model = modelForType(current.type);
+      await SubscriptionVisit.deleteMany({ subscription: current._id }).session(session);
+      deleted = await model.findByIdAndDelete(current._id).session(session);
+    });
+    if (!deleted) return res.status(404).json({ message: 'الاشتراك غير موجود أو تم حذفه بالفعل.' });
+    return res.json({ message: 'تم حذف الاشتراك نهائيًا وزياراته المرتبطة. لم يتم إجراء أي استرداد مالي.', deletedId: String(deleted._id) });
+  } catch (e) { return next(e); }
+  finally { if (session) await session.endSession(); }
+});
+
 router.patch('/admin/:id/status', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
   const { error, value } = Joi.object({ status: Joi.string().valid('active','paused','cancelled').required(), note: Joi.string().trim().max(500).allow('').default(''), address: Joi.string().trim().max(500).allow('').optional(), dishSize: Joi.string().trim().max(60).allow('').optional(), receiverType: Joi.string().trim().max(100).allow('').optional(), deviceType: Joi.string().trim().max(100).allow('').optional(), networkName: Joi.string().trim().max(120).allow('').optional(), activationCode: Joi.string().trim().max(120).allow('').optional(), portalUrl: Joi.string().trim().uri({ scheme: ['http','https'] }).max(500).allow('').optional(), iptvUsername: Joi.string().trim().max(150).allow('').optional(), iptvPassword: Joi.string().max(300).allow('').optional(), allowedDevices: Joi.number().integer().min(1).max(20).optional() }).unknown(false).validate(req.body || {});
