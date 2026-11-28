@@ -23,6 +23,7 @@ const state = {
   unifiedSubscriptions: [{ _id: 'sub-1', code: 'HS-TEST', type: 'iptv', status: 'active', clientName: 'عميل اختبار', clientPhone: '01000000000', endsAt: '2027-01-01T00:00:00.000Z', amount: 120, paymentMethod: 'wallet', paymentStatus: 'paid', iptvUsername: 'demo', iptvPassword: 'secret' }],
   unifiedSubscriptionVisits: [],
   unifiedSubscriptionFilters: {},
+  expandedUnifiedSubscriptionCustomers: {},
   unifiedPlansLoaded: false,
   unifiedSubscriptionsLoaded: false,
   unifiedVisitsLoaded: false,
@@ -68,7 +69,7 @@ for (const route of ["/admin/plans", "/admin/list", "/admin/visits"]) {
   assert.match(subscriptionsRoutes.slice(routeStart, routeEnd), /Cache-Control','no-store'/, route + ' must disable HTTP caching');
 }
 assert.match(context.renderCommerce(), /باقة اختبار/, 'the plans tab must render available plans');
-assert.ok(source.includes("const detailsAction=!['pending','cancelled'].includes(sub.status)?"), 'details completion must remain available after approval for all subscription types');
+assert.ok(source.includes("const details=!['pending','cancelled'].includes(sub.status)?") && source.includes('completeUnifiedSubscriptionDetails'), 'details completion must remain available after approval for all subscription types');
 assert.ok(source.includes("type:'select',required:true,options:technicians.map"), 'technician assignment must use a technician picker rather than asking for an ID');
 assert.ok(source.includes("type:'datetime-local'"), 'visit scheduling must use a date/time picker rather than an ISO text prompt');
 assert.match(clientCommerce, /اشتراكاتي/);
@@ -79,7 +80,15 @@ assert.ok(clientCommerce.includes('state.unifiedPlanDetailsOpen'));
 state.tab = 'commerceSubscriptions';
 state.unifiedSubscriptionError = 'فشل تحميل تجريبي';
 assert.match(context.renderCommerce(), /اشتراكات العملاء وطلبات الدفع/, 'the subscriptions tab must render its panel');
-assert.match(context.renderCommerce(), /HS-TEST/, 'the subscriptions tab must render a real subscription card without injected helpers');
+assert.match(context.renderCommerce(), /عميل اختبار/, 'the subscriptions tab must show customer names as expandable groups');
+assert.match(context.renderCommerce(), /عرض الاشتراكات/, 'customer groups must be collapsed initially');
+context.toggleUnifiedSubscriptionCustomer('01000000000');
+assert.match(context.renderCommerce(), /HS-TEST/, 'opening a customer must reveal their subscription cards');
+assert.ok(source.includes('editUnifiedSubscriptionDates'), 'activated subscriptions must expose manual start/end date editing');
+assert.ok(source.includes('/dates'), 'manual date edits must use the admin API');
+assert.ok(!source.includes('رابط الخدمة يجب أن يبدأ بـ http أو https'), 'IPTV URL input must not require an HTTP scheme');
+assert.ok(subscriptionsRoutes.includes('portalUrl: Joi.string().trim().max(500)'), 'IPTV URL validation must accept scheme-less values');
+assert.ok(subscriptionsRoutes.includes("router.patch('/admin/:id/dates'"), 'manual date editing must have a protected admin route');
 assert.match(context.renderCommerce(), /إعادة المحاولة/, 'the subscriptions panel must expose retry after an API error');
 state.unifiedSubscriptions = [];
 
