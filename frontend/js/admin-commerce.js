@@ -61,7 +61,7 @@ async function loadClientSubscriptions(){
  state.unifiedSubscriptionError='';
  if(plansOnly)state.unifiedPlansLoaded=false;
  else {state.unifiedSubscriptionsLoaded=false;state.unifiedVisitsLoaded=false;}
- render();
+ safeAdminRender('subscriptions-loading');
  try{
   const jobs=plansOnly
    ? [['plans','/api/subscriptions/admin/plans','الباقات']]
@@ -88,7 +88,7 @@ async function loadClientSubscriptions(){
  }finally{
   if(state.unifiedSubscriptionLoadId===requestId){
    state.commerceLoading=false;
-   if(['commercePlans','commerceSubscriptions'].includes(state.tab))render();
+   if(['commercePlans','commerceSubscriptions'].includes(state.tab))safeAdminRender('subscriptions-loaded');
   }
  }
 }
