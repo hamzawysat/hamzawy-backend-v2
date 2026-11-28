@@ -145,7 +145,7 @@ const API={
     let timeoutId=null;
     if(controller)timeoutId=setTimeout(()=>controller.abort(),timeoutMs);
     try{
-      response=await fetch(url,{...requestOptions,credentials:'same-origin',headers:{...(options.headers||{})},...(controller?{signal:controller.signal}:{})});
+      response=await fetch(url,{...requestOptions,cache:requestOptions.cache||'no-store',credentials:'same-origin',headers:{...(options.headers||{})},...(controller?{signal:controller.signal}:{})});
       raw=await response.text();
     }catch(error){
       log('تعذر إتمام الطلب:',error);

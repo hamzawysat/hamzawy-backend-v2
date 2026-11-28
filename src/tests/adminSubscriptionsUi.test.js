@@ -7,6 +7,10 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-commerce.js'), 'utf8');
 const shell = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-shell.js'), 'utf8');
+
+const adminCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-core.js'), 'utf8');
+const clientCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-core.js'), 'utf8');
+const subscriptionsRoutes = fs.readFileSync(path.join(__dirname, '../routes/subscriptions.js'), 'utf8');
 const state = {
   tab: 'commercePlans',
   commerceLoading: false,
@@ -48,6 +52,15 @@ vm.createContext(context);
 vm.runInContext(source, context, { filename: 'admin-commerce.js' });
 
 assert.match(context.renderCommerce(), /إدارة باقات الاشتراك/, 'the plans tab must render without a missing-function error');
+
+assert.match(adminCore, /cache:opts\.cache\|\|'no-store'/, 'admin API reads must bypass browser conditional caching so 304 is never treated as an API failure');
+assert.match(clientCore, /cache:requestOptions\.cache\|\|'no-store'/, 'client API reads must bypass browser conditional caching');
+for (const route of ["/admin/plans", "/admin/list", "/admin/visits"]) {
+  const routeStart = subscriptionsRoutes.indexOf("router.get('" + route + "'");
+  assert.notEqual(routeStart, -1, 'missing subscription GET route ' + route);
+  const routeEnd = subscriptionsRoutes.indexOf("\n});", routeStart);
+  assert.match(subscriptionsRoutes.slice(routeStart, routeEnd), /Cache-Control','no-store'/, route + ' must disable HTTP caching');
+}
 assert.match(context.renderCommerce(), /باقة اختبار/, 'the plans tab must render available plans');
 
 state.tab = 'commerceSubscriptions';

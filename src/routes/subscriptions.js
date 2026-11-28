@@ -187,7 +187,7 @@ router.post('/client/request-visit', clientAuth, async (req, res, next) => {
 
 // Admin-only management API. Existing commerce subscriptions remain untouched.
 router.get('/admin/plans', auth('admin'), async (req, res, next) => {
-  try { return res.json({ plans: await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean() }); }
+  try { return res.set('Cache-Control','no-store').json({ plans: await SubscriptionPlan.find({}).sort({ createdAt: -1 }).lean() }); }
   catch (e) { return next(e); }
 });
 router.post('/admin/plans', auth('admin'), async (req, res, next) => {
@@ -217,7 +217,7 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
     if (req.query.q) { const q = String(req.query.q).trim().slice(0,100); filter.$or = [{ code: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i') },{ clientName: new RegExp(q,'i') },{ clientPhone: new RegExp(q,'i') }]; }
     const subscriptions = await findSubscriptions(filter, { select: '+iptvUsernameEncrypted +iptvPasswordEncrypted', sort: { endsAt: 1 }, limit: 500 });
     const rows = subscriptions.map(s => { const v = safeClient(s); if (v.type === 'iptv') { try { v.iptvUsername = decrypt(s.iptvUsernameEncrypted); } catch (_) { v.iptvUsername = ''; } try { v.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; } } return v; });
-    return res.json({ subscriptions: rows });
+    return res.set('Cache-Control','no-store').json({ subscriptions: rows });
   } catch (e) { return next(e); }
 });
 router.post('/admin/create', auth('admin'), async (req, res, next) => {
@@ -401,7 +401,7 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
 router.get('/admin/visits', auth('admin'), async (req, res, next) => {
   try {
     const rows = await SubscriptionVisit.find({}).populate('technician','name phone').populate('client','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
-    return res.json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
+    return res.set('Cache-Control','no-store').json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
   } catch (e) { return next(e); }
 });
 
