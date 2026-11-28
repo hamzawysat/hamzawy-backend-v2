@@ -61,6 +61,9 @@ function render(){
     renderAccountGate();return;
   }
   document.title='SATVIEW | لوحة العميل';
+  const requestedVisitId=new URLSearchParams(window.location.search).get('visitId');
+  if(requestedVisitId&&state.tab!=='subscriptions')state.tab='subscriptions';
+  if(typeof refreshClientVisitConfirmations==='function')void refreshClientVisitConfirmations();
   if(clientReferralPageOpen&&clientReferralInfo?.enabled){document.title='SATVIEW | دعوات العميل';document.getElementById('app').innerHTML='<main dir="rtl" class="mx-auto min-h-screen w-full max-w-[640px] px-4 py-5"><button type="button" onclick="closeClientReferralPage()" class="mb-4 inline-flex min-h-11 items-center gap-2 rounded-xl border border-slate-200 bg-white px-4 text-sm font-extrabold text-slate-800 shadow-sm">← رجوع للرئيسية</button><section class="space-y-3"><h1 class="text-lg font-black text-slate-900">دعوة صديقك واكسب 50 جنيه مكافأة</h1>'+(renderClientReferralCard()||'<div class="rounded-2xl border border-[#D5DDFE] bg-[#EEF2FF] p-4 text-sm font-bold text-[#2E7CF6]">جاري تحميل بيانات الدعوة...</div>')+'</section></main>';return;}
   const cat=getCat(state.service);
   const query=state.searchService.trim().toLowerCase();
@@ -102,6 +105,7 @@ function render(){
       const walletValue=Number(state.walletBalance||0).toLocaleString('ar-EG');
       return `
       <section class="client-home-dashboard mt-4 space-y-3" aria-labelledby="clientHomeTitle">
+        ${state.pendingSubscriptionVisits?.length?`<section class="rounded-2xl border border-amber-300 bg-amber-50 p-4 space-y-3" role="alert"><h2 class="text-sm font-black text-amber-950">مطلوب تأكيد استلام زيارة الصيانة</h2><p class="text-xs leading-6 text-amber-900">الفني أنهى الزيارة السنوية. راجع الخدمة واضغط تأكيد الاستلام لإغلاقها.</p>${state.pendingSubscriptionVisits.map(visit=>`<div class="rounded-xl bg-white/80 p-3 space-y-2"><p class="text-[11px] text-slate-700">موعد الزيارة: ${visit.scheduledAt?new Date(visit.scheduledAt).toLocaleString('ar-EG'):'—'}</p><button type="button" onclick="confirmClientHomeMaintenanceVisit(&quot;${escAttr(visit._id)}&quot;)" ${state.unifiedCommerceSubmitting?'disabled':''} class="w-full rounded-xl bg-emerald-700 p-3 text-xs font-black text-white">${state.unifiedCommerceSubmitting===String(visit._id)?'جاري التأكيد...':'تأكيد استلام الخدمة'}</button></div>`).join('')}</section>`:''}
         <button type="button" onclick="setTab('new')" class="client-home-hero" style="background:#2E74E0;color:#FFFFFF">
           <span class="client-home-hero-copy">
             <strong>اطلب خدمتك بسهولة</strong>

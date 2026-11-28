@@ -74,9 +74,9 @@ const planPatchSchema = Joi.object({
   allowedDevices: Joi.number().integer().min(1).max(20), settings: Joi.object().unknown(true), active: Joi.boolean()
 }).min(1).unknown(false);
 const visitSchema = Joi.object({
-  subscriptionId: Joi.string().hex().length(24).required(), technicianId: Joi.string().hex().length(24).required(),
-  scheduledAt: Joi.date().iso().required()
-}).unknown(false);
+  subscriptionId: Joi.string().hex().length(24), visitId: Joi.string().hex().length(24),
+  technicianId: Joi.string().hex().length(24).required(), scheduledAt: Joi.date().iso().required()
+}).or('subscriptionId','visitId').unknown(false);
 const safeClient = (s) => {
   const v = { ...s };
   delete v.iptvUsernameEncrypted;
@@ -210,8 +210,11 @@ router.post('/client/request-visit', clientAuth, async (req, res, next) => {
     if (error) return res.status(400).json({ message: 'بيانات طلب الزيارة غير صحيحة.' });
     const subscription = await findSubscriptionOne({ _id:value.subscriptionId, client:req.clientId, type:'maintenance', status:'active', endsAt:{ $gt:new Date() } }, { lean: true });
     if (!subscription) return res.status(404).json({ message:'لا يوجد اشتراك صيانة ساري على حسابك.' });
-    await notifyAdmins({ type:'admin_subscription_visit_request', title:'طلب زيارة صيانة', message:'طلب العميل ' + String(req.client.name||'') + ' زيارة للاشتراك ' + subscription.code + (value.note ? ' — '+value.note : ''), link:'/admin?tab=commerceSubscriptions', dedupeKey:'subscription-visit-request:'+String(subscription._id)+':'+Date.now() });
-    return res.status(202).json({ message:'تم إرسال طلب الزيارة للإدارة، وسيتم تأكيد الموعد معك.' });
+    const existingVisit = await SubscriptionVisit.findOne({ subscription: subscription._id, client: req.clientId, status: { $in: ['requested','scheduled','in_progress','awaiting_client_confirmation'] } }).lean();
+    if (existingVisit) return res.status(409).json({ message: existingVisit.status === 'requested' ? 'لديك طلب زيارة قيد مراجعة الإدارة بالفعل.' : 'لديك زيارة صيانة قائمة بالفعل.' });
+    const visit = await SubscriptionVisit.create({ subscription: subscription._id, client: req.clientId, scheduledAt: value.preferredAt ? new Date(value.preferredAt) : new Date(), status: 'requested', workDescription: value.note || '', createdBy: 'العميل' });
+    await notifyAdmins({ type:'admin_subscription_visit_request', title:'طلب زيارة صيانة جديد', message:'طلب العميل ' + String(req.client.name||'') + ' زيارة للاشتراك ' + subscription.code + (value.note ? ' — '+value.note : ''), link:'/admin?tab=commerceSubscriptions&visitId='+String(visit._id), dedupeKey:'subscription-visit-request:'+String(visit._id) });
+    return res.status(202).json({ message:'تم حفظ طلب الزيارة وإرساله للإدارة، وسيتم التواصل معك لتحديد الموعد.', visit });
   } catch(e) { return next(e); }
 });
 
@@ -518,20 +521,23 @@ router.post('/admin/visits', auth('admin'), async (req, res, next) => {
   const { error, value } = visitSchema.validate(req.body || {});
   if (error) return res.status(400).json({ message: 'بيانات الزيارة غير صحيحة.' });
   try {
-    const subscription = await findSubscriptionById(value.subscriptionId);
+    let visit = value.visitId ? await SubscriptionVisit.findOne({ _id: value.visitId, status: 'requested' }) : null;
+    const subscription = visit ? await findSubscriptionById(visit.subscription) : await findSubscriptionById(value.subscriptionId);
     const technician = await Fanni.findOne({ _id: value.technicianId, role: 'fanni', status: 'معتمد', archivedAt: null });
     if (!subscription || !technician) return res.status(404).json({ message: 'الاشتراك أو الفني غير موجود أو غير معتمد.' });
     if (subscription.type !== 'maintenance' || subscription.status !== 'active') return res.status(409).json({ message: 'يمكن إسناد الزيارات لاشتراك صيانة سنوية ساري فقط.' });
-    const visit = await SubscriptionVisit.create({ subscription: subscription._id, client: subscription.client, technician: technician._id, scheduledAt: value.scheduledAt, createdBy: String(req.user?.name || 'الإدارة') });
+    if (value.visitId && !visit) return res.status(404).json({ message: 'طلب الزيارة غير موجود أو تم إسناده بالفعل.' });
+    if (visit) { visit.technician = technician._id; visit.scheduledAt = value.scheduledAt; visit.status = 'scheduled'; visit.createdBy = String(req.user?.name || 'الإدارة'); await visit.save(); }
+    else { visit = await SubscriptionVisit.create({ subscription: subscription._id, client: subscription.client, technician: technician._id, scheduledAt: value.scheduledAt, createdBy: String(req.user?.name || 'الإدارة') }); }
     await createNotification({ recipientRole: 'fanni', recipientId: technician._id, type: 'subscription_visit_assigned', title: 'زيارة صيانة جديدة', message: 'تم إسناد زيارة لك للاشتراك ' + subscription.code, link: '/fanni' });
-    await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_visit_scheduled', title: 'تم تحديد موعد زيارة', message: 'موعد الزيارة ' + new Date(value.scheduledAt).toLocaleString('ar-EG'), link: '/client' });
+    await createNotification({ recipientRole: 'client', recipientId: subscription.client, type: 'subscription_visit_scheduled', title: 'تم تحديد موعد زيارة', message: 'موعد الزيارة ' + new Date(value.scheduledAt).toLocaleString('ar-EG'), link: '/client?tab=subscriptions' });
     return res.status(201).json({ message: 'تم إسناد الزيارة للفني.', visit });
   } catch (e) { return next(e); }
 });
 router.get('/admin/visits', auth('admin'), async (req, res, next) => {
   try {
     const rows = await SubscriptionVisit.find({}).populate('technician','name phone').populate('client','name phone').sort({ scheduledAt: 1 }).limit(500).lean();
-    return res.set('Cache-Control','no-store').json({ visits: await attachVisitSubscriptions(rows, ['code','type']) });
+    return res.set('Cache-Control','no-store').json({ visits: await attachVisitSubscriptions(rows, ['_id','code','type']) });
   } catch (e) { return next(e); }
 });
 
@@ -559,7 +565,7 @@ router.patch('/technician/visits/:id', auth('fanni'), async (req, res, next) => 
       if (visit.status === 'completed') visit.completedAt = new Date();
     }
     await visit.save();
-    if (value.status === 'completed') await createNotification({ recipientRole: 'client', recipientId: visit.client, type: 'subscription_visit_awaiting_confirmation', title: 'الفني طلب تأكيد إنهاء الخدمة', message: 'الفني أنهى العمل. راجع الزيارة وأكد إنهاء الخدمة لإغلاقها.', link: '/client' });
+    if (value.status === 'completed') await createNotification({ recipientRole: 'client', recipientId: visit.client, type: 'subscription_visit_awaiting_confirmation', title: 'الفني طلب تأكيد إنهاء الخدمة', message: 'الفني أنهى العمل. اضغط لفتح الزيارة وتأكيد استلام الخدمة.', link: '/client?tab=subscriptions&visitId='+String(visit._id) });
     return res.json({ message: visit.status === 'completed' ? 'تم تأكيد إنهاء الخدمة من الطرفين.' : value.status === 'completed' ? 'تم إرسال طلب إنهاء الخدمة للعميل، والزيارة لم تُغلق بعد.' : 'تم تحديث الزيارة.', visit });
   } catch (e) { return next(e); }
 });

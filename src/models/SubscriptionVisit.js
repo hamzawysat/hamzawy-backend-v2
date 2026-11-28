@@ -5,7 +5,7 @@ const schema = new mongoose.Schema({
   client: { type: mongoose.Schema.Types.ObjectId, ref: 'Client', required: true, index: true },
   technician: { type: mongoose.Schema.Types.ObjectId, ref: 'Fanni', default: null, index: true },
   scheduledAt: { type: Date, required: true, index: true },
-  status: { type: String, enum: ['scheduled','in_progress','awaiting_client_confirmation','completed','cancelled'], default: 'scheduled', index: true },
+  status: { type: String, enum: ['requested','scheduled','in_progress','awaiting_client_confirmation','completed','cancelled'], default: 'scheduled', index: true },
   workDescription: { type: String, trim: true, maxlength: 2000, default: '' },
   technicianCompletedAt: { type: Date, default: null },
   clientConfirmedAt: { type: Date, default: null },

@@ -67,6 +67,22 @@ async function requestUnifiedClientVisit(subscriptionId){
   catch(error){showToast(error.message||'تعذر إرسال طلب الزيارة.');}
   finally{state.unifiedCommerceSubmitting='';render();}
 }
+async function refreshClientVisitConfirmations(){
+ if(!state.accountToken||!state.account||state.pendingSubscriptionVisitsLoading)return;
+ const last=Number(state.pendingSubscriptionVisitsCheckedAt||0);if(Date.now()-last<30000)return;
+ state.pendingSubscriptionVisitsLoading=true;
+ try{const result=await API.getUnifiedClientSubscriptions();state.pendingSubscriptionVisits=(Array.isArray(result.visits)?result.visits:[]).filter(visit=>visit.status==='awaiting_client_confirmation'&&!visit.clientConfirmedAt);state.pendingSubscriptionVisitsCheckedAt=Date.now();render();}
+ catch(error){console.warn('تعذر تحديث زيارات الصيانة المطلوب تأكيدها:',error?.message||error);}
+ finally{state.pendingSubscriptionVisitsLoading=false;}
+}
+async function confirmClientHomeMaintenanceVisit(id){
+ if(!id||state.unifiedCommerceSubmitting)return;
+ if(!window.confirm('هل استلمت خدمة زيارة الصيانة السنوية وتؤكد إنهاءها؟'))return;
+ state.unifiedCommerceSubmitting=String(id);render();
+ try{const result=await API.confirmUnifiedMaintenanceVisit(id);showToast(result.message||'تم تأكيد استلام الخدمة.','success');state.pendingSubscriptionVisitsCheckedAt=0;await refreshClientVisitConfirmations();}
+ catch(error){showToast(error.message||'تعذر تأكيد استلام الخدمة.','error');}
+ finally{state.unifiedCommerceSubmitting='';render();}
+}
 function confirmUnifiedClientVisit(visitId){
  if(state.unifiedCommerceSubmitting)return;
  if(!window.confirm('تأكيد استلام زيارة الصيانة وإغلاقها؟'))return;
@@ -94,6 +110,7 @@ function renderUnifiedClientStorePlans(){
 }
 function renderUnifiedClientSubscriptions(){
  const plans=(state.unifiedSubscriptionPlans||[]).filter(plan=>plan&&plan.active!==false),subs=state.unifiedSubscriptions||[],visits=state.unifiedSubscriptionVisits||[];
+ const pendingVisitRows=visits.filter(visit=>visit.status==='awaiting_client_confirmation'&&!visit.clientConfirmedAt).map(visit=>'<article class="rounded-xl border border-amber-300 bg-amber-50 p-3"><b class="text-[12px] text-amber-950">الفني أنهى الزيارة — مطلوب تأكيد استلامك</b><p class="mt-1 text-[10px] text-amber-900">'+escHtml(new Date(visit.scheduledAt).toLocaleString('ar-EG'))+'</p><button type="button" onclick="confirmUnifiedClientVisit(&quot;'+escAttr(visit._id)+'&quot;)" '+(state.unifiedCommerceSubmitting?'disabled':'')+' class="mt-3 w-full rounded-lg bg-emerald-700 p-3 text-[11px] font-black text-white">تأكيد استلام الخدمة</button></article>').join('');
  const view=state.commerceView==='available'?'available':'current';
  const types={maintenance:'الصيانة السنوية',iptv:'الاشتراك الترفيهي',air_network:'الاشتراك المحلي'};
  const statusLabels={active:'نشط',pending:'قيد المراجعة',paused:'موقوف مؤقتًا',expired:'منتهي',cancelled:'ملغي'};
@@ -110,11 +127,11 @@ function renderUnifiedClientSubscriptions(){
   return '<article class="rounded-xl border border-slate-200 bg-white p-3"><div class="flex items-center justify-between gap-2" dir="rtl"><div class="min-w-0"><b class="block text-[12px]">'+escHtml(plan.name||typeLabel)+'</b><strong class="mt-1 block text-[12px] text-slate-800">'+Number(plan.price||0).toLocaleString('ar-EG')+' جنيه</strong></div><button type="button" onclick="toggleUnifiedPlanDetails(&quot;'+escAttr(id)+'&quot;)" aria-expanded="'+(open?'true':'false')+'" class="shrink-0 rounded-lg border border-slate-200 px-3 py-2 text-[10px] font-bold">'+(open?'إخفاء التفاصيل':'تفاصيل')+'</button></div>'+(open?details:'')+'</article>';
  }).join('');
  const visitRows=visits.map(visit=>{
-  const pending=visit.status==='awaiting_client_confirmation',status=visit.status==='completed'?'تم تأكيد الزيارة':pending?'في انتظار تأكيدك':visit.status==='in_progress'?'جاري تنفيذ الزيارة':visit.status==='cancelled'?'ملغاة':'زيارة مجدولة';
-  return '<article class="rounded-lg border border-slate-200 p-3"><div class="flex items-center justify-between gap-2"><b class="text-[11px]">زيارة صيانة</b><span class="text-[10px]">'+status+'</span></div><p class="mt-1 text-[10px] text-slate-500">'+escHtml(new Date(visit.scheduledAt).toLocaleString('ar-EG'))+'</p>'+(visit.workDescription?'<p class="mt-2 text-[10px]">'+escHtml(visit.workDescription)+'</p>':'')+(pending?'<button type="button" onclick="confirmUnifiedClientVisit(&quot;'+escAttr(visit._id)+'&quot;)" '+(state.unifiedCommerceSubmitting?'disabled':'')+' class="mt-3 w-full rounded-lg bg-emerald-700 p-2.5 text-[11px] font-bold text-white">تأكيد استلام الزيارة وإنهاء الخدمة</button>':'')+'</article>';
+  const pending=visit.status==='awaiting_client_confirmation',status=visit.status==='requested'?'طلب زيارة قيد مراجعة الإدارة':visit.status==='completed'?'تم تأكيد الزيارة':pending?'في انتظار تأكيدك':visit.status==='in_progress'?'جاري تنفيذ الزيارة':visit.status==='cancelled'?'ملغاة':'زيارة مجدولة';
+  return '<article class="rounded-lg border border-slate-200 p-3"><div class="flex items-center justify-between gap-2"><b class="text-[11px]">زيارة صيانة</b><span class="text-[10px]">'+status+'</span></div><p class="mt-1 text-[10px] text-slate-500">'+escHtml(new Date(visit.scheduledAt).toLocaleString('ar-EG'))+'</p>'+(visit.workDescription?'<p class="mt-2 text-[10px]">'+escHtml(visit.workDescription)+'</p>':'')+'</article>';
  }).join('');
  const tabButton=(id,label)=>'<button type="button" onclick="setClientCommerceView(\''+id+'\')" class="flex-1 rounded-xl border p-3 text-[12px] font-black '+(view===id?'border-slate-900 bg-slate-900 text-white':'border-slate-200 bg-white text-slate-700')+'">'+label+'</button>';
- return '<section class="panel mt-4 p-4 space-y-4"><div><h3 class="font-extrabold text-[14px]">الاشتراكات</h3><p class="mt-1 text-[11px] text-slate-500">تابع اشتراكاتك أو تصفح الباقات المتاحة.</p></div><div class="flex gap-2" dir="rtl">'+tabButton('current','اشتراكاتي')+tabButton('available','الاشتراكات المتاحة')+'</div>'+(view==='current'?'<div class="space-y-3"><h4 class="font-bold text-[12px]">اشتراكاتي الحالية ('+subs.length+')</h4>'+(subscriptionCards||'<p class="rounded-lg bg-slate-50 p-3 text-center text-[11px] text-slate-500">لا توجد اشتراكات مسجلة على حسابك حاليًا.</p>')+'</div>'+(visits.length?'<div class="space-y-2 border-t pt-3"><h4 class="font-bold text-[12px]">زيارات الصيانة</h4>'+visitRows+'</div>':''):'<div class="space-y-2"><h4 class="font-bold text-[12px]">الاشتراكات المتاحة</h4>'+(planCards||'<p class="rounded-lg bg-slate-50 p-3 text-center text-[11px] text-slate-500">لا توجد باقات متاحة حاليًا.</p>')+'</div>')+(state.commerceLoading?'<p class="text-center text-[11px] text-slate-500">جاري تحديث الاشتراكات...</p>':'')+(state.commerceError?'<p class="rounded-lg bg-red-50 p-3 text-[11px] text-red-700">'+escHtml(state.commerceError)+'</p>':'')+'<button type="button" onclick="loadClientCommerce()" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] font-bold">تحديث بيانات الاشتراكات</button></section>';
+ return '<section class="panel mt-4 p-4 space-y-4"><div><h3 class="font-extrabold text-[14px]">الاشتراكات</h3><p class="mt-1 text-[11px] text-slate-500">تابع اشتراكاتك أو تصفح الباقات المتاحة.</p></div>'+(view==='current'&&pendingVisitRows?'<div class="space-y-2">'+pendingVisitRows+'</div>':'')+'<div class="flex gap-2" dir="rtl">'+tabButton('current','اشتراكاتي')+tabButton('available','الاشتراكات المتاحة')+'</div>'+(view==='current'?'<div class="space-y-3"><h4 class="font-bold text-[12px]">اشتراكاتي الحالية ('+subs.length+')</h4>'+(subscriptionCards||'<p class="rounded-lg bg-slate-50 p-3 text-center text-[11px] text-slate-500">لا توجد اشتراكات مسجلة على حسابك حاليًا.</p>')+'</div>'+(visits.length?'<div class="space-y-2 border-t pt-3"><h4 class="font-bold text-[12px]">زيارات الصيانة</h4>'+visitRows+'</div>':''):'<div class="space-y-2"><h4 class="font-bold text-[12px]">الاشتراكات المتاحة</h4>'+(planCards||'<p class="rounded-lg bg-slate-50 p-3 text-center text-[11px] text-slate-500">لا توجد باقات متاحة حاليًا.</p>')+'</div>')+(state.commerceLoading?'<p class="text-center text-[11px] text-slate-500">جاري تحديث الاشتراكات...</p>':'')+(state.commerceError?'<p class="rounded-lg bg-red-50 p-3 text-[11px] text-red-700">'+escHtml(state.commerceError)+'</p>':'')+'<button type="button" onclick="loadClientCommerce()" class="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-[11px] font-bold">تحديث بيانات الاشتراكات</button></section>';
 }
 function setUnifiedClientPaymentMethod(planId,method){if(!['wallet','transfer'].includes(method))return;state.unifiedPaymentMethods=state.unifiedPaymentMethods||{};state.unifiedPaymentMethods[String(planId)]=method;}
 function toggleUnifiedPlanDetails(planId){state.unifiedPlanDetailsOpen=state.unifiedPlanDetailsOpen||{};const id=String(planId);state.unifiedPlanDetailsOpen[id]=!state.unifiedPlanDetailsOpen[id];render();}
