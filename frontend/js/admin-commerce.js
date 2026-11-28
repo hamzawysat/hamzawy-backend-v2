@@ -171,7 +171,7 @@ async function completeUnifiedSubscriptionDetails(id){
  );
  fields.push({name:'notes',label:'ملاحظات الاشتراك',type:'text',value:sub.notes||''});
  const values=await openUnifiedSubscriptionForm({title:'استكمال بيانات '+unifiedTypeLabel(sub.type)+' · '+sub.code,fields,submitLabel:'حفظ بيانات الاشتراك'});if(!values)return;
- if(sub.type==='iptv'&&values.portalUrl&&!/^https?:\\/\\//i.test(values.portalUrl))return showToast('رابط الخدمة يجب أن يبدأ بـ http أو https','error');
+ if(sub.type==='iptv'&&values.portalUrl&&!/^https?:\/\//i.test(values.portalUrl))return showToast('رابط الخدمة يجب أن يبدأ بـ http أو https','error');
  try{
   const result=await tryApi(['/api/subscriptions/admin/'+encodeURIComponent(id)+'/details'],{method:'PATCH',body:JSON.stringify(values)});
   showToast(result.message||'تم حفظ بيانات الاشتراك','success');await loadClientSubscriptions();
