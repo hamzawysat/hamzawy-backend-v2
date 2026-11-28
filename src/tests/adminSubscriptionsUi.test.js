@@ -73,6 +73,7 @@ state.unifiedSubscriptionError = 'فشل تحميل تجريبي';
 assert.match(context.renderCommerce(), /اشتراكات العملاء وطلبات الدفع/, 'the subscriptions tab must render its panel');
 assert.match(context.renderCommerce(), /HS-TEST/, 'the subscriptions tab must render a real subscription card without injected helpers');
 assert.match(context.renderCommerce(), /إعادة المحاولة/, 'the subscriptions panel must expose retry after an API error');
+state.unifiedSubscriptions = [];
 
 (async () => {
   state.unifiedSubscriptionError = '';
