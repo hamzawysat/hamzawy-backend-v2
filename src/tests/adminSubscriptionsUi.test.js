@@ -7,6 +7,9 @@ const vm = require('node:vm');
 
 const source = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-commerce.js'), 'utf8');
 const shell = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-shell.js'), 'utf8');
+const navigation = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-navigation.js'), 'utf8');
+const sourceAdminPage = fs.readFileSync(path.join(__dirname, '../../frontend/admin.html'), 'utf8');
+const builtAdminPage = fs.readFileSync(path.join(__dirname, '../../frontend-dist/admin.html'), 'utf8');
 
 const adminCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-core.js'), 'utf8');
 const clientCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-core.js'), 'utf8');
@@ -52,6 +55,9 @@ vm.createContext(context);
 vm.runInContext(source, context, { filename: 'admin-commerce.js' });
 
 assert.match(context.renderCommerce(), /إدارة باقات الاشتراك/, 'the plans tab must render without a missing-function error');
+assert.equal(builtAdminPage.match(/admin-commerce\\.js\\?v=([^\"']+)/)?.[1], sourceAdminPage.match(/admin-commerce\\.js\\?v=([^\"']+)/)?.[1], 'built admin page must invalidate cached admin-commerce.js whenever its source version changes');
+assert.match(navigation, /else if\\(t==='commercePlans'\\)loadCommerceCatalog\\(\\)/, 'opening subscription plans must invoke the unified plans loader');
+assert.match(navigation, /else if\\(t==='commerceSubscriptions'\\)loadClientSubscriptions\\(\\)/, 'opening customer subscriptions must invoke the unified subscriptions loader');
 
 assert.match(adminCore, /cache:opts\.cache\|\|'no-store'/, 'admin API reads must bypass browser conditional caching so 304 is never treated as an API failure');
 assert.match(clientCore, /cache:requestOptions\.cache\|\|'no-store'/, 'client API reads must bypass browser conditional caching');
