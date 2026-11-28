@@ -46,7 +46,7 @@ const createSchema = Joi.object({
   address: Joi.string().trim().max(500).allow('').default(''), dishSize: Joi.string().trim().max(60).allow('').default(''),
   receiverType: Joi.string().trim().max(100).allow('').default(''), deviceType: Joi.string().trim().max(100).allow('').default(''),
   networkName: Joi.string().trim().max(120).allow('').default(''), activationCode: Joi.string().trim().max(120).allow('').default(''),
-  portalUrl: Joi.string().trim().uri({ scheme: ['http','https'] }).max(500).allow('').default(''),
+  portalUrl: Joi.string().trim().max(500).allow('').default(''),
   iptvUsername: Joi.string().trim().max(150).allow('').default(''), iptvPassword: Joi.string().max(300).allow('').default(''),
   allowedDevices: Joi.number().integer().min(1).max(20).optional(), visitsIncluded: Joi.number().integer().min(0).max(100).optional(),
   notes: Joi.string().trim().max(1500).allow('').default('')
@@ -59,7 +59,7 @@ const subscriptionDetailsSchema = Joi.object({
   networkName: Joi.string().trim().max(120).allow(''),
   activationCode: Joi.string().trim().max(120).allow(''),
   deviceType: Joi.string().trim().max(100).allow(''),
-  portalUrl: Joi.string().trim().uri({ scheme: ['http','https'] }).max(500).allow(''),
+  portalUrl: Joi.string().trim().max(500).allow(''),
   iptvUsername: Joi.string().trim().max(150).allow(''),
   iptvPassword: Joi.string().max(300).allow(''),
   allowedDevices: Joi.number().integer().min(1).max(20),
@@ -340,6 +340,29 @@ router.patch('/admin/:id/details', auth('admin'), async (req, res, next) => {
     });
     await subscription.save();
     return res.json({ message: 'تم حفظ بيانات الاشتراك بنجاح.', subscription: safeClient(subscription.toObject()) });
+  } catch (e) { return next(e); }
+});
+
+
+router.patch('/admin/:id/dates', auth('admin'), async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
+  const { error, value } = Joi.object({ startsAt: Joi.date().iso().required(), endsAt: Joi.date().iso().required() })
+    .unknown(false).custom((dates, helpers) => {
+      if (new Date(dates.endsAt).getTime() <= new Date(dates.startsAt).getTime()) return helpers.error('date.order');
+      return dates;
+    }, 'subscription date range validation').validate(req.body || {});
+  if (error) return res.status(400).json({ message: 'تاريخ نهاية الاشتراك يجب أن يكون بعد تاريخ البداية.' });
+  try {
+    const subscription = await findSubscriptionById(req.params.id);
+    if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+    if (!['active','paused','expired'].includes(subscription.status)) return res.status(409).json({ message: 'يمكن تعديل مدة الاشتراك بعد تفعيله فقط.' });
+    const startsAt = new Date(value.startsAt), endsAt = new Date(value.endsAt);
+    subscription.startsAt = startsAt;
+    subscription.endsAt = endsAt;
+    subscription.durationDays = Math.max(1, Math.ceil((endsAt.getTime() - startsAt.getTime()) / 86400000));
+    subscription.history.push({ action: 'dates_updated', note: 'تعديل يدوي لمدة الاشتراك: من ' + startsAt.toISOString() + ' إلى ' + endsAt.toISOString(), by: String(req.user?.name || 'الإدارة') });
+    await subscription.save();
+    return res.json({ message: 'تم تعديل بداية ونهاية الاشتراك بنجاح.', subscription: safeClient(subscription.toObject()) });
   } catch (e) { return next(e); }
 });
 
