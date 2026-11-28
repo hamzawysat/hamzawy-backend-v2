@@ -574,7 +574,7 @@ function scrollStoreProductEditFormIntoView() {
     editForm.scrollIntoView({ behavior: 'smooth', block: 'start', inline: 'nearest' });
   }));
 }
-async function deleteStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;if(!confirmAdminAction('تأكيد حذف المنتج "'+p.name+'" نهائيًا؟ لن يمكن التراجع عن الحذف. إذا كان مرتبطًا بطلبات سابقة فستظل الطلبات وسجلاتها محفوظة، لكن بيانات المنتج نفسها ستُحذف من قائمة المنتجات.'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'DELETE'});showToast('تم حذف المنتج نهائيًا');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر حذف المنتج','error');}}
+async function deleteStoreProduct(id){const p=(state.storeProducts||[]).find(x=>String(x._id)===String(id));if(!p)return;if(!confirmAdminAction('حذف المنتج "'+p.name+'" نهائيًا مع صورته الداخلية إن لم تكن مشتركة؟ لن يمكن التراجع عن الحذف، والمنتجات المرتبطة بطلبات سابقة لن تُحذف.'))return;try{await tryApi(['/api/admin/store/products/'+encodeURIComponent(id)],{method:'DELETE'});showToast('تم حذف المنتج نهائيًا');await loadStoreProducts();}catch(e){showToast(e.message||'تعذر حذف المنتج','error');}}
 function guessStoreProductImage(name){return '';}
 async function autoFillMissingProductImages(){return showToast('الملء التلقائي اتلغى لانه كان بيجيب صور غلط');}
 function toggleStoreProductSelect(id){

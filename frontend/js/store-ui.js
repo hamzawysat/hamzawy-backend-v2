@@ -1,7 +1,7 @@
 'use strict';
 function storeEsc(v){return String(v??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 function storeHeaders(role){const token=role==='client'?state.accountToken:getToken();return token?{Authorization:'Bearer '+token,'Content-Type':'application/json'}:{'Content-Type':'application/json'};}
-async function loadStoreForRole(role){try{const r=await fetch('/api/store/products',{cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'تعذر تحميل المتجر');state.storeProducts=Array.isArray(d.products)?d.products:[];state.storeCategories=Array.isArray(d.categories)?d.categories:[];}catch(e){state.storeProducts=[];if(role==='client')showToast(e.message,'error');else toast(e.message,'error');}try{const r=await fetch('/api/store/'+role+'/orders',{headers:storeHeaders(role),cache:'no-store'});const d=await r.json().catch(()=>({}));if(r.ok)state.myStoreOrders=Array.isArray(d.orders)?d.orders:[];}catch(_){}if(role==='client'&&state.accountToken&&typeof loadClientCommerce==='function')await loadClientCommerce();render();}
+async function loadStoreForRole(role){try{const r=await fetch('/api/store/products',{cache:'no-store'});const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||'تعذر تحميل المتجر');state.storeProducts=Array.isArray(d.products)?d.products:[];state.storeCategories=Array.isArray(d.categories)?d.categories:[];}catch(e){state.storeProducts=[];if(role==='client')showToast(e.message,'error');else toast(e.message,'error');}try{const r=await fetch('/api/store/'+role+'/orders',{headers:storeHeaders(role),cache:'no-store'});const d=await r.json().catch(()=>({}));if(r.ok)state.myStoreOrders=Array.isArray(d.orders)?d.orders:[];}catch(_){}render();}
 function renderStoreProductCard(p,role){
   const productId=String(p._id||'');
   const expanded=Boolean(state.storeExpandedProductDetailsByRole?.[role]?.[productId]);
@@ -167,7 +167,7 @@ function setStoreSearchQuery(role,query){
   if(input){input.focus();const cursor=input.value.length;try{input.setSelectionRange(cursor,cursor);}catch(_){}}
 }
 function renderStoreCatalog(role){
-  const products=(Array.isArray(state.storeProducts)?state.storeProducts:[]).filter(product=>role!=='client'||product.type!=='subscription');
+  const products=Array.isArray(state.storeProducts)?state.storeProducts:[];
   const orders=Array.isArray(state.myStoreOrders)?state.myStoreOrders:[];
   const groups=new Map();
   products.forEach(product=>{
@@ -192,7 +192,6 @@ function renderStoreCatalog(role){
     h+='<div class="border-t mt-3 pt-3"><p class="text-[12px] font-bold">'+storeEsc(o.productName)+'</p>'+itemSummary+'<p class="text-[11px] text-slate-500 mt-1">إجمالي الكمية: '+Number(o.quantity||0)+' • '+Number(o.total||0).toLocaleString('ar-EG')+' جنيه • الحالة: '+storeEsc(o.status)+'</p>'+(o.transactionNumber?'<p class="text-[10px] font-bold text-blue-700" dir="ltr">رقم العملية: '+storeEsc(o.transactionNumber)+'</p>':'<p class="text-[10px] text-slate-500" dir="ltr">رقم الطلب: '+storeEsc(o.id||'')+'</p>')+(o.refundTransactionNumber?'<p class="text-[10px] font-bold text-emerald-700" dir="ltr">رقم الاسترداد: '+storeEsc(o.refundTransactionNumber)+'</p>':'')+'</div>';
   });
   h+='</div></details>';
-  if(role==='client'&&typeof renderUnifiedClientStorePlans==='function')h+=renderUnifiedClientStorePlans();
   h+=renderStoreCart(role);
   if(!products.length){
     h+='<div class="panel p-5 text-center text-sm">لا توجد منتجات متاحة حاليًا.</div>';
