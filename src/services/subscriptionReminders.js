@@ -17,13 +17,16 @@ async function runSubscriptionReminders(now = new Date()) {
   // Capture due reminders before expiring records. An end date at midnight
   // must still produce its day-zero reminder when this job runs later that day.
   const subscriptions = await findSubscriptions(
-    { status: 'active', endsAt: { $gte: start, $lt: end } },
-    { select: 'code client clientName type endsAt', sort: null }
+    { status: { $in: ['active', 'expired'] }, endsAt: { $gte: start, $lt: end } },
+    { select: 'code client clientName type status endsAt', sort: null }
   );
 
   for (const s of subscriptions) {
     const remaining = calendarDaysBetween(s.endsAt, start);
     if (![7,2,1,0].includes(remaining)) continue;
+    // Older job versions may already have marked today's midnight expiries as
+    // expired before queuing day-zero reminders. Recover only that same-day case.
+    if (s.status === 'expired' && remaining !== 0) continue;
     const key = dayKey(s.endsAt) + ':' + remaining;
     const title = remaining === 0 ? 'انتهى الاشتراك اليوم' : 'اقترب انتهاء الاشتراك';
     const message = remaining === 0
