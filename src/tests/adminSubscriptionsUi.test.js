@@ -19,7 +19,7 @@ const state = {
   commerceLoading: false,
   unifiedSubscriptionError: '',
   unifiedSubscriptionPlans: [{ _id: 'plan-1', name: 'باقة اختبار', type: 'maintenance', price: 100, durationDays: 365, visitCount: 2, allowedDevices: 1, active: true }],
-  unifiedSubscriptions: [],
+  unifiedSubscriptions: [{ _id: 'sub-1', code: 'HS-TEST', type: 'iptv', status: 'active', clientName: 'عميل اختبار', clientPhone: '01000000000', endsAt: '2027-01-01T00:00:00.000Z', amount: 120, paymentMethod: 'wallet', paymentStatus: 'paid', iptvUsername: 'demo', iptvPassword: 'secret' }],
   unifiedSubscriptionVisits: [],
   unifiedSubscriptionFilters: {},
   unifiedPlansLoaded: false,
@@ -44,7 +44,6 @@ const context = {
   encodeURIComponent,
   getToken: () => 'test-token',
   escHtml: value => String(value ?? ''),
-  escAttr: value => String(value ?? ''),
   extractList: value => Array.isArray(value) ? value : [],
   showToast: () => {},
   render: () => { renders += 1; },
@@ -72,6 +71,7 @@ assert.match(context.renderCommerce(), /باقة اختبار/, 'the plans tab m
 state.tab = 'commerceSubscriptions';
 state.unifiedSubscriptionError = 'فشل تحميل تجريبي';
 assert.match(context.renderCommerce(), /اشتراكات العملاء وطلبات الدفع/, 'the subscriptions tab must render its panel');
+assert.match(context.renderCommerce(), /HS-TEST/, 'the subscriptions tab must render a real subscription card without injected helpers');
 assert.match(context.renderCommerce(), /إعادة المحاولة/, 'the subscriptions panel must expose retry after an API error');
 
 (async () => {
