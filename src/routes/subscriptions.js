@@ -51,6 +51,20 @@ const createSchema = Joi.object({
   allowedDevices: Joi.number().integer().min(1).max(20).optional(), visitsIncluded: Joi.number().integer().min(0).max(100).optional(),
   notes: Joi.string().trim().max(1500).allow('').default('')
 }).unknown(false);
+const subscriptionDetailsSchema = Joi.object({
+  address: Joi.string().trim().max(500).allow(''),
+  dishSize: Joi.string().trim().max(60).allow(''),
+  receiverType: Joi.string().trim().max(100).allow(''),
+  visitsIncluded: Joi.number().integer().min(0).max(100),
+  networkName: Joi.string().trim().max(120).allow(''),
+  activationCode: Joi.string().trim().max(120).allow(''),
+  deviceType: Joi.string().trim().max(100).allow(''),
+  portalUrl: Joi.string().trim().uri({ scheme: ['http','https'] }).max(500).allow(''),
+  iptvUsername: Joi.string().trim().max(150).allow(''),
+  iptvPassword: Joi.string().max(300).allow(''),
+  allowedDevices: Joi.number().integer().min(1).max(20),
+  notes: Joi.string().trim().max(1500).allow('')
+}).min(1).unknown(false);
 const planPatchSchema = Joi.object({
   type: Joi.string().valid(...TYPES), name: Joi.string().trim().min(2).max(100),
   description: Joi.string().trim().max(1000).allow(''), price: Joi.number().strict().min(0).max(100000000),
@@ -271,6 +285,64 @@ router.post('/admin/create', auth('admin'), async (req, res, next) => {
     return res.status(201).json({ message: 'تم إنشاء الاشتراك وتفعيله.', subscription: created });
   } catch (e) { return next(e); }
 });
+router.patch('/admin/:id/details', auth('admin'), async (req, res, next) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
+  const { error, value } = subscriptionDetailsSchema.validate(req.body || {});
+  if (error) return res.status(400).json({ message: 'راجع بيانات الاشتراك المدخلة.' });
+  try {
+    const subscription = await findSubscriptionById(req.params.id);
+    if (!subscription) return res.status(404).json({ message: 'الاشتراك غير موجود.' });
+    if (value.address !== undefined) subscription.address = value.address;
+    if (value.notes !== undefined) subscription.notes = value.notes;
+    if (subscription.type === 'maintenance') {
+      for (const field of ['dishSize','receiverType','visitsIncluded']) {
+        if (value[field] !== undefined) subscription[field] = value[field];
+      }
+      subscription.maintenanceDetails = {
+        ...(subscription.maintenanceDetails?.toObject?.() || subscription.maintenanceDetails || {}),
+        ...(value.dishSize !== undefined ? { dishSize: value.dishSize } : {}),
+        ...(value.receiverType !== undefined ? { receiverType: value.receiverType } : {}),
+        ...(value.visitsIncluded !== undefined ? { visitsIncluded: value.visitsIncluded } : {})
+      };
+    } else if (subscription.type === 'air_network') {
+      for (const field of ['networkName','activationCode','deviceType']) {
+        if (value[field] !== undefined) subscription[field] = value[field];
+      }
+      subscription.localDetails = {
+        ...(subscription.localDetails?.toObject?.() || subscription.localDetails || {}),
+        ...(value.networkName !== undefined ? { networkName: value.networkName } : {}),
+        ...(value.activationCode !== undefined ? { activationCode: value.activationCode } : {}),
+        ...(value.deviceType !== undefined ? { deviceType: value.deviceType } : {})
+      };
+    } else if (subscription.type === 'iptv') {
+      for (const field of ['deviceType','portalUrl','allowedDevices']) {
+        if (value[field] !== undefined) subscription[field] = value[field];
+      }
+      subscription.entertainmentDetails = {
+        ...(subscription.entertainmentDetails?.toObject?.() || subscription.entertainmentDetails || {}),
+        ...(value.deviceType !== undefined ? { deviceType: value.deviceType } : {}),
+        ...(value.portalUrl !== undefined ? { portalUrl: value.portalUrl } : {}),
+        ...(value.allowedDevices !== undefined ? { allowedDevices: value.allowedDevices } : {})
+      };
+      if (value.iptvUsername !== undefined) {
+        subscription.iptvUsernameEncrypted = value.iptvUsername ? encrypt(value.iptvUsername) : '';
+        subscription.entertainmentDetails.usernameEncrypted = subscription.iptvUsernameEncrypted;
+      }
+      if (value.iptvPassword !== undefined) {
+        subscription.iptvPasswordEncrypted = value.iptvPassword ? encrypt(value.iptvPassword) : '';
+        subscription.entertainmentDetails.passwordEncrypted = subscription.iptvPasswordEncrypted;
+      }
+    }
+    subscription.history.push({
+      action: 'details_updated',
+      note: 'استكمال بيانات الاشتراك الخاصة بالنوع: ' + publicServiceName(subscription.type),
+      by: String(req.user?.name || 'الإدارة')
+    });
+    await subscription.save();
+    return res.json({ message: 'تم حفظ بيانات الاشتراك بنجاح.', subscription: safeClient(subscription.toObject()) });
+  } catch (e) { return next(e); }
+});
+
 router.delete('/admin/:id', auth('admin'), async (req, res, next) => {
   if (!mongoose.isValidObjectId(req.params.id)) return res.status(400).json({ message: 'معرّف الاشتراك غير صالح.' });
   let session;
