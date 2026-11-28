@@ -113,6 +113,12 @@ state.unifiedSubscriptions = [];
   assert.match(context.renderCommerce(), /تعذر تأكيد خلو القائمة/, 'failed customer requests must not be presented as a successful empty list');
   assert.match(context.renderCommerce(), /إعادة المحاولة/, 'the retry action must remain visible after failed requests');
   assert.match(shell, /section\.tabs\.filter\(item=>canReadTab\(item\.id\)\)\.map/, 'each navigation button must be filtered by its own permission');
+  assert.match(subscriptionsRoutes, /attachSubscriptionVisitUsage/, 'client and admin subscription APIs must calculate visit usage from visit records');
+  assert.match(subscriptionsRoutes, /status: 'completed'/, 'only fully completed maintenance visits may be counted as consumed');
+  assert.match(subscriptionsRoutes, /visitsConsumed/, 'subscription API must expose consumed visit count');
+  assert.match(subscriptionsRoutes, /visitsRemaining/, 'subscription API must expose remaining visit count');
+  assert.match(adminCommerceSource, /visitsConsumed/, 'admin subscription cards must display consumed visits');
+  assert.match(clientCommerce, /visitsConsumed/, 'browser client subscription cards must display consumed visits');
   console.log('Admin subscription UI regressions: passed');
 })().catch(error => {
   console.error(error);
