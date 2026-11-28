@@ -519,10 +519,10 @@ function apiResponse(pathname) {
                 await page.waitForFunction(() => !!localStorage.getItem('sonaa_client_account_token'), null, { timeout: 10000 });
                 await page.waitForFunction(() => !!state.account && !!state.accountToken, null, { timeout: 10000 });
                 await page.locator('nav.client-section-tabs').waitFor({ state: 'visible', timeout: 10000 });
-                const customerTabIds = ['home', 'store', 'subscriptions', 'wallet', 'orders', 'profile'];
+                const customerTabIds = ['home', 'store', 'subscriptions', 'wallet', 'orders'];
                 const customerTabButtons = page.locator('nav.client-section-tabs button[onclick^="setTab("]');
-                if (await customerTabButtons.count() !== customerTabIds.length) {
-                  failures.push('client/desktop: expected six customer navigation buttons including subscriptions');
+                if (await customerTabButtons.count() !== customerTabIds.length + 1) {
+                  failures.push('client/desktop: expected six customer navigation buttons including subscriptions and profile');
                 }
                 if (await page.locator('.client-section-tabs').count() !== 1 || await page.locator('nav.fixed.bottom-0').count() !== 0 ||
                     await page.locator('.dashboard-top-shell').evaluate(shell => getComputedStyle(shell).position !== 'sticky')) {
