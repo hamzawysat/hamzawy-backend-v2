@@ -511,3 +511,51 @@ body{overflow-x:hidden}
   #admin-tab-content .premium-card p,#admin-tab-content .premium-card b,#admin-tab-content .premium-card span{min-width:0;overflow-wrap:anywhere}
   #admin-tab-content .premium-card button{max-width:100%;white-space:normal;overflow-wrap:anywhere}
 }
+
+
+/* Final mobile viewport lock: the admin document itself must never pan
+   sideways; only explicitly scrollable data tables may do so. */
+html,body{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overscroll-behavior-x:none;
+}
+body{
+  position:relative;
+  overflow-x:clip!important;
+}
+#app{
+  position:relative;
+  display:flow-root;
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  margin-inline:auto;
+  overflow-x:clip;
+}
+#app>header,
+#app>main{
+  box-sizing:border-box;
+  width:100%;
+  min-width:0;
+  margin-inline:auto;
+}
+#app>main{
+  max-width:800px;
+}
+#app .admin-topbar-inner,
+#app .section-nav,
+#app .section-nav-group,
+#app .section-nav-items,
+#app #admin-tab-content{
+  box-sizing:border-box;
+  min-width:0;
+  max-width:100%;
+}
+@media(max-width:560px){
+  html,body{overflow-x:clip!important;overscroll-behavior-x:none}
+  #app{width:100%;max-width:100%;overflow-x:clip}
+  #app>header,#app>main{width:100%;max-width:100%;min-width:0}
+  #app>main{padding-left:10px!important;padding-right:10px!important}
+}
