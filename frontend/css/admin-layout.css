@@ -452,3 +452,50 @@ input:focus,textarea:focus,select:focus{border-color:var(--blue)!important;box-s
   .admin-kpi-card>span:last-child{font-size:9px}
   #admin-tab-content .pill-btn{max-width:100%;overflow-wrap:anywhere}
 }
+
+
+/* Admin mobile viewport containment: keep the document within the phone width
+   while allowing genuinely wide tables to scroll inside their own container. */
+html,body{
+  width:100%;
+  max-width:100%;
+  overflow-x:clip;
+}
+body{overflow-x:hidden}
+#app,main,#admin-tab-content{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+}
+#admin-tab-content,
+#admin-tab-content .premium-panel,
+#admin-tab-content .premium-card,
+#admin-tab-content .grid,
+#admin-tab-content .flex,
+#admin-tab-content .grid>*,
+#admin-tab-content .flex>*{
+  min-width:0;
+  max-width:100%;
+}
+#admin-tab-content img,
+#admin-tab-content video,
+#admin-tab-content canvas,
+#admin-tab-content svg{
+  max-width:100%;
+}
+#admin-tab-content input,
+#admin-tab-content select,
+#admin-tab-content textarea,
+#admin-tab-content button{
+  max-width:100%;
+}
+#admin-tab-content table{
+  box-sizing:border-box;
+}
+@media(max-width:560px){
+  main{box-sizing:border-box;width:100%;max-width:100%;min-width:0}
+  #admin-tab-content .premium-panel,
+  #admin-tab-content .premium-card{padding-left:10px;padding-right:10px}
+  #admin-tab-content .grid,
+  #admin-tab-content .flex{max-width:100%}
+}
