@@ -1,3 +1,5 @@
+'use strict';
+
 function safeAdminRender(context='render'){
  try{render();return true;}
  catch(error){
@@ -6,8 +8,6 @@ function safeAdminRender(context='render'){
   return false;
  }
 }
-'use strict';
-
 const ADMIN_TAB_HISTORY=[];
 const ADMIN_LAST_VIEW_KEY='sonaaAdminLastView';
 const ADMIN_HISTORY_STATE_KEY='sonaaAdminView';
