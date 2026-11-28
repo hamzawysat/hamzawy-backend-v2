@@ -9,6 +9,7 @@ on:
       - 'scripts/build-frontend.js'
       - 'package.json'
       - 'package-lock.json'
+      - '.github/workflows/build-deployed-frontend.yml'
   workflow_dispatch:
 
 permissions:
