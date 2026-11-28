@@ -31,6 +31,28 @@ router.use('/admin', (req, res, next) => {
   next();
 });
 const TYPES = ['maintenance','air_network','iptv'];
+
+// Derive maintenance visit usage from the canonical visit records. Only fully
+// completed visits count; requested/scheduled/in-progress/pending-confirmation
+// visits never consume the customer's allowance.
+async function attachSubscriptionVisitUsage(rows) {
+  const ids = (rows || []).filter(row => row && row.type === 'maintenance').map(row => row._id).filter(Boolean);
+  const usage = new Map();
+  if (ids.length) {
+    const grouped = await SubscriptionVisit.aggregate([
+      { $match: { subscription: { $in: ids }, status: 'completed' } },
+      { $group: { _id: '$subscription', consumed: { $sum: 1 } } }
+    ]);
+    for (const item of grouped) usage.set(String(item._id), Number(item.consumed || 0));
+  }
+  return (rows || []).map(row => {
+    if (!row || row.type !== 'maintenance') return row;
+    const included = Math.max(0, Number(row.visitsIncluded ?? row.maintenanceDetails?.visitsIncluded ?? 0) || 0);
+    const consumed = usage.get(String(row._id)) || 0;
+    return { ...row, visitsIncluded: included, visitsConsumed: consumed, visitsRemaining: Math.max(0, included - consumed) };
+  });
+}
+
 const planSchema = Joi.object({
   type: Joi.string().valid(...TYPES).required(), name: Joi.string().trim().min(2).max(100).required(),
   description: Joi.string().trim().max(1000).allow('').default(''), price: Joi.number().strict().min(0).max(100000000).required(),
@@ -129,7 +151,8 @@ router.get('/client/mine', clientAuth, async (req, res, next) => {
       delete s.__legacyMigrationHash;
       return s;
     });
-    return res.set('Cache-Control','no-store').json({ subscriptions: enriched, visits });
+    const subscriptionsWithUsage = await attachSubscriptionVisitUsage(enriched.map(s => s.toObject ? s.toObject() : s));
+    return res.set('Cache-Control','no-store').json({ subscriptions: subscriptionsWithUsage, visits });
   } catch (e) { return next(e); }
 });
 
@@ -250,7 +273,8 @@ router.get('/admin/list', auth('admin'), async (req, res, next) => {
     if (req.query.q) { const q = String(req.query.q).trim().slice(0,100); filter.$or = [{ code: new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i') },{ clientName: new RegExp(q,'i') },{ clientPhone: new RegExp(q,'i') }]; }
     const subscriptions = await findSubscriptions(filter, { select: '+iptvUsernameEncrypted +iptvPasswordEncrypted', sort: { endsAt: 1 }, limit: 500 });
     const rows = subscriptions.map(s => { const v = safeClient(s); if (v.type === 'iptv') { try { v.iptvUsername = decrypt(s.iptvUsernameEncrypted); } catch (_) { v.iptvUsername = ''; } try { v.iptvPassword = decrypt(s.iptvPasswordEncrypted); } catch (_) { v.iptvPassword = ''; } } return v; });
-    return res.set('Cache-Control','no-store').json({ subscriptions: rows });
+    const subscriptionsWithUsage = await attachSubscriptionVisitUsage(rows.map(s => s.toObject ? s.toObject() : s));
+    return res.set('Cache-Control','no-store').json({ subscriptions: subscriptionsWithUsage });
   } catch (e) { return next(e); }
 });
 router.post('/admin/create', auth('admin'), async (req, res, next) => {
