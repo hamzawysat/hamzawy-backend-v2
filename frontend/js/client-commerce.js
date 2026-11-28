@@ -43,7 +43,7 @@ function unifiedClientTypeLabel(type){return ({maintenance:'صيانة سنوي�
 async function requestUnifiedClientPlan(planId){
   if(state.unifiedCommerceSubmitting)return;
   const plan=(state.unifiedSubscriptionPlans||[]).find(x=>String(x._id)===String(planId));if(!plan)return;
-  const paymentMethod=await chooseClientSubscriptionPayment('طريقة دفع الاشتراك','حدد طريقة الدفع التي تفضلها. لن يتم الخصم من المحفظة إلا بعد موافقة الإدارة.');if(!paymentMethod)return;
+  const paymentMethod=state.unifiedPaymentMethods?.[String(planId)]||await chooseClientSubscriptionPayment('طريقة دفع الاشتراك','حدد طريقة الدفع التي تفضلها. لن يتم الخصم من المحفظة إلا بعد موافقة الإدارة.');if(!paymentMethod)return;
   if(!window.confirm('تأكيد طلب '+unifiedClientTypeLabel(plan.type)+' بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟'))return;
   state.unifiedCommerceSubmitting=String(planId);render();
   try{const result=await API.requestUnifiedSubscription({planId:String(planId),paymentMethod});showToast(result.message||'تم إرسال الطلب للإدارة.','success');await loadClientCommerce();}
