@@ -69,9 +69,15 @@ function unifiedClientTypeLabel(type){return ({maintenance:'صيانة سنوي�
 async function requestUnifiedClientPlan(planId){
   if(state.unifiedCommerceSubmitting)return;
   const plan=(state.unifiedSubscriptionPlans||[]).find(x=>String(x._id)===String(planId));if(!plan)return;
-  if(!window.confirm('إرسال طلب '+unifiedClientTypeLabel(plan.type)+'؟ سيتم التواصل معك لتأكيد التفعيل والسداد.'))return;
+  const existing=(state.unifiedSubscriptions||[]).find(s=>String(s.plan)===String(planId)&&['pending','active','paused'].includes(s.status));
+  if(existing)return showToast(existing.status==='pending'?'طلبك لهذه الباقة قيد مراجعة الإدارة بالفعل.':'لديك اشتراك قائم في هذه الباقة بالفعل.');
+  const choice=window.prompt('اختار طريقة الدفع:\n1 - محفظة التطبيق (الخصم بعد موافقة الإدارة)\n2 - تحويل أموال (مراجعة التحويل بواسطة الإدارة)','1');
+  if(choice===null)return;
+  const paymentMethod=String(choice).trim()==='1'?'wallet':String(choice).trim()==='2'?'transfer':'';
+  if(!paymentMethod)return showToast('اختار 1 للمحفظة أو 2 للتحويل.');
+  if(!window.confirm('إرسال طلب '+unifiedClientTypeLabel(plan.type)+' بطريقة '+(paymentMethod==='wallet'?'محفظة التطبيق':'تحويل الأموال')+'؟ لن يتم التفعيل أو الخصم قبل موافقة الإدارة.'))return;
   state.unifiedCommerceSubmitting=String(planId);render();
-  try{const result=await API.requestUnifiedSubscription({planId:String(planId)});showToast(result.message||'تم إرسال الطلب للإدارة.','success');await loadClientCommerce();}
+  try{const result=await API.requestUnifiedSubscription({planId:String(planId),paymentMethod});showToast(result.message||'تم حفظ الطلب وإرساله للإدارة.','success');await loadClientCommerce();}
   catch(error){showToast(error.message||'تعذر إرسال الطلب.');}
   finally{state.unifiedCommerceSubmitting='';render();}
 }
@@ -93,13 +99,13 @@ async function requestUnifiedClientVisit(subscriptionId){
 }
 function renderUnifiedClientSubscriptions(){
  const plans=state.unifiedSubscriptionPlans||[],subs=state.unifiedSubscriptions||[],visits=state.unifiedSubscriptionVisits||[];
- const status={active:'نشط',paused:'موقوف مؤقتًا',expired:'منتهي',cancelled:'ملغي'};
+ const status={pending:'قيد مراجعة الإدارة',active:'نشط',paused:'موقوف مؤقتًا',expired:'منتهي',cancelled:'ملغي'};
  const subscriptionCards=subs.map(s=>{
-  const days=Math.max(0,Math.ceil((new Date(s.endsAt).getTime()-Date.now())/86400000));
+  const days=s.endsAt?Math.max(0,Math.ceil((new Date(s.endsAt).getTime()-Date.now())/86400000)):null;
   const details=s.type==='iptv'?'<div class="mt-2 rounded-xl bg-slate-50 p-3 text-[11px]"><b>نوع الخدمة:</b> اشتراك ترفيهي<br><b>بيانات الدخول:</b> '+escHtml(s.iptvUsername||'—')+' / '+escHtml(s.iptvPassword||'—')+'<br><b>رابط الخدمة:</b> '+escHtml(s.portalUrl||'—')+'<br><b>عدد الأجهزة:</b> '+escHtml(String(s.allowedDevices||1))+'</div>':s.type==='air_network'?'<div class="mt-2 rounded-xl bg-slate-50 p-3 text-[11px]"><b>اسم الباقة:</b> '+escHtml(s.networkName||'—')+'<br><b>بيانات الدخول:</b> '+escHtml(s.activationCode||'—')+'</div>':(s.dishSize||s.receiverType)?'<div class="mt-2 rounded-xl bg-slate-50 p-3 text-[11px]"><b>تفاصيل الخدمة:</b> '+escHtml([s.dishSize,s.receiverType].filter(Boolean).join(' · '))+'</div>':'';
   return '<article class="rounded-xl border border-slate-200 p-3"><div class="flex items-center justify-between gap-2"><b class="text-[12px]">'+escHtml(unifiedClientTypeLabel(s.type))+' · '+escHtml(s.code||'')+'</b><span class="text-[10px]">'+escHtml(status[s.status]||s.status||'')+'</span></div><p class="mt-2 text-[11px] text-slate-600">ينتهي '+escHtml(new Date(s.endsAt).toLocaleDateString('ar-EG'))+' · متبقي '+days+' يوم</p>'+details+(Array.isArray(s.includedServices)&&s.includedServices.length?'<p class="mt-2 text-[10px] text-slate-600">'+s.includedServices.map(escHtml).join(' · ')+'</p>':'')+(s.type==='maintenance'&&s.status==='active'?'<button type="button" onclick="requestUnifiedClientVisit(&quot;'+escAttr(s._id)+'&quot;)" class="mt-3 w-full rounded-xl border border-slate-200 p-2 text-[11px] font-bold">طلب زيارة صيانة</button>':'')+(['active','expired','paused'].includes(s.status)?'<button type="button" onclick="requestUnifiedClientRenewal(&quot;'+escAttr(s._id)+'&quot;)" class="mt-2 w-full rounded-xl border border-slate-200 p-2 text-[11px] font-bold">طلب تجديد الاشتراك</button>':'')+'</article>';
  }).join('');
- const planCards=plans.map(p=>'<article class="rounded-xl border border-slate-200 p-3"><b class="text-[12px]">اسم الباقة: '+escHtml(p.name||unifiedClientTypeLabel(p.type))+'</b><p class="mt-1 text-[11px] text-slate-500">'+escHtml(p.description||'')+'</p><p class="mt-1 text-[11px]">المدة: '+escHtml(String(p.durationDays))+' يوم · السعر: '+escHtml(String(p.price))+' جنيه</p><button type="button" onclick="requestUnifiedClientPlan(&quot;'+escAttr(p._id)+'&quot;)" '+(state.unifiedCommerceSubmitting?'disabled':'')+' class="mt-3 w-full rounded-xl bg-slate-900 p-2 text-[11px] font-bold text-white">طلب الاشتراك</button></article>').join('');
+ const planCards=plans.map(p=>{const pending=subs.some(s=>String(s.plan)===String(p._id)&&['pending','active','paused'].includes(s.status));return '<article class="rounded-xl border border-slate-200 p-3"><b class="text-[12px]">اسم الباقة: '+escHtml(p.name||unifiedClientTypeLabel(p.type))+'</b><p class="mt-1 text-[11px] text-slate-500">'+escHtml(p.description||'')+'</p><p class="mt-1 text-[11px]">المدة: '+escHtml(String(p.durationDays))+' يوم · السعر: '+escHtml(String(p.price))+' جنيه</p><button type="button" onclick="requestUnifiedClientPlan(&quot;'+escAttr(p._id)+'&quot;)" '+(state.unifiedCommerceSubmitting||pending?'disabled':'')+' class="mt-3 w-full rounded-xl bg-slate-900 p-2 text-[11px] font-bold text-white">'+(pending?'لديك طلب / اشتراك قائم':'طلب الاشتراك')+'</button></article>';}).join('');
  const visitRows=visits.map(v=>'<p class="mt-1 text-[10px] text-slate-600">'+escHtml(new Date(v.scheduledAt).toLocaleString('ar-EG'))+' · '+(v.status==='completed'?'تمت الزيارة':'زيارة مجدولة')+'</p>').join('');
  return '<section class="panel mt-4 p-4 space-y-3"><div><h3 class="font-extrabold text-[14px]">اشتراكاتي الخاصة</h3><p class="mt-1 text-[11px] text-slate-500">بيانات الباقات والخدمات المرتبطة بحسابك فقط</p></div><h4 class="font-bold text-[12px]">الاشتراكات الحالية</h4><div class="space-y-2">'+(subscriptionCards||'<p class="text-[11px] text-slate-500">لا توجد اشتراكات حاليًا.</p>')+'</div>'+(visitRows?'<div class="border-t pt-3"><b class="text-[12px]">مواعيد الصيانة</b>'+visitRows+'</div>':'')+'<div class="border-t pt-3"><h4 class="font-bold text-[12px]">الباقات المتاحة</h4><div class="mt-2 space-y-2">'+(planCards||'<p class="text-[11px] text-slate-500">لا توجد باقات متاحة.</p>')+'</div></div></section>';
 }
