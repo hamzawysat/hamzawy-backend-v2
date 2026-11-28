@@ -237,7 +237,7 @@ async function run() {
         'admin_new_technician','admin_fanni_login','admin_fanni_logout','admin_fanni_profile_edit',
         'admin_new_order','admin_order_offer_accepted','admin_order_cancelled','admin_order_completed',
         'admin_fanni_offer','admin_price_change_requested','admin_client_rating','admin_store_order',
-        'admin_subscription_request','admin_subscription_renewed','admin_password_recovery',
+        'admin_subscription_request','admin_subscription_renewed','admin_subscription_expiry','admin_password_recovery',
         'admin_password_recovery_message','admin_support_request','admin_support_followup',
         'admin_new_complaint','admin_new_topup','admin_client_topup','admin_service_payment_held'
       ];

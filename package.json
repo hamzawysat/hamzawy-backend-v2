@@ -4,7 +4,7 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "test": "node src/tests/runTests.js && node src/tests/adminSubscriptionsUi.test.js",
+    "test": "node src/tests/runTests.js && node src/tests/adminSubscriptionsUi.test.js && node src/tests/subscriptionReminders.test.js",
     "test:registration-ui": "node src/tests/fanniRegistrationScroll.test.js && node src/tests/fanniRegistrationPrivacy.test.js && node src/tests/referral-download.test.js",
     "build": "node scripts/build-frontend.js",
     "cleanup:legacy-order-notifications": "node scripts/cleanup-legacy-order-notifications.js",
