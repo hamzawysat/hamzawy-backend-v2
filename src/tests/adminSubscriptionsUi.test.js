@@ -13,6 +13,7 @@ const builtAdminPage = fs.readFileSync(path.join(__dirname, '../../frontend-dist
 
 const adminCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/admin-core.js'), 'utf8');
 const clientCore = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-core.js'), 'utf8');
+const clientCommerce = fs.readFileSync(path.join(__dirname, '../../frontend/js/client-commerce.js'), 'utf8');
 const subscriptionsRoutes = fs.readFileSync(path.join(__dirname, '../routes/subscriptions.js'), 'utf8');
 const state = {
   tab: 'commercePlans',
@@ -67,6 +68,13 @@ for (const route of ["/admin/plans", "/admin/list", "/admin/visits"]) {
   assert.match(subscriptionsRoutes.slice(routeStart, routeEnd), /Cache-Control','no-store'/, route + ' must disable HTTP caching');
 }
 assert.match(context.renderCommerce(), /باقة اختبار/, 'the plans tab must render available plans');
+assert.match(source, /sub\\.status==='active'\\|\\|sub\\.paymentStatus==='paid'/, 'details completion must remain available for paid active subscriptions across all plan types');
+assert.match(source, /type:'select',required:true,options:technicians\\.map/, 'technician assignment must use a technician picker rather than asking for an ID');
+assert.match(source, /type:'datetime-local'/, 'visit scheduling must use a date/time picker rather than an ISO text prompt');
+assert.match(clientCommerce, /اشتراكاتي/);
+assert.match(clientCommerce, /الاشتراكات المتاحة/);
+assert.match(clientCommerce, /toggleUnifiedPlanDetails/);
+assert.match(clientCommerce, /state\\.unifiedPlanDetailsOpen/);
 
 state.tab = 'commerceSubscriptions';
 state.unifiedSubscriptionError = 'فشل تحميل تجريبي';
