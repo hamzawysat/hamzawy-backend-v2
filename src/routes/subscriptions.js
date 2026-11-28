@@ -210,6 +210,8 @@ router.post('/client/request-visit', clientAuth, async (req, res, next) => {
     if (error) return res.status(400).json({ message: 'بيانات طلب الزيارة غير صحيحة.' });
     const subscription = await findSubscriptionOne({ _id:value.subscriptionId, client:req.clientId, type:'maintenance', status:'active', endsAt:{ $gt:new Date() } }, { lean: true });
     if (!subscription) return res.status(404).json({ message:'لا يوجد اشتراك صيانة ساري على حسابك.' });
+    const existingVisit = await SubscriptionVisit.findOne({ subscription: subscription._id, client: req.clientId, status: { $in: ['requested','scheduled','in_progress','awaiting_client_confirmation'] } }).lean();
+    if (existingVisit) return res.status(409).json({ message: existingVisit.status === 'requested' ? 'لديك طلب زيارة قيد مراجعة الإدارة بالفعل.' : 'لديك زيارة صيانة قائمة بالفعل.' });
     const visit = await SubscriptionVisit.create({ subscription: subscription._id, client: req.clientId, scheduledAt: value.preferredAt ? new Date(value.preferredAt) : new Date(), status: 'requested', workDescription: value.note || '', createdBy: 'العميل' });
     await notifyAdmins({ type:'admin_subscription_visit_request', title:'طلب زيارة صيانة جديد', message:'طلب العميل ' + String(req.client.name||'') + ' زيارة للاشتراك ' + subscription.code + (value.note ? ' — '+value.note : ''), link:'/admin?tab=commerceSubscriptions&visitId='+String(visit._id), dedupeKey:'subscription-visit-request:'+String(visit._id) });
     return res.status(202).json({ message:'تم حفظ طلب الزيارة وإرساله للإدارة، وسيتم التواصل معك لتحديد الموعد.', visit });
